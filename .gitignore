@@ -45,3 +45,6 @@ packages/database/.env
 
 # Generated Prisma Client
 packages/database/src/generated/
+
+# API local environment
+apps/api/.env
