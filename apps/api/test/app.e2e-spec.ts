@@ -5,20 +5,28 @@ import request from 'supertest';
 
 import { AppModule } from '../src/app.module';
 import { DatabaseService } from '../src/modules/database/database.service';
+import type {
+  LivenessHealthResponse,
+  ReadinessHealthResponse,
+} from '../src/modules/health/health.types';
 
-describe('Health endpoint (e2e)', () => {
+describe('Health endpoints (e2e)', () => {
   let app: INestApplication | undefined;
 
-  const databaseServiceMock = {
-    ping: jest.fn<Promise<number>, []>().mockResolvedValue(0),
+  const ping = jest.fn<Promise<number>, []>();
 
-    onApplicationShutdown: jest
-      .fn<Promise<void>, []>()
-      .mockResolvedValue(undefined),
+  const shutdown = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
+
+  const databaseServiceMock = {
+    ping,
+    onApplicationShutdown: shutdown,
   } satisfies Pick<DatabaseService, 'ping' | 'onApplicationShutdown'>;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    ping.mockReset();
+    ping.mockResolvedValue(4);
+
+    shutdown.mockClear();
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -40,23 +48,64 @@ describe('Health endpoint (e2e)', () => {
     }
   });
 
-  it('GET /api/v1/health', async () => {
+  function getServer(): Server {
     if (!app) {
-      throw new Error('La aplicación de prueba no fue inicializada');
+      throw new Error('La aplicación no fue inicializada');
     }
 
-    const server = app.getHttpServer() as Server;
+    return app.getHttpServer() as Server;
+  }
 
-    const response = await request(server).get('/api/v1/health').expect(200);
+  it('GET /api/v1/health/live', async () => {
+    const response = await request(getServer())
+      .get('/api/v1/health/live')
+      .expect(200);
 
-    const body = response.body as {
-      status: unknown;
-      service: unknown;
-      businessTimezone: unknown;
-    };
+    const body = response.body as unknown as LivenessHealthResponse;
 
     expect(body.status).toBe('ok');
     expect(body.service).toBe('sistema-comercial-api');
-    expect(body.businessTimezone).toBe('America/Lima');
+    expect(ping).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/v1/health/ready', async () => {
+    const response = await request(getServer())
+      .get('/api/v1/health/ready')
+      .expect(200);
+
+    const body = response.body as unknown as ReadinessHealthResponse;
+
+    expect(body.status).toBe('ok');
+    expect(body.checks.database).toEqual({
+      status: 'up',
+      latencyMs: 4,
+    });
+  });
+
+  it('GET /api/v1/health remains compatible', async () => {
+    const response = await request(getServer())
+      .get('/api/v1/health')
+      .expect(200);
+
+    const body = response.body as unknown as ReadinessHealthResponse;
+
+    expect(body.status).toBe('ok');
+    expect(body.checks.database.status).toBe('up');
+  });
+
+  it('returns 503 when PostgreSQL is unavailable', async () => {
+    ping.mockRejectedValueOnce(new Error('Database unavailable'));
+
+    const response = await request(getServer())
+      .get('/api/v1/health/ready')
+      .expect(503);
+
+    const body = response.body as unknown as ReadinessHealthResponse;
+
+    expect(body.status).toBe('error');
+    expect(body.checks.database).toEqual({
+      status: 'down',
+      latencyMs: null,
+    });
   });
 });

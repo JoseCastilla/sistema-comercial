@@ -1,32 +1,87 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { ServiceUnavailableException } from '@nestjs/common';
 
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
+import type {
+  LivenessHealthResponse,
+  ReadinessHealthResponse,
+} from './health.types';
 
 describe('HealthController', () => {
+  const getLiveness = jest.fn<LivenessHealthResponse, []>();
+
+  const getReadiness = jest.fn<Promise<ReadinessHealthResponse>, []>();
+
+  const healthService = {
+    getLiveness,
+    getReadiness,
+  } as unknown as HealthService;
+
   let controller: HealthController;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [HealthController],
-      providers: [HealthService],
-    }).compile();
+  beforeEach(() => {
+    jest.clearAllMocks();
 
-    controller = module.get<HealthController>(HealthController);
+    controller = new HealthController(healthService);
   });
 
-  it('should return the API health status', () => {
-    const response = controller.getHealth();
+  it('should return liveness status', () => {
+    getLiveness.mockReturnValue({
+      status: 'ok',
+      service: 'sistema-comercial-api',
+      version: '0.1.0',
+      businessTimezone: 'America/Lima',
+      timestamp: new Date().toISOString(),
+      uptimeSeconds: 1,
+    });
+
+    const response = controller.getLiveness();
 
     expect(response.status).toBe('ok');
-    expect(response.service).toBe('sistema-comercial-api');
-    expect(response.version).toBe('0.1.0');
-    expect(response.businessTimezone).toBe('America/Lima');
+  });
 
-    expect(typeof response.timestamp).toBe('string');
-    expect(Number.isNaN(Date.parse(response.timestamp))).toBe(false);
+  it('should return readiness status', async () => {
+    getReadiness.mockResolvedValue({
+      status: 'ok',
+      service: 'sistema-comercial-api',
+      version: '0.1.0',
+      businessTimezone: 'America/Lima',
+      timestamp: new Date().toISOString(),
+      uptimeSeconds: 1,
 
-    expect(typeof response.uptimeSeconds).toBe('number');
-    expect(response.uptimeSeconds).toBeGreaterThanOrEqual(0);
+      checks: {
+        database: {
+          status: 'up',
+          latencyMs: 3,
+        },
+      },
+    });
+
+    const response = await controller.getReadiness();
+
+    expect(response.status).toBe('ok');
+    expect(response.checks.database.status).toBe('up');
+  });
+
+  it('should throw 503 when database is down', async () => {
+    getReadiness.mockResolvedValue({
+      status: 'error',
+      service: 'sistema-comercial-api',
+      version: '0.1.0',
+      businessTimezone: 'America/Lima',
+      timestamp: new Date().toISOString(),
+      uptimeSeconds: 1,
+
+      checks: {
+        database: {
+          status: 'down',
+          latencyMs: null,
+        },
+      },
+    });
+
+    await expect(controller.getReadiness()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
   });
 });
