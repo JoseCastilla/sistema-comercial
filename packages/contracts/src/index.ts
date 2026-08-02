@@ -1,8 +1,8 @@
 /**
- * Roles disponibles dentro de una organización.
+ * Roles disponibles dentro de una organizaciÃ³n.
  *
  * AGENT representa al asesor comercial.
- * En la interfaz podrá mostrarse como "Asesor".
+ * En la interfaz podrÃ¡ mostrarse como "Asesor".
  */
 export type OrganizationRole =
   | 'ADMIN'
@@ -21,7 +21,7 @@ export type Carrier =
   | 'OTHER';
 
 /**
- * Operación comercial solicitada.
+ * OperaciÃ³n comercial solicitada.
  */
 export type CommercialOperation =
   | 'NEW_LINE'
@@ -40,7 +40,7 @@ export type ManagementStatus =
   | 'LOST';
 
 /**
- * Estado técnico de activación.
+ * Estado tÃ©cnico de activaciÃ³n.
  */
 export type ActivationStatus =
   | 'PENDING'
@@ -57,7 +57,7 @@ export type FollowUpReason =
   | 'MEETING_POINT';
 
 /**
- * Motivo de pérdida.
+ * Motivo de pÃ©rdida.
  */
 export type LostReason =
   | 'CURRENT_MOVISTAR_CUSTOMER'
@@ -81,14 +81,14 @@ export type WebhookProcessingStatus =
   | 'IGNORED_DUPLICATE';
 
 /**
- * Tipo de atribución.
+ * Tipo de atribuciÃ³n.
  */
 export type AttributionType =
   | 'FIRST'
   | 'LAST';
 
 /**
- * Atribución enviada actualmente por n8n.
+ * AtribuciÃ³n enviada actualmente por n8n.
  *
  * Se mantiene snake_case porque debe coincidir exactamente
  * con el contrato HTTP recibido por la API.
@@ -103,7 +103,7 @@ export interface AttributionSnapshot {
 }
 
 /**
- * Información del contacto.
+ * InformaciÃ³n del contacto.
  *
  * Un contacto representa a una persona, no a una venta.
  */
@@ -148,7 +148,7 @@ export interface SnapshotDates {
 /**
  * Campos comerciales comunes.
  *
- * Cada instancia corresponde a una sola línea u operación.
+ * Cada instancia corresponde a una sola lÃ­nea u operaciÃ³n.
  */
 export interface CommercialCaseFields {
   carrier: string;
@@ -166,7 +166,7 @@ export interface CommercialCaseFields {
 /**
  * Snapshot independiente del contacto.
  *
- * No contiene el estado de una venta específica.
+ * No contiene el estado de una venta especÃ­fica.
  */
 export interface GhlContactSnapshotV2 {
   schema_version: '2.0';
@@ -195,8 +195,8 @@ export interface GhlContactSnapshotV2 {
  *
  * Un mismo contacto puede tener varios casos:
  * - dos portabilidades;
- * - una portabilidad y una línea nueva;
- * - varias líneas nuevas.
+ * - una portabilidad y una lÃ­nea nueva;
+ * - varias lÃ­neas nuevas.
  */
 export interface GhlCommercialCaseSnapshotV2 {
   schema_version: '2.0';
@@ -211,7 +211,7 @@ export interface GhlCommercialCaseSnapshotV2 {
 
   commercial_case: CommercialCaseFields & {
     /**
-     * Número que será portado o identificador de la línea.
+     * NÃºmero que serÃ¡ portado o identificador de la lÃ­nea.
      */
     service_number: string;
 
@@ -230,7 +230,7 @@ export interface GhlCommercialCaseSnapshotV2 {
  * Contrato temporal correspondiente al snapshot combinado
  * que actualmente produce n8n.
  *
- * @deprecated Será reemplazado por GhlContactSnapshotV2 y
+ * @deprecated SerÃ¡ reemplazado por GhlContactSnapshotV2 y
  * GhlCommercialCaseSnapshotV2 cuando GHL entregue opportunity_id.
  */
 export interface LegacyGhlContactCommercialSnapshotV1 {
@@ -258,9 +258,64 @@ export interface LegacyGhlContactCommercialSnapshotV1 {
 }
 
 /**
- * Contratos aceptados durante la migración.
+ * Contratos aceptados durante la migraciÃ³n.
  */
 export type GhlIncomingSnapshot =
   | GhlContactSnapshotV2
   | GhlCommercialCaseSnapshotV2
   | LegacyGhlContactCommercialSnapshotV1;
+
+/**
+ * Origen reconocido de un webhook comercial.
+ */
+export type WebhookSource =
+  | 'GHL_N8N';
+
+/**
+ * Sobre canónico enviado desde n8n hacia la API.
+ *
+ * event_id es la llave de idempotencia.
+ * snapshot contiene el estado normalizado recibido.
+ */
+export interface GhlWebhookEnvelopeV1 {
+  envelope_version: '1.0';
+  source: 'GHL_N8N';
+
+  /**
+   * Identificador único y estable del evento.
+   */
+  event_id: string;
+
+  /**
+   * Tipo de evento procedente del sistema externo.
+   *
+   * Ejemplos:
+   * - contact.created
+   * - contact.updated
+   * - opportunity.updated
+   */
+  event_type: string;
+
+  /**
+   * Instante real del evento en formato ISO 8601.
+   */
+  occurred_at: string;
+
+  /**
+   * Fotografía normalizada del contacto o caso comercial.
+   */
+  snapshot: GhlIncomingSnapshot;
+}
+
+/**
+ * Respuesta devuelta por la API al recibir el webhook.
+ */
+export interface WebhookIngestionResponse {
+  accepted: true;
+  duplicate: boolean;
+  event_id: string;
+  webhook_event_id: string;
+  status:
+    | 'RECEIVED'
+    | 'IGNORED_DUPLICATE';
+}
