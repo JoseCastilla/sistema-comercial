@@ -1,11 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import type { Server } from 'node:http';
 import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
 
-describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+import { AppModule } from '../src/app.module';
+
+describe('Health endpoint (e2e)', () => {
+  let app: INestApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -13,17 +14,28 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    await app.init();
-  });
+    app.setGlobalPrefix('api/v1');
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+    await app.init();
   });
 
   afterEach(async () => {
     await app.close();
+  });
+
+  it('GET /api/v1/health', async () => {
+    const server = app.getHttpServer() as Server;
+
+    const response = await request(server).get('/api/v1/health').expect(200);
+
+    const body = response.body as {
+      status: unknown;
+      service: unknown;
+      businessTimezone: unknown;
+    };
+
+    expect(body.status).toBe('ok');
+    expect(body.service).toBe('sistema-comercial-api');
+    expect(body.businessTimezone).toBe('America/Lima');
   });
 });
