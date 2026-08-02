@@ -6,7 +6,7 @@ import { DatabaseService } from './database.service';
 import type { DatabaseClientPort } from './database.types';
 
 interface DatabasePackage {
-  createPrismaClient(): unknown;
+  createPrismaClient(): DatabaseClientPort;
 }
 
 const databasePackageName = '@repo/database';
@@ -22,8 +22,7 @@ const databasePackageName = '@repo/database';
           databasePackageName
         )) as DatabasePackage;
 
-        const client =
-          databasePackage.createPrismaClient() as DatabaseClientPort;
+        const client = databasePackage.createPrismaClient();
 
         await client.$connect();
 

@@ -2,24 +2,32 @@ import { DatabaseService } from './database.service';
 import type { DatabaseClientPort } from './database.types';
 
 describe('DatabaseService', () => {
-  const connect = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
-
   const disconnect = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
 
-  const queryRawUnsafe = jest.fn<Promise<unknown>, [string, ...unknown[]]>();
+  const queryRaw = jest.fn<
+    Promise<unknown>,
+    [TemplateStringsArray, ...unknown[]]
+  >();
 
-  const client: DatabaseClientPort = {
-    $connect: connect,
+  const client = {
+    $connect: jest.fn<Promise<void>, []>().mockResolvedValue(undefined),
+
     $disconnect: disconnect,
-    $queryRawUnsafe: queryRawUnsafe,
-  };
+    $queryRaw: queryRaw,
+  } as unknown as DatabaseClientPort;
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
+  it('should expose the database client', () => {
+    const service = new DatabaseService(client);
+
+    expect(service.getClient()).toBe(client);
+  });
+
   it('should execute a database ping', async () => {
-    queryRawUnsafe.mockResolvedValue([
+    queryRaw.mockResolvedValue([
       {
         connection_ok: 1,
       },
@@ -29,7 +37,11 @@ describe('DatabaseService', () => {
 
     const latency = await service.ping();
 
-    expect(queryRawUnsafe).toHaveBeenCalledWith(
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+
+    const firstCall = queryRaw.mock.calls[0];
+
+    expect(firstCall?.[0].join(' ')).toContain(
       'SELECT 1::integer AS connection_ok',
     );
 

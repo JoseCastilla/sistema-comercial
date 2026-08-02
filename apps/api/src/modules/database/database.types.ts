@@ -1,10 +1,6 @@
+import type { DatabaseClient } from '@repo/database';
+
 /**
- * Puerto mínimo que la API necesita del cliente Prisma.
+ * Cliente Prisma compartido por los repositorios de la API.
  */
-export interface DatabaseClientPort {
-  $connect(): Promise<void>;
-
-  $disconnect(): Promise<void>;
-
-  $queryRawUnsafe(query: string, ...values: unknown[]): Promise<unknown>;
-}
+export type DatabaseClientPort = DatabaseClient;

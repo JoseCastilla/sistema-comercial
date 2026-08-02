@@ -19,15 +19,17 @@
                     "test:debug":  "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
                     "test:e2e":  "jest --config ./test/jest-e2e.json",
                     "check-types":  "tsc --noEmit",
-                    "pretest":  "pnpm --filter @repo/database run build",
-                    "pretest:e2e":  "pnpm --filter @repo/database run build",
-                    "prestart:dev":  "pnpm --filter @repo/database run build"
+                    "pretest":  "pnpm --filter @repo/database run build \u0026\u0026 pnpm --filter @repo/validation run build",
+                    "pretest:e2e":  "pnpm --filter @repo/database run build \u0026\u0026 pnpm --filter @repo/validation run build",
+                    "prestart:dev":  "pnpm --filter @repo/database run build \u0026\u0026 pnpm --filter @repo/validation run build"
                 },
     "dependencies":  {
                          "@nestjs/common":  "^11.0.1",
                          "@nestjs/core":  "^11.0.1",
                          "@nestjs/platform-express":  "^11.0.1",
+                         "@repo/contracts":  "workspace:*",
                          "@repo/database":  "workspace:*",
+                         "@repo/validation":  "workspace:*",
                          "dotenv":  "17.4.2",
                          "reflect-metadata":  "^0.2.2",
                          "rxjs":  "^7.8.1"

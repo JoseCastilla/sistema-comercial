@@ -6,13 +6,16 @@ import type { DatabaseClientPort } from './database.types';
 export class DatabaseService implements OnApplicationShutdown {
   constructor(private readonly client: DatabaseClientPort) {}
 
-  /**
-   * Ejecuta una consulta mínima y devuelve su latencia.
-   */
+  getClient(): DatabaseClientPort {
+    return this.client;
+  }
+
   async ping(): Promise<number> {
     const startedAt = Date.now();
 
-    await this.client.$queryRawUnsafe('SELECT 1::integer AS connection_ok');
+    await this.client.$queryRaw`
+      SELECT 1::integer AS connection_ok
+    `;
 
     return Date.now() - startedAt;
   }

@@ -5,7 +5,10 @@ export default [
   ...baseConfig,
 
   {
-    files: ["scripts/**/*.mjs"],
+    files: [
+      "scripts/**/*.mjs",
+      "prisma/**/*.ts",
+    ],
 
     languageOptions: {
       globals: {
