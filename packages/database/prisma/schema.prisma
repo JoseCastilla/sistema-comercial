@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+enum OrganizationRole {
+  ADMIN
+  SUPERVISOR
+  AGENT
+  BACKOFFICE
+}
+
+enum IntegrationStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+  ERROR
+}
+
+model Organization {
+  id       String             @id @default(uuid()) @db.Uuid
+  name     String             @db.VarChar(150)
+  slug     String             @unique @db.VarChar(100)
+  timezone String             @default("America/Lima") @db.VarChar(64)
+  status   OrganizationStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  members         OrganizationMember[]
+  ghlIntegrations GhlIntegration[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  name         String     @db.VarChar(150)
+  email        String     @unique @db.VarChar(254)
+  passwordHash String?    @map("password_hash") @db.VarChar(255)
+  status       UserStatus @default(INVITED)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  memberships OrganizationMember[]
+
+  @@map("users")
+}
+
+model OrganizationMember {
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           OrganizationRole
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, userId])
+  @@index([organizationId, role])
+  @@map("organization_members")
+}
+
+model GhlIntegration {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  companyId      String?           @map("company_id") @db.VarChar(100)
+  locationId     String            @map("location_id") @db.VarChar(100)
+  locationName   String            @map("location_name") @db.VarChar(150)
+  status         IntegrationStatus @default(PENDING)
+
+  webhookSecretHash String? @map("webhook_secret_hash") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, locationId])
+  @@index([organizationId, status])
+  @@map("ghl_integrations")
+}

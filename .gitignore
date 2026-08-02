@@ -36,3 +36,12 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# Local infrastructure secrets
+infra/.env.local
+
+# Prisma local database configuration
+packages/database/.env
+
+# Generated Prisma Client
+packages/database/src/generated/
