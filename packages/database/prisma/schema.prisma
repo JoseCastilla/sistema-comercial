@@ -33,6 +33,18 @@ enum IntegrationStatus {
   ERROR
 }
 
+enum WebhookSource {
+  GHL_N8N
+}
+
+enum WebhookProcessingStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED_DUPLICATE
+}
+
 model Organization {
   id       String             @id @default(uuid()) @db.Uuid
   name     String             @db.VarChar(150)
@@ -45,6 +57,7 @@ model Organization {
 
   members         OrganizationMember[]
   ghlIntegrations GhlIntegration[]
+  webhookEvents   WebhookEvent[]
 
   @@map("organizations")
 }
@@ -93,9 +106,46 @@ model GhlIntegration {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  webhookEvents WebhookEvent[]
 
   @@unique([organizationId, locationId])
   @@index([organizationId, status])
   @@map("ghl_integrations")
+}
+
+model WebhookEvent {
+  id String @id @default(uuid()) @db.Uuid
+
+  organizationId   String @map("organization_id") @db.Uuid
+  ghlIntegrationId String @map("ghl_integration_id") @db.Uuid
+
+  source          WebhookSource
+  locationId      String        @map("location_id") @db.VarChar(100)
+  externalEventId String        @map("external_event_id") @db.VarChar(191)
+  eventType       String        @map("event_type") @db.VarChar(100)
+  envelopeVersion String        @map("envelope_version") @db.VarChar(20)
+  snapshotType    String?       @map("snapshot_type") @db.VarChar(50)
+
+  occurredAt DateTime @map("occurred_at") @db.Timestamptz(3)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  status             WebhookProcessingStatus @default(RECEIVED)
+  processingAttempts Int                     @default(0) @map("processing_attempts")
+  processedAt        DateTime?               @map("processed_at") @db.Timestamptz(3)
+  lastError          String?                 @map("last_error") @db.Text
+
+  payload Json @db.JsonB
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  ghlIntegration GhlIntegration @relation(fields: [ghlIntegrationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, source, locationId, externalEventId], map: "webhook_events_org_source_location_event_key")
+  @@index([organizationId, status, receivedAt], map: "webhook_events_org_status_received_idx")
+  @@index([ghlIntegrationId, status], map: "webhook_events_integration_status_idx")
+  @@index([occurredAt], map: "webhook_events_occurred_at_idx")
+  @@map("webhook_events")
 }
