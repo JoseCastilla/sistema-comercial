@@ -422,7 +422,7 @@ export interface DitoLegacyOrderEnvelopeV1 {
     district: string;
   };
 
-  advisor: {
+  agent: {
     /**
      * Nombre recibido literalmente desde la extensión.
      *

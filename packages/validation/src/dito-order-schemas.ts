@@ -105,11 +105,11 @@ export const ditoLegacyOrderEnvelopeV1Schema: z.ZodType<DitoLegacyOrderEnvelopeV
       district: z.string().trim().max(100),
     }),
 
-    advisor: z.object({
+    agent: z.object({
       name_raw: z
         .string()
         .trim()
-        .min(1, "advisor.name_raw es obligatorio")
+        .min(1, "agent.name_raw es obligatorio")
         .max(150),
     }),
 
