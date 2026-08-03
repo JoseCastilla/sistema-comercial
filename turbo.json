@@ -33,6 +33,8 @@
                           }
               },
     "globalEnv":  [
-                      "DATABASE_URL"
+                      "DATABASE_URL",
+                      "DITO_WEBHOOK_SECRET",
+                      "DITO_WEBHOOK_ORGANIZATION_SLUG"
                   ]
 }

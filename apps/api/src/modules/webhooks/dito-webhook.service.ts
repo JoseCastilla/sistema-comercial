@@ -1,0 +1,274 @@
+import 'dotenv/config';
+
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
+
+import type {
+  DitoLegacyOrderEnvelopeV1,
+  DitoOrderIngestionResponse,
+} from '@repo/contracts';
+
+import { createHash, timingSafeEqual } from 'node:crypto';
+
+import { calculateInitialDeliverySchedule } from '../dito/dito-sla';
+
+import { DitoOrdersRepository } from './dito-orders.repository';
+
+import { DitoWebhookValidationService } from './dito-webhook-validation.service';
+
+interface ErrorWithCode {
+  code: unknown;
+}
+
+@Injectable()
+export class DitoWebhookService {
+  constructor(
+    private readonly validationService: DitoWebhookValidationService,
+
+    private readonly repository: DitoOrdersRepository,
+  ) {}
+
+  async ingest(
+    rawPayload: unknown,
+    providedSecret: string | undefined,
+  ): Promise<DitoOrderIngestionResponse> {
+    this.assertAuthorized(providedSecret);
+
+    const envelope = await this.validationService.parse(rawPayload);
+
+    const organizationSlug = this.requiredEnvironmentVariable(
+      'DITO_WEBHOOK_ORGANIZATION_SLUG',
+    );
+
+    const organization =
+      await this.repository.findOrganizationBySlug(organizationSlug);
+
+    if (!organization) {
+      throw new InternalServerErrorException(
+        'La organización configurada para DITO no existe',
+      );
+    }
+
+    const capturedAt = new Date(envelope.captured_at);
+
+    const registeredAt = new Date(capturedAt.getTime());
+
+    const approvedAt = new Date(capturedAt.getTime());
+
+    const schedule = calculateInitialDeliverySchedule(
+      envelope.delivery.method,
+      approvedAt,
+    );
+
+    const sourceFingerprint = this.createSourceFingerprint(envelope);
+
+    const agentNameNormalized = this.normalizeAgentName(
+      envelope.agent.name_raw,
+    );
+
+    const parseStatus = this.determineParseStatus(envelope);
+
+    try {
+      const persisted = await this.repository.create({
+        organizationId: organization.id,
+
+        envelope,
+        sourceFingerprint,
+        agentNameNormalized,
+        parseStatus,
+        registeredAt,
+        approvedAt,
+        schedule,
+      });
+
+      return {
+        accepted: true,
+        duplicate: false,
+
+        event_id: envelope.event_id,
+
+        dito_order_id: persisted.id,
+
+        status: 'RECEIVED',
+      };
+    } catch (error: unknown) {
+      if (!this.isUniqueViolation(error)) {
+        throw error;
+      }
+
+      return this.resolveDuplicate(
+        organization.id,
+        envelope,
+        sourceFingerprint,
+      );
+    }
+  }
+
+  private async resolveDuplicate(
+    organizationId: string,
+
+    envelope: DitoLegacyOrderEnvelopeV1,
+
+    sourceFingerprint: string,
+  ): Promise<DitoOrderIngestionResponse> {
+    const existing = await this.repository.findExisting(
+      organizationId,
+      envelope.event_id,
+      envelope.order.code_normalized,
+    );
+
+    if (!existing) {
+      throw new InternalServerErrorException(
+        'No fue posible recuperar la orden DITO duplicada',
+      );
+    }
+
+    if (existing.sourceFingerprint !== sourceFingerprint) {
+      await this.repository.markNeedsReview(existing.id);
+    }
+
+    return {
+      accepted: true,
+      duplicate: true,
+
+      event_id: envelope.event_id,
+
+      dito_order_id: existing.id,
+
+      status: 'IGNORED_DUPLICATE',
+    };
+  }
+
+  private determineParseStatus(
+    envelope: DitoLegacyOrderEnvelopeV1,
+  ): 'PARSED' | 'PARTIAL' {
+    const isPartial =
+      envelope.product_type === 'UNKNOWN' ||
+      envelope.order.commercial_operation === 'UNKNOWN' ||
+      envelope.order.carrier === 'UNKNOWN' ||
+      envelope.delivery.method === 'UNKNOWN' ||
+      !envelope.holder.document_number ||
+      !envelope.holder.service_number;
+
+    return isPartial ? 'PARTIAL' : 'PARSED';
+  }
+
+  private normalizeAgentName(value: string): string | null {
+    const normalized = value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toUpperCase();
+
+    return normalized || null;
+  }
+
+  private createSourceFingerprint(envelope: DitoLegacyOrderEnvelopeV1): string {
+    const normalizedSummary = envelope.raw_summary
+      .replace(/\r\n/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+
+    const canonicalPayload = {
+      product_type: envelope.product_type,
+
+      order: {
+        code_raw: envelope.order.code_raw,
+
+        code_normalized: envelope.order.code_normalized,
+
+        code_suffix: envelope.order.code_suffix,
+
+        operation_raw: envelope.order.operation_raw,
+
+        commercial_operation: envelope.order.commercial_operation,
+
+        carrier: envelope.order.carrier,
+
+        fixed_charge: envelope.order.fixed_charge,
+
+        sales_code: envelope.order.sales_code,
+
+        billing_cycle_day: envelope.order.billing_cycle_day,
+
+        payment_due_day: envelope.order.payment_due_day,
+      },
+
+      holder: {
+        full_name: envelope.holder.full_name,
+
+        document_type: envelope.holder.document_type,
+
+        document_number: envelope.holder.document_number,
+
+        service_number: envelope.holder.service_number,
+      },
+
+      delivery: {
+        method: envelope.delivery.method,
+
+        department: envelope.delivery.department,
+
+        province: envelope.delivery.province,
+
+        district: envelope.delivery.district,
+      },
+
+      agent: {
+        name_raw: envelope.agent.name_raw,
+      },
+
+      raw_summary: normalizedSummary,
+    };
+
+    return createHash('sha256')
+      .update(JSON.stringify(canonicalPayload), 'utf8')
+      .digest('hex');
+  }
+
+  private assertAuthorized(providedSecret: string | undefined): void {
+    const configuredSecret = this.requiredEnvironmentVariable(
+      'DITO_WEBHOOK_SECRET',
+    );
+
+    if (!providedSecret) {
+      throw new UnauthorizedException('Webhook no autorizado');
+    }
+
+    const providedDigest = createHash('sha256')
+      .update(providedSecret, 'utf8')
+      .digest();
+
+    const configuredDigest = createHash('sha256')
+      .update(configuredSecret, 'utf8')
+      .digest();
+
+    if (!timingSafeEqual(providedDigest, configuredDigest)) {
+      throw new UnauthorizedException('Webhook no autorizado');
+    }
+  }
+
+  private requiredEnvironmentVariable(name: string): string {
+    const value = process.env[name]?.trim();
+
+    if (!value) {
+      throw new InternalServerErrorException(
+        `La variable ${name} no está configurada`,
+      );
+    }
+
+    return value;
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    return this.isErrorWithCode(error) && error.code === 'P2002';
+  }
+
+  private isErrorWithCode(value: unknown): value is ErrorWithCode {
+    return typeof value === 'object' && value !== null && 'code' in value;
+  }
+}
