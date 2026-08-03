@@ -1,0 +1,187 @@
+enum DitoProductType {
+  MOBILE
+  FIXED
+  UNKNOWN
+}
+
+enum DitoDeliveryMethod {
+  EXPRESS
+  REGULAR_24H
+  REGULAR_48H
+  REGULAR_72H
+  UNKNOWN
+}
+
+enum DitoParseStatus {
+  PARSED
+  PARTIAL
+  FAILED
+}
+
+enum DitoMatchStatus {
+  UNMATCHED
+  SUGGESTED
+  LINKED
+  NEEDS_REVIEW
+  DISMISSED
+}
+
+enum ApprovalSource {
+  ASSUMED_FROM_REGISTRATION
+  MANUAL_INTEGRATEL
+}
+
+enum DeliveryStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  NOT_DELIVERED
+  RESCHEDULED
+  CANCELLED
+}
+
+enum DitoOrderLinkAction {
+  LINKED
+  UNLINKED
+  REASSIGNED
+}
+
+enum DitoOrderLinkMethod {
+  MANUAL
+  SUGGESTED
+}
+
+model DitoOrder {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  eventId           String @map("event_id") @db.VarChar(191)
+  sourceFingerprint String @map("source_fingerprint") @db.Char(64)
+
+  productType DitoProductType @default(UNKNOWN) @map("product_type")
+
+  orderCodeRaw        String  @map("order_code_raw") @db.VarChar(100)
+  orderCodeNormalized String  @map("order_code_normalized") @db.VarChar(100)
+  orderCodeSuffix     String  @map("order_code_suffix") @db.VarChar(10)
+  displayedOrderCode  String? @map("displayed_order_code") @db.VarChar(100)
+
+  operationRaw        String              @map("operation_raw") @db.VarChar(200)
+  commercialOperation CommercialOperation @default(UNKNOWN) @map("commercial_operation")
+  carrier             Carrier             @default(UNKNOWN)
+  fixedCharge         Decimal?            @map("fixed_charge") @db.Decimal(10, 2)
+
+  salesCode       String? @map("sales_code") @db.VarChar(100)
+  billingCycleDay Int?    @map("billing_cycle_day")
+  paymentDueDay   Int?    @map("payment_due_day")
+
+  holderFullNameRaw    String       @map("holder_full_name_raw") @db.VarChar(200)
+  holderDocumentType   DocumentType @default(UNKNOWN) @map("holder_document_type")
+  holderDocumentNumber String       @map("holder_document_number") @db.VarChar(30)
+
+  serviceNumber        String @map("service_number") @db.VarChar(30)
+  deliveryContactPhone String @map("delivery_contact_phone") @db.VarChar(30)
+
+  deliveryMethod    DitoDeliveryMethod @default(UNKNOWN) @map("delivery_method")
+  deliveryMethodRaw String?            @map("delivery_method_raw") @db.VarChar(150)
+
+  department String @db.VarChar(100)
+  province   String @db.VarChar(100)
+  district   String @db.VarChar(100)
+
+  agentNameRaw        String  @map("agent_name_raw") @db.VarChar(150)
+  agentNameNormalized String? @map("agent_name_normalized") @db.VarChar(150)
+  agentUserId         String? @map("agent_user_id") @db.Uuid
+
+  rawSummary        String @map("raw_summary") @db.Text
+  additionalDetails Json   @map("additional_details") @db.JsonB
+
+  parseStatus DitoParseStatus @default(PARSED) @map("parse_status")
+  matchStatus DitoMatchStatus @default(UNMATCHED) @map("match_status")
+
+  capturedAt   DateTime @map("captured_at") @db.Timestamptz(3)
+  receivedAt   DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+  registeredAt DateTime @map("registered_at") @db.Timestamptz(3)
+
+  approvedAt     DateTime       @map("approved_at") @db.Timestamptz(3)
+  approvalSource ApprovalSource @default(ASSUMED_FROM_REGISTRATION) @map("approval_source")
+
+  approvalUpdatedAt       DateTime? @map("approval_updated_at") @db.Timestamptz(3)
+  approvalUpdatedByUserId String?   @map("approval_updated_by_user_id") @db.Uuid
+
+  scheduledDeliveryDate DateTime? @map("scheduled_delivery_date") @db.Date
+  deliveryShiftId       String?   @map("delivery_shift_id") @db.Uuid
+
+  deliveryWindowStart DateTime? @map("delivery_window_start") @db.Timestamptz(3)
+  deliveryWindowEnd   DateTime? @map("delivery_window_end") @db.Timestamptz(3)
+  deliveryDueAt       DateTime? @map("delivery_due_at") @db.Timestamptz(3)
+
+  deliveredAt    DateTime?      @map("delivered_at") @db.Timestamptz(3)
+  deliveryStatus DeliveryStatus @default(PENDING) @map("delivery_status")
+
+  deliveryFailureReason String? @map("delivery_failure_reason") @db.VarChar(150)
+  deliveryObservation   String? @map("delivery_observation") @db.Text
+
+  commercialServiceId String? @map("commercial_service_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  agent User? @relation("DitoOrderAgent", fields: [agentUserId], references: [id], onDelete: SetNull)
+
+  approvalUpdatedBy User? @relation("DitoOrderApprovalUpdatedBy", fields: [approvalUpdatedByUserId], references: [id], onDelete: SetNull)
+
+  commercialService CommercialService? @relation(fields: [commercialServiceId], references: [id], onDelete: SetNull)
+
+  deliveryShift DeliveryShift? @relation(fields: [deliveryShiftId], references: [id], onDelete: SetNull)
+
+  linkHistory DitoOrderLinkHistory[]
+  escalations DeliveryEscalation[]
+
+  @@unique([organizationId, eventId], map: "dito_orders_org_event_key")
+  @@unique([organizationId, orderCodeNormalized], map: "dito_orders_org_order_code_key")
+  @@index([organizationId, matchStatus, capturedAt], map: "dito_orders_org_match_captured_idx")
+  @@index([organizationId, deliveryStatus, deliveryDueAt], map: "dito_orders_org_delivery_due_idx")
+  @@index([organizationId, agentUserId, capturedAt], map: "dito_orders_org_agent_captured_idx")
+  @@index([organizationId, agentNameNormalized, capturedAt], map: "dito_orders_org_agent_name_idx")
+  @@index([commercialServiceId], map: "dito_orders_commercial_service_idx")
+  @@map("dito_orders")
+}
+
+model DitoOrderLinkHistory {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  ditoOrderId    String @map("dito_order_id") @db.Uuid
+
+  previousCommercialRequestId String? @map("previous_commercial_request_id") @db.Uuid
+  newCommercialRequestId      String? @map("new_commercial_request_id") @db.Uuid
+
+  previousCommercialServiceId String? @map("previous_commercial_service_id") @db.Uuid
+  newCommercialServiceId      String? @map("new_commercial_service_id") @db.Uuid
+
+  action DitoOrderLinkAction
+  method DitoOrderLinkMethod
+
+  suggestionScore Int?    @map("suggestion_score")
+  reason          String? @db.Text
+
+  performedByUserId String   @map("performed_by_user_id") @db.Uuid
+  performedAt       DateTime @default(now()) @map("performed_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  ditoOrder    DitoOrder    @relation(fields: [ditoOrderId], references: [id], onDelete: Restrict)
+
+  previousCommercialRequest CommercialRequest? @relation("DitoOrderLinkPreviousRequest", fields: [previousCommercialRequestId], references: [id], onDelete: SetNull)
+  newCommercialRequest      CommercialRequest? @relation("DitoOrderLinkNewRequest", fields: [newCommercialRequestId], references: [id], onDelete: SetNull)
+
+  previousCommercialService CommercialService? @relation("DitoOrderLinkPreviousService", fields: [previousCommercialServiceId], references: [id], onDelete: SetNull)
+  newCommercialService      CommercialService? @relation("DitoOrderLinkNewService", fields: [newCommercialServiceId], references: [id], onDelete: SetNull)
+
+  performedBy User @relation("DitoOrderLinkPerformedBy", fields: [performedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([ditoOrderId, performedAt], map: "dito_order_link_history_order_performed_idx")
+  @@index([organizationId, performedAt], map: "dito_order_link_history_org_performed_idx")
+  @@index([performedByUserId, performedAt], map: "dito_order_link_history_user_performed_idx")
+  @@map("dito_order_link_history")
+}

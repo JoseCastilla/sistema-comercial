@@ -1,0 +1,30 @@
+enum AgentAliasSource {
+  MANUAL
+  DITO_LEGACY
+  GHL_OWNER
+  IMPORT
+}
+
+model AgentAlias {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+
+  alias           String @db.VarChar(150)
+  normalizedAlias String @map("normalized_alias") @db.VarChar(150)
+
+  source    AgentAliasSource @default(MANUAL)
+  isPrimary Boolean          @default(false) @map("is_primary")
+  isActive  Boolean          @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, normalizedAlias], map: "agent_aliases_org_user_alias_key")
+  @@index([organizationId, normalizedAlias], map: "agent_aliases_org_alias_idx")
+  @@index([organizationId, isActive], map: "agent_aliases_org_active_idx")
+  @@map("agent_aliases")
+}

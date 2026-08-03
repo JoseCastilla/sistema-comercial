@@ -59,6 +59,19 @@ model Organization {
   ghlIntegrations GhlIntegration[]
   webhookEvents   WebhookEvent[]
 
+  contacts                  Contact[]
+  contactExternalIdentities ContactExternalIdentity[]
+  commercialRequests        CommercialRequest[]
+  commercialServices        CommercialService[]
+
+  ditoOrders           DitoOrder[]
+  ditoOrderLinkHistory DitoOrderLinkHistory[]
+
+  deliveryShifts      DeliveryShift[]
+  deliveryEscalations DeliveryEscalation[]
+
+  agentAliases AgentAlias[]
+
   @@map("organizations")
 }
 
@@ -73,6 +86,18 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   memberships OrganizationMember[]
+
+  commercialRequestsAsAgent CommercialRequest[] @relation("CommercialRequestAgent")
+
+  ditoOrdersAsAgent         DitoOrder[]            @relation("DitoOrderAgent")
+  ditoOrdersApprovalUpdated DitoOrder[]            @relation("DitoOrderApprovalUpdatedBy")
+  ditoOrderLinksPerformed   DitoOrderLinkHistory[] @relation("DitoOrderLinkPerformedBy")
+
+  deliveryEscalationsCreated      DeliveryEscalation[] @relation("DeliveryEscalationCreatedBy")
+  deliveryEscalationsAcknowledged DeliveryEscalation[] @relation("DeliveryEscalationAcknowledgedBy")
+  deliveryEscalationsResolved     DeliveryEscalation[] @relation("DeliveryEscalationResolvedBy")
+
+  agentAliases AgentAlias[]
 
   @@map("users")
 }
@@ -109,6 +134,9 @@ model GhlIntegration {
   organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   webhookEvents WebhookEvent[]
 
+  contactExternalIdentities ContactExternalIdentity[]
+  commercialRequests        CommercialRequest[]
+
   @@unique([organizationId, locationId])
   @@index([organizationId, status])
   @@map("ghl_integrations")
@@ -139,8 +167,7 @@ model WebhookEvent {
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   ghlIntegration GhlIntegration @relation(fields: [ghlIntegrationId], references: [id], onDelete: Restrict)
 
   @@unique([organizationId, source, locationId, externalEventId], map: "webhook_events_org_source_location_event_key")

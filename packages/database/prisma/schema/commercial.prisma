@@ -1,0 +1,233 @@
+enum DocumentType {
+  DNI
+  FOREIGNER_ID
+  RUC_10
+  OTHER
+  UNKNOWN
+}
+
+enum LeadOrigin {
+  CAMPAIGN
+  DATABASE
+  REFERRAL
+  OTHER
+  UNKNOWN
+}
+
+enum CommercialRequestStatus {
+  OPEN
+  IN_PROGRESS
+  PARTIALLY_COMPLETED
+  COMPLETED
+  LOST
+  CANCELLED
+}
+
+enum Carrier {
+  BITEL
+  CLARO
+  ENTEL
+  MOVISTAR
+  OTHER
+  UNKNOWN
+}
+
+enum CommercialOperation {
+  NEW_LINE
+  PORT_PREPAID
+  PORT_POSTPAID
+  UNKNOWN
+}
+
+enum ManagementStatus {
+  QUALIFIED
+  FOLLOW_UP
+  ORDER_ENTERED
+  CHIP_DELIVERED
+  SALE_CONFIRMED
+  LOST
+}
+
+enum ActivationStatus {
+  PENDING
+  INCIDENT
+  ACTIVATED
+}
+
+enum FollowUpReason {
+  SCHEDULED
+  ACTIVE_DEBT
+  LESS_THAN_30_DAYS
+  MEETING_POINT
+}
+
+enum LostReason {
+  CURRENT_MOVISTAR_CUSTOMER
+  OUT_OF_COVERAGE
+  ZERO_FIXED_CHARGE
+  FOREIGNER_ID
+  DEVICE_INSTALLMENTS
+  NO_LONGER_INTERESTED
+  PORTED_OTHER_AGENCY
+  PORTED_OTHER_OPERATOR
+  RUC_10
+}
+
+model Contact {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  documentType             DocumentType @default(UNKNOWN) @map("document_type")
+  documentNumber           String?      @map("document_number") @db.VarChar(30)
+  documentNumberNormalized String?      @map("document_number_normalized") @db.VarChar(30)
+
+  firstName String? @map("first_name") @db.VarChar(100)
+  lastName  String? @map("last_name") @db.VarChar(100)
+  fullName  String? @map("full_name") @db.VarChar(200)
+
+  email          String? @db.VarChar(254)
+  primaryPhone   String? @map("primary_phone") @db.VarChar(30)
+  secondaryPhone String? @map("secondary_phone") @db.VarChar(30)
+
+  customerCity String? @map("customer_city") @db.VarChar(100)
+  country      String  @default("PE") @db.VarChar(2)
+  contactType  String? @map("contact_type") @db.VarChar(50)
+  tags         String? @db.Text
+
+  sourceCreatedAt DateTime? @map("source_created_at") @db.Timestamptz(3)
+  lastEventAt     DateTime? @map("last_event_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  externalIdentities ContactExternalIdentity[]
+
+  requestsAsRequester CommercialRequest[] @relation("CommercialRequestRequester")
+  requestsAsReferrer  CommercialRequest[] @relation("CommercialRequestReferrer")
+
+  servicesAsHolder CommercialService[] @relation("CommercialServiceHolder")
+
+  @@unique([organizationId, documentType, documentNumberNormalized], map: "contacts_org_document_key")
+  @@index([organizationId, primaryPhone], map: "contacts_org_primary_phone_idx")
+  @@index([organizationId, email], map: "contacts_org_email_idx")
+  @@index([organizationId, fullName], map: "contacts_org_full_name_idx")
+  @@map("contacts")
+}
+
+model ContactExternalIdentity {
+  id String @id @default(uuid()) @db.Uuid
+
+  organizationId   String @map("organization_id") @db.Uuid
+  contactId        String @map("contact_id") @db.Uuid
+  ghlIntegrationId String @map("ghl_integration_id") @db.Uuid
+
+  externalContactId String @map("external_contact_id") @db.VarChar(100)
+  locationId        String @map("location_id") @db.VarChar(100)
+
+  firstSeenAt DateTime @default(now()) @map("first_seen_at") @db.Timestamptz(3)
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  contact        Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  ghlIntegration GhlIntegration @relation(fields: [ghlIntegrationId], references: [id], onDelete: Restrict)
+
+  @@unique([ghlIntegrationId, externalContactId], map: "contact_external_identities_integration_contact_key")
+  @@index([organizationId, externalContactId], map: "contact_external_identities_org_external_idx")
+  @@index([contactId], map: "contact_external_identities_contact_idx")
+  @@map("contact_external_identities")
+}
+
+model CommercialRequest {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  ghlIntegrationId      String? @map("ghl_integration_id") @db.Uuid
+  externalOpportunityId String? @map("external_opportunity_id") @db.VarChar(100)
+
+  requesterContactId String? @map("requester_contact_id") @db.Uuid
+  referrerContactId  String? @map("referrer_contact_id") @db.Uuid
+  agentUserId        String? @map("agent_user_id") @db.Uuid
+
+  leadOrigin LeadOrigin              @default(UNKNOWN) @map("lead_origin")
+  status     CommercialRequestStatus @default(OPEN)
+
+  reportedTotalFixedCharge Decimal? @map("reported_total_fixed_charge") @db.Decimal(10, 2)
+
+  pipelineStage     String? @map("pipeline_stage") @db.VarChar(150)
+  opportunityStatus String? @map("opportunity_status") @db.VarChar(50)
+
+  referrerNameRaw  String? @map("referrer_name_raw") @db.VarChar(200)
+  referrerPhoneRaw String? @map("referrer_phone_raw") @db.VarChar(30)
+  referralNotes    String? @map("referral_notes") @db.Text
+
+  sourceCreatedAt DateTime? @map("source_created_at") @db.Timestamptz(3)
+  lastEventAt     DateTime? @map("last_event_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  ghlIntegration GhlIntegration? @relation(fields: [ghlIntegrationId], references: [id], onDelete: SetNull)
+
+  requester Contact? @relation("CommercialRequestRequester", fields: [requesterContactId], references: [id], onDelete: SetNull)
+  referrer  Contact? @relation("CommercialRequestReferrer", fields: [referrerContactId], references: [id], onDelete: SetNull)
+
+  agent User? @relation("CommercialRequestAgent", fields: [agentUserId], references: [id], onDelete: SetNull)
+
+  services CommercialService[]
+
+  previousOrderLinks DitoOrderLinkHistory[] @relation("DitoOrderLinkPreviousRequest")
+  newOrderLinks      DitoOrderLinkHistory[] @relation("DitoOrderLinkNewRequest")
+
+  @@unique([ghlIntegrationId, externalOpportunityId], map: "commercial_requests_integration_opportunity_key")
+  @@index([organizationId, status, createdAt], map: "commercial_requests_org_status_created_idx")
+  @@index([organizationId, leadOrigin, createdAt], map: "commercial_requests_org_origin_created_idx")
+  @@index([organizationId, agentUserId, createdAt], map: "commercial_requests_org_agent_created_idx")
+  @@index([requesterContactId], map: "commercial_requests_requester_idx")
+  @@index([referrerContactId], map: "commercial_requests_referrer_idx")
+  @@map("commercial_requests")
+}
+
+model CommercialService {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  commercialRequestId String  @map("commercial_request_id") @db.Uuid
+  holderContactId     String? @map("holder_contact_id") @db.Uuid
+
+  serviceNumber       String?             @map("service_number") @db.VarChar(30)
+  carrier             Carrier             @default(UNKNOWN)
+  commercialOperation CommercialOperation @default(UNKNOWN) @map("commercial_operation")
+  fixedCharge         Decimal?            @map("fixed_charge") @db.Decimal(10, 2)
+  managementStatus    ManagementStatus?   @map("management_status")
+  followUpReason      FollowUpReason?     @map("follow_up_reason")
+  lostReason          LostReason?         @map("lost_reason")
+  activationStatus    ActivationStatus?   @map("activation_status")
+  incidentReason      String?             @map("incident_reason") @db.Text
+
+  sourceCreatedAt DateTime? @map("source_created_at") @db.Timestamptz(3)
+  lastEventAt     DateTime? @map("last_event_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  commercialRequest CommercialRequest @relation(fields: [commercialRequestId], references: [id], onDelete: Restrict)
+  holder            Contact?          @relation("CommercialServiceHolder", fields: [holderContactId], references: [id], onDelete: SetNull)
+
+  ditoOrders DitoOrder[]
+
+  previousOrderLinks DitoOrderLinkHistory[] @relation("DitoOrderLinkPreviousService")
+  newOrderLinks      DitoOrderLinkHistory[] @relation("DitoOrderLinkNewService")
+
+  @@index([organizationId, managementStatus, createdAt], map: "commercial_services_org_status_created_idx")
+  @@index([commercialRequestId, createdAt], map: "commercial_services_request_created_idx")
+  @@index([organizationId, serviceNumber], map: "commercial_services_org_service_number_idx")
+  @@index([holderContactId], map: "commercial_services_holder_idx")
+  @@map("commercial_services")
+}

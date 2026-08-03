@@ -1,0 +1,75 @@
+enum DeliveryShiftCode {
+  MORNING
+  MIDDAY
+  AFTERNOON
+}
+
+enum DeliveryEscalationStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  CANCELLED
+}
+
+model DeliveryShift {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  code DeliveryShiftCode
+  name String            @db.VarChar(100)
+
+  startMinute Int @map("start_minute")
+  endMinute   Int @map("end_minute")
+
+  displayOrder Int     @default(0) @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ditoOrders   DitoOrder[]
+
+  @@unique([organizationId, code], map: "delivery_shifts_org_code_key")
+  @@index([organizationId, isActive, displayOrder], map: "delivery_shifts_org_active_order_idx")
+  @@map("delivery_shifts")
+}
+
+model DeliveryEscalation {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  ditoOrderId    String @map("dito_order_id") @db.Uuid
+
+  observation      String @db.Text
+  generatedMessage String @map("generated_message") @db.Text
+
+  orderCodeRawSnapshot        String             @map("order_code_raw_snapshot") @db.VarChar(100)
+  deliveryMethodSnapshot      DitoDeliveryMethod @map("delivery_method_snapshot")
+  contactPhoneSnapshot        String             @map("contact_phone_snapshot") @db.VarChar(30)
+  departmentSnapshot          String             @map("department_snapshot") @db.VarChar(100)
+  provinceSnapshot            String             @map("province_snapshot") @db.VarChar(100)
+  districtSnapshot            String             @map("district_snapshot") @db.VarChar(100)
+  deliveryWindowStartSnapshot DateTime?          @map("delivery_window_start_snapshot") @db.Timestamptz(3)
+  deliveryWindowEndSnapshot   DateTime?          @map("delivery_window_end_snapshot") @db.Timestamptz(3)
+
+  status DeliveryEscalationStatus @default(OPEN)
+
+  createdByUserId      String  @map("created_by_user_id") @db.Uuid
+  acknowledgedByUserId String? @map("acknowledged_by_user_id") @db.Uuid
+  resolvedByUserId     String? @map("resolved_by_user_id") @db.Uuid
+
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  ditoOrder    DitoOrder    @relation(fields: [ditoOrderId], references: [id], onDelete: Restrict)
+
+  createdBy      User  @relation("DeliveryEscalationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  acknowledgedBy User? @relation("DeliveryEscalationAcknowledgedBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
+  resolvedBy     User? @relation("DeliveryEscalationResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt], map: "delivery_escalations_org_status_created_idx")
+  @@index([ditoOrderId, createdAt], map: "delivery_escalations_order_created_idx")
+  @@map("delivery_escalations")
+}
