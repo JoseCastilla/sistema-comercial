@@ -1,3 +1,7 @@
+import { OrderInbox } from "@/features/orders/components/order-inbox";
+
+import { getOrderInbox } from "@/features/orders/server/get-order-inbox";
+
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import { SignOutButton } from "./sign-out-button";
@@ -5,10 +9,12 @@ import { SignOutButton } from "./sign-out-button";
 export default async function OrdersPage() {
   const { session, membership } = await requireCommercialAccess();
 
+  const inbox = await getOrderInbox(membership.organization.id);
+
   return (
     <main className="min-h-screen bg-neutral-100">
       <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4">
           <div>
             <p className="text-sm text-neutral-500">
               {membership.organization.name}
@@ -33,18 +39,9 @@ export default async function OrdersPage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-5 py-8">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-neutral-950">
-            Pedidos DITO
-          </h2>
-
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-            La autenticación y la autorización están funcionando. En el
-            siguiente paso cargaremos aquí las órdenes pendientes de asociación.
-          </p>
-        </div>
-      </section>
+      <div className="mx-auto max-w-7xl px-5 py-6 sm:py-8">
+        <OrderInbox data={inbox} />
+      </div>
     </main>
   );
 }
