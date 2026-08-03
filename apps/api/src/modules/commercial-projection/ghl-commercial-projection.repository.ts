@@ -170,6 +170,13 @@ export class GhlCommercialProjectionRepository {
 
       let contactId = existingIdentity?.contactId ?? null;
 
+      /*
+       * Segunda llave:
+       * documento normalizado.
+       *
+       * Solo se consulta cuando GHL
+       * realmente entrega un documento.
+       */
       if (!contactId && input.documentNumberNormalized) {
         const existingByDocument = await transaction.contact.findUnique({
           where: {
@@ -190,6 +197,10 @@ export class GhlCommercialProjectionRepository {
         contactId = existingByDocument?.id ?? null;
       }
 
+      /*
+       * Tercera llave:
+       * teléfono principal.
+       */
       if (!contactId && input.primaryPhone) {
         const existingByPhone = await transaction.contact.findFirst({
           where: {
@@ -214,52 +225,166 @@ export class GhlCommercialProjectionRepository {
         contactId = existingByPhone?.id ?? null;
       }
 
-      const contactData = {
-        documentType: input.documentType,
+      /*
+       * Cuarta llave:
+       * correo electrónico.
+       *
+       * Es una coincidencia de menor
+       * fuerza que el documento o teléfono,
+       * por eso se evalúa al final.
+       */
+      if (!contactId && input.email) {
+        const existingByEmail = await transaction.contact.findFirst({
+          where: {
+            organizationId: input.organizationId,
 
-        documentNumber: input.documentNumber,
+            email: {
+              equals: input.email,
 
-        documentNumberNormalized: input.documentNumberNormalized,
+              mode: 'insensitive',
+            },
+          },
 
-        firstName: input.firstName,
+          select: {
+            id: true,
+          },
+        });
 
-        lastName: input.lastName,
-
-        fullName: input.fullName,
-
-        email: input.email,
-
-        primaryPhone: input.primaryPhone,
-
-        secondaryPhone: input.secondaryPhone,
-
-        customerCity: input.customerCity,
-
-        country: input.country,
-
-        contactType: input.contactType,
-
-        tags: input.tags,
-
-        sourceCreatedAt: input.sourceCreatedAt,
-
-        lastEventAt: input.lastEventAt,
-      };
+        contactId = existingByEmail?.id ?? null;
+      }
 
       if (contactId) {
+        /*
+         * Actualización parcial:
+         * los valores ausentes no deben
+         * borrar información existente.
+         */
+        const updateData = {
+          lastEventAt: input.lastEventAt,
+
+          ...(input.documentNumberNormalized
+            ? {
+                documentType: input.documentType,
+
+                documentNumber: input.documentNumber,
+
+                documentNumberNormalized: input.documentNumberNormalized,
+              }
+            : {}),
+
+          ...(input.firstName
+            ? {
+                firstName: input.firstName,
+              }
+            : {}),
+
+          ...(input.lastName
+            ? {
+                lastName: input.lastName,
+              }
+            : {}),
+
+          ...(input.fullName
+            ? {
+                fullName: input.fullName,
+              }
+            : {}),
+
+          ...(input.email
+            ? {
+                email: input.email,
+              }
+            : {}),
+
+          ...(input.primaryPhone
+            ? {
+                primaryPhone: input.primaryPhone,
+              }
+            : {}),
+
+          ...(input.secondaryPhone
+            ? {
+                secondaryPhone: input.secondaryPhone,
+              }
+            : {}),
+
+          ...(input.customerCity
+            ? {
+                customerCity: input.customerCity,
+              }
+            : {}),
+
+          ...(input.country
+            ? {
+                country: input.country,
+              }
+            : {}),
+
+          ...(input.contactType
+            ? {
+                contactType: input.contactType,
+              }
+            : {}),
+
+          ...(input.tags
+            ? {
+                tags: input.tags,
+              }
+            : {}),
+
+          ...(input.sourceCreatedAt
+            ? {
+                sourceCreatedAt: input.sourceCreatedAt,
+              }
+            : {}),
+        };
+
         await transaction.contact.update({
           where: {
             id: contactId,
           },
 
-          data: contactData,
+          data: updateData,
         });
       } else {
+        /*
+         * En una creación sí se registra
+         * el estado completo disponible,
+         * incluyendo los valores nulos.
+         */
         const createdContact = await transaction.contact.create({
           data: {
             organizationId: input.organizationId,
 
-            ...contactData,
+            documentType: input.documentType,
+
+            documentNumber: input.documentNumber,
+
+            documentNumberNormalized: input.documentNumberNormalized,
+
+            firstName: input.firstName,
+
+            lastName: input.lastName,
+
+            fullName: input.fullName,
+
+            email: input.email,
+
+            primaryPhone: input.primaryPhone,
+
+            secondaryPhone: input.secondaryPhone,
+
+            customerCity: input.customerCity,
+
+            country: input.country,
+
+            contactType: input.contactType,
+
+            tags: input.tags,
+
+            sourceCreatedAt: input.sourceCreatedAt,
+
+            lastEventAt: input.lastEventAt,
           },
 
           select: {
@@ -309,7 +434,6 @@ export class GhlCommercialProjectionRepository {
       return contactId;
     });
   }
-
   async findContactIdByExternalIdentity(
     ghlIntegrationId: string,
     externalContactId: string,
