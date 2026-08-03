@@ -35,6 +35,9 @@
     "globalEnv":  [
                       "DATABASE_URL",
                       "DITO_WEBHOOK_SECRET",
-                      "DITO_WEBHOOK_ORGANIZATION_SLUG"
+                      "DITO_WEBHOOK_ORGANIZATION_SLUG",
+                      "BETTER_AUTH_SECRET",
+                      "BETTER_AUTH_URL",
+                      "NODE_ENV"
                   ]
 }

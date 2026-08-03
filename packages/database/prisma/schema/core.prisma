@@ -76,16 +76,21 @@ model Organization {
 }
 
 model User {
-  id           String     @id @default(uuid()) @db.Uuid
-  name         String     @db.VarChar(150)
-  email        String     @unique @db.VarChar(254)
-  passwordHash String?    @map("password_hash") @db.VarChar(255)
-  status       UserStatus @default(INVITED)
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String     @db.VarChar(150)
+  email         String     @unique @db.VarChar(254)
+  emailVerified Boolean    @default(false) @map("email_verified")
+  image         String?    @db.Text
+  passwordHash  String?    @map("password_hash") @db.VarChar(255)
+  status        UserStatus @default(INVITED)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   memberships OrganizationMember[]
+
+  sessions Session[]
+  accounts Account[]
 
   commercialRequestsAsAgent CommercialRequest[] @relation("CommercialRequestAgent")
 
