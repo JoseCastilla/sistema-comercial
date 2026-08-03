@@ -1,94 +1,70 @@
 /**
- * Roles disponibles dentro de una organizaciÃ³n.
+ * Roles disponibles dentro de una organizaciÃƒÂ³n.
  *
  * AGENT representa al asesor comercial.
- * En la interfaz podrÃ¡ mostrarse como "Asesor".
+ * En la interfaz podrÃƒÂ¡ mostrarse como "Asesor".
  */
-export type OrganizationRole =
-  | 'ADMIN'
-  | 'SUPERVISOR'
-  | 'AGENT'
-  | 'BACKOFFICE';
+export type OrganizationRole = "ADMIN" | "SUPERVISOR" | "AGENT" | "BACKOFFICE";
 
 /**
  * Operador del cual proviene el cliente.
  */
-export type Carrier =
-  | 'BITEL'
-  | 'CLARO'
-  | 'ENTEL'
-  | 'MOVISTAR'
-  | 'OTHER';
+export type Carrier = "BITEL" | "CLARO" | "ENTEL" | "MOVISTAR" | "OTHER";
 
 /**
- * OperaciÃ³n comercial solicitada.
+ * OperaciÃƒÂ³n comercial solicitada.
  */
-export type CommercialOperation =
-  | 'NEW_LINE'
-  | 'PORT_PREPAID'
-  | 'PORT_POSTPAID';
+export type CommercialOperation = "NEW_LINE" | "PORT_PREPAID" | "PORT_POSTPAID";
 
 /**
  * Estado principal de cada caso comercial.
  */
 export type ManagementStatus =
-  | 'QUALIFIED'
-  | 'FOLLOW_UP'
-  | 'ORDER_ENTERED'
-  | 'CHIP_DELIVERED'
-  | 'SALE_CONFIRMED'
-  | 'LOST';
+  | "QUALIFIED"
+  | "FOLLOW_UP"
+  | "ORDER_ENTERED"
+  | "CHIP_DELIVERED"
+  | "SALE_CONFIRMED"
+  | "LOST";
 
 /**
- * Estado tÃ©cnico de activaciÃ³n.
+ * Estado tÃƒÂ©cnico de activaciÃƒÂ³n.
  */
-export type ActivationStatus =
-  | 'PENDING'
-  | 'INCIDENT'
-  | 'ACTIVATED';
+export type ActivationStatus = "PENDING" | "INCIDENT" | "ACTIVATED";
 
 /**
  * Motivo de seguimiento.
  */
 export type FollowUpReason =
-  | 'SCHEDULED'
-  | 'ACTIVE_DEBT'
-  | 'LESS_THAN_30_DAYS'
-  | 'MEETING_POINT';
+  "SCHEDULED" | "ACTIVE_DEBT" | "LESS_THAN_30_DAYS" | "MEETING_POINT";
 
 /**
- * Motivo de pÃ©rdida.
+ * Motivo de pÃƒÂ©rdida.
  */
 export type LostReason =
-  | 'CURRENT_MOVISTAR_CUSTOMER'
-  | 'OUT_OF_COVERAGE'
-  | 'ZERO_FIXED_CHARGE'
-  | 'FOREIGNER_ID'
-  | 'DEVICE_INSTALLMENTS'
-  | 'NO_LONGER_INTERESTED'
-  | 'PORTED_OTHER_AGENCY'
-  | 'PORTED_OTHER_OPERATOR'
-  | 'RUC_10';
+  | "CURRENT_MOVISTAR_CUSTOMER"
+  | "OUT_OF_COVERAGE"
+  | "ZERO_FIXED_CHARGE"
+  | "FOREIGNER_ID"
+  | "DEVICE_INSTALLMENTS"
+  | "NO_LONGER_INTERESTED"
+  | "PORTED_OTHER_AGENCY"
+  | "PORTED_OTHER_OPERATOR"
+  | "RUC_10";
 
 /**
  * Estado de procesamiento del webhook.
  */
 export type WebhookProcessingStatus =
-  | 'RECEIVED'
-  | 'PROCESSING'
-  | 'PROCESSED'
-  | 'FAILED'
-  | 'IGNORED_DUPLICATE';
+  "RECEIVED" | "PROCESSING" | "PROCESSED" | "FAILED" | "IGNORED_DUPLICATE";
 
 /**
- * Tipo de atribuciÃ³n.
+ * Tipo de atribuciÃƒÂ³n.
  */
-export type AttributionType =
-  | 'FIRST'
-  | 'LAST';
+export type AttributionType = "FIRST" | "LAST";
 
 /**
- * AtribuciÃ³n enviada actualmente por n8n.
+ * AtribuciÃƒÂ³n enviada actualmente por n8n.
  *
  * Se mantiene snake_case porque debe coincidir exactamente
  * con el contrato HTTP recibido por la API.
@@ -103,7 +79,7 @@ export interface AttributionSnapshot {
 }
 
 /**
- * InformaciÃ³n del contacto.
+ * InformaciÃƒÂ³n del contacto.
  *
  * Un contacto representa a una persona, no a una venta.
  */
@@ -148,12 +124,12 @@ export interface SnapshotDates {
 /**
  * Campos comerciales comunes.
  *
- * Cada instancia corresponde a una sola lÃ­nea u operaciÃ³n.
+ * Cada instancia corresponde a una sola lÃƒÂ­nea u operaciÃƒÂ³n.
  */
 export interface CommercialCaseFields {
   carrier: string;
   commercial_operation: string;
-  fixed_charge: number | '';
+  fixed_charge: number | "";
   management_status: string;
   follow_up_reason: string;
   lost_reason: string;
@@ -166,11 +142,11 @@ export interface CommercialCaseFields {
 /**
  * Snapshot independiente del contacto.
  *
- * No contiene el estado de una venta especÃ­fica.
+ * No contiene el estado de una venta especÃƒÂ­fica.
  */
 export interface GhlContactSnapshotV2 {
-  schema_version: '2.0';
-  snapshot_type: 'contact';
+  schema_version: "2.0";
+  snapshot_type: "contact";
 
   external: {
     contact_id: string;
@@ -195,12 +171,12 @@ export interface GhlContactSnapshotV2 {
  *
  * Un mismo contacto puede tener varios casos:
  * - dos portabilidades;
- * - una portabilidad y una lÃ­nea nueva;
- * - varias lÃ­neas nuevas.
+ * - una portabilidad y una lÃƒÂ­nea nueva;
+ * - varias lÃƒÂ­neas nuevas.
  */
 export interface GhlCommercialCaseSnapshotV2 {
-  schema_version: '2.0';
-  snapshot_type: 'commercial_case';
+  schema_version: "2.0";
+  snapshot_type: "commercial_case";
 
   external: {
     contact_id: string;
@@ -211,7 +187,7 @@ export interface GhlCommercialCaseSnapshotV2 {
 
   commercial_case: CommercialCaseFields & {
     /**
-     * NÃºmero que serÃ¡ portado o identificador de la lÃ­nea.
+     * NÃƒÂºmero que serÃƒÂ¡ portado o identificador de la lÃƒÂ­nea.
      */
     service_number: string;
 
@@ -230,7 +206,7 @@ export interface GhlCommercialCaseSnapshotV2 {
  * Contrato temporal correspondiente al snapshot combinado
  * que actualmente produce n8n.
  *
- * @deprecated SerÃ¡ reemplazado por GhlContactSnapshotV2 y
+ * @deprecated SerÃƒÂ¡ reemplazado por GhlContactSnapshotV2 y
  * GhlCommercialCaseSnapshotV2 cuando GHL entregue opportunity_id.
  */
 export interface LegacyGhlContactCommercialSnapshotV1 {
@@ -258,7 +234,7 @@ export interface LegacyGhlContactCommercialSnapshotV1 {
 }
 
 /**
- * Contratos aceptados durante la migraciÃ³n.
+ * Contratos aceptados durante la migraciÃƒÂ³n.
  */
 export type GhlIncomingSnapshot =
   | GhlContactSnapshotV2
@@ -268,21 +244,20 @@ export type GhlIncomingSnapshot =
 /**
  * Origen reconocido de un webhook comercial.
  */
-export type WebhookSource =
-  | 'GHL_N8N';
+export type WebhookSource = "GHL_N8N";
 
 /**
- * Sobre canónico enviado desde n8n hacia la API.
+ * Sobre canÃ³nico enviado desde n8n hacia la API.
  *
  * event_id es la llave de idempotencia.
  * snapshot contiene el estado normalizado recibido.
  */
 export interface GhlWebhookEnvelopeV1 {
-  envelope_version: '1.0';
-  source: 'GHL_N8N';
+  envelope_version: "1.0";
+  source: "GHL_N8N";
 
   /**
-   * Identificador único y estable del evento.
+   * Identificador Ãºnico y estable del evento.
    */
   event_id: string;
 
@@ -302,7 +277,7 @@ export interface GhlWebhookEnvelopeV1 {
   occurred_at: string;
 
   /**
-   * Fotografía normalizada del contacto o caso comercial.
+   * FotografÃ­a normalizada del contacto o caso comercial.
    */
   snapshot: GhlIncomingSnapshot;
 }
@@ -315,7 +290,179 @@ export interface WebhookIngestionResponse {
   duplicate: boolean;
   event_id: string;
   webhook_event_id: string;
-  status:
-    | 'RECEIVED'
-    | 'IGNORED_DUPLICATE';
+  status: "RECEIVED" | "IGNORED_DUPLICATE";
+}
+
+/**
+ * Producto identificado por la integración heredada de DITO.
+ */
+export type DitoProductType = "MOBILE" | "FIXED" | "UNKNOWN";
+
+/**
+ * Operación comercial identificada desde el resumen de DITO.
+ */
+export type DitoCommercialOperation =
+  "NEW_LINE" | "PORT_PREPAID" | "PORT_POSTPAID" | "UNKNOWN";
+
+/**
+ * Operador cedente identificado desde el resumen de DITO.
+ */
+export type DitoCarrier =
+  "BITEL" | "CLARO" | "ENTEL" | "MOVISTAR" | "OTHER" | "UNKNOWN";
+
+/**
+ * Nivel o modalidad de entrega informada por DITO.
+ *
+ * Los turnos regulares se asignarán posteriormente
+ * dentro del Sistema Comercial.
+ */
+export type DitoDeliveryMethod =
+  "EXPRESS" | "REGULAR_24H" | "REGULAR_48H" | "REGULAR_72H" | "UNKNOWN";
+
+/**
+ * Tipo de documento del titular.
+ */
+export type DitoDocumentType =
+  "DNI" | "FOREIGNER_ID" | "RUC_10" | "OTHER" | "UNKNOWN";
+
+/**
+ * Orden estructurada por n8n a partir del resumen textual
+ * enviado por la extensión heredada de DITO.
+ *
+ * Esta versión no contiene información de GHL.
+ * La asociación con leads u oportunidades se realizará
+ * posteriormente desde la bandeja del Sistema Comercial.
+ */
+export interface DitoLegacyOrderEnvelopeV1 {
+  schema_version: "1.0";
+  source: "DITO_EXTENSION_LEGACY";
+
+  /**
+   * Identificador idempotente del evento.
+   *
+   * Ejemplo:
+   * dito:1941912820
+   */
+  event_id: string;
+
+  /**
+   * Momento ISO en que la extensión capturó la orden.
+   */
+  captured_at: string;
+
+  product_type: DitoProductType;
+
+  order: {
+    /**
+     * Código tal como fue exportado por la extensión.
+     *
+     * Ejemplo:
+     * 1941912820A
+     */
+    code_raw: string;
+
+    /**
+     * Parte numérica normalizada.
+     *
+     * Ejemplo:
+     * 1941912820
+     */
+    code_normalized: string;
+
+    /**
+     * Sufijo agregado por la extensión.
+     *
+     * Ejemplo:
+     * A
+     */
+    code_suffix: string;
+
+    /**
+     * Texto original de la operación.
+     *
+     * Ejemplo:
+     * PORTA ENTEL PRE 39.9
+     */
+    operation_raw: string;
+
+    commercial_operation: DitoCommercialOperation;
+
+    carrier: DitoCarrier;
+
+    /**
+     * Cargo fijo individual del servicio.
+     */
+    fixed_charge: number | null;
+
+    /**
+     * Campos que serán capturados en una versión posterior
+     * de la extensión.
+     */
+    sales_code: string | null;
+    billing_cycle_day: number | null;
+    payment_due_day: number | null;
+  };
+
+  holder: {
+    full_name: string;
+    document_type: DitoDocumentType;
+    document_number: string;
+
+    /**
+     * Número de la línea registrada o número de contacto
+     * recibido desde la extensión heredada.
+     */
+    service_number: string;
+  };
+
+  delivery: {
+    method: DitoDeliveryMethod;
+    department: string;
+    province: string;
+    district: string;
+  };
+
+  advisor: {
+    /**
+     * Nombre recibido literalmente desde la extensión.
+     *
+     * Posteriormente será normalizado y asociado
+     * con un usuario interno.
+     */
+    name_raw: string;
+  };
+
+  /**
+   * Resumen completo original para auditoría.
+   */
+  raw_summary: string;
+
+  /**
+   * Metadatos adicionales que no forman parte
+   * del contrato principal.
+   */
+  additional_details: Record<string, unknown>;
+}
+
+/**
+ * Respuesta de la API al recibir una orden DITO.
+ */
+export interface DitoOrderIngestionResponse {
+  accepted: true;
+  duplicate: boolean;
+
+  event_id: string;
+  dito_order_id: string;
+
+  status: "RECEIVED" | "IGNORED_DUPLICATE";
+}
+
+export interface DitoOrderIngestionResponse {
+  accepted: true;
+  duplicate: boolean;
+
+  event_id: string;
+  dito_order_id: string;
+
+  status: "RECEIVED" | "IGNORED_DUPLICATE";
 }
