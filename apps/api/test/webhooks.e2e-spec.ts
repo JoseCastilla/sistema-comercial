@@ -1,14 +1,26 @@
-import { INestApplication } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import { type INestApplication } from '@nestjs/common';
+
+import { Test, type TestingModule } from '@nestjs/testing';
 
 import { createHash } from 'node:crypto';
 
 import type { Server } from 'node:http';
+
 import request from 'supertest';
 
-import type { WebhookIngestionResponse } from '@repo/contracts';
+import type {
+  GhlWebhookEnvelopeV1,
+  WebhookIngestionResponse,
+} from '@repo/contracts';
 
 import { AppModule } from '../src/app.module';
+
+import {
+  GhlCommercialProjectionService,
+  type GhlProjectionContext,
+  type GhlProjectionResult,
+} from '../src/modules/commercial-projection/ghl-commercial-projection.service';
+
 import { DatabaseService } from '../src/modules/database/database.service';
 
 import type {
@@ -19,6 +31,7 @@ import type {
 } from '../src/modules/webhooks/webhook-events.repository';
 
 import { WebhookEventsRepository } from '../src/modules/webhooks/webhook-events.repository';
+
 import { WebhookValidationService } from '../src/modules/webhooks/webhook-validation.service';
 
 import { webhookEnvelopeFixture } from './fixtures/ghl-webhook.fixture';
@@ -36,14 +49,17 @@ describe('GHL webhook endpoint (e2e)', () => {
 
   const integration: ActiveGhlIntegration = {
     id: 'integration-001',
+
     organizationId: 'organization-001',
+
     locationId: 'co3lqbHo94L7ZEYwP1u9',
+
     webhookSecretHash,
   };
 
-  const ping = jest.fn<Promise<number>, []>().mockResolvedValue(1);
+  const ping = jest.fn<Promise<number>, []>();
 
-  const shutdown = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
+  const shutdown = jest.fn<Promise<void>, []>();
 
   const parse = jest.fn<Promise<typeof webhookEnvelopeFixture>, [unknown]>();
 
@@ -62,6 +78,17 @@ describe('GHL webhook endpoint (e2e)', () => {
     [WebhookEventIdentity]
   >();
 
+  const claimForProcessing = jest.fn<Promise<boolean>, [string]>();
+
+  const markProcessed = jest.fn<Promise<void>, [string]>();
+
+  const markFailed = jest.fn<Promise<void>, [string]>();
+
+  const project = jest.fn<
+    Promise<GhlProjectionResult>,
+    [GhlWebhookEnvelopeV1, GhlProjectionContext]
+  >();
+
   const databaseServiceMock = {
     ping,
     onApplicationShutdown: shutdown,
@@ -75,16 +102,44 @@ describe('GHL webhook endpoint (e2e)', () => {
     findActiveIntegrationsByLocationId,
     create,
     findExisting,
+    claimForProcessing,
+    markProcessed,
+    markFailed,
   } satisfies Pick<
     WebhookEventsRepository,
-    'findActiveIntegrationsByLocationId' | 'create' | 'findExisting'
+    | 'findActiveIntegrationsByLocationId'
+    | 'create'
+    | 'findExisting'
+    | 'claimForProcessing'
+    | 'markProcessed'
+    | 'markFailed'
   >;
 
+  const projectionServiceMock = {
+    project,
+  } satisfies Pick<GhlCommercialProjectionService, 'project'>;
+
   beforeEach(async () => {
+    ping.mockReset();
+    shutdown.mockReset();
+
     parse.mockReset();
+
     findActiveIntegrationsByLocationId.mockReset();
+
     create.mockReset();
     findExisting.mockReset();
+
+    claimForProcessing.mockReset();
+
+    markProcessed.mockReset();
+    markFailed.mockReset();
+
+    project.mockReset();
+
+    ping.mockResolvedValue(1);
+
+    shutdown.mockResolvedValue(undefined);
 
     parse.mockResolvedValue(webhookEnvelopeFixture);
 
@@ -92,9 +147,27 @@ describe('GHL webhook endpoint (e2e)', () => {
 
     create.mockResolvedValue({
       id: 'webhook-event-001',
+
+      status: 'RECEIVED',
     });
 
     findExisting.mockResolvedValue(null);
+
+    claimForProcessing.mockResolvedValue(true);
+
+    markProcessed.mockResolvedValue(undefined);
+
+    markFailed.mockResolvedValue(undefined);
+
+    project.mockResolvedValue({
+      projectionType: 'CONTACT',
+
+      contactId: 'contact-001',
+
+      commercialRequestId: null,
+
+      commercialServiceId: null,
+    });
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -105,9 +178,12 @@ describe('GHL webhook endpoint (e2e)', () => {
       .useValue(validationServiceMock)
       .overrideProvider(WebhookEventsRepository)
       .useValue(repositoryMock)
+      .overrideProvider(GhlCommercialProjectionService)
+      .useValue(projectionServiceMock)
       .compile();
 
     app = moduleFixture.createNestApplication();
+
     app.setGlobalPrefix('api/v1');
 
     await app.init();
@@ -116,19 +192,20 @@ describe('GHL webhook endpoint (e2e)', () => {
   afterEach(async () => {
     if (app) {
       await app.close();
+
       app = undefined;
     }
   });
 
   function getServer(): Server {
     if (!app) {
-      throw new Error('La aplicación no fue inicializada');
+      throw new Error('La aplicacion no fue inicializada');
     }
 
     return app.getHttpServer() as Server;
   }
 
-  it('accepts and persists a valid webhook', async () => {
+  it('accepts, persists and projects a valid webhook', async () => {
     const response = await request(getServer())
       .post('/api/v1/webhooks/ghl')
       .set('x-webhook-secret', webhookSecret)
@@ -139,11 +216,29 @@ describe('GHL webhook endpoint (e2e)', () => {
 
     expect(body).toEqual({
       accepted: true,
+
       duplicate: false,
+
       event_id: 'test-event-001',
+
       webhook_event_id: 'webhook-event-001',
+
       status: 'RECEIVED',
     });
+
+    expect(claimForProcessing).toHaveBeenCalledWith('webhook-event-001');
+
+    expect(project).toHaveBeenCalledWith(webhookEnvelopeFixture, {
+      organizationId: 'organization-001',
+
+      ghlIntegrationId: 'integration-001',
+
+      locationId: 'co3lqbHo94L7ZEYwP1u9',
+    });
+
+    expect(markProcessed).toHaveBeenCalledWith('webhook-event-001');
+
+    expect(markFailed).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid secret', async () => {
@@ -154,6 +249,8 @@ describe('GHL webhook endpoint (e2e)', () => {
       .expect(401);
 
     expect(create).not.toHaveBeenCalled();
+
+    expect(project).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown location', async () => {
@@ -166,6 +263,8 @@ describe('GHL webhook endpoint (e2e)', () => {
       .expect(401);
 
     expect(create).not.toHaveBeenCalled();
+
+    expect(project).not.toHaveBeenCalled();
   });
 
   it('returns the previous event when duplicated', async () => {
@@ -175,7 +274,11 @@ describe('GHL webhook endpoint (e2e)', () => {
 
     findExisting.mockResolvedValueOnce({
       id: 'webhook-event-existing',
+
+      status: 'PROCESSED',
     });
+
+    claimForProcessing.mockResolvedValueOnce(false);
 
     const response = await request(getServer())
       .post('/api/v1/webhooks/ghl')
@@ -185,8 +288,36 @@ describe('GHL webhook endpoint (e2e)', () => {
 
     const body = response.body as unknown as WebhookIngestionResponse;
 
-    expect(body.duplicate).toBe(true);
-    expect(body.status).toBe('IGNORED_DUPLICATE');
-    expect(body.webhook_event_id).toBe('webhook-event-existing');
+    expect(body).toEqual({
+      accepted: true,
+
+      duplicate: true,
+
+      event_id: 'test-event-001',
+
+      webhook_event_id: 'webhook-event-existing',
+
+      status: 'IGNORED_DUPLICATE',
+    });
+
+    expect(project).not.toHaveBeenCalled();
+
+    expect(markProcessed).not.toHaveBeenCalled();
+  });
+
+  it('marks the event as failed when projection fails', async () => {
+    const projectionError = new Error('Projection failed');
+
+    project.mockRejectedValueOnce(projectionError);
+
+    await request(getServer())
+      .post('/api/v1/webhooks/ghl')
+      .set('x-webhook-secret', webhookSecret)
+      .send(webhookEnvelopeFixture)
+      .expect(500);
+
+    expect(markFailed).toHaveBeenCalledWith('webhook-event-001');
+
+    expect(markProcessed).not.toHaveBeenCalled();
   });
 });

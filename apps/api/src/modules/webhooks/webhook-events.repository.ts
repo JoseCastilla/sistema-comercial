@@ -20,12 +20,18 @@ export interface WebhookEventIdentity {
   externalEventId: string;
 }
 
+export type PersistedWebhookEventStatus =
+  'RECEIVED' | 'PROCESSING' | 'PROCESSED' | 'FAILED' | 'IGNORED_DUPLICATE';
+
 export interface PersistedWebhookEvent {
   id: string;
+
+  status: PersistedWebhookEventStatus;
 }
 
 export interface CreateWebhookEventInput extends WebhookEventIdentity {
   ghlIntegrationId: string;
+
   envelope: GhlWebhookEnvelopeV1;
 }
 
@@ -41,13 +47,17 @@ export class WebhookEventsRepository {
     return database.ghlIntegration.findMany({
       where: {
         locationId,
+
         status: 'ACTIVE',
       },
 
       select: {
         id: true,
+
         organizationId: true,
+
         locationId: true,
+
         webhookSecretHash: true,
       },
 
@@ -88,6 +98,7 @@ export class WebhookEventsRepository {
 
       select: {
         id: true,
+        status: true,
       },
     });
   }
@@ -112,6 +123,66 @@ export class WebhookEventsRepository {
 
       select: {
         id: true,
+        status: true,
+      },
+    });
+  }
+
+  /**
+   * Reclama atomicamente un evento.
+   *
+   * Solamente RECEIVED y FAILED
+   * pueden comenzar o reintentar
+   * su proyeccion.
+   */
+  async claimForProcessing(webhookEventId: string): Promise<boolean> {
+    const database = this.databaseService.getClient();
+
+    const result = await database.webhookEvent.updateMany({
+      where: {
+        id: webhookEventId,
+
+        status: {
+          in: ['RECEIVED', 'FAILED'],
+        },
+      },
+
+      data: {
+        status: 'PROCESSING',
+
+        processingAttempts: {
+          increment: 1,
+        },
+      },
+    });
+
+    return result.count === 1;
+  }
+
+  async markProcessed(webhookEventId: string): Promise<void> {
+    const database = this.databaseService.getClient();
+
+    await database.webhookEvent.update({
+      where: {
+        id: webhookEventId,
+      },
+
+      data: {
+        status: 'PROCESSED',
+      },
+    });
+  }
+
+  async markFailed(webhookEventId: string): Promise<void> {
+    const database = this.databaseService.getClient();
+
+    await database.webhookEvent.update({
+      where: {
+        id: webhookEventId,
+      },
+
+      data: {
+        status: 'FAILED',
       },
     });
   }
