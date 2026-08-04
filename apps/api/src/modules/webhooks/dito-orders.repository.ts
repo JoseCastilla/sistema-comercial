@@ -26,6 +26,7 @@ export interface CreateDitoOrderInput {
   sourceFingerprint: string;
 
   agentNameNormalized: string | null;
+  agentUserId: string | null;
 
   parseStatus: 'PARSED' | 'PARTIAL';
 
@@ -52,6 +53,45 @@ export class DitoOrdersRepository {
         slug: true,
       },
     });
+  }
+
+  async resolveAgentUserIdByAlias(
+    organizationId: string,
+    normalizedAlias: string,
+  ): Promise<string | null> {
+    const database = this.databaseService.getClient();
+
+    const matchingAliases = await database.agentAlias.findMany({
+      where: {
+        organizationId,
+        normalizedAlias,
+        isActive: true,
+
+        user: {
+          status: 'ACTIVE',
+
+          memberships: {
+            some: {
+              organizationId,
+              role: 'AGENT',
+            },
+          },
+        },
+      },
+
+      select: {
+        userId: true,
+      },
+
+      distinct: ['userId'],
+      take: 2,
+    });
+
+    if (matchingAliases.length !== 1) {
+      return null;
+    }
+
+    return matchingAliases[0]?.userId ?? null;
   }
 
   async create(input: CreateDitoOrderInput): Promise<PersistedDitoOrder> {
@@ -117,6 +157,8 @@ export class DitoOrdersRepository {
         agentNameRaw: input.envelope.agent.name_raw,
 
         agentNameNormalized: input.agentNameNormalized,
+
+        agentUserId: input.agentUserId,
 
         rawSummary: input.envelope.raw_summary,
 

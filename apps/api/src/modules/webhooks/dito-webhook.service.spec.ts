@@ -21,6 +21,11 @@ interface ValidationServiceMock {
 interface RepositoryMock {
   findOrganizationBySlug: jest.Mock<Promise<DitoOrganization | null>, [string]>;
 
+  resolveAgentUserIdByAlias: jest.Mock<
+    Promise<string | null>,
+    [string, string]
+  >;
+
   create: jest.Mock<Promise<PersistedDitoOrder>, [CreateDitoOrderInput]>;
 
   findExisting: jest.Mock<
@@ -222,6 +227,11 @@ describe('DitoWebhookService', () => {
         [string]
       >(),
 
+      resolveAgentUserIdByAlias: jest.fn<
+        Promise<string | null>,
+        [string, string]
+      >(),
+
       create: jest.fn<Promise<PersistedDitoOrder>, [CreateDitoOrderInput]>(),
 
       findExisting: jest.fn<
@@ -231,6 +241,8 @@ describe('DitoWebhookService', () => {
 
       markNeedsReview: jest.fn<Promise<void>, [string]>(),
     };
+
+    repository.resolveAgentUserIdByAlias.mockResolvedValue(null);
 
     repository.findOrganizationBySlug.mockResolvedValue({
       id: 'organization-1',
@@ -268,6 +280,8 @@ describe('DitoWebhookService', () => {
 
     validationService.parse.mockResolvedValue(envelope);
 
+    repository.resolveAgentUserIdByAlias.mockResolvedValue('agent-user-1');
+
     repository.create.mockResolvedValue({
       id: 'dito-order-1',
 
@@ -291,6 +305,11 @@ describe('DitoWebhookService', () => {
       'distribuidor-online',
     );
 
+    expect(repository.resolveAgentUserIdByAlias).toHaveBeenCalledWith(
+      'organization-1',
+      'JIMENA C.',
+    );
+
     expect(repository.create).toHaveBeenCalledTimes(1);
 
     const createInput = repository.create.mock.calls[0]?.[0];
@@ -300,6 +319,8 @@ describe('DitoWebhookService', () => {
     expect(createInput?.organizationId).toBe('organization-1');
 
     expect(createInput?.agentNameNormalized).toBe('JIMENA C.');
+
+    expect(createInput?.agentUserId).toBe('agent-user-1');
 
     expect(createInput?.parseStatus).toBe('PARSED');
 

@@ -69,6 +69,13 @@ export class DitoWebhookService {
       envelope.agent.name_raw,
     );
 
+    const agentUserId = agentNameNormalized
+      ? await this.repository.resolveAgentUserIdByAlias(
+          organization.id,
+          agentNameNormalized,
+        )
+      : null;
+
     const parseStatus = this.determineParseStatus(envelope);
 
     try {
@@ -78,6 +85,8 @@ export class DitoWebhookService {
         envelope,
         sourceFingerprint,
         agentNameNormalized,
+
+        agentUserId,
         parseStatus,
         registeredAt,
         approvedAt,
