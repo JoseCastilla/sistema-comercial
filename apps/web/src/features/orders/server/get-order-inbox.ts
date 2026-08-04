@@ -2,148 +2,69 @@ import "server-only";
 
 import { database } from "@/server/database";
 
+import type {
+  OrderInboxAccess,
+  OrderInboxData,
+  OrderInboxItem,
+  OrderSentSubstatusValue,
+  OrderSlaState,
+  OrderStatusValue,
+} from "../order-inbox.types";
+
 const businessTimeZone = "America/Lima";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: businessTimeZone,
-
   day: "2-digit",
-
   month: "2-digit",
-
   year: "numeric",
-
   hour: "2-digit",
-
   minute: "2-digit",
-
   hour12: false,
 });
 
 const dateFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: businessTimeZone,
-
   day: "2-digit",
-
   month: "2-digit",
-
   year: "numeric",
 });
 
 const timeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: businessTimeZone,
-
   hour: "2-digit",
-
   minute: "2-digit",
-
   hour12: false,
 });
 
-export type OrderSlaState =
-  | "OVERDUE"
-  | "DUE_SOON"
-  | "ON_TIME"
-  | "PENDING_SHIFT"
-  | "NO_DEADLINE"
-  | "CLOSED";
-
-export type OrderStatusValue =
-  "OPEN" | "SENT" | "CLOSED" | "CANCELLED" | "UNKNOWN";
-
-export type OrderSentSubstatusValue =
-  | "NO_STATUS"
-  | "ASSIGNED"
-  | "SCHEDULED"
-  | "NOT_DELIVERED"
-  | "REJECTED"
-  | "DELIVERED"
-  | "UNKNOWN"
-  | null;
-
-export interface OrderInboxAccess {
-  userId: string;
-
-  role: "ADMIN" | "SUPERVISOR" | "AGENT" | "BACKOFFICE";
-}
-
-export interface OrderInboxItem {
-  id: string;
-
-  orderCode: string;
-
-  operation: string;
-
-  holderName: string;
-
-  documentNumber: string;
-
-  serviceNumber: string;
-
-  deliveryMethod: string;
-
-  deliveryMethodLabel: string;
-
-  department: string;
-
-  province: string;
-
-  district: string;
-
-  locationLabel: string;
-
-  agentName: string;
-
-  matchStatus: string;
-
-  deliveryStatus: string;
-
-  status: OrderStatusValue;
-
-  statusLabel: string;
-
-  sentSubstatus: OrderSentSubstatusValue;
-
-  sentSubstatusLabel: string | null;
-
-  statusAgeLabel: string;
-
-  noStatusIncident: boolean;
-
-  deliveryObservation: string | null;
-
-  registeredAtLabel: string;
-
-  approvedAtLabel: string;
-
-  deliveryWindowLabel: string;
-
-  deliveryDueAtLabel: string | null;
-
-  slaState: OrderSlaState;
-
-  slaLabel: string;
-
-  canUpdate: boolean;
-}
-
-export interface OrderInboxData {
-  generatedAt: string;
-
-  items: OrderInboxItem[];
-
-  totals: {
-    visible: number;
-
-    incidents: number;
-
-    notDelivered: number;
-
-    delivered: number;
-
-    overdue: number;
-  };
-}
+const orderSelect = {
+  id: true,
+  orderCodeRaw: true,
+  operationRaw: true,
+  holderFullNameRaw: true,
+  holderDocumentNumber: true,
+  serviceNumber: true,
+  deliveryMethod: true,
+  department: true,
+  province: true,
+  district: true,
+  agentNameRaw: true,
+  agentNameNormalized: true,
+  agentUserId: true,
+  matchStatus: true,
+  deliveryStatus: true,
+  deliveryObservation: true,
+  status: true,
+  sentSubstatus: true,
+  statusUpdatedAt: true,
+  sentSubstatusUpdatedAt: true,
+  noStatusDetectedAt: true,
+  registeredAt: true,
+  approvedAt: true,
+  deliveryWindowStart: true,
+  deliveryWindowEnd: true,
+  deliveryDueAt: true,
+} as const;
 
 function formatDateTime(value: Date | null): string {
   if (!value) {
@@ -205,8 +126,7 @@ function createWindowLabel(start: Date | null, end: Date | null): string {
 
 function formatElapsed(value: Date, now: Date): string {
   const milliseconds = Math.max(0, now.getTime() - value.getTime());
-
-  const minutes = Math.floor(milliseconds / 60000);
+  const minutes = Math.floor(milliseconds / 60_000);
 
   if (minutes < 60) {
     return `${minutes} min`;
@@ -218,9 +138,7 @@ function formatElapsed(value: Date, now: Date): string {
     return `${hours} h`;
   }
 
-  const days = Math.floor(hours / 24);
-
-  return `${days} d`;
+  return `${Math.floor(hours / 24)} d`;
 }
 
 function getStatusLabel(status: OrderStatusValue): string {
@@ -280,7 +198,6 @@ function getSlaState(
   now: Date,
 ): {
   state: OrderSlaState;
-
   label: string;
 } {
   if (
@@ -291,7 +208,6 @@ function getSlaState(
   ) {
     return {
       state: "CLOSED",
-
       label: "Finalizado",
     };
   }
@@ -304,14 +220,12 @@ function getSlaState(
     ) {
       return {
         state: "PENDING_SHIFT",
-
         label: "Turno pendiente",
       };
     }
 
     return {
       state: "NO_DEADLINE",
-
       label: "Sin plazo calculado",
     };
   }
@@ -321,7 +235,6 @@ function getSlaState(
   if (remainingMilliseconds < 0) {
     return {
       state: "OVERDUE",
-
       label: "Fuera de plazo",
     };
   }
@@ -329,16 +242,58 @@ function getSlaState(
   if (remainingMilliseconds <= 30 * 60 * 1000) {
     return {
       state: "DUE_SOON",
-
       label: "Vence pronto",
     };
   }
 
   return {
     state: "ON_TIME",
-
     label: "Dentro del plazo",
   };
+}
+
+function getPriority(item: OrderInboxItem): number {
+  if (item.noStatusIncident) {
+    return 0;
+  }
+
+  if (item.sentSubstatus === "REJECTED") {
+    return 1;
+  }
+
+  if (item.sentSubstatus === "NOT_DELIVERED") {
+    return 2;
+  }
+
+  if (item.slaState === "OVERDUE") {
+    return 3;
+  }
+
+  if (item.slaState === "DUE_SOON") {
+    return 4;
+  }
+
+  if (item.status === "OPEN") {
+    return 5;
+  }
+
+  if (item.status === "SENT" && item.sentSubstatus === "DELIVERED") {
+    return 6;
+  }
+
+  if (item.status === "SENT") {
+    return 7;
+  }
+
+  if (item.status === "UNKNOWN") {
+    return 8;
+  }
+
+  if (item.status === "CLOSED") {
+    return 9;
+  }
+
+  return 10;
 }
 
 export async function getOrderInbox(
@@ -347,77 +302,52 @@ export async function getOrderInbox(
 ): Promise<OrderInboxData> {
   const now = new Date();
 
-  const orders = await database.ditoOrder.findMany({
-    where: {
-      organizationId,
+  const accessFilter =
+    access.role === "AGENT"
+      ? {
+          agentUserId: access.userId,
+        }
+      : {};
 
-      ...(access.role === "AGENT"
-        ? {
-            agentUserId: access.userId,
-          }
-        : {}),
-    },
+  const [activeOrders, recentFinalOrders] = await database.$transaction([
+    database.ditoOrder.findMany({
+      where: {
+        organizationId,
+        ...accessFilter,
 
-    orderBy: {
-      registeredAt: "desc",
-    },
+        status: {
+          in: ["OPEN", "SENT", "UNKNOWN"],
+        },
+      },
 
-    take: 50,
+      orderBy: {
+        registeredAt: "desc",
+      },
 
-    select: {
-      id: true,
+      take: 200,
+      select: orderSelect,
+    }),
 
-      orderCodeRaw: true,
+    database.ditoOrder.findMany({
+      where: {
+        organizationId,
+        ...accessFilter,
 
-      operationRaw: true,
+        status: {
+          in: ["CLOSED", "CANCELLED"],
+        },
+      },
 
-      holderFullNameRaw: true,
+      orderBy: {
+        statusUpdatedAt: "desc",
+      },
 
-      holderDocumentNumber: true,
+      take: 30,
+      select: orderSelect,
+    }),
+  ]);
 
-      serviceNumber: true,
-
-      deliveryMethod: true,
-
-      department: true,
-
-      province: true,
-
-      district: true,
-
-      agentNameRaw: true,
-
-      agentNameNormalized: true,
-
-      agentUserId: true,
-
-      matchStatus: true,
-
-      deliveryStatus: true,
-
-      deliveryObservation: true,
-
-      status: true,
-
-      sentSubstatus: true,
-
-      statusUpdatedAt: true,
-
-      sentSubstatusUpdatedAt: true,
-
-      noStatusDetectedAt: true,
-
-      registeredAt: true,
-
-      approvedAt: true,
-
-      deliveryWindowStart: true,
-
-      deliveryWindowEnd: true,
-
-      deliveryDueAt: true,
-    },
-  });
+  const orders = [...activeOrders, ...recentFinalOrders];
 
   const items = orders.map((order): OrderInboxItem => {
     const status = String(order.status) as OrderStatusValue;
@@ -438,35 +368,31 @@ export async function getOrderInbox(
       order.noStatusDetectedAt !== null &&
       now.getTime() - order.noStatusDetectedAt.getTime() >= 10 * 60 * 1000;
 
+    const deliveryMethod = String(order.deliveryMethod);
+    const deliveryStatus = String(order.deliveryStatus);
+
     const sla = getSlaState(
       status,
-      String(order.deliveryMethod),
-      String(order.deliveryStatus),
+      deliveryMethod,
+      deliveryStatus,
       order.deliveryDueAt,
       now,
     );
 
     return {
       id: order.id,
-
       orderCode: order.orderCodeRaw,
-
       operation: order.operationRaw,
 
       holderName: order.holderFullNameRaw,
-
       documentNumber: order.holderDocumentNumber,
-
       serviceNumber: order.serviceNumber,
 
-      deliveryMethod: String(order.deliveryMethod),
-
-      deliveryMethodLabel: formatDeliveryMethod(String(order.deliveryMethod)),
+      deliveryMethod,
+      deliveryMethodLabel: formatDeliveryMethod(deliveryMethod),
 
       department: order.department,
-
       province: order.province,
-
       district: order.district,
 
       locationLabel: createLocationLabel(
@@ -478,21 +404,17 @@ export async function getOrderInbox(
       agentName: order.agentNameNormalized ?? order.agentNameRaw,
 
       matchStatus: String(order.matchStatus),
-
-      deliveryStatus: String(order.deliveryStatus),
+      deliveryStatus,
 
       status,
-
       statusLabel: getStatusLabel(status),
 
       sentSubstatus,
-
       sentSubstatusLabel: getSentSubstatusLabel(sentSubstatus),
 
       statusAgeLabel: formatElapsed(statusReferenceAt, now),
 
       noStatusIncident,
-
       deliveryObservation: order.deliveryObservation,
 
       registeredAtLabel: formatDateTime(order.registeredAt),
@@ -509,7 +431,6 @@ export async function getOrderInbox(
         : null,
 
       slaState: sla.state,
-
       slaLabel: sla.label,
 
       canUpdate: access.role !== "AGENT" || order.agentUserId === access.userId,
@@ -517,39 +438,7 @@ export async function getOrderInbox(
   });
 
   items.sort((left, right) => {
-    function priority(item: OrderInboxItem): number {
-      if (item.noStatusIncident) {
-        return 0;
-      }
-
-      if (item.sentSubstatus === "NOT_DELIVERED") {
-        return 1;
-      }
-
-      if (item.sentSubstatus === "REJECTED") {
-        return 2;
-      }
-
-      if (item.slaState === "OVERDUE") {
-        return 3;
-      }
-
-      if (item.status === "OPEN") {
-        return 4;
-      }
-
-      if (item.status === "SENT") {
-        return 5;
-      }
-
-      if (item.status === "CLOSED") {
-        return 6;
-      }
-
-      return 7;
-    }
-
-    return priority(left) - priority(right);
+    return getPriority(left) - getPriority(right);
   });
 
   return {
@@ -560,18 +449,21 @@ export async function getOrderInbox(
     totals: {
       visible: items.length,
 
-      incidents: items.filter((item) => item.noStatusIncident).length,
+      incidents: items.filter((item) => {
+        return item.noStatusIncident || item.sentSubstatus === "REJECTED";
+      }).length,
 
-      notDelivered: items.filter(
-        (item) => item.sentSubstatus === "NOT_DELIVERED",
-      ).length,
+      notDelivered: items.filter((item) => {
+        return item.sentSubstatus === "NOT_DELIVERED";
+      }).length,
 
-      delivered: items.filter(
-        (item) =>
-          item.status === "CLOSED" || item.sentSubstatus === "DELIVERED",
-      ).length,
+      delivered: items.filter((item) => {
+        return item.status === "CLOSED" || item.sentSubstatus === "DELIVERED";
+      }).length,
 
-      overdue: items.filter((item) => item.slaState === "OVERDUE").length,
+      overdue: items.filter((item) => {
+        return item.slaState === "OVERDUE";
+      }).length,
     },
   };
 }
