@@ -1,43 +1,30 @@
 {
-    "$schema":  "https://turborepo.dev/schema.json",
-    "ui":  "tui",
-    "tasks":  {
-                  "build":  {
-                                "dependsOn":  [
-                                                  "^build"
-                                              ],
-                                "inputs":  [
-                                               "$TURBO_DEFAULT$",
-                                               ".env*"
-                                           ],
-                                "outputs":  [
-                                                ".next/**",
-                                                "!.next/cache/**",
-                                                "!.next/dev/**",
-                                                "dist/**"
-                                            ]
-                            },
-                  "lint":  {
-                               "dependsOn":  [
-                                                 "^lint"
-                                             ]
-                           },
-                  "check-types":  {
-                                      "dependsOn":  [
-                                                        "^check-types"
-                                                    ]
-                                  },
-                  "dev":  {
-                              "cache":  false,
-                              "persistent":  true
-                          }
-              },
-    "globalEnv":  [
-                      "DATABASE_URL",
-                      "DITO_WEBHOOK_SECRET",
-                      "DITO_WEBHOOK_ORGANIZATION_SLUG",
-                      "BETTER_AUTH_SECRET",
-                      "BETTER_AUTH_URL",
-                      "NODE_ENV"
-                  ]
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "check-types": {
+      "dependsOn": ["^check-types"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  },
+  "globalEnv": [
+    "DATABASE_URL",
+    "DITO_WEBHOOK_SECRET",
+    "DITO_WEBHOOK_ORGANIZATION_SLUG",
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "NODE_ENV",
+    "AUTH_BOOTSTRAP_TOKEN"
+  ]
 }
