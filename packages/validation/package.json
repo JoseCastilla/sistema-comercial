@@ -16,7 +16,8 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
-    "test:dito-state": "pnpm run build \u0026\u0026 node --test test/dito-order-state.test.mjs"
+    "test:dito-state": "pnpm run build && node --test test/dito-order-state.test.mjs",
+    "test": "pnpm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
     "@repo/contracts": "workspace:*",

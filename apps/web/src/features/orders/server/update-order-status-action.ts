@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   ditoOrderStatusUpdateSchema,
   normalizeDitoOrderState,
+  resolveDitoDeliveredAt,
   type DitoOrderStatus,
   type DitoSentSubstatus,
 } from "@repo/validation";
@@ -196,10 +197,11 @@ export async function updateOrderStatusAction(
         };
       }
 
-      const deliveredAt =
-        normalized.deliveryStatus === "DELIVERED"
-          ? (order.deliveredAt ?? changedAt)
-          : order.deliveredAt;
+      const deliveredAt = resolveDitoDeliveredAt(
+        normalized.deliveryStatus,
+        order.deliveredAt,
+        changedAt,
+      );
 
       const updateResult = await transaction.ditoOrder.updateMany({
         where: {

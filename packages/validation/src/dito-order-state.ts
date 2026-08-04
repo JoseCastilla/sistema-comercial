@@ -249,6 +249,27 @@ export function normalizeDitoOrderState(
   };
 }
 
+export function resolveDitoDeliveredAt(
+  deliveryStatus: DitoDeliveryStatus,
+  currentDeliveredAt: Date | null,
+  changedAt: Date,
+): Date | null {
+  if (Number.isNaN(changedAt.getTime())) {
+    throw new RangeError("La fecha del cambio DITO es inválida");
+  }
+
+  if (
+    currentDeliveredAt !== null &&
+    Number.isNaN(currentDeliveredAt.getTime())
+  ) {
+    throw new RangeError("La fecha de entrega DITO es inválida");
+  }
+
+  return deliveryStatus === "DELIVERED"
+    ? (currentDeliveredAt ?? changedAt)
+    : null;
+}
+
 export function isNoStatusIncident(
   state: Pick<
     NormalizedDitoOrderState,

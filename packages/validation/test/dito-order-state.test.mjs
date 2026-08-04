@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   isNoStatusIncident,
   normalizeDitoOrderState,
+  resolveDitoDeliveredAt,
 } from "../dist/dito-order-state.js";
 
 describe("normalizeDitoOrderState", () => {
@@ -193,6 +194,40 @@ describe("normalizeDitoOrderState", () => {
     assert.equal(result.statusRaw, null);
 
     assert.equal(result.sentSubstatus, null);
+  });
+});
+
+describe("resolveDitoDeliveredAt", () => {
+  const changedAt = new Date("2026-08-04T16:00:00.000Z");
+
+  it("sets the delivery time when the order becomes delivered", () => {
+    const result = resolveDitoDeliveredAt("DELIVERED", null, changedAt);
+
+    assert.deepEqual(result, changedAt);
+  });
+
+  it("preserves the original delivery time while delivery remains confirmed", () => {
+    const originalDeliveredAt = new Date("2026-08-04T15:30:00.000Z");
+
+    const result = resolveDitoDeliveredAt(
+      "DELIVERED",
+      originalDeliveredAt,
+      changedAt,
+    );
+
+    assert.deepEqual(result, originalDeliveredAt);
+  });
+
+  it("clears the delivery time when delivery is reverted", () => {
+    const originalDeliveredAt = new Date("2026-08-04T15:30:00.000Z");
+
+    const result = resolveDitoDeliveredAt(
+      "NOT_DELIVERED",
+      originalDeliveredAt,
+      changedAt,
+    );
+
+    assert.equal(result, null);
   });
 });
 
