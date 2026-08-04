@@ -1,3 +1,5 @@
+import { normalizeAgentAlias } from '@repo/validation';
+
 import 'dotenv/config';
 
 import {
@@ -65,9 +67,7 @@ export class DitoWebhookService {
 
     const sourceFingerprint = this.createSourceFingerprint(envelope);
 
-    const agentNameNormalized = this.normalizeAgentName(
-      envelope.agent.name_raw,
-    );
+    const agentNameNormalized = normalizeAgentAlias(envelope.agent.name_raw);
 
     const agentUserId = agentNameNormalized
       ? await this.repository.resolveAgentUserIdByAlias(
@@ -163,17 +163,6 @@ export class DitoWebhookService {
       !envelope.holder.service_number;
 
     return isPartial ? 'PARTIAL' : 'PARSED';
-  }
-
-  private normalizeAgentName(value: string): string | null {
-    const normalized = value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toUpperCase();
-
-    return normalized || null;
   }
 
   private createSourceFingerprint(envelope: DitoLegacyOrderEnvelopeV1): string {

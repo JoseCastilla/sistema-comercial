@@ -1,3 +1,20 @@
+jest.mock('@repo/validation', () => ({
+  normalizeAgentAlias: (value: unknown): string | null => {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalized = value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toUpperCase();
+
+    return normalized || null;
+  },
+}));
+
 import { UnauthorizedException } from '@nestjs/common';
 
 import type { DitoLegacyOrderEnvelopeV1 } from '@repo/contracts';
