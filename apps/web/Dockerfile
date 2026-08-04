@@ -2,7 +2,12 @@ FROM node:22.13.1-bookworm-slim AS base
 
 WORKDIR /app
 
-RUN npm install --global pnpm@11.18.0 \
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends \
+    ca-certificates \
+    openssl \
+  && rm -rf /var/lib/apt/lists/* \
+  && npm install --global pnpm@11.18.0 \
   && pnpm --version
 
 FROM base AS builder
@@ -11,15 +16,16 @@ COPY . .
 
 RUN pnpm install --frozen-lockfile
 
-# Variables ficticias utilizadas solamente durante la compilación.
-# Los valores reales se configuran en el entorno del contenedor.
-RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build" \
-  BETTER_AUTH_SECRET="build-only-secret-not-used-at-runtime-2026" \
-  BETTER_AUTH_URL="https://app.distribuidoronline.com" \
-  pnpm --filter @repo/contracts run build \
-  && pnpm --filter @repo/validation run build \
-  && pnpm --filter @repo/database run build \
-  && pnpm --filter web run build
+# Prisma y Next.js validan estas variables durante el build.
+# Se utilizan valores ficticios; no son credenciales de producción.
+RUN set -eu; \
+  export DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build"; \
+  export BETTER_AUTH_SECRET="build-only-secret-not-used-at-runtime-2026"; \
+  export BETTER_AUTH_URL="https://app.distribuidoronline.com"; \
+  pnpm --filter @repo/contracts run build; \
+  pnpm --filter @repo/validation run build; \
+  pnpm --filter @repo/database run build; \
+  pnpm --filter web run build
 
 FROM node:22.13.1-bookworm-slim AS runner
 
@@ -29,7 +35,12 @@ ENV NODE_ENV="production"
 ENV PORT="3000"
 ENV HOSTNAME="0.0.0.0"
 
-RUN groupadd --system --gid 1001 nodejs \
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends \
+    ca-certificates \
+    openssl \
+  && rm -rf /var/lib/apt/lists/* \
+  && groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
 
 COPY --from=builder --chown=nextjs:nodejs \
