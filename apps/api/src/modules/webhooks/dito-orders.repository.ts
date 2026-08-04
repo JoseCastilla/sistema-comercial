@@ -127,6 +127,11 @@ export class DitoOrdersRepository {
 
         matchStatus: 'UNMATCHED',
 
+        status: 'OPEN',
+
+        statusRaw: 'ABIERTO',
+
+        statusUpdatedAt: input.registeredAt,
         capturedAt: new Date(input.envelope.captured_at),
 
         registeredAt: input.registeredAt,

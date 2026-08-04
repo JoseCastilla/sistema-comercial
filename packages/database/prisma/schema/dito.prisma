@@ -31,6 +31,24 @@ enum ApprovalSource {
   MANUAL_INTEGRATEL
 }
 
+enum DitoOrderStatus {
+  OPEN
+  SENT
+  CLOSED
+  CANCELLED
+  UNKNOWN
+}
+
+enum DitoSentSubstatus {
+  NO_STATUS
+  ASSIGNED
+  SCHEDULED
+  NOT_DELIVERED
+  REJECTED
+  DELIVERED
+  UNKNOWN
+}
+
 enum DeliveryStatus {
   PENDING
   IN_TRANSIT
@@ -96,11 +114,25 @@ model DitoOrder {
   additionalDetails Json   @map("additional_details") @db.JsonB
 
   parseStatus DitoParseStatus @default(PARSED) @map("parse_status")
+
   matchStatus DitoMatchStatus @default(UNMATCHED) @map("match_status")
 
-  capturedAt   DateTime @map("captured_at") @db.Timestamptz(3)
-  receivedAt   DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
-  registeredAt DateTime @map("registered_at") @db.Timestamptz(3)
+  status DitoOrderStatus @default(UNKNOWN) @map("status")
+
+  statusRaw String? @map("status_raw") @db.VarChar(100)
+
+  sentSubstatus DitoSentSubstatus? @map("sent_substatus")
+
+  sentSubstatusRaw String? @map("sent_substatus_raw") @db.VarChar(100)
+
+  statusUpdatedAt DateTime? @map("status_updated_at") @db.Timestamptz(3)
+
+  sentSubstatusUpdatedAt DateTime? @map("sent_substatus_updated_at") @db.Timestamptz(3)
+
+  noStatusDetectedAt DateTime? @map("no_status_detected_at") @db.Timestamptz(3)
+  capturedAt         DateTime  @map("captured_at") @db.Timestamptz(3)
+  receivedAt         DateTime  @default(now()) @map("received_at") @db.Timestamptz(3)
+  registeredAt       DateTime  @map("registered_at") @db.Timestamptz(3)
 
   approvedAt     DateTime       @map("approved_at") @db.Timestamptz(3)
   approvalSource ApprovalSource @default(ASSUMED_FROM_REGISTRATION) @map("approval_source")
@@ -146,6 +178,8 @@ model DitoOrder {
   @@index([organizationId, agentUserId, capturedAt], map: "dito_orders_org_agent_captured_idx")
   @@index([organizationId, agentNameNormalized, capturedAt], map: "dito_orders_org_agent_name_idx")
   @@index([commercialServiceId], map: "dito_orders_commercial_service_idx")
+  @@index([organizationId, status, registeredAt], map: "dito_orders_org_status_registered_idx")
+  @@index([organizationId, status, sentSubstatus, registeredAt], map: "dito_orders_org_status_substatus_registered_idx")
   @@map("dito_orders")
 }
 
