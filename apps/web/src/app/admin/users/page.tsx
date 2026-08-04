@@ -1,6 +1,7 @@
 import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 
 import { CreateUserForm } from "@/features/users/components/create-user-form";
+import { ResetUserPasswordForm } from "@/features/users/components/reset-user-password-form";
 
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
@@ -154,7 +155,7 @@ export default async function AdminUsersPage() {
               <div className="divide-y divide-neutral-100">
                 {members.map((member) => (
                   <div
-                    className="grid gap-4 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_180px_150px] sm:items-center"
+                    className="grid gap-4 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_150px_120px_190px] sm:items-center"
                     key={member.user.id}
                   >
                     <div className="min-w-0">
@@ -195,6 +196,12 @@ export default async function AdminUsersPage() {
                         {statusLabels[member.user.status] ?? member.user.status}
                       </span>
                     </div>
+
+                    <ResetUserPasswordForm
+                      isCurrentUser={member.user.id === session.user.id}
+                      userEmail={member.user.email}
+                      userId={member.user.id}
+                    />
                   </div>
                 ))}
               </div>

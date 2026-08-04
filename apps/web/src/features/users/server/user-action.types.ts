@@ -10,3 +10,13 @@ export interface CreateUserActionState {
     password?: string;
   };
 }
+export interface ResetUserPasswordActionState {
+  type: "idle" | "success" | "error";
+
+  message: string;
+
+  fieldErrors?: {
+    newPassword?: string;
+    confirmPassword?: string;
+  };
+}
