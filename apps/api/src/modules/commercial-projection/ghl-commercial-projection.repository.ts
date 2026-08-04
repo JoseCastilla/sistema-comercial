@@ -545,7 +545,16 @@ export class GhlCommercialProjectionRepository {
 
         agentUserId: input.agentUserId,
 
-        leadOrigin: input.leadOrigin,
+        /*
+         * UNKNOWN representa ausencia de información.
+         * No debe borrar CAMPAIGN, DATABASE,
+         * REFERRAL u OTHER ya confirmados.
+         */
+        ...(input.leadOrigin !== 'UNKNOWN'
+          ? {
+              leadOrigin: input.leadOrigin,
+            }
+          : {}),
 
         status: input.status,
 
@@ -571,6 +580,10 @@ export class GhlCommercialProjectionRepository {
 
         agentUserId: input.agentUserId,
 
+        /*
+         * En una creación sí puede guardarse UNKNOWN,
+         * porque aún no existe un origen anterior.
+         */
         leadOrigin: input.leadOrigin,
 
         status: input.status,

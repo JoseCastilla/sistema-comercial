@@ -53,6 +53,22 @@ export type LostReason =
   | "RUC_10";
 
 /**
+ * Origen comercial de la solicitud.
+ *
+ * CAMPAIGN:
+ * Existe evidencia fuerte de Meta:
+ * ctwa_clid o ad_id.
+ *
+ * DATABASE, REFERRAL y OTHER:
+ * Clasificación manual u operativa.
+ *
+ * UNKNOWN:
+ * Aún no se cuenta con una fuente confiable.
+ */
+export type LeadOrigin =
+  "CAMPAIGN" | "DATABASE" | "REFERRAL" | "OTHER" | "UNKNOWN";
+
+/**
  * Estado de procesamiento del webhook.
  */
 export type WebhookProcessingStatus =
@@ -130,6 +146,13 @@ export interface CommercialCaseFields {
   carrier: string;
   commercial_operation: string;
   fixed_charge: number | "";
+
+  /**
+   * Opcional para mantener compatibilidad
+   * con snapshots antiguos.
+   */
+  lead_origin?: LeadOrigin;
+
   management_status: string;
   follow_up_reason: string;
   lost_reason: string;
@@ -198,6 +221,11 @@ export interface GhlCommercialCaseSnapshotV2 {
   };
 
   owner: OwnerSnapshot;
+
+  attribution?: {
+    first: AttributionSnapshot;
+    last: AttributionSnapshot;
+  };
 
   dates: SnapshotDates;
 }

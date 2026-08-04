@@ -109,10 +109,17 @@ export class GhlCommercialProjectionService {
       externalOpportunityId: snapshot.external.opportunity_id,
 
       requesterContactId: contactId,
-
       agentUserId,
 
-      leadOrigin: 'UNKNOWN',
+      /*
+       * El contrato commercial_case actual
+       * todavía no declara el origen.
+       *
+       * Se incorporará mediante un campo
+       * explícito del contrato, no accediendo
+       * a propiedades que TypeScript desconoce.
+       */
+      leadOrigin: this.mapLeadOrigin(snapshot.commercial_case.lead_origin),
 
       status: this.mapRequestStatus(
         snapshot.commercial_case.management_status,
@@ -384,36 +391,47 @@ export class GhlCommercialProjectionService {
 
   private inferLeadOrigin(
     first: AttributionSnapshot,
-
     last: AttributionSnapshot,
   ): ProjectedLeadOrigin {
-    const combined = [
-      first.session_source,
-      first.medium,
-      first.ctwa_clid,
-      first.ad_id,
-      first.ad_name,
+    const hasCampaignEvidence =
+      Boolean(first.ctwa_clid.trim()) ||
+      Boolean(last.ctwa_clid.trim()) ||
+      Boolean(first.ad_id.trim()) ||
+      Boolean(last.ad_id.trim());
 
-      last.session_source,
-      last.medium,
-      last.ctwa_clid,
-      last.ad_id,
-      last.ad_name,
-    ]
-      .join(' ')
-      .toUpperCase();
-
-    if (
-      combined.includes('PAID SOCIAL') ||
-      combined.includes('WHATSAPP') ||
-      Boolean(first.ctwa_clid || last.ctwa_clid || first.ad_id || last.ad_id)
-    ) {
-      return 'CAMPAIGN';
-    }
-
-    return 'UNKNOWN';
+    return hasCampaignEvidence ? 'CAMPAIGN' : 'UNKNOWN';
   }
 
+  private mapLeadOrigin(value: string | undefined): ProjectedLeadOrigin {
+    const normalized =
+      value
+        ?.normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase() ?? '';
+
+    switch (normalized) {
+      case 'CAMPAIGN':
+      case 'CAMPANA':
+        return 'CAMPAIGN';
+
+      case 'DATABASE':
+      case 'BASE':
+      case 'BASE_DE_DATOS':
+        return 'DATABASE';
+
+      case 'REFERRAL':
+      case 'REFERIDO':
+        return 'REFERRAL';
+
+      case 'OTHER':
+      case 'OTRO':
+        return 'OTHER';
+
+      default:
+        return 'UNKNOWN';
+    }
+  }
   private mapCarrier(value: string): ProjectedCarrier {
     const normalized = value.trim().toUpperCase();
 
