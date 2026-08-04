@@ -20,3 +20,14 @@ export interface ResetUserPasswordActionState {
     confirmPassword?: string;
   };
 }
+export interface AssignAgentAliasActionState {
+  type: "idle" | "success" | "error";
+
+  message: string;
+
+  linkedOrders?: number;
+
+  fieldErrors?: {
+    alias?: string;
+  };
+}

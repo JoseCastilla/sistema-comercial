@@ -1,5 +1,6 @@
 import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 
+import { AssignAgentAliasForm } from "@/features/users/components/assign-agent-alias-form";
 import { CreateUserForm } from "@/features/users/components/create-user-form";
 import { ResetUserPasswordForm } from "@/features/users/components/reset-user-password-form";
 
@@ -65,6 +66,23 @@ export default async function AdminUsersPage() {
           email: true,
           emailVerified: true,
           status: true,
+
+          agentAliases: {
+            where: {
+              organizationId: membership.organization.id,
+              isActive: true,
+            },
+
+            orderBy: {
+              alias: "asc",
+            },
+
+            select: {
+              id: true,
+              alias: true,
+              normalizedAlias: true,
+            },
+          },
         },
       },
     },
@@ -100,7 +118,8 @@ export default async function AdminUsersPage() {
               </h1>
 
               <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Crea cuentas y administra quién tiene acceso a la organización.
+                Crea cuentas, restablece contraseñas y vincula asesores con los
+                nombres recibidos desde DITO.
               </p>
             </div>
 
@@ -141,7 +160,7 @@ export default async function AdminUsersPage() {
               </h2>
 
               <p className="mt-1 text-sm text-neutral-500">
-                Revisa las cuentas, roles y estados vigentes.
+                Revisa las cuentas, roles, estados y aliases DITO.
               </p>
             </div>
 
@@ -154,7 +173,7 @@ export default async function AdminUsersPage() {
             ) : (
               <div className="divide-y divide-neutral-100">
                 {members.map((member) => (
-                  <div
+                  <article
                     className="grid gap-4 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_150px_120px_190px] sm:items-center"
                     key={member.user.id}
                   >
@@ -202,7 +221,17 @@ export default async function AdminUsersPage() {
                       userEmail={member.user.email}
                       userId={member.user.id}
                     />
-                  </div>
+
+                    {member.role === "AGENT" ? (
+                      <div className="sm:col-span-4">
+                        <AssignAgentAliasForm
+                          aliases={member.user.agentAliases}
+                          userId={member.user.id}
+                          userName={member.user.name}
+                        />
+                      </div>
+                    ) : null}
+                  </article>
                 ))}
               </div>
             )}
