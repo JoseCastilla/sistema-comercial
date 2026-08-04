@@ -9,7 +9,10 @@ import { SignOutButton } from "./sign-out-button";
 export default async function OrdersPage() {
   const { session, membership } = await requireCommercialAccess();
 
-  const inbox = await getOrderInbox(membership.organization.id);
+  const inbox = await getOrderInbox(membership.organization.id, {
+    userId: session.user.id,
+    role: membership.role,
+  });
 
   return (
     <main className="min-h-screen bg-neutral-100">
@@ -21,7 +24,7 @@ export default async function OrdersPage() {
             </p>
 
             <h1 className="text-lg font-semibold text-neutral-950">
-              Bandeja de pedidos
+              Seguimiento de órdenes
             </h1>
           </div>
 

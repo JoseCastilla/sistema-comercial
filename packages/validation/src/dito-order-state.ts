@@ -1,22 +1,22 @@
 export type DitoOrderStatus =
-  'OPEN' | 'SENT' | 'CLOSED' | 'CANCELLED' | 'UNKNOWN';
+  "OPEN" | "SENT" | "CLOSED" | "CANCELLED" | "UNKNOWN";
 
 export type DitoSentSubstatus =
-  | 'NO_STATUS'
-  | 'ASSIGNED'
-  | 'SCHEDULED'
-  | 'NOT_DELIVERED'
-  | 'REJECTED'
-  | 'DELIVERED'
-  | 'UNKNOWN';
+  | "NO_STATUS"
+  | "ASSIGNED"
+  | "SCHEDULED"
+  | "NOT_DELIVERED"
+  | "REJECTED"
+  | "DELIVERED"
+  | "UNKNOWN";
 
 export type DitoDeliveryStatus =
-  | 'PENDING'
-  | 'IN_TRANSIT'
-  | 'DELIVERED'
-  | 'NOT_DELIVERED'
-  | 'RESCHEDULED'
-  | 'CANCELLED';
+  | "PENDING"
+  | "IN_TRANSIT"
+  | "DELIVERED"
+  | "NOT_DELIVERED"
+  | "RESCHEDULED"
+  | "CANCELLED";
 
 export interface NormalizeDitoOrderStateInput {
   statusRaw: unknown;
@@ -47,51 +47,51 @@ export interface NormalizedDitoOrderState {
 }
 
 const MAIN_STATUS_MAP: Readonly<Record<string, DitoOrderStatus>> = {
-  ABIERTO: 'OPEN',
+  ABIERTO: "OPEN",
 
-  OPEN: 'OPEN',
+  OPEN: "OPEN",
 
-  ENVIADO: 'SENT',
+  ENVIADO: "SENT",
 
-  SENT: 'SENT',
+  SENT: "SENT",
 
-  CERRADO: 'CLOSED',
+  CERRADO: "CLOSED",
 
-  CLOSED: 'CLOSED',
+  CLOSED: "CLOSED",
 
-  CANCELADO: 'CANCELLED',
+  CANCELADO: "CANCELLED",
 
-  CANCELLED: 'CANCELLED',
+  CANCELLED: "CANCELLED",
 };
 
 const SENT_SUBSTATUS_MAP: Readonly<Record<string, DitoSentSubstatus>> = {
-  SIN_ESTADO: 'NO_STATUS',
+  SIN_ESTADO: "NO_STATUS",
 
-  NO_STATUS: 'NO_STATUS',
+  NO_STATUS: "NO_STATUS",
 
-  ASIGNADO: 'ASSIGNED',
+  ASIGNADO: "ASSIGNED",
 
-  ASSIGNED: 'ASSIGNED',
+  ASSIGNED: "ASSIGNED",
 
-  AGENDADO: 'SCHEDULED',
+  AGENDADO: "SCHEDULED",
 
-  SCHEDULED: 'SCHEDULED',
+  SCHEDULED: "SCHEDULED",
 
-  NO_ENTREGADO: 'NOT_DELIVERED',
+  NO_ENTREGADO: "NOT_DELIVERED",
 
-  NOT_DELIVERED: 'NOT_DELIVERED',
+  NOT_DELIVERED: "NOT_DELIVERED",
 
-  RECHAZADO: 'REJECTED',
+  RECHAZADO: "REJECTED",
 
-  REJECTED: 'REJECTED',
+  REJECTED: "REJECTED",
 
-  ENTREGADO: 'DELIVERED',
+  ENTREGADO: "DELIVERED",
 
-  DELIVERED: 'DELIVERED',
+  DELIVERED: "DELIVERED",
 };
 
 function asRawText(value: unknown): string | null {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return null;
   }
 
@@ -103,21 +103,21 @@ function normalizeKey(value: unknown): string {
   const raw = asRawText(value);
 
   if (!raw) {
-    return '';
+    return "";
   }
 
   return raw
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
     .toUpperCase();
 }
 
 function parseMainStatus(value: unknown): DitoOrderStatus {
   const key = normalizeKey(value);
 
-  return MAIN_STATUS_MAP[key] ?? 'UNKNOWN';
+  return MAIN_STATUS_MAP[key] ?? "UNKNOWN";
 }
 
 function parseSentSubstatus(value: unknown): DitoSentSubstatus | null {
@@ -127,43 +127,43 @@ function parseSentSubstatus(value: unknown): DitoSentSubstatus | null {
     return null;
   }
 
-  return SENT_SUBSTATUS_MAP[key] ?? 'UNKNOWN';
+  return SENT_SUBSTATUS_MAP[key] ?? "UNKNOWN";
 }
 
 function deriveDeliveryStatus(
   status: DitoOrderStatus,
   sentSubstatus: DitoSentSubstatus | null,
 ): DitoDeliveryStatus {
-  if (status === 'CLOSED') {
-    return 'DELIVERED';
+  if (status === "CLOSED") {
+    return "DELIVERED";
   }
 
-  if (status === 'CANCELLED') {
-    return 'CANCELLED';
+  if (status === "CANCELLED") {
+    return "CANCELLED";
   }
 
-  if (status !== 'SENT') {
-    return 'PENDING';
+  if (status !== "SENT") {
+    return "PENDING";
   }
 
   switch (sentSubstatus) {
-    case 'ASSIGNED':
-    case 'SCHEDULED':
-      return 'IN_TRANSIT';
+    case "ASSIGNED":
+    case "SCHEDULED":
+      return "IN_TRANSIT";
 
-    case 'NOT_DELIVERED':
-      return 'NOT_DELIVERED';
+    case "NOT_DELIVERED":
+      return "NOT_DELIVERED";
 
-    case 'REJECTED':
-      return 'CANCELLED';
+    case "REJECTED":
+      return "CANCELLED";
 
-    case 'DELIVERED':
-      return 'DELIVERED';
+    case "DELIVERED":
+      return "DELIVERED";
 
-    case 'NO_STATUS':
-    case 'UNKNOWN':
+    case "NO_STATUS":
+    case "UNKNOWN":
     case null:
-      return 'PENDING';
+      return "PENDING";
   }
 }
 
@@ -171,7 +171,7 @@ export function normalizeDitoOrderState(
   input: NormalizeDitoOrderStateInput,
 ): NormalizedDitoOrderState {
   if (Number.isNaN(input.occurredAt.getTime())) {
-    throw new RangeError('La fecha del estado DITO es inválida');
+    throw new RangeError("La fecha del estado DITO es inválida");
   }
 
   const statusRaw = asRawText(input.statusRaw);
@@ -192,8 +192,8 @@ export function normalizeDitoOrderState(
    * "NO ENTREGADO" o "ENTREGADO"
    * sin declarar el estado ENVIADO.
    */
-  if (status === 'UNKNOWN' && substatusFromMain) {
-    status = 'SENT';
+  if (status === "UNKNOWN" && substatusFromMain) {
+    status = "SENT";
 
     sentSubstatus = substatusFromMain;
 
@@ -205,21 +205,21 @@ export function normalizeDitoOrderState(
    * equivale operativamente a
    * SIN_ESTADO.
    */
-  if (status === 'SENT' && sentSubstatus === null) {
-    sentSubstatus = 'NO_STATUS';
+  if (status === "SENT" && sentSubstatus === null) {
+    sentSubstatus = "NO_STATUS";
   }
 
   /*
    * Los subestados solo pertenecen
    * al estado principal ENVIADO.
    */
-  if (status !== 'SENT') {
+  if (status !== "SENT") {
     sentSubstatus = null;
 
     resolvedSubstatusRaw = null;
   }
 
-  const isNoStatus = status === 'SENT' && sentSubstatus === 'NO_STATUS';
+  const isNoStatus = status === "SENT" && sentSubstatus === "NO_STATUS";
 
   const noStatusDetectedAt = isNoStatus
     ? (input.currentNoStatusDetectedAt ?? input.occurredAt)
@@ -237,37 +237,37 @@ export function normalizeDitoOrderState(
 
     noStatusDetectedAt,
 
-    requiresRecovery: status === 'SENT' && sentSubstatus === 'NOT_DELIVERED',
+    requiresRecovery: status === "SENT" && sentSubstatus === "NOT_DELIVERED",
 
     requiresReentryReview:
-      (status === 'SENT' && sentSubstatus === 'REJECTED') ||
-      status === 'CANCELLED',
+      (status === "SENT" && sentSubstatus === "REJECTED") ||
+      status === "CANCELLED",
 
-    activationConfirmed: status === 'CLOSED',
+    activationConfirmed: status === "CLOSED",
 
-    isTerminal: status === 'CLOSED' || status === 'CANCELLED',
+    isTerminal: status === "CLOSED" || status === "CANCELLED",
   };
 }
 
 export function isNoStatusIncident(
   state: Pick<
     NormalizedDitoOrderState,
-    'status' | 'sentSubstatus' | 'noStatusDetectedAt'
+    "status" | "sentSubstatus" | "noStatusDetectedAt"
   >,
   now: Date,
   thresholdMinutes = 10,
 ): boolean {
   if (Number.isNaN(now.getTime())) {
-    throw new RangeError('La fecha de evaluación es inválida');
+    throw new RangeError("La fecha de evaluación es inválida");
   }
 
   if (!Number.isFinite(thresholdMinutes) || thresholdMinutes < 0) {
-    throw new RangeError('El umbral debe ser un número positivo');
+    throw new RangeError("El umbral debe ser un número positivo");
   }
 
   if (
-    state.status !== 'SENT' ||
-    state.sentSubstatus !== 'NO_STATUS' ||
+    state.status !== "SENT" ||
+    state.sentSubstatus !== "NO_STATUS" ||
     !state.noStatusDetectedAt
   ) {
     return false;

@@ -1,3 +1,5 @@
+import { OrderStatusForm } from "./order-status-form";
+
 import type {
   OrderInboxData,
   OrderInboxItem,
@@ -26,13 +28,34 @@ function getSlaClasses(state: OrderSlaState): string {
   }
 }
 
+function getStatusClasses(status: string): string {
+  switch (status) {
+    case "OPEN":
+      return "border-sky-200 bg-sky-50 text-sky-700";
+
+    case "SENT":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+
+    case "CLOSED":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+
+    case "CANCELLED":
+      return "border-red-200 bg-red-50 text-red-700";
+
+    default:
+      return "border-neutral-200 bg-neutral-100 text-neutral-600";
+  }
+}
+
 function SummaryCard({
   label,
   value,
   emphasis = false,
 }: {
   label: string;
+
   value: number;
+
   emphasis?: boolean;
 }) {
   return (
@@ -54,10 +77,10 @@ function OrderCard({ order }: { order: OrderInboxItem }) {
     <article
       className={[
         "rounded-2xl border bg-white p-5 shadow-sm",
-        order.slaState === "OVERDUE"
+        order.noStatusIncident
           ? "border-red-300"
-          : order.matchStatus === "NEEDS_REVIEW"
-            ? "border-violet-300"
+          : order.sentSubstatus === "NOT_DELIVERED"
+            ? "border-amber-300"
             : "border-neutral-200",
       ].join(" ")}
     >
@@ -73,15 +96,26 @@ function OrderCard({ order }: { order: OrderInboxItem }) {
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">
-          {order.matchStatus === "NEEDS_REVIEW" ? (
-            <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700">
-              Revisar duplicado
+          <span
+            className={[
+              "rounded-full border px-2.5 py-1 text-xs font-medium",
+              getStatusClasses(order.status),
+            ].join(" ")}
+          >
+            {order.statusLabel}
+          </span>
+
+          {order.sentSubstatusLabel ? (
+            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700">
+              {order.sentSubstatusLabel}
             </span>
-          ) : (
-            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-600">
-              Sin asociar
+          ) : null}
+
+          {order.noStatusIncident ? (
+            <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+              Incidencia +10 min
             </span>
-          )}
+          ) : null}
 
           <span
             className={[
@@ -116,6 +150,14 @@ function OrderCard({ order }: { order: OrderInboxItem }) {
         </div>
 
         <div>
+          <dt className="text-neutral-500">Estado desde</dt>
+
+          <dd className="mt-1 font-medium text-neutral-900">
+            {order.statusAgeLabel}
+          </dd>
+        </div>
+
+        <div>
           <dt className="text-neutral-500">Entrega</dt>
 
           <dd className="mt-1 font-medium text-neutral-900">
@@ -140,33 +182,34 @@ function OrderCard({ order }: { order: OrderInboxItem }) {
         </div>
 
         <div>
-          <dt className="text-neutral-500">Ventana de entrega</dt>
+          <dt className="text-neutral-500">Ventana</dt>
 
           <dd className="mt-1 font-medium text-neutral-900">
             {order.deliveryWindowLabel}
           </dd>
         </div>
-
-        <div>
-          <dt className="text-neutral-500">Hora límite</dt>
-
-          <dd
-            className={[
-              "mt-1 font-medium",
-              order.slaState === "OVERDUE"
-                ? "text-red-700"
-                : "text-neutral-900",
-            ].join(" ")}
-          >
-            {order.deliveryDueAtLabel ?? "Pendiente"}
-          </dd>
-        </div>
       </dl>
 
-      <div className="mt-5 border-t border-neutral-100 pt-4">
-        <p className="text-xs text-neutral-500">
-          Aprobación: {order.approvedAtLabel}
-        </p>
+      {order.deliveryObservation ? (
+        <div className="mt-5 rounded-lg bg-neutral-50 p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Observación actual
+          </p>
+
+          <p className="mt-1 text-sm text-neutral-700">
+            {order.deliveryObservation}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mt-5 border-t border-neutral-200 pt-5">
+        <OrderStatusForm
+          canUpdate={order.canUpdate}
+          initialObservation={order.deliveryObservation}
+          initialSentSubstatus={order.sentSubstatus}
+          initialStatus={order.status}
+          orderId={order.id}
+        />
       </div>
     </article>
   );
@@ -176,33 +219,34 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
   return (
     <div className="space-y-6">
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <SummaryCard label="Pedidos visibles" value={data.totals.visible} />
+        <SummaryCard label="Órdenes visibles" value={data.totals.visible} />
 
         <SummaryCard
-          label="Requieren revisión"
-          value={data.totals.needsReview}
+          emphasis={data.totals.incidents > 0}
+          label="Incidencias"
+          value={data.totals.incidents}
         />
+
+        <SummaryCard label="No entregados" value={data.totals.notDelivered} />
+
+        <SummaryCard label="Entregados" value={data.totals.delivered} />
 
         <SummaryCard
           emphasis={data.totals.overdue > 0}
           label="Fuera de plazo"
           value={data.totals.overdue}
         />
-
-        <SummaryCard label="Express" value={data.totals.express} />
-
-        <SummaryCard label="Turno pendiente" value={data.totals.pendingShift} />
       </section>
 
       <section>
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold text-neutral-950">
-              Pedidos pendientes de asociación
+              Seguimiento de órdenes DITO
             </h2>
 
             <p className="mt-1 text-sm text-neutral-500">
-              Máximo 50 registros, ordenados por revisión y urgencia.
+              Estados actualizados manualmente por el equipo comercial.
             </p>
           </div>
 
@@ -214,13 +258,8 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         {data.items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-6 py-12 text-center">
             <h3 className="font-medium text-neutral-900">
-              No hay pedidos pendientes
+              No hay órdenes disponibles
             </h3>
-
-            <p className="mt-2 text-sm text-neutral-500">
-              Las nuevas órdenes DITO aparecerán automáticamente en esta
-              bandeja.
-            </p>
           </div>
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">

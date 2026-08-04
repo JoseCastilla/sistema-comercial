@@ -169,7 +169,9 @@ model DitoOrder {
   deliveryShift DeliveryShift? @relation(fields: [deliveryShiftId], references: [id], onDelete: SetNull)
 
   linkHistory DitoOrderLinkHistory[]
-  escalations DeliveryEscalation[]
+
+  statusHistory DitoOrderStatusHistory[]
+  escalations   DeliveryEscalation[]
 
   @@unique([organizationId, eventId], map: "dito_orders_org_event_key")
   @@unique([organizationId, orderCodeNormalized], map: "dito_orders_org_order_code_key")
@@ -181,6 +183,37 @@ model DitoOrder {
   @@index([organizationId, status, registeredAt], map: "dito_orders_org_status_registered_idx")
   @@index([organizationId, status, sentSubstatus, registeredAt], map: "dito_orders_org_status_substatus_registered_idx")
   @@map("dito_orders")
+}
+
+model DitoOrderStatusHistory {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  ditoOrderId    String @map("dito_order_id") @db.Uuid
+
+  previousStatus        DitoOrderStatus    @map("previous_status")
+  previousSentSubstatus DitoSentSubstatus? @map("previous_sent_substatus")
+  newStatus             DitoOrderStatus    @map("new_status")
+  newSentSubstatus      DitoSentSubstatus? @map("new_sent_substatus")
+
+  previousDeliveryStatus DeliveryStatus @map("previous_delivery_status")
+  newDeliveryStatus      DeliveryStatus @map("new_delivery_status")
+
+  previousNoStatusDetectedAt DateTime? @map("previous_no_status_detected_at") @db.Timestamptz(3)
+  newNoStatusDetectedAt      DateTime? @map("new_no_status_detected_at") @db.Timestamptz(3)
+
+  observation String? @db.Text
+
+  changedByUserId String   @map("changed_by_user_id") @db.Uuid
+  changedAt       DateTime @default(now()) @map("changed_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  ditoOrder    DitoOrder    @relation(fields: [ditoOrderId], references: [id], onDelete: Cascade)
+  changedBy    User         @relation("DitoOrderStatusChangedBy", fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([ditoOrderId, changedAt], map: "dito_order_status_history_order_changed_idx")
+  @@index([organizationId, changedAt], map: "dito_order_status_history_org_changed_idx")
+  @@index([changedByUserId, changedAt], map: "dito_order_status_history_user_changed_idx")
+  @@map("dito_order_status_history")
 }
 
 model DitoOrderLinkHistory {

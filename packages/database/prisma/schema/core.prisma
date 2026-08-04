@@ -67,8 +67,9 @@ model Organization {
   ditoOrders           DitoOrder[]
   ditoOrderLinkHistory DitoOrderLinkHistory[]
 
-  deliveryShifts      DeliveryShift[]
-  deliveryEscalations DeliveryEscalation[]
+  ditoOrderStatusHistory DitoOrderStatusHistory[]
+  deliveryShifts         DeliveryShift[]
+  deliveryEscalations    DeliveryEscalation[]
 
   agentAliases AgentAlias[]
 
@@ -98,9 +99,10 @@ model User {
   ditoOrdersApprovalUpdated DitoOrder[]            @relation("DitoOrderApprovalUpdatedBy")
   ditoOrderLinksPerformed   DitoOrderLinkHistory[] @relation("DitoOrderLinkPerformedBy")
 
-  deliveryEscalationsCreated      DeliveryEscalation[] @relation("DeliveryEscalationCreatedBy")
-  deliveryEscalationsAcknowledged DeliveryEscalation[] @relation("DeliveryEscalationAcknowledgedBy")
-  deliveryEscalationsResolved     DeliveryEscalation[] @relation("DeliveryEscalationResolvedBy")
+  ditoOrderStatusChanges          DitoOrderStatusHistory[] @relation("DitoOrderStatusChangedBy")
+  deliveryEscalationsCreated      DeliveryEscalation[]     @relation("DeliveryEscalationCreatedBy")
+  deliveryEscalationsAcknowledged DeliveryEscalation[]     @relation("DeliveryEscalationAcknowledgedBy")
+  deliveryEscalationsResolved     DeliveryEscalation[]     @relation("DeliveryEscalationResolvedBy")
 
   agentAliases AgentAlias[]
 

@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
-    "check-types": "next typegen \u0026\u0026 tsc --noEmit",
-    "auth:create-initial-admin": "pnpm --filter @repo/database run build \u0026\u0026 node scripts/create-initial-admin.mjs",
+    "check-types": "next typegen && tsc --noEmit",
+    "auth:create-initial-admin": "pnpm --filter @repo/database run build && node scripts/create-initial-admin.mjs",
     "format": "prettier --write src scripts package.json tsconfig.json",
     "dev": "next dev -p 3100"
   },
@@ -16,6 +16,7 @@
     "@better-auth/prisma-adapter": "1.6.25",
     "@repo/database": "workspace:*",
     "@repo/ui": "*",
+    "@repo/validation": "workspace:*",
     "better-auth": "1.6.25",
     "next": "16.2.0",
     "react": "^19.2.0",
