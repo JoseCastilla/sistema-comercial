@@ -1,12 +1,8 @@
 FROM node:22.13.1-bookworm-slim AS base
 
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-
 WORKDIR /app
 
-RUN corepack enable \
-  && corepack prepare pnpm@11.18.0 --activate \
+RUN npm install --global pnpm@11.18.0 \
   && pnpm --version
 
 FROM base AS builder
@@ -15,13 +11,12 @@ COPY . .
 
 RUN pnpm install --frozen-lockfile
 
-# Valores ficticios usados solamente durante la compilación.
-# Las credenciales reales se configuran en EasyPanel.
-ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build"
-ENV BETTER_AUTH_SECRET="build-only-secret-not-used-at-runtime-2026"
-ENV BETTER_AUTH_URL="https://app.distribuidoronline.com"
-
-RUN pnpm --filter @repo/contracts run build \
+# Variables ficticias utilizadas solamente durante la compilación.
+# Los valores reales se configuran en el entorno del contenedor.
+RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build" \
+  BETTER_AUTH_SECRET="build-only-secret-not-used-at-runtime-2026" \
+  BETTER_AUTH_URL="https://app.distribuidoronline.com" \
+  pnpm --filter @repo/contracts run build \
   && pnpm --filter @repo/validation run build \
   && pnpm --filter @repo/database run build \
   && pnpm --filter web run build
