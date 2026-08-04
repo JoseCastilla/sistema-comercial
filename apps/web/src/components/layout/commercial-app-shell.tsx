@@ -145,12 +145,14 @@ export function CommercialAppShell({
   role,
   signOut,
   children,
+  activeSection = "orders",
 }: {
   organizationName: string;
   userName: string;
   role: string;
   signOut: ReactNode;
   children: ReactNode;
+  activeSection?: "orders" | "team";
 }) {
   const roleLabel = roleLabels[role] ?? role;
 
@@ -189,7 +191,7 @@ export function CommercialAppShell({
           <NavigationItem description="Resumen del negocio" label="Inicio" />
 
           <NavigationItem
-            active
+            active={activeSection === "orders"}
             description="Seguimiento operativo"
             href="/orders"
             label="Pedidos"
@@ -205,7 +207,12 @@ export function CommercialAppShell({
             label="Ventas"
           />
 
-          <NavigationItem description="Asesores y permisos" label="Equipo" />
+          <NavigationItem
+            active={activeSection === "team"}
+            description="Asesores y permisos"
+            href={role === "ADMIN" ? "/admin/users" : undefined}
+            label="Equipo"
+          />
         </nav>
 
         <div className="border-t border-neutral-200 p-4">
@@ -260,11 +267,19 @@ export function CommercialAppShell({
       <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-neutral-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] backdrop-blur lg:hidden">
         <MobileNavigationItem label="Inicio" />
 
-        <MobileNavigationItem active href="/orders" label="Pedidos" />
+        <MobileNavigationItem
+          active={activeSection === "orders"}
+          href="/orders"
+          label="Pedidos"
+        />
 
         <MobileNavigationItem label="Ventas" />
 
-        <MobileNavigationItem label="Equipo" />
+        <MobileNavigationItem
+          active={activeSection === "team"}
+          href={role === "ADMIN" ? "/admin/users" : undefined}
+          label="Equipo"
+        />
       </nav>
     </div>
   );

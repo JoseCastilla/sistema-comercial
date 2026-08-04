@@ -61,3 +61,12 @@ export async function requireCommercialAccess() {
     membership,
   };
 }
+export async function requireAdminAccess() {
+  const access = await requireCommercialAccess();
+
+  if (access.membership.role !== "ADMIN") {
+    redirect("/access-denied");
+  }
+
+  return access;
+}
