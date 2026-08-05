@@ -1,0 +1,231 @@
+import { z } from "zod";
+
+export const commercialTeamStatuses = ["ACTIVE", "DISABLED"] as const;
+
+export const commercialTeamMemberRoles = ["SUPERVISOR", "AGENT"] as const;
+
+export const ditoOrderAssignmentReasons = [
+  "REGISTERED_FOR_ANOTHER_AGENT",
+  "INCORRECT_ALIAS",
+  "AGENT_ABSENCE",
+  "WORKLOAD_BALANCING",
+  "TEAM_TRANSFER",
+  "DATA_CORRECTION",
+  "OTHER",
+] as const;
+
+export const ditoOrderAssignmentSources = [
+  "ALIAS_AUTO",
+  "MANUAL",
+  "BACKFILL",
+  "ORPHAN_CLAIM",
+  "REQUEST_APPROVAL",
+  "SYSTEM",
+] as const;
+
+export const ditoOrderAssignmentRequestStatuses = [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED",
+] as const;
+
+export const ditoOrderAssignmentRequestSources = [
+  "AGENT_REQUEST",
+  "BACKOFFICE_SUGGESTION",
+  "SUPERVISOR_REVIEW",
+  "SYSTEM_REVIEW",
+] as const;
+
+export const commercialTeamStatusSchema = z.enum(commercialTeamStatuses);
+
+export const commercialTeamMemberRoleSchema = z.enum(commercialTeamMemberRoles);
+
+export const ditoOrderAssignmentReasonSchema = z.enum(
+  ditoOrderAssignmentReasons,
+);
+
+export const ditoOrderAssignmentSourceSchema = z.enum(
+  ditoOrderAssignmentSources,
+);
+
+export const ditoOrderAssignmentRequestStatusSchema = z.enum(
+  ditoOrderAssignmentRequestStatuses,
+);
+
+export const ditoOrderAssignmentRequestSourceSchema = z.enum(
+  ditoOrderAssignmentRequestSources,
+);
+
+export type CommercialTeamStatus = z.infer<typeof commercialTeamStatusSchema>;
+
+export type CommercialTeamMemberRole = z.infer<
+  typeof commercialTeamMemberRoleSchema
+>;
+
+export type DitoOrderAssignmentReason = z.infer<
+  typeof ditoOrderAssignmentReasonSchema
+>;
+
+export type DitoOrderAssignmentSource = z.infer<
+  typeof ditoOrderAssignmentSourceSchema
+>;
+
+export type DitoOrderAssignmentRequestStatus = z.infer<
+  typeof ditoOrderAssignmentRequestStatusSchema
+>;
+
+export type DitoOrderAssignmentRequestSource = z.infer<
+  typeof ditoOrderAssignmentRequestSourceSchema
+>;
+
+export type CommercialAccessRole =
+  "ADMIN" | "SUPERVISOR" | "BACKOFFICE" | "AGENT";
+
+export type DitoOrderVisibility = "FULL" | "LIMITED_ORPHAN" | "NONE";
+
+export type CommercialContextAccess = "NORMAL" | "DERIVED_READ_ONLY" | "NONE";
+
+type UserStatus = "INVITED" | "ACTIVE" | "DISABLED";
+
+function includesTeam(
+  teamIds: readonly string[],
+  teamId: string | null,
+): boolean {
+  return teamId !== null && teamIds.includes(teamId);
+}
+
+export function isOrphanDitoOrder(
+  agentUserId: string | null,
+  assignedTeamId: string | null,
+): boolean {
+  return agentUserId === null && assignedTeamId === null;
+}
+
+export function resolveDitoOrderVisibility(input: {
+  role: CommercialAccessRole;
+  userId: string;
+  supervisedTeamIds: readonly string[];
+  orderAgentUserId: string | null;
+  orderAssignedTeamId: string | null;
+}): DitoOrderVisibility {
+  if (input.role === "ADMIN" || input.role === "BACKOFFICE") {
+    return "FULL";
+  }
+
+  if (input.role === "SUPERVISOR") {
+    if (includesTeam(input.supervisedTeamIds, input.orderAssignedTeamId)) {
+      return "FULL";
+    }
+
+    if (
+      input.supervisedTeamIds.length > 0 &&
+      isOrphanDitoOrder(input.orderAgentUserId, input.orderAssignedTeamId)
+    ) {
+      return "LIMITED_ORPHAN";
+    }
+
+    return "NONE";
+  }
+
+  return input.orderAgentUserId === input.userId ? "FULL" : "NONE";
+}
+
+export function canClaimOrphanDitoOrder(input: {
+  role: CommercialAccessRole;
+  supervisedTeamIds: readonly string[];
+  orderAgentUserId: string | null;
+  orderAssignedTeamId: string | null;
+  targetTeamId: string;
+  targetTeamStatus: CommercialTeamStatus;
+}): boolean {
+  if (!isOrphanDitoOrder(input.orderAgentUserId, input.orderAssignedTeamId)) {
+    return false;
+  }
+
+  if (input.targetTeamStatus !== "ACTIVE") {
+    return false;
+  }
+
+  if (input.role === "ADMIN") {
+    return true;
+  }
+
+  return (
+    input.role === "SUPERVISOR" &&
+    input.supervisedTeamIds.includes(input.targetTeamId)
+  );
+}
+
+export function resolveCommercialContextAccess(input: {
+  role: CommercialAccessRole;
+  userId: string;
+  supervisedTeamIds: readonly string[];
+  orderAgentUserId: string | null;
+  orderAssignedTeamId: string | null;
+  hasNormalAccess: boolean;
+}): CommercialContextAccess {
+  if (
+    input.hasNormalAccess ||
+    input.role === "ADMIN" ||
+    input.role === "BACKOFFICE"
+  ) {
+    return "NORMAL";
+  }
+
+  if (input.role === "AGENT" && input.orderAgentUserId === input.userId) {
+    return "DERIVED_READ_ONLY";
+  }
+
+  if (
+    input.role === "SUPERVISOR" &&
+    includesTeam(input.supervisedTeamIds, input.orderAssignedTeamId)
+  ) {
+    return "DERIVED_READ_ONLY";
+  }
+
+  return "NONE";
+}
+
+export function canReassignDitoOrder(input: {
+  role: CommercialAccessRole;
+  supervisedTeamIds: readonly string[];
+  currentTeamId: string | null;
+  targetTeamId: string | null;
+  targetTeamStatus: CommercialTeamStatus;
+}): boolean {
+  if (input.targetTeamId === null || input.targetTeamStatus !== "ACTIVE") {
+    return false;
+  }
+
+  if (input.role === "ADMIN") {
+    return true;
+  }
+
+  if (input.role !== "SUPERVISOR" || input.currentTeamId === null) {
+    return false;
+  }
+
+  return (
+    input.supervisedTeamIds.includes(input.currentTeamId) &&
+    input.supervisedTeamIds.includes(input.targetTeamId)
+  );
+}
+
+export function canResolveAutomaticDitoAssignment(input: {
+  aliasMatchCount: number;
+  userStatus: UserStatus;
+  organizationRole: CommercialAccessRole;
+  primaryMembershipActive: boolean;
+  primaryTeamId: string | null;
+  primaryTeamStatus: CommercialTeamStatus | null;
+}): boolean {
+  return (
+    input.aliasMatchCount === 1 &&
+    input.userStatus === "ACTIVE" &&
+    input.organizationRole === "AGENT" &&
+    input.primaryMembershipActive &&
+    input.primaryTeamId !== null &&
+    input.primaryTeamStatus === "ACTIVE"
+  );
+}
