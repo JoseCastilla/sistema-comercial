@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  canAdministerCommercialTeam,
+  canAssignCommercialTeamMember,
+  canActivateAgentAlias,
   canClaimOrphanDitoOrder,
   canReassignDitoOrder,
   canResolveAutomaticDitoAssignment,
@@ -15,6 +18,120 @@ import {
   resolveCommercialContextAccess,
   resolveDitoOrderVisibility,
 } from "../dist/commercial-team-rules.js";
+
+describe("canActivateAgentAlias", () => {
+  const validInput = {
+    userStatus: "ACTIVE",
+    organizationRole: "AGENT",
+    primaryMembershipActive: true,
+    primaryTeamStatus: "ACTIVE",
+  };
+
+  it("allows an active agent with an active primary team", () => {
+    assert.equal(canActivateAgentAlias(validInput), true);
+  });
+
+  it("rejects users without an active primary team", () => {
+    assert.equal(
+      canActivateAgentAlias({
+        ...validInput,
+        primaryMembershipActive: false,
+      }),
+      false,
+    );
+
+    assert.equal(
+      canActivateAgentAlias({
+        ...validInput,
+        primaryTeamStatus: "DISABLED",
+      }),
+      false,
+    );
+  });
+
+  it("rejects inactive users and non-agent roles", () => {
+    assert.equal(
+      canActivateAgentAlias({ ...validInput, userStatus: "DISABLED" }),
+      false,
+    );
+    assert.equal(
+      canActivateAgentAlias({
+        ...validInput,
+        organizationRole: "SUPERVISOR",
+      }),
+      false,
+    );
+  });
+});
+
+describe("commercial team administration isolation", () => {
+  const validAssignment = {
+    actorRole: "ADMIN",
+    actorOrganizationId: "organization-a",
+    teamOrganizationId: "organization-a",
+    memberOrganizationId: "organization-a",
+    teamStatus: "ACTIVE",
+    memberUserStatus: "ACTIVE",
+    memberOrganizationRole: "AGENT",
+    targetMemberRole: "AGENT",
+  };
+
+  it("allows an administrator to manage an active team in the same organization", () => {
+    assert.equal(
+      canAdministerCommercialTeam({
+        actorRole: "ADMIN",
+        actorOrganizationId: "organization-a",
+        teamOrganizationId: "organization-a",
+        teamStatus: "ACTIVE",
+      }),
+      true,
+    );
+  });
+
+  it("rejects a team from another organization", () => {
+    assert.equal(
+      canAssignCommercialTeamMember({
+        ...validAssignment,
+        teamOrganizationId: "organization-b",
+      }),
+      false,
+    );
+  });
+
+  it("rejects a member from another organization", () => {
+    assert.equal(
+      canAssignCommercialTeamMember({
+        ...validAssignment,
+        memberOrganizationId: "organization-b",
+      }),
+      false,
+    );
+  });
+
+  it("rejects disabled teams, non-admin actors and incompatible roles", () => {
+    assert.equal(
+      canAssignCommercialTeamMember({
+        ...validAssignment,
+        teamStatus: "DISABLED",
+      }),
+      false,
+    );
+    assert.equal(
+      canAssignCommercialTeamMember({
+        ...validAssignment,
+        actorRole: "SUPERVISOR",
+      }),
+      false,
+    );
+    assert.equal(
+      canAssignCommercialTeamMember({
+        ...validAssignment,
+        memberOrganizationRole: "SUPERVISOR",
+      }),
+      false,
+    );
+  });
+});
 
 describe("commercial team catalogs", () => {
   it("accepts the approved team statuses and member roles", () => {

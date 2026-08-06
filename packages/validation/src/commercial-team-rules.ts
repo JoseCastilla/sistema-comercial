@@ -88,6 +88,45 @@ export type CommercialContextAccess = "NORMAL" | "DERIVED_READ_ONLY" | "NONE";
 
 type UserStatus = "INVITED" | "ACTIVE" | "DISABLED";
 
+export function canAdministerCommercialTeam(input: {
+  actorRole: CommercialAccessRole;
+  actorOrganizationId: string;
+  teamOrganizationId: string;
+  teamStatus: CommercialTeamStatus;
+}): boolean {
+  return (
+    input.actorRole === "ADMIN" &&
+    input.actorOrganizationId === input.teamOrganizationId &&
+    input.teamStatus === "ACTIVE"
+  );
+}
+
+export function canAssignCommercialTeamMember(input: {
+  actorRole: CommercialAccessRole;
+  actorOrganizationId: string;
+  teamOrganizationId: string;
+  memberOrganizationId: string;
+  teamStatus: CommercialTeamStatus;
+  memberUserStatus: UserStatus;
+  memberOrganizationRole: CommercialAccessRole;
+  targetMemberRole: CommercialTeamMemberRole;
+}): boolean {
+  const expectedOrganizationRole =
+    input.targetMemberRole === "AGENT" ? "AGENT" : "SUPERVISOR";
+
+  return (
+    canAdministerCommercialTeam({
+      actorRole: input.actorRole,
+      actorOrganizationId: input.actorOrganizationId,
+      teamOrganizationId: input.teamOrganizationId,
+      teamStatus: input.teamStatus,
+    }) &&
+    input.memberOrganizationId === input.actorOrganizationId &&
+    input.memberUserStatus === "ACTIVE" &&
+    input.memberOrganizationRole === expectedOrganizationRole
+  );
+}
+
 function includesTeam(
   teamIds: readonly string[],
   teamId: string | null,
@@ -226,6 +265,20 @@ export function canResolveAutomaticDitoAssignment(input: {
     input.organizationRole === "AGENT" &&
     input.primaryMembershipActive &&
     input.primaryTeamId !== null &&
+    input.primaryTeamStatus === "ACTIVE"
+  );
+}
+
+export function canActivateAgentAlias(input: {
+  userStatus: UserStatus;
+  organizationRole: CommercialAccessRole;
+  primaryMembershipActive: boolean;
+  primaryTeamStatus: CommercialTeamStatus | null;
+}): boolean {
+  return (
+    input.userStatus === "ACTIVE" &&
+    input.organizationRole === "AGENT" &&
+    input.primaryMembershipActive &&
     input.primaryTeamStatus === "ACTIVE"
   );
 }

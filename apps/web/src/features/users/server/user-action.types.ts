@@ -25,8 +25,6 @@ export interface AssignAgentAliasActionState {
 
   message: string;
 
-  linkedOrders?: number;
-
   fieldErrors?: {
     alias?: string;
   };

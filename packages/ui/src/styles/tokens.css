@@ -1,0 +1,28 @@
+@layer theme {
+  :root {
+    --ui-canvas: #f4f5f3;
+    --ui-surface: #ffffff;
+    --ui-surface-subtle: #f8f8f6;
+    --ui-surface-strong: #20231f;
+    --ui-text: #1c1f1b;
+    --ui-text-muted: #686d65;
+    --ui-text-soft: #70766d;
+    --ui-border: #dfe2dc;
+    --ui-border-strong: #c7cbc3;
+    --ui-accent: #185f4b;
+    --ui-accent-soft: #e6f2ed;
+    --ui-danger: #b53b35;
+    --ui-danger-soft: #fbeceb;
+    --ui-warning: #8a5a12;
+    --ui-warning-soft: #fbf2df;
+    --ui-info: #315d7d;
+    --ui-info-soft: #e9f1f6;
+    --ui-radius-sm: 0.5rem;
+    --ui-radius-md: 0.75rem;
+    --ui-radius-lg: 1rem;
+    --ui-shadow-raised: 0 1px 2px rgb(28 31 27 / 5%), 0 8px 24px rgb(28 31 27 / 4%);
+    --ui-focus: 0 0 0 3px rgb(24 95 75 / 18%);
+    --ui-content-width: 100rem;
+    --ui-duration-fast: 140ms;
+  }
+}

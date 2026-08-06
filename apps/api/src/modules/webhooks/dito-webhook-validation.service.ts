@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
-import type { DitoLegacyOrderEnvelopeV1 } from '@repo/contracts';
+import type { DitoIncomingOrderEnvelope } from '@repo/contracts';
 
 interface ValidationIssue {
   path: PropertyKey[];
@@ -9,7 +9,7 @@ interface ValidationIssue {
 
 interface ValidationSuccess {
   success: true;
-  data: DitoLegacyOrderEnvelopeV1;
+  data: DitoIncomingOrderEnvelope;
 }
 
 interface ValidationFailure {
@@ -23,7 +23,7 @@ interface ValidationFailure {
 type ValidationResult = ValidationSuccess | ValidationFailure;
 
 interface ValidationPackage {
-  safeParseDitoLegacyOrderEnvelope(value: unknown): ValidationResult;
+  safeParseDitoIncomingOrderEnvelope(value: unknown): ValidationResult;
 }
 
 const validationPackageName = '@repo/validation';
@@ -40,10 +40,10 @@ async function loadValidationPackage(): Promise<ValidationPackage> {
 
 @Injectable()
 export class DitoWebhookValidationService {
-  async parse(value: unknown): Promise<DitoLegacyOrderEnvelopeV1> {
+  async parse(value: unknown): Promise<DitoIncomingOrderEnvelope> {
     const validationPackage = await loadValidationPackage();
 
-    const result = validationPackage.safeParseDitoLegacyOrderEnvelope(value);
+    const result = validationPackage.safeParseDitoIncomingOrderEnvelope(value);
 
     if (result.success) {
       return result.data;

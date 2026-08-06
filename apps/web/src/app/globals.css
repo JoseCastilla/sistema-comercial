@@ -1,11 +1,12 @@
 @import "tailwindcss";
+@import "@repo/ui/styles.css";
 
 :root {
-  --app-background: #f5f5f5;
-  --app-foreground: #171717;
-  --app-surface: #ffffff;
-  --app-border: #e5e5e5;
-  --app-muted: #737373;
+  --app-background: var(--ui-canvas);
+  --app-foreground: var(--ui-text);
+  --app-surface: var(--ui-surface);
+  --app-border: var(--ui-border);
+  --app-muted: var(--ui-text-muted);
 }
 
 html {
@@ -48,11 +49,6 @@ select {
 a {
   color: inherit;
   text-decoration: none;
-}
-
-::selection {
-  color: #ffffff;
-  background: #171717;
 }
 
 @media (max-width: 1023px) {

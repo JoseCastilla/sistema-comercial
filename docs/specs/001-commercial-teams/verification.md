@@ -86,7 +86,7 @@ Cada tarea implementada debe registrar:
 
 ## 4. Resultado
 
-**Estado de verificación:** `NOT_STARTED`
+**Estado de verificación:** `IN_PROGRESS`
 
 ### Resumen final
 
@@ -121,3 +121,135 @@ La especificación cambia a `VERIFIED` únicamente cuando todos los criterios ob
 - **Cobertura parcial:** `AC-002`, `AC-003`, `AC-009`, `AC-012`, `AC-014`, `AC-019`, `AC-020`, `AC-022` y `AC-023`.
 - **Nota:** los criterios anteriores no se consideran satisfechos todavía; requieren persistencia, autorización server-side, consultas de acceso y pruebas de integración.
 - **Riesgo residual:** aún no existen los modelos Prisma, las migraciones ni los servicios transaccionales.
+
+### INC-002 — Persistencia base de equipos y asignaciones
+
+- **Estado:** `COMPLETED`
+- **Tareas completadas:** `T-012`, `T-013`, `T-014`, `T-015`, `T-016`, `T-017`, `T-018`.
+- **Fecha:** 2026-08-05
+- **Alcance:** modelos de equipos y membresías, equipo asignado en órdenes y solicitudes comerciales, historial de asignación, solicitudes de asignación e índices parciales de invariantes.
+- **Archivos:**
+  - `packages/database/prisma/schema/teams.prisma`
+  - `packages/database/prisma/schema/dito.prisma`
+  - `packages/database/prisma/schema/commercial.prisma`
+  - `packages/database/prisma/schema/core.prisma`
+  - `packages/database/prisma/migrations/20260805152848_add_commercial_teams_assignment_core/migration.sql`
+- **Evidencia automatizada ejecutada:**
+  - `prisma validate`: esquema válido.
+  - `prisma migrate status`: 7 migraciones encontradas y esquema local actualizado.
+  - `prisma migrate deploy`: ninguna migración pendiente después de la comprobación.
+  - `prisma generate`: cliente Prisma 7.9.1 generado.
+  - compilación TypeScript de `@repo/database`: aprobada.
+  - suite de `@repo/validation`: 55 pruebas aprobadas.
+  - lint y verificación de tipos de `@repo/validation`: aprobados.
+- **Cobertura estructural:** `BR-001`, `BR-002`, `BR-003`, `BR-035`, `BR-050`, `BR-051`, `BR-052`, `INV-004`, `INV-005` e `INV-012`.
+- **Nota:** la existencia del esquema no satisface por sí sola las reglas transaccionales ni multiempresa; esas garantías requieren los servicios y pruebas de las fases siguientes.
+- **Riesgo residual:** las claves foráneas simples no impiden por sí solas referencias cruzadas entre organizaciones. Los servicios deben validar coherencia organizacional en cada escritura y las pruebas de integración deben demostrar `INV-001`.
+
+### INC-003 — Semántica segura de vínculos de alias DITO
+
+- **Estado:** `PARTIAL`
+- **Tarea completada:** `T-035`.
+- **Tarea relacionada pendiente:** `T-036`; requiere una prueba de integración con persistencia que demuestre que las órdenes existentes permanecen intactas.
+- **Fecha:** 2026-08-05
+- **Alcance:** la interfaz y la acción usan “Vínculos de alias DITO”; activar un vínculo deja de reasignar órdenes históricas y exige que el destino sea un agente activo con equipo primario activo.
+- **Archivos:**
+  - `apps/web/src/features/users/server/assign-agent-alias-action.ts`
+  - `apps/web/src/features/users/components/assign-agent-alias-form.tsx`
+  - `apps/web/src/features/users/server/user-action.types.ts`
+  - `packages/validation/src/commercial-team-rules.ts`
+  - `packages/validation/test/commercial-team-rules.test.mjs`
+- **Evidencia automatizada:**
+  - suite de `@repo/validation`: 58 pruebas aprobadas;
+  - lint y tipos de `@repo/validation`: aprobados;
+  - lint de los archivos web modificados: aprobado;
+  - generación de tipos Next.js y TypeScript de `apps/web`: aprobados.
+- **Cobertura parcial:** `BR-008`, `BR-023`, `BR-060`, `INV-009`, `INV-014` y `AC-027`.
+- **Riesgo residual:** la resolución automática de nuevas órdenes aún debe persistir simultáneamente agente y equipo con historial `ALIAS_AUTO`; corresponde a `T-040`, `T-041` y `T-042`.
+
+### INC-004 — Administración de equipos
+
+- **Estado:** `COMPLETED_WITH_PENDING_OPERATIONAL_VALIDATION`
+- **Tareas completadas:** `T-020`, `T-021`, `T-022`, `T-023`, `T-024`, `T-025`.
+- **Fecha:** 2026-08-05.
+- **Alcance:** creación y deshabilitación de equipos, asignación de supervisores,
+  asignación primaria exclusiva de asesores, pantalla administrativa, auditoría
+  persistente y aislamiento multiempresa.
+- **Archivos principales:**
+  - `apps/web/src/app/admin/teams/page.tsx`
+  - `apps/web/src/features/teams/server/team-actions.ts`
+  - `apps/web/src/features/teams/components/create-team-form.tsx`
+  - `apps/web/src/features/teams/components/assign-team-member-form.tsx`
+  - `packages/database/prisma/schema/teams.prisma`
+  - `packages/database/prisma/migrations/20260805230000_add_commercial_team_audit/migration.sql`
+  - `packages/database/prisma/migrations/20260805231500_unique_active_commercial_team_name/migration.sql`
+  - `packages/validation/src/commercial-team-rules.ts`
+  - `packages/validation/test/commercial-team-rules.test.mjs`
+- **Comportamiento verificado:**
+  - todas las consultas y mutaciones se limitan por `organizationId`;
+  - solo `ADMIN` puede entrar y ejecutar las acciones de `/admin/teams`;
+  - un equipo deshabilitado deja de aceptar miembros y sus membresías activas se cierran;
+  - mover un asesor desactiva su equipo primario anterior dentro de la misma transacción;
+  - supervisores pueden participar en varios equipos sin marcarse como miembros primarios;
+  - creación, deshabilitación y asignación generan registros de auditoría con actor y valores;
+  - equipos, usuarios o roles de otra organización son rechazados por consulta y política.
+- **Evidencia automatizada:**
+  - esquema Prisma validado y cliente generado;
+  - migración de auditoría aplicada en PostgreSQL local;
+  - `prisma migrate status`: 12 migraciones y esquema actualizado;
+  - suite de validación: 68 pruebas aprobadas, incluidas 4 de aislamiento administrativo;
+  - generación de tipos Next.js, TypeScript y lint completo de `apps/web`: aprobados.
+- **Cobertura parcial:** `BR-001`–`BR-009`, `BR-016`, `BR-021`, `INV-001`,
+  `INV-003`, `INV-008`, `FR-001`, `FR-002`, `AC-001`, `AC-002` y `AC-003`.
+- **Riesgo residual:** falta la validación manual con cuentas reales y la fase de creación
+  de agentes debe exigir el equipo desde el alta (`T-030`–`T-034`).
+
+### INC-005 — Fundamentos del sistema visual
+
+- **Estado:** `COMPLETED`
+- **Tareas completadas:** `T-UX-001`, `T-UX-002`, `T-UX-003`, `T-UX-004`, `T-UX-005`, `T-UX-006`, `T-UX-007`.
+- **Fecha:** 2026-08-05.
+- **Alcance:** arquitectura visual por capas, tokens semánticos, estilos base,
+  primitivas reutilizables y primera migración de `/orders`.
+- **Archivos principales:**
+  - `docs/specs/001-commercial-teams/ux.md`
+  - `packages/ui/README.md`
+  - `packages/ui/src/styles/index.css`
+  - `packages/ui/src/styles/tokens.css`
+  - `packages/ui/src/styles/foundations.css`
+  - `packages/ui/src/styles/patterns.css`
+  - `packages/ui/src/page-header.tsx`
+  - `packages/ui/src/surface.tsx`
+  - `packages/ui/src/metric.tsx`
+  - `packages/ui/src/empty-state.tsx`
+- **Comportamiento verificado:**
+  - una sola entrada pública de estilos desde `@repo/ui/styles.css`;
+  - páginas desacopladas de colores, radios y sombras compartidos;
+  - métricas adaptables en dos columnas para móvil/tablet y cinco en escritorio;
+  - selector de categoría móvil y control segmentado en escritorio;
+  - estado vacío distingue ausencia total de pedidos de un filtro sin resultados;
+  - filtro “Entregados” probado sobre una orden existente.
+  - navegación global separada en `Personas` y `Equipos`;
+  - iconografía SVG propia sustituye las iniciales ambiguas;
+  - cambio real entre `/admin/users` y `/admin/teams` verificado.
+  - formularios, botones, feedback, paneles y badges centralizados en `@repo/ui`;
+  - estados reutilizables de carga, vacío, error, éxito, conflicto y permisos;
+  - deshabilitación de equipos protegida por diálogo con impacto explícito;
+  - `/admin/users` y `/admin/teams` migradas a encabezados, paneles y controles compartidos.
+  - `/orders`, `/admin/users` y `/admin/teams` verificadas a 360 px;
+  - `/admin/teams` verificada a 1280 px con dos equipos y membresías reales;
+  - diálogo destructivo cabe en móvil, mueve el foco a Cancelar y no ejecuta sin confirmación;
+  - navegación móvil mantiene cinco destinos y objetivos táctiles de al menos 52 px;
+  - controles tienen nombres accesibles, foco visible y orden semántico;
+  - movimiento decorativo desactivado mediante `prefers-reduced-motion`;
+  - contraste medido: texto principal 15.23:1, secundario 5.30:1,
+    acento 6.58:1, peligro 5.02:1 y advertencia 5.31:1;
+  - texto tenue corregido de 3.30:1 a 4.67:1 sobre blanco.
+- **Evidencia automatizada y visual:**
+  - tipos y lint de `packages/ui`: aprobados;
+  - generación de rutas, tipos y lint de `apps/web`: aprobados;
+  - inspección renderizada de `/orders` en el navegador móvil embebido;
+  - navegación sin desplazamiento horizontal y controles con nombres accesibles.
+- **Riesgo residual:** algunos patrones internos de vínculos DITO y restablecimiento
+  de contraseña aún son específicos de la feature. Falta la prueba de usabilidad
+  con usuarios de los tres roles (`T-UX-008`) y evidencia visual final (`T-UX-009`).

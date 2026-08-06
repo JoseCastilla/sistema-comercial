@@ -71,7 +71,11 @@ model Organization {
   deliveryShifts         DeliveryShift[]
   deliveryEscalations    DeliveryEscalation[]
 
-  agentAliases AgentAlias[]
+  agentAliases                 AgentAlias[]
+  commercialTeams              CommercialTeam[]
+  commercialTeamAuditLogs      CommercialTeamAuditLog[]
+  ditoOrderAssignmentHistories DitoOrderAssignmentHistory[]
+  ditoOrderAssignmentRequests  DitoOrderAssignmentRequest[]
 
   @@map("organizations")
 }
@@ -105,6 +109,20 @@ model User {
   deliveryEscalationsResolved     DeliveryEscalation[]     @relation("DeliveryEscalationResolvedBy")
 
   agentAliases AgentAlias[]
+
+  commercialTeamsCreated         CommercialTeam[]       @relation("CommercialTeamCreatedBy")
+  commercialTeamMemberships      CommercialTeamMember[] @relation("CommercialTeamMemberUser")
+  commercialTeamMembershipsGiven CommercialTeamMember[] @relation("CommercialTeamMemberAssignedBy")
+  commercialTeamAuditsPerformed CommercialTeamAuditLog[] @relation("CommercialTeamAuditActor")
+  commercialTeamAuditsAsTarget  CommercialTeamAuditLog[] @relation("CommercialTeamAuditTarget")
+
+  ditoAssignmentsAsPreviousAgent DitoOrderAssignmentHistory[] @relation("DitoAssignmentPreviousAgent")
+  ditoAssignmentsAsNewAgent      DitoOrderAssignmentHistory[] @relation("DitoAssignmentNewAgent")
+  ditoAssignmentsPerformed       DitoOrderAssignmentHistory[] @relation("DitoAssignmentPerformedBy")
+
+  ditoAssignmentRequestsCreated        DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestCreatedBy")
+  ditoAssignmentRequestsSuggestedAgent DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestSuggestedAgent")
+  ditoAssignmentRequestsReviewed       DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestReviewedBy")
 
   @@map("users")
 }

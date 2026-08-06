@@ -12,6 +12,8 @@ RUN apt-get update \
 
 FROM base AS builder
 
+ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+
 COPY . .
 
 RUN pnpm install --frozen-lockfile

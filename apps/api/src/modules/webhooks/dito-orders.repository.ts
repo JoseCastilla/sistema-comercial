@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import type { DitoLegacyOrderEnvelopeV1 } from '@repo/contracts';
+import type { DitoIncomingOrderEnvelope } from '@repo/contracts';
 
 import type { Prisma } from '@repo/database';
 
@@ -18,15 +18,27 @@ export interface PersistedDitoOrder {
   sourceFingerprint: string;
 }
 
+export interface DitoAgentAssignment {
+  userId: string;
+  teamId: string;
+}
+
 export interface CreateDitoOrderInput {
   organizationId: string;
 
-  envelope: DitoLegacyOrderEnvelopeV1;
+  envelope: DitoIncomingOrderEnvelope;
 
   sourceFingerprint: string;
 
   agentNameNormalized: string | null;
   agentUserId: string | null;
+  assignedTeamId: string | null;
+
+  submitterInstallationId: string | null;
+  submitterEmailRaw: string | null;
+  submitterEmailNormalized: string | null;
+
+  matchStatus: 'UNMATCHED' | 'NEEDS_REVIEW';
 
   parseStatus: 'PARSED' | 'PARTIAL';
 
@@ -94,6 +106,79 @@ export class DitoOrdersRepository {
     return matchingAliases[0]?.userId ?? null;
   }
 
+  async resolveAgentAssignmentByEmail(
+    organizationId: string,
+    normalizedEmail: string,
+  ): Promise<DitoAgentAssignment | null> {
+    const database = this.databaseService.getClient();
+
+    const membership = await database.organizationMember.findFirst({
+      where: {
+        organizationId,
+        role: 'AGENT',
+        user: {
+          email: normalizedEmail,
+          status: 'ACTIVE',
+        },
+      },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            commercialTeamMemberships: {
+              where: {
+                memberRole: 'AGENT',
+                isPrimary: true,
+                isActive: true,
+                team: {
+                  organizationId,
+                  status: 'ACTIVE',
+                },
+              },
+              take: 2,
+              select: {
+                teamId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const teamMemberships = membership?.user.commercialTeamMemberships ?? [];
+
+    if (!membership || teamMemberships.length !== 1) {
+      return null;
+    }
+
+    const teamId = teamMemberships[0]?.teamId;
+
+    return teamId ? { userId: membership.userId, teamId } : null;
+  }
+
+  async hasInstallationEmailConflict(
+    organizationId: string,
+    installationId: string,
+    normalizedEmail: string,
+  ): Promise<boolean> {
+    const database = this.databaseService.getClient();
+
+    const conflictingOrder = await database.ditoOrder.findFirst({
+      where: {
+        organizationId,
+        submitterInstallationId: installationId,
+        submitterEmailNormalized: {
+          not: normalizedEmail,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return conflictingOrder !== null;
+  }
+
   async create(input: CreateDitoOrderInput): Promise<PersistedDitoOrder> {
     const database = this.databaseService.getClient();
 
@@ -142,7 +227,19 @@ export class DitoOrdersRepository {
 
         serviceNumber: input.envelope.holder.service_number,
 
-        deliveryContactPhone: input.envelope.holder.service_number,
+        deliveryContactPhone:
+          input.envelope.delivery.contact_phone ??
+          input.envelope.holder.service_number,
+
+        deliveryTimeRangeRaw: input.envelope.delivery.time_range,
+
+        deliveryAddress: input.envelope.delivery.address,
+
+        deliveryReference: input.envelope.delivery.reference,
+
+        deliveryLatitude: input.envelope.delivery.latitude,
+
+        deliveryLongitude: input.envelope.delivery.longitude,
 
         deliveryMethod: input.envelope.delivery.method,
 
@@ -158,7 +255,15 @@ export class DitoOrdersRepository {
 
         agentNameNormalized: input.agentNameNormalized,
 
+        submitterInstallationId: input.submitterInstallationId,
+
+        submitterEmailRaw: input.submitterEmailRaw,
+
+        submitterEmailNormalized: input.submitterEmailNormalized,
+
         agentUserId: input.agentUserId,
+
+        assignedTeamId: input.assignedTeamId,
 
         rawSummary: input.envelope.raw_summary,
 
@@ -167,7 +272,7 @@ export class DitoOrdersRepository {
 
         parseStatus: input.parseStatus,
 
-        matchStatus: 'UNMATCHED',
+        matchStatus: input.matchStatus,
 
         status: 'OPEN',
 

@@ -1,9 +1,12 @@
 import { z } from "zod";
 
-import type { DitoLegacyOrderEnvelopeV1 } from "@repo/contracts";
+import type {
+  DitoExtensionOrderEnvelopeV2,
+  DitoIncomingOrderEnvelope,
+  DitoLegacyOrderEnvelopeV1,
+} from "@repo/contracts";
 
-export const ditoLegacyOrderEnvelopeV1Schema: z.ZodType<DitoLegacyOrderEnvelopeV1> =
-  z.object({
+export const ditoLegacyOrderEnvelopeV1Schema = z.object({
     schema_version: z.literal("1.0"),
 
     source: z.literal("DITO_EXTENSION_LEGACY"),
@@ -103,6 +106,18 @@ export const ditoLegacyOrderEnvelopeV1Schema: z.ZodType<DitoLegacyOrderEnvelopeV
       province: z.string().trim().max(100),
 
       district: z.string().trim().max(100),
+
+      contact_phone: z.string().trim().max(30).nullable().optional(),
+
+      time_range: z.string().trim().max(100).nullable().optional(),
+
+      address: z.string().trim().max(500).nullable().optional(),
+
+      reference: z.string().trim().max(500).nullable().optional(),
+
+      latitude: z.number().finite().min(-90).max(90).nullable().optional(),
+
+      longitude: z.number().finite().min(-180).max(180).nullable().optional(),
     }),
 
     agent: z.object({
@@ -120,7 +135,36 @@ export const ditoLegacyOrderEnvelopeV1Schema: z.ZodType<DitoLegacyOrderEnvelopeV
       .max(10000),
 
     additional_details: z.record(z.string(), z.unknown()),
-  });
+  }) satisfies z.ZodType<DitoLegacyOrderEnvelopeV1>;
+
+export const ditoExtensionOrderEnvelopeV2Schema =
+  ditoLegacyOrderEnvelopeV1Schema
+    .omit({
+      schema_version: true,
+      source: true,
+    })
+    .extend({
+      schema_version: z.literal("2.0"),
+      source: z.literal("DITO_EXTENSION"),
+      submitted_by: z.object({
+        installation_id: z.uuid(),
+        email: z
+          .email("submitted_by.email debe ser un correo válido")
+          .trim()
+          .max(254)
+          .refine(
+            (email) =>
+              email.toLowerCase().endsWith("@distribuidoronline.com"),
+            "submitted_by.email debe pertenecer a distribuidoronline.com",
+          ),
+      }),
+    }) satisfies z.ZodType<DitoExtensionOrderEnvelopeV2>;
+
+export const ditoIncomingOrderEnvelopeSchema: z.ZodType<DitoIncomingOrderEnvelope> =
+  z.union([
+    ditoLegacyOrderEnvelopeV1Schema,
+    ditoExtensionOrderEnvelopeV2Schema,
+  ]);
 
 export function parseDitoLegacyOrderEnvelope(
   value: unknown,
@@ -130,4 +174,14 @@ export function parseDitoLegacyOrderEnvelope(
 
 export function safeParseDitoLegacyOrderEnvelope(value: unknown) {
   return ditoLegacyOrderEnvelopeV1Schema.safeParse(value);
+}
+
+export function parseDitoIncomingOrderEnvelope(
+  value: unknown,
+): DitoIncomingOrderEnvelope {
+  return ditoIncomingOrderEnvelopeSchema.parse(value);
+}
+
+export function safeParseDitoIncomingOrderEnvelope(value: unknown) {
+  return ditoIncomingOrderEnvelopeSchema.safeParse(value);
 }

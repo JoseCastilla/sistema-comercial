@@ -13,22 +13,22 @@ La especificación está `APPROVED`. Ejecutar las tareas en orden y mantener tra
 
 - [x] **T-010** Crear enums compartidos y validaciones de equipo/asignación.
 - [x] **T-011** Añadir pruebas de reglas puras de visibilidad, reclamación, contexto y reasignación.
-- [ ] **T-012** Crear modelos `CommercialTeam` y `CommercialTeamMember`.
-- [ ] **T-013** Añadir `assignedTeamId` a `DitoOrder` y `CommercialRequest`.
-- [ ] **T-014** Crear `DitoOrderAssignmentHistory`.
-- [ ] **T-015** Crear `DitoOrderAssignmentRequest` y sus enums.
-- [ ] **T-016** Generar migración y revisar SQL e índices parciales.
-- [ ] **T-017** Aplicar migración local y regenerar Prisma.
-- [ ] **T-018** Añadir índice parcial para una sola solicitud `PENDING` por orden.
+- [x] **T-012** Crear modelos `CommercialTeam` y `CommercialTeamMember`.
+- [x] **T-013** Añadir `assignedTeamId` a `DitoOrder` y `CommercialRequest`.
+- [x] **T-014** Crear `DitoOrderAssignmentHistory`.
+- [x] **T-015** Crear `DitoOrderAssignmentRequest` y sus enums.
+- [x] **T-016** Generar migración y revisar SQL e índices parciales.
+- [x] **T-017** Aplicar migración local y regenerar Prisma.
+- [x] **T-018** Añadir índice parcial para una sola solicitud `PENDING` por orden.
 
 ## Fase 2 — Administración de equipos
 
-- [ ] **T-020** Implementar servicio de creación y deshabilitación de equipos.
-- [ ] **T-021** Implementar asignación de supervisor.
-- [ ] **T-022** Implementar asignación primaria de agente.
-- [ ] **T-023** Crear `/admin/teams` para `ADMIN`.
-- [ ] **T-024** Añadir auditoría de cambios de equipo.
-- [ ] **T-025** Probar protección multiempresa.
+- [x] **T-020** Implementar servicio de creación y deshabilitación de equipos.
+- [x] **T-021** Implementar asignación de supervisor.
+- [x] **T-022** Implementar asignación primaria de agente.
+- [x] **T-023** Crear `/admin/teams` para `ADMIN`.
+- [x] **T-024** Añadir auditoría de cambios de equipo.
+- [x] **T-025** Probar protección multiempresa.
 
 ## Fase 3 — Creación de agentes y vínculos de alias
 
@@ -37,8 +37,20 @@ La especificación está `APPROVED`. Ejecutar las tareas en orden y mantener tra
 - [ ] **T-032** Permitir al supervisor crear solo `AGENT` en sus equipos.
 - [ ] **T-033** Añadir compensación ante fallo de aprovisionamiento.
 - [ ] **T-034** Probar que supervisor no crea roles elevados.
-- [ ] **T-035** Renombrar UI a “Vínculos de alias DITO”.
+- [x] **T-035** Renombrar UI a “Vínculos de alias DITO”.
 - [ ] **T-036** Probar que activar/desactivar vínculos no modifica campos originales de órdenes.
+
+## Frente transversal — Experiencia de usuario
+
+- [x] **T-UX-001** Definir stack visual y principios de experiencia en `ux.md`.
+- [x] **T-UX-002** Auditar `/orders`, `/admin/users` y `/admin/teams` con datos representativos.
+- [x] **T-UX-003** Crear tokens semánticos y componentes base en `packages/ui`.
+- [x] **T-UX-004** Separar “Personas” y “Equipos” en la arquitectura de navegación.
+- [x] **T-UX-005** Diseñar estados de carga, vacío, error, éxito, conflicto y sin permisos.
+- [x] **T-UX-006** Validar responsive desde 360 px y escritorio desde 1280 px.
+- [x] **T-UX-007** Validar teclado, foco y contraste WCAG 2.2 AA.
+- [ ] **T-UX-008** Ejecutar prueba de usabilidad con ADMIN, SUPERVISOR y AGENT.
+- [ ] **T-UX-009** Registrar evidencia visual y hallazgos antes de marcar SPEC `VERIFIED`.
 
 ## Fase 4 — Asignación automática y backfill
 

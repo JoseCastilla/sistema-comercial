@@ -1,6 +1,9 @@
 "use server";
 
-import { normalizeAgentAlias } from "@repo/validation";
+import {
+  canActivateAgentAlias,
+  normalizeAgentAlias,
+} from "@repo/validation";
 
 import { revalidatePath } from "next/cache";
 
@@ -71,11 +74,32 @@ export async function assignAgentAliasAction(
       },
 
       select: {
+        role: true,
         user: {
           select: {
             id: true,
             name: true,
             email: true,
+            status: true,
+            commercialTeamMemberships: {
+              where: {
+                memberRole: "AGENT",
+                isPrimary: true,
+                isActive: true,
+                team: {
+                  status: "ACTIVE",
+                },
+              },
+              take: 1,
+              select: {
+                isActive: true,
+                team: {
+                  select: {
+                    status: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -85,6 +109,24 @@ export async function assignAgentAliasAction(
       return {
         type: "error",
         message: "El usuario no es un asesor activo de esta organización.",
+      };
+    }
+
+    const primaryTeamMembership =
+      targetMembership.user.commercialTeamMemberships[0];
+
+    if (
+      !canActivateAgentAlias({
+        userStatus: targetMembership.user.status,
+        organizationRole: targetMembership.role,
+        primaryMembershipActive: primaryTeamMembership?.isActive ?? false,
+        primaryTeamStatus: primaryTeamMembership?.team.status ?? null,
+      })
+    ) {
+      return {
+        type: "error",
+        message:
+          "El asesor necesita un equipo primario activo antes de vincular aliases DITO.",
       };
     }
 
@@ -119,8 +161,7 @@ export async function assignAgentAliasAction(
       };
     }
 
-    const result = await database.$transaction(async (transaction) => {
-      await transaction.agentAlias.upsert({
+    await database.agentAlias.upsert({
         where: {
           organizationId_userId_normalizedAlias: {
             organizationId: membership.organization.id,
@@ -141,32 +182,13 @@ export async function assignAgentAliasAction(
           normalizedAlias,
           isActive: true,
         },
-      });
-
-      const linkedOrders = await transaction.ditoOrder.updateMany({
-        where: {
-          organizationId: membership.organization.id,
-          agentNameNormalized: normalizedAlias,
-          agentUserId: null,
-        },
-
-        data: {
-          agentUserId: targetMembership.user.id,
-        },
-      });
-
-      return {
-        linkedOrders: linkedOrders.count,
-      };
     });
 
     revalidatePath("/admin/users");
-    revalidatePath("/orders");
 
     return {
       type: "success",
-      linkedOrders: result.linkedOrders,
-      message: `Alias ${normalizedAlias} asignado a ${targetMembership.user.name}. Órdenes históricas vinculadas: ${result.linkedOrders}.`,
+      message: `Vínculo de alias ${normalizedAlias} asignado a ${targetMembership.user.name}. Las órdenes históricas no fueron modificadas.`,
     };
   } catch (error) {
     console.error("No se pudo asignar el alias DITO", {

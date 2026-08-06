@@ -1,0 +1,445 @@
+﻿{
+    "name":  "MOVISTAR | 03 - Seguimiento de ventas | DITO v2",
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "ventas-televentas",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       0,
+                                       0
+                                   ],
+                      "id":  "58f058c3-42ab-4680-a390-ad6dddedef3c",
+                      "name":  "Webhook",
+                      "webhookId":  "bef06404-9d6e-4265-9869-658c15fb10eb"
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const body = $json.body ?? {};\n\nconst rawSummary = String(\n  body.venta ?? \u0027\u0027,\n).trim();\n\nif (!rawSummary) {\n  throw new Error(\n    \u0027El webhook no contiene body.venta\u0027,\n  );\n}\n\nconst identitySupplied =\n  body.extension !== undefined \u0026\u0026\n  body.extension !== null;\n\nconst extensionIdentity =\n  identitySupplied \u0026\u0026\n  typeof body.extension === \u0027object\u0027\n    ? body.extension\n    : {};\n\nconst installationId = String(\n  extensionIdentity.installation_id ?? \u0027\u0027,\n).trim();\n\nconst submitterEmail = String(\n  extensionIdentity.agent_email ?? \u0027\u0027,\n).trim();\n\nconst submitterEmailNormalized =\n  submitterEmail.toLowerCase();\n\nconst extensionAgentName = String(\n  extensionIdentity.agent_name ?? \u0027\u0027,\n).trim();\n\nconst orderDetails =\n  extensionIdentity.order_details \u0026\u0026\n  typeof extensionIdentity.order_details === \u0027object\u0027\n    ? extensionIdentity.order_details\n    : {};\n\nfunction nullableText(value) {\n  const text = String(value ?? \u0027\u0027).trim();\n  return text || null;\n}\n\nfunction nullableNumber(value) {\n  if (value === null || value === undefined || value === \u0027\u0027) {\n    return null;\n  }\n\n  const parsed = Number(value);\n  return Number.isFinite(parsed) ? parsed : null;\n}\n\nconst validInstallationId =\n  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(\n    installationId,\n  );\n\nconst validSubmitterEmail =\n  /^[^\\s@]+@distribuidoronline\\.com$/i.test(\n    submitterEmailNormalized,\n  );\n\nconst extensionIdentityReady =\n  identitySupplied \u0026\u0026\n  validInstallationId \u0026\u0026\n  validSubmitterEmail \u0026\u0026\n  Boolean(extensionAgentName);\n\nconst receivedAt = new Date();\n\nconst suppliedCapturedAt = body.fecha\n  ? new Date(body.fecha)\n  : receivedAt;\n\nconst capturedAt = Number.isNaN(\n  suppliedCapturedAt.getTime(),\n)\n  ? receivedAt\n  : suppliedCapturedAt;\n\nconst businessTimeZone =\n  \u0027America/Lima\u0027;\n\n/**\n * Normaliza un texto para comparaciones internas.\n *\n * No modifica los valores originales enviados\n * a Google Sheets o a la API.\n */\nfunction normalizeText(value) {\n  return String(value ?? \u0027\u0027)\n    .normalize(\u0027NFD\u0027)\n    .replace(\n      /[\\u0300-\\u036f]/g,\n      \u0027\u0027,\n    )\n    .replace(/\\s+/g, \u0027 \u0027)\n    .trim()\n    .toUpperCase();\n}\n\nfunction escapeRegularExpression(\n  value,\n) {\n  return String(value).replace(\n    /[.*+?^${}()|[\\]\\\\]/g,\n    \u0027\\\\$\u0026\u0027,\n  );\n}\n\n/**\n * Extrae un campo desde el resumen textual.\n *\n * Puede leer líneas como:\n *\n * DNI: 74861113 / TELÉFONO: 933275170\n */\nfunction getField(fieldName) {\n  const expression = new RegExp(\n    `${escapeRegularExpression(\n      fieldName,\n    )}:\\\\s*(.*)`,\n    \u0027i\u0027,\n  );\n\n  const match =\n    rawSummary.match(expression);\n\n  return match\n    ? match[1].trim()\n    : \u0027\u0027;\n}\n\nfunction getFirstToken(value) {\n  return String(value ?? \u0027\u0027)\n    .trim()\n    .split(/\\s+/)[0] ?? \u0027\u0027;\n}\n\nfunction parseProductType(\n  operationRaw,\n) {\n  const operation =\n    normalizeText(operationRaw);\n\n  if (\n    operation.includes(\u0027MBPS\u0027) ||\n    operation.includes(\u0027INTERNET\u0027) ||\n    operation.includes(\u0027PLAN HOGAR\u0027) ||\n    operation.includes(\u0027TV + FONO\u0027)\n  ) {\n    return \u0027FIXED\u0027;\n  }\n\n  if (operation) {\n    return \u0027MOBILE\u0027;\n  }\n\n  return \u0027UNKNOWN\u0027;\n}\n\nfunction parseCommercialOperation(\n  operationRaw,\n) {\n  const operation =\n    normalizeText(operationRaw);\n\n  const isPortability =\n    operation.includes(\u0027PORTA\u0027) ||\n    operation.includes(\n      \u0027PORTABILIDAD\u0027,\n    );\n\n  if (isPortability) {\n    if (\n      /\\bPOST\\b/.test(operation) ||\n      operation.includes(\u0027POSTPAGO\u0027)\n    ) {\n      return \u0027PORT_POSTPAID\u0027;\n    }\n\n    if (\n      /\\bPRE\\b/.test(operation) ||\n      operation.includes(\u0027PREPAGO\u0027)\n    ) {\n      return \u0027PORT_PREPAID\u0027;\n    }\n  }\n\n  if (\n    operation.includes(\u0027ALTA\u0027) ||\n    operation.includes(\n      \u0027LINEA NUEVA\u0027,\n    ) ||\n    operation.includes(\n      \u0027NUEVA LINEA\u0027,\n    )\n  ) {\n    return \u0027NEW_LINE\u0027;\n  }\n\n  return \u0027UNKNOWN\u0027;\n}\n\nfunction parseCarrier(operationRaw) {\n  const operation =\n    normalizeText(operationRaw);\n\n  if (\n    operation.includes(\u0027ALTA\u0027) ||\n    operation.includes(\u0027LINEA NUEVA\u0027) ||\n    operation.includes(\u0027NUEVA LINEA\u0027)\n  ) {\n    return \u0027UNKNOWN\u0027;\n  }\n\n  const carriers = [\n    \u0027BITEL\u0027,\n    \u0027CLARO\u0027,\n    \u0027ENTEL\u0027,\n    \u0027MOVISTAR\u0027,\n  ];\n\n  for (const carrier of carriers) {\n    const expression = new RegExp(\n      `\\\\b${carrier}\\\\b`,\n    );\n\n    if (expression.test(operation)) {\n      return carrier;\n    }\n  }\n\n  return operation\n    ? \u0027OTHER\u0027\n    : \u0027UNKNOWN\u0027;\n}\n\n/**\n * Obtiene el último número decimal de una operación móvil.\n *\n * Ejemplo:\n * PORTA ENTEL POST 39.9\n * → 39.9\n */\nfunction parseFixedCharge(\n  operationRaw,\n  productType,\n) {\n  if (productType !== \u0027MOBILE\u0027) {\n    return null;\n  }\n\n  const matches = String(\n    operationRaw,\n  ).match(\n    /\\b\\d+(?:[.,]\\d{1,2})\\b/g,\n  );\n\n  if (!matches?.length) {\n    return null;\n  }\n\n  const lastValue =\n    matches[matches.length - 1];\n\n  const parsed = Number(\n    lastValue.replace(\u0027,\u0027, \u0027.\u0027),\n  );\n\n  return Number.isFinite(parsed)\n    ? parsed\n    : null;\n}\n\n/**\n * Distingue los cuatro niveles de entrega.\n */\nfunction parseDeliveryMethod(\n  deliveryRaw,\n) {\n  const delivery =\n    normalizeText(deliveryRaw);\n\n  if (\n    delivery.includes(\u0027EXPRESS\u0027)\n  ) {\n    return \u0027EXPRESS\u0027;\n  }\n\n  if (\n    delivery.includes(\u0027REGULAR\u0027) \u0026\u0026\n    /\\b24\\b/.test(delivery)\n  ) {\n    return \u0027REGULAR_24H\u0027;\n  }\n\n  if (\n    delivery.includes(\u0027REGULAR\u0027) \u0026\u0026\n    /\\b48\\b/.test(delivery)\n  ) {\n    return \u0027REGULAR_48H\u0027;\n  }\n\n  if (\n    delivery.includes(\u0027REGULAR\u0027) \u0026\u0026\n    /\\b72\\b/.test(delivery)\n  ) {\n    return \u0027REGULAR_72H\u0027;\n  }\n\n  return \u0027UNKNOWN\u0027;\n}\n\nfunction parseDocumentType(\n  documentNumber,\n) {\n  const digits = String(\n    documentNumber,\n  ).replace(/\\D/g, \u0027\u0027);\n\n  if (digits.length === 8) {\n    return \u0027DNI\u0027;\n  }\n\n  if (\n    digits.length === 11 \u0026\u0026\n    digits.startsWith(\u002710\u0027)\n  ) {\n    return \u0027RUC_10\u0027;\n  }\n\n  if (digits) {\n    return \u0027OTHER\u0027;\n  }\n\n  return \u0027UNKNOWN\u0027;\n}\n\n/**\n * Extraer los valores originales.\n */\nconst operationRaw =\n  getField(\u0027OPERACIÓN\u0027);\n\nconst holderName =\n  getField(\u0027NOMBRE\u0027);\n\nconst dniLine =\n  getField(\u0027DNI\u0027);\n\nconst documentNumber =\n  getFirstToken(\n    dniLine.split(\u0027/\u0027)[0],\n  ).replace(/\\D/g, \u0027\u0027);\n\nconst serviceNumber =\n  getFirstToken(\n    getField(\u0027TELÉFONO\u0027),\n  ).replace(/\\D/g, \u0027\u0027);\n\nconst zonalRaw =\n  getField(\u0027ZONAL\u0027);\n\nconst zonalParts = zonalRaw\n  .split(/\\s*-\\s*/)\n  .map((part) =\u003e part.trim());\n\nconst department =\n  zonalParts[0] ?? \u0027\u0027;\n\nconst province =\n  zonalParts[1] ?? \u0027\u0027;\n\nconst district =\n  zonalParts\n    .slice(2)\n    .join(\u0027 - \u0027);\n\nconst deliveryRaw =\n  getField(\u0027ENTREGA\u0027);\n\nconst agentNameRaw =\n  extensionAgentName ||\n  getField(\u0027ASESOR\u0027);\n\nconst orderCodeRaw =\n  getField(\u0027CÓDIGO DE ORDEN\u0027)\n    .replace(/\\s+/g, \u0027\u0027)\n    .toUpperCase();\n\nconst orderCodeMatch =\n  orderCodeRaw.match(\n    /^(\\d+)(.*)$/,\n  );\n\nconst orderCodeNormalized =\n  orderCodeMatch?.[1] ?? \u0027\u0027;\n\nconst orderCodeSuffix =\n  orderCodeMatch?.[2] ?? \u0027\u0027;\n\nconst salesCodeRaw =\n  getField(\u0027CÓDIGO DE VENTA\u0027);\n\nconst salesCodeFromSummary =\n  salesCodeRaw \u0026\u0026\n  normalizeText(salesCodeRaw) !==\n    \u0027N/A\u0027\n    ? salesCodeRaw\n    : null;\n\nconst salesCode =\n  nullableText(orderDetails.sales_code) ??\n  salesCodeFromSummary;\n\nconst billingCycleDay =\n  nullableNumber(\n    orderDetails.billing_cycle_day,\n  );\n\nconst paymentDueDay =\n  nullableNumber(\n    orderDetails.payment_due_day,\n  );\n\n/**\n * Normalizaciones.\n */\nconst productType =\n  parseProductType(operationRaw);\n\nconst commercialOperation =\n  parseCommercialOperation(\n    operationRaw,\n  );\n\nconst carrier =\n  parseCarrier(operationRaw);\n\nconst fixedCharge =\n  parseFixedCharge(\n    operationRaw,\n    productType,\n  );\n\nconst deliveryMethod =\n  parseDeliveryMethod(\n    deliveryRaw,\n  );\n\nconst documentType =\n  parseDocumentType(\n    documentNumber,\n  );\n\n/**\n * Advertencias de parseo.\n */\nconst warnings = [];\n\nif (!orderCodeNormalized) {\n  warnings.push(\n    \u0027ORDER_CODE_NOT_RECOGNIZED\u0027,\n  );\n}\n\nif (!operationRaw) {\n  warnings.push(\n    \u0027OPERATION_MISSING\u0027,\n  );\n}\n\nif (!holderName) {\n  warnings.push(\n    \u0027HOLDER_NAME_MISSING\u0027,\n  );\n}\n\nif (!documentNumber) {\n  warnings.push(\n    \u0027DOCUMENT_NUMBER_MISSING\u0027,\n  );\n}\n\nif (!serviceNumber) {\n  warnings.push(\n    \u0027SERVICE_NUMBER_MISSING\u0027,\n  );\n}\n\nif (!agentNameRaw) {\n  warnings.push(\n    \u0027AGENT_MISSING\u0027,\n  );\n}\n\nif (identitySupplied \u0026\u0026 !validInstallationId) {\n  warnings.push(\n    \u0027EXTENSION_INSTALLATION_ID_INVALID\u0027,\n  );\n}\n\nif (identitySupplied \u0026\u0026 !validSubmitterEmail) {\n  warnings.push(\n    \u0027EXTENSION_AGENT_EMAIL_INVALID\u0027,\n  );\n}\n\nif (identitySupplied \u0026\u0026 !extensionAgentName) {\n  warnings.push(\n    \u0027EXTENSION_AGENT_NAME_MISSING\u0027,\n  );\n}\n\nif (\n  commercialOperation ===\n  \u0027UNKNOWN\u0027\n) {\n  warnings.push(\n    \u0027COMMERCIAL_OPERATION_UNKNOWN\u0027,\n  );\n}\n\nif (\n  deliveryMethod === \u0027UNKNOWN\u0027\n) {\n  warnings.push(\n    \u0027DELIVERY_METHOD_UNKNOWN\u0027,\n  );\n}\n\nif (\n  productType === \u0027MOBILE\u0027 \u0026\u0026\n  fixedCharge === null\n) {\n  warnings.push(\n    \u0027FIXED_CHARGE_NOT_RECOGNIZED\u0027,\n  );\n}\n\n/**\n * Requisitos mínimos para enviar a la API.\n *\n * Los datos incompletos continúan hacia Google Sheets,\n * pero no se construye dito_envelope.\n */\nconst apiReady =\n  Boolean(orderCodeNormalized) \u0026\u0026\n  Boolean(operationRaw) \u0026\u0026\n  Boolean(holderName) \u0026\u0026\n  Boolean(agentNameRaw) \u0026\u0026\n  (!identitySupplied || extensionIdentityReady);\n\nconst ditoEnvelope = apiReady\n  ? {\n      schema_version: extensionIdentityReady\n        ? \u00272.0\u0027\n        : \u00271.0\u0027,\n\n      source: extensionIdentityReady\n        ? \u0027DITO_EXTENSION\u0027\n        : \u0027DITO_EXTENSION_LEGACY\u0027,\n\n      ...(extensionIdentityReady\n        ? {\n            submitted_by: {\n              installation_id:\n                installationId,\n              email:\n                submitterEmail,\n            },\n          }\n        : {}),\n\n      event_id:\n        `dito:${orderCodeNormalized}`,\n\n      captured_at:\n        capturedAt.toISOString(),\n\n      product_type:\n        productType,\n\n      order: {\n        code_raw:\n          orderCodeRaw,\n\n        code_normalized:\n          orderCodeNormalized,\n\n        code_suffix:\n          orderCodeSuffix,\n\n        operation_raw:\n          operationRaw,\n\n        commercial_operation:\n          commercialOperation,\n\n        carrier,\n\n        fixed_charge:\n          fixedCharge,\n\n        sales_code:\n          salesCode,\n\n        billing_cycle_day:\n          billingCycleDay,\n\n        payment_due_day:\n          paymentDueDay,\n      },\n\n      holder: {\n        full_name:\n          holderName,\n\n        document_type:\n          documentType,\n\n        document_number:\n          documentNumber,\n\n        service_number:\n          serviceNumber,\n      },\n\n      delivery: {\n        method:\n          deliveryMethod,\n\n        department,\n        province,\n        district,\n\n        contact_phone:\n          nullableText(\n            orderDetails.delivery_contact_phone,\n          ),\n\n        time_range:\n          nullableText(\n            orderDetails.delivery_time_range,\n          ),\n\n        address:\n          nullableText(\n            orderDetails.delivery_address,\n          ),\n\n        reference:\n          nullableText(\n            orderDetails.delivery_reference,\n          ),\n\n        latitude:\n          nullableNumber(\n            orderDetails.delivery_latitude,\n          ),\n\n        longitude:\n          nullableNumber(\n            orderDetails.delivery_longitude,\n          ),\n      },\n\n      agent: {\n        name_raw:\n          agentNameRaw,\n      },\n\n      raw_summary:\n        rawSummary,\n\n      additional_details: {\n        workflow_name:\n          \u0027MOVISTAR | 03 - Seguimiento de ventas\u0027,\n\n        parser_version:\n          \u00272.3\u0027,\n\n        received_at:\n          receivedAt.toISOString(),\n\n        delivery_raw:\n          deliveryRaw,\n\n        zonal_raw:\n          zonalRaw,\n\n        billing_cycle_raw:\n          nullableText(\n            orderDetails.billing_cycle_raw,\n          ),\n\n        payment_due_raw:\n          nullableText(\n            orderDetails.payment_due_raw,\n          ),\n\n        transaction_raw:\n          nullableText(\n            orderDetails.transaction_raw,\n          ),\n\n        line_type_raw:\n          nullableText(\n            orderDetails.line_type_raw,\n          ),\n\n        carrier_raw:\n          nullableText(\n            orderDetails.carrier_raw,\n          ),\n\n        /**\n         * Los turnos se asignarán posteriormente\n         * dentro del Sistema Comercial.\n         */\n        delivery_shift:\n          null,\n\n        scheduled_delivery_date:\n          null,\n      },\n    }\n  : null;\n\nreturn [\n  {\n    json: {\n      /**\n       * Campos existentes para Google Sheets.\n       */\n      fecha:\n        capturedAt.toLocaleDateString(\n          \u0027es-PE\u0027,\n          {\n            timeZone:\n              businessTimeZone,\n          },\n        ),\n\n      operacion:\n        operationRaw,\n\n      nombre:\n        holderName,\n\n      dni:\n        documentNumber,\n\n      celular:\n        serviceNumber,\n\n      zonal:\n        zonalRaw,\n\n      entrega:\n        deliveryRaw,\n\n      asesor:\n        agentNameRaw,\n\n      codigo_orden:\n        orderCodeRaw,\n\n      hora:\n        capturedAt.toLocaleTimeString(\n          \u0027es-PE\u0027,\n          {\n            timeZone:\n              businessTimeZone,\n\n            hour12: false,\n          },\n        ),\n\n      /**\n       * Campos para el Sistema Comercial.\n       */\n      api_ready:\n        apiReady,\n\n      extension_identity_supplied:\n        identitySupplied,\n\n      extension_identity_ready:\n        extensionIdentityReady,\n\n      parse_warnings:\n        warnings,\n\n      dito_envelope:\n        ditoEnvelope,\n    },\n  },\n];"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       208,
+                                       0
+                                   ],
+                      "id":  "a953a861-27e9-4cda-b205-996a721a088c",
+                      "name":  "Code in JavaScript"
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "appendOrUpdate",
+                                         "documentId":  {
+                                                            "__rl":  true,
+                                                            "value":  "1FVHvAlm-vBNHLNkh_pmFAKS6xuZujgZ1D4D4uWce0jI",
+                                                            "mode":  "list",
+                                                            "cachedResultName":  "Seguimiento de ventas | Distribuidor Online",
+                                                            "cachedResultUrl":  "https://docs.google.com/spreadsheets/d/1FVHvAlm-vBNHLNkh_pmFAKS6xuZujgZ1D4D4uWce0jI/edit?usp=drivesdk"
+                                                        },
+                                         "sheetName":  {
+                                                           "__rl":  true,
+                                                           "value":  "gid=0",
+                                                           "mode":  "list",
+                                                           "cachedResultName":  "Registros del día",
+                                                           "cachedResultUrl":  "https://docs.google.com/spreadsheets/d/1FVHvAlm-vBNHLNkh_pmFAKS6xuZujgZ1D4D4uWce0jI/edit#gid=0"
+                                                       },
+                                         "columns":  {
+                                                         "mappingMode":  "defineBelow",
+                                                         "value":  {
+                                                                       "Codigo de Orden":  "={{ $json.codigo_orden }}",
+                                                                       "Fecha":  "={{ $json.fecha }}",
+                                                                       "Operacion":  "={{ $json.operacion }}",
+                                                                       "Nombre":  "={{ $json.nombre }}",
+                                                                       "DNI":  "={{ $json.dni }}",
+                                                                       "Zonal":  "={{ $json.zonal }}",
+                                                                       "Metodo de Entrega":  "={{ $json.entrega }}",
+                                                                       "Asesor":  "={{ $json.asesor }}",
+                                                                       "Hora de Registro":  "={{ $json.hora }}",
+                                                                       "Telf. Operacion":  "={{ $json.celular }}"
+                                                                   },
+                                                         "matchingColumns":  [
+                                                                                 "Codigo de Orden"
+                                                                             ],
+                                                         "schema":  [
+                                                                        {
+                                                                            "id":  "Id",
+                                                                            "displayName":  "Id",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Fecha",
+                                                                            "displayName":  "Fecha",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Operacion",
+                                                                            "displayName":  "Operacion",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Nombre",
+                                                                            "displayName":  "Nombre",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "DNI",
+                                                                            "displayName":  "DNI",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Telf. Operacion",
+                                                                            "displayName":  "Telf. Operacion",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true,
+                                                                            "removed":  false
+                                                                        },
+                                                                        {
+                                                                            "id":  "Zonal",
+                                                                            "displayName":  "Zonal",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Metodo de Entrega",
+                                                                            "displayName":  "Metodo de Entrega",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Asesor",
+                                                                            "displayName":  "Asesor",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Codigo de Orden",
+                                                                            "displayName":  "Codigo de Orden",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true,
+                                                                            "removed":  false
+                                                                        },
+                                                                        {
+                                                                            "id":  "Hora de Registro",
+                                                                            "displayName":  "Hora de Registro",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Hora de Entrega",
+                                                                            "displayName":  "Hora de Entrega",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Estado",
+                                                                            "displayName":  "Estado",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Plazo",
+                                                                            "displayName":  "Plazo",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true
+                                                                        },
+                                                                        {
+                                                                            "id":  "Observacion",
+                                                                            "displayName":  "Observacion",
+                                                                            "required":  false,
+                                                                            "defaultMatch":  false,
+                                                                            "display":  true,
+                                                                            "type":  "string",
+                                                                            "canBeUsedToMatch":  true,
+                                                                            "removed":  false
+                                                                        }
+                                                                    ],
+                                                         "attemptToConvertTypes":  false,
+                                                         "convertFieldsToString":  false
+                                                     },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4.7,
+                      "position":  [
+                                       416,
+                                       0
+                                   ],
+                      "id":  "6074334e-e075-4a8b-8f3b-728413aeebc2",
+                      "name":  "Append or update row in sheet",
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "id":  "JBYytOJcVNVnEu6y",
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.distribuidoronline.com/api/v1/webhooks/dito",
+                                         "authentication":  "genericCredentialType",
+                                         "genericAuthType":  "httpHeaderAuth",
+                                         "sendBody":  true,
+                                         "contentType":  "raw",
+                                         "rawContentType":  "application/json",
+                                         "body":  "={{ $json.dito_envelope }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       704,
+                                       -224
+                                   ],
+                      "id":  "09513eae-7725-4916-99fb-ee8d60011440",
+                      "name":  "Enviar orden DITO a Sistema Comercial",
+                      "retryOnFail":  true,
+                      "waitBetweenTries":  5000,
+                      "credentials":  {
+                                          "httpHeaderAuth":  {
+                                                                 "id":  "F3LUV0GrVS7ubW5h",
+                                                                 "name":  "Sistema Comercial API - DITO"
+                                                             }
+                                      },
+                      "onError":  "continueErrorOutput"
+                  },
+                  {
+                      "parameters":  {
+
+                                     },
+                      "type":  "n8n-nodes-base.noOp",
+                      "typeVersion":  1,
+                      "position":  [
+                                       992,
+                                       -208
+                                   ],
+                      "id":  "105d4411-3444-44d5-9007-982f9eca24db",
+                      "name":  "Error API DITO - Excel continúa"
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict",
+                                                                            "version":  3
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "da9b6103-a6a5-4749-881a-1ff2866b7c5f",
+                                                                                   "leftValue":  "={{ $(\u0027Code in JavaScript\u0027).item.json.api_ready === true \u0026\u0026 $(\u0027Code in JavaScript\u0027).item.json.dito_envelope !== null }}",
+                                                                                   "rightValue":  "",
+                                                                                   "operator":  {
+                                                                                                    "type":  "boolean",
+                                                                                                    "operation":  "true",
+                                                                                                    "singleValue":  true
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.3,
+                      "position":  [
+                                       432,
+                                       -208
+                                   ],
+                      "id":  "64bfe3d2-0759-4bf8-851a-8010033f6418",
+                      "name":  "¿Orden lista para API?"
+                  }
+              ],
+    "pinData":  {
+                    "Webhook":  [
+                                    {
+                                        "json":  {
+                                                     "headers":  {
+                                                                     "host":  "automatizaciones.distribuidoronline.com",
+                                                                     "user-agent":  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+                                                                     "content-length":  "290",
+                                                                     "accept":  "*/*",
+                                                                     "accept-encoding":  "gzip, deflate, br, zstd",
+                                                                     "accept-language":  "es-ES,es;q=0.9",
+                                                                     "content-type":  "application/json",
+                                                                     "origin":  "chrome-extension://gonfnjmhonbdfkedbapomnilbihadpao",
+                                                                     "priority":  "u=1, i",
+                                                                     "sec-ch-ua":  "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+                                                                     "sec-ch-ua-mobile":  "?0",
+                                                                     "sec-ch-ua-platform":  "\"Windows\"",
+                                                                     "sec-fetch-dest":  "empty",
+                                                                     "sec-fetch-mode":  "cors",
+                                                                     "sec-fetch-site":  "none",
+                                                                     "sec-fetch-storage-access":  "active",
+                                                                     "x-forwarded-for":  "181.66.169.118",
+                                                                     "x-forwarded-host":  "automatizaciones.distribuidoronline.com",
+                                                                     "x-forwarded-port":  "443",
+                                                                     "x-forwarded-proto":  "https",
+                                                                     "x-forwarded-server":  "acab9987c52b",
+                                                                     "x-real-ip":  "181.66.169.118"
+                                                                 },
+                                                     "params":  {
+
+                                                                },
+                                                     "query":  {
+
+                                                               },
+                                                     "body":  {
+                                                                  "venta":  "OPERACIÓN: PORTA CLARO POST 39.9\nNOMBRE: JORGE ALBERTO FLORES DIAZ\nDNI: 74861113 / TELÉFONO: 933275170\n\nZONAL: LAMBAYEQUE - CHICLAYO - CHICLAYO\nENTREGA: DELIVERY EXPRESS\n\nASESOR: DE LOS RIOS H. A. ALIZON\nCÓDIGO DE ORDEN: 1926312617A",
+                                                                  "fecha":  "2026-06-24T21:47:04.143Z"
+                                                              },
+                                                     "webhookUrl":  "https://automatizaciones.distribuidoronline.com/webhook/ventas-televentas",
+                                                     "executionMode":  "production"
+                                                 },
+                                        "pairedItem":  {
+                                                           "item":  0
+                                                       }
+                                    }
+                                ]
+                },
+    "connections":  {
+                        "Webhook":  {
+                                        "main":  [
+                                                     [
+                                                         {
+                                                             "node":  "Code in JavaScript",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                                 ]
+                                    },
+                        "Code in JavaScript":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "Append or update row in sheet",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    },
+                                                                    {
+                                                                        "node":  "¿Orden lista para API?",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "Append or update row in sheet":  {
+                                                              "main":  [
+                                                                           [
+
+                                                                           ]
+                                                                       ]
+                                                          },
+                        "Enviar orden DITO a Sistema Comercial":  {
+                                                                      "main":  [
+                                                                                   [
+
+                                                                                   ],
+                                                                                   [
+                                                                                       {
+                                                                                           "node":  "Error API DITO - Excel continúa",
+                                                                                           "type":  "main",
+                                                                                           "index":  0
+                                                                                       }
+                                                                                   ]
+                                                                               ]
+                                                                  },
+                        "Error API DITO - Excel continúa":  {
+                                                                "main":  [
+                                                                             [
+
+                                                                             ]
+                                                                         ]
+                                                            },
+                        "¿Orden lista para API?":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Enviar orden DITO a Sistema Comercial",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ],
+                                                                    [
+
+                                                                    ]
+                                                                ]
+                                                   }
+                    },
+    "active":  false,
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "binaryMode":  "separate"
+                 },
+    "versionId":  "ef77ab67-db62-48a6-9def-d998503575c3",
+    "meta":  {
+                 "templateCredsSetupCompleted":  true,
+                 "instanceId":  "007f668a9db3fe3a4a428ee31a48952b61aaacce5417683a543ee38745b40d75"
+             },
+    "id":  "Xnl26VrLo19kKFNw",
+    "tags":  [
+
+             ]
+}

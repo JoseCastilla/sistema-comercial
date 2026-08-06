@@ -17,7 +17,11 @@ jest.mock('@repo/validation', () => ({
 
 import { UnauthorizedException } from '@nestjs/common';
 
-import type { DitoLegacyOrderEnvelopeV1 } from '@repo/contracts';
+import type {
+  DitoExtensionOrderEnvelopeV2,
+  DitoIncomingOrderEnvelope,
+  DitoLegacyOrderEnvelopeV1,
+} from '@repo/contracts';
 
 import { createHash } from 'node:crypto';
 
@@ -32,7 +36,7 @@ import { DitoWebhookService } from './dito-webhook.service';
 import { DitoWebhookValidationService } from './dito-webhook-validation.service';
 
 interface ValidationServiceMock {
-  parse: jest.Mock<Promise<DitoLegacyOrderEnvelopeV1>, [unknown]>;
+  parse: jest.Mock<Promise<DitoIncomingOrderEnvelope>, [unknown]>;
 }
 
 interface RepositoryMock {
@@ -43,6 +47,16 @@ interface RepositoryMock {
     [string, string]
   >;
 
+  resolveAgentAssignmentByEmail: jest.Mock<
+    Promise<{ userId: string; teamId: string } | null>,
+    [string, string]
+  >;
+
+  hasInstallationEmailConflict: jest.Mock<
+    Promise<boolean>,
+    [string, string, string]
+  >;
+
   create: jest.Mock<Promise<PersistedDitoOrder>, [CreateDitoOrderInput]>;
 
   findExisting: jest.Mock<
@@ -51,6 +65,23 @@ interface RepositoryMock {
   >;
 
   markNeedsReview: jest.Mock<Promise<void>, [string]>;
+}
+
+function createIdentityEnvelope(
+  overrides: Partial<DitoExtensionOrderEnvelopeV2> = {},
+): DitoExtensionOrderEnvelopeV2 {
+  const legacy = createEnvelope();
+
+  return {
+    ...legacy,
+    schema_version: '2.0',
+    source: 'DITO_EXTENSION',
+    submitted_by: {
+      installation_id: 'f24b8f20-6ce3-4c3f-a2bb-c10110c26c2d',
+      email: 'carmen.ramirez@distribuidoronline.com',
+    },
+    ...overrides,
+  };
 }
 
 function createEnvelope(
@@ -235,7 +266,7 @@ describe('DitoWebhookService', () => {
 
   beforeEach(() => {
     validationService = {
-      parse: jest.fn<Promise<DitoLegacyOrderEnvelopeV1>, [unknown]>(),
+      parse: jest.fn<Promise<DitoIncomingOrderEnvelope>, [unknown]>(),
     };
 
     repository = {
@@ -249,6 +280,16 @@ describe('DitoWebhookService', () => {
         [string, string]
       >(),
 
+      resolveAgentAssignmentByEmail: jest.fn<
+        Promise<{ userId: string; teamId: string } | null>,
+        [string, string]
+      >(),
+
+      hasInstallationEmailConflict: jest.fn<
+        Promise<boolean>,
+        [string, string, string]
+      >(),
+
       create: jest.fn<Promise<PersistedDitoOrder>, [CreateDitoOrderInput]>(),
 
       findExisting: jest.fn<
@@ -260,6 +301,8 @@ describe('DitoWebhookService', () => {
     };
 
     repository.resolveAgentUserIdByAlias.mockResolvedValue(null);
+    repository.resolveAgentAssignmentByEmail.mockResolvedValue(null);
+    repository.hasInstallationEmailConflict.mockResolvedValue(false);
 
     repository.findOrganizationBySlug.mockResolvedValue({
       id: 'organization-1',
@@ -362,6 +405,66 @@ describe('DitoWebhookService', () => {
     });
 
     expect(createInput?.sourceFingerprint).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('resolves an identity envelope by corporate email and primary team', async () => {
+    const envelope = createIdentityEnvelope();
+
+    validationService.parse.mockResolvedValue(envelope);
+    repository.resolveAgentAssignmentByEmail.mockResolvedValue({
+      userId: 'carmen-ramirez-user',
+      teamId: 'team-lima-1',
+    });
+    repository.create.mockResolvedValue({
+      id: 'dito-order-email',
+      sourceFingerprint: 'fingerprint-email',
+    });
+
+    await service.ingest(envelope, 'test-dito-webhook-secret');
+
+    expect(repository.hasInstallationEmailConflict).toHaveBeenCalledWith(
+      'organization-1',
+      'f24b8f20-6ce3-4c3f-a2bb-c10110c26c2d',
+      'carmen.ramirez@distribuidoronline.com',
+    );
+    expect(repository.resolveAgentAssignmentByEmail).toHaveBeenCalledWith(
+      'organization-1',
+      'carmen.ramirez@distribuidoronline.com',
+    );
+    expect(repository.resolveAgentUserIdByAlias).not.toHaveBeenCalled();
+
+    const createInput = repository.create.mock.calls[0]?.[0];
+
+    expect(createInput).toMatchObject({
+      agentUserId: 'carmen-ramirez-user',
+      assignedTeamId: 'team-lima-1',
+      submitterInstallationId: 'f24b8f20-6ce3-4c3f-a2bb-c10110c26c2d',
+      submitterEmailRaw: 'carmen.ramirez@distribuidoronline.com',
+      submitterEmailNormalized: 'carmen.ramirez@distribuidoronline.com',
+      matchStatus: 'UNMATCHED',
+    });
+  });
+
+  it('does not fall back to alias when an installation changes email', async () => {
+    const envelope = createIdentityEnvelope();
+
+    validationService.parse.mockResolvedValue(envelope);
+    repository.hasInstallationEmailConflict.mockResolvedValue(true);
+    repository.resolveAgentUserIdByAlias.mockResolvedValue('alias-user');
+    repository.create.mockResolvedValue({
+      id: 'dito-order-conflict',
+      sourceFingerprint: 'fingerprint-conflict',
+    });
+
+    await service.ingest(envelope, 'test-dito-webhook-secret');
+
+    expect(repository.resolveAgentAssignmentByEmail).not.toHaveBeenCalled();
+    expect(repository.resolveAgentUserIdByAlias).not.toHaveBeenCalled();
+    expect(repository.create.mock.calls[0]?.[0]).toMatchObject({
+      agentUserId: null,
+      assignedTeamId: null,
+      matchStatus: 'NEEDS_REVIEW',
+    });
   });
 
   it('keeps a regular order pending until a shift is assigned', async () => {

@@ -2,6 +2,11 @@
 
 import { useMemo, useState } from "react";
 
+import { EmptyState } from "@repo/ui/empty-state";
+import { Metric, MetricGroup } from "@repo/ui/metric";
+import { PageHeader } from "@repo/ui/page-header";
+import { Surface } from "@repo/ui/surface";
+
 import { OrderStatusForm } from "./order-status-form";
 
 import type {
@@ -183,6 +188,23 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
     order.deliveryObservation ?? "none",
   ].join(":");
 
+  const hasDitoDetails = Boolean(
+    order.salesCode ||
+      order.billingCycleDay ||
+      order.paymentDueDay ||
+      order.deliveryContactPhone !== order.serviceNumber ||
+      order.deliveryTimeRange ||
+      order.deliveryAddress ||
+      order.deliveryReference ||
+      order.deliveryLatitude ||
+      order.deliveryLongitude,
+  );
+
+  const coordinates =
+    order.deliveryLatitude && order.deliveryLongitude
+      ? `${order.deliveryLatitude}, ${order.deliveryLongitude}`
+      : null;
+
   return (
     <div className="space-y-5">
       <div>
@@ -238,6 +260,62 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
         <DetailItem label="Estado de asociación" value={order.matchStatus} />
       </dl>
 
+      {hasDitoDetails ? (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+          <h4 className="text-sm font-semibold text-sky-950">Datos DITO</h4>
+
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+            {order.salesCode ? (
+              <DetailItem label="Código de venta" value={order.salesCode} />
+            ) : null}
+
+            {order.deliveryTimeRange ? (
+              <DetailItem
+                label="Horario de entrega"
+                value={order.deliveryTimeRange}
+              />
+            ) : null}
+
+            {order.billingCycleDay ? (
+              <DetailItem
+                label="Ciclo de facturación"
+                value={`Día ${order.billingCycleDay} de cada mes`}
+              />
+            ) : null}
+
+            {order.paymentDueDay ? (
+              <DetailItem
+                label="Último día de pago"
+                value={`Día ${order.paymentDueDay} de cada mes`}
+              />
+            ) : null}
+
+            <DetailItem
+              label="Teléfono de contacto"
+              value={order.deliveryContactPhone}
+            />
+
+            {order.deliveryAddress ? (
+              <DetailItem
+                label="Dirección de entrega"
+                value={order.deliveryAddress}
+              />
+            ) : null}
+
+            {order.deliveryReference ? (
+              <DetailItem
+                label="Referencia"
+                value={order.deliveryReference}
+              />
+            ) : null}
+
+            {coordinates ? (
+              <DetailItem label="Coordenadas" value={coordinates} />
+            ) : null}
+          </dl>
+        </div>
+      ) : null}
+
       {order.deliveryObservation ? (
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
@@ -265,31 +343,6 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
         />
       </div>
     </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  emphasis = false,
-}: {
-  label: string;
-  value: number;
-  emphasis?: boolean;
-}) {
-  return (
-    <article
-      className={[
-        "rounded-2xl border p-4 shadow-sm",
-        emphasis ? "border-red-200 bg-red-50" : "border-neutral-200 bg-white",
-      ].join(" ")}
-    >
-      <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-        {label}
-      </p>
-
-      <p className="mt-2 text-2xl font-semibold text-neutral-950">{value}</p>
-    </article>
   );
 }
 
@@ -467,6 +520,10 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           order.holderName,
           order.documentNumber,
           order.serviceNumber,
+          order.salesCode ?? "",
+          order.deliveryContactPhone,
+          order.deliveryAddress ?? "",
+          order.deliveryReference ?? "",
           order.agentName,
           order.locationLabel,
           order.statusLabel,
@@ -486,110 +543,91 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
     null;
 
   return (
-    <div className="space-y-6">
-      <section>
-        <p className="text-sm font-medium text-neutral-500">
-          Operación comercial
-        </p>
+    <div className="ui-page-stack">
+      <PageHeader
+        description="Revisa incidencias, recupera pedidos y actualiza el avance informado por Integratel."
+        eyebrow="Operación comercial"
+        meta={<>Actualizado: {data.generatedAt}</>}
+        title="Seguimiento de órdenes"
+      />
 
-        <div className="mt-1 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
-              Seguimiento de órdenes
-            </h1>
+      <MetricGroup>
+        <Metric label="Órdenes visibles" value={data.totals.visible} />
+        <Metric label="Incidencias" tone={data.totals.incidents > 0 ? "danger" : "neutral"} value={data.totals.incidents} />
+        <Metric label="No entregados" value={data.totals.notDelivered} />
+        <Metric label="Entregados" value={data.totals.delivered} />
+        <Metric label="Fuera de plazo" tone={data.totals.overdue > 0 ? "danger" : "neutral"} value={data.totals.overdue} />
+      </MetricGroup>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Revisa incidencias, recupera pedidos y actualiza manualmente el
-              avance informado por Integratel.
-            </p>
+      <Surface className="ui-filter-bar" raised>
+        <label className="block lg:hidden">
+          <span className="sr-only">Filtrar pedidos</span>
+          <select
+            className="ui-filter-select"
+            onChange={(event) => {
+              setFilter(event.target.value as OrderFilter);
+              setExpandedOrderId(null);
+            }}
+            value={filter}
+          >
+            {filterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="ui-segmented-scroll hidden lg:block">
+          <div className="ui-segmented">
+            {filterOptions.map((option) => {
+              const active = option.value === filter;
+
+              return (
+                <button
+                  aria-pressed={active}
+                  className="ui-segmented__item"
+                  key={option.value}
+                  onClick={() => {
+                    setFilter(option.value);
+                    setExpandedOrderId(null);
+                  }}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
-
-          <p className="text-xs text-neutral-500">
-            Actualizado: {data.generatedAt}
-          </p>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-        <SummaryCard label="Órdenes visibles" value={data.totals.visible} />
-
-        <SummaryCard
-          emphasis={data.totals.incidents > 0}
-          label="Incidencias"
-          value={data.totals.incidents}
-        />
-
-        <SummaryCard label="No entregados" value={data.totals.notDelivered} />
-
-        <SummaryCard label="Entregados" value={data.totals.delivered} />
-
-        <SummaryCard
-          emphasis={data.totals.overdue > 0}
-          label="Fuera de plazo"
-          value={data.totals.overdue}
-        />
-      </section>
-
-      <section className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="overflow-x-auto">
-            <div className="flex min-w-max gap-2">
-              {filterOptions.map((option) => {
-                const active = option.value === filter;
-
-                return (
-                  <button
-                    className={[
-                      "rounded-full px-3 py-2 text-sm font-medium transition",
-                      active
-                        ? "bg-neutral-950 text-white"
-                        : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200",
-                    ].join(" ")}
-                    key={option.value}
-                    onClick={() => {
-                      setFilter(option.value);
-                      setExpandedOrderId(null);
-                    }}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <label className="relative block w-full xl:max-w-sm">
-            <span className="sr-only">Buscar pedidos</span>
-
-            <input
-              className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setExpandedOrderId(null);
-              }}
-              placeholder="Buscar orden, cliente, teléfono o asesor"
-              type="search"
-              value={search}
-            />
-          </label>
         </div>
 
-        <p className="mt-3 text-xs text-neutral-500">
+        <label className="relative block w-full lg:max-w-sm">
+          <span className="sr-only">Buscar pedidos</span>
+
+          <input
+            className="ui-search-input"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setExpandedOrderId(null);
+            }}
+            placeholder="Buscar orden, cliente, teléfono o asesor"
+            type="search"
+            value={search}
+          />
+        </label>
+        <p className="text-xs text-neutral-500 md:basis-full">
           {filteredItems.length} órdenes encontradas
+          {data.items.length > 0 && filteredItems.length === 0
+            ? " con el filtro actual"
+            : ""}
         </p>
-      </section>
+      </Surface>
 
       {filteredItems.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-neutral-300 bg-white px-6 py-14 text-center">
-          <h2 className="font-medium text-neutral-900">
-            No se encontraron órdenes
-          </h2>
-
-          <p className="mt-2 text-sm text-neutral-500">
-            Cambia el filtro o utiliza otra búsqueda.
-          </p>
-        </section>
+        <EmptyState
+          description={data.items.length > 0 ? "Hay pedidos fuera del filtro actual. Selecciona Todos o cambia la búsqueda." : "Los pedidos aparecerán aquí cuando se reciban desde DITO."}
+          title={data.items.length > 0 ? "No hay pedidos en esta vista" : "Aún no hay pedidos"}
+        />
       ) : (
         <>
           <section className="space-y-3 lg:hidden">

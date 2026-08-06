@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ventas DITO</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="popup.js" defer></script>
+  </head>
+  <body>
+    <h2>Ventas DITO</h2>
+
+    <label for="asesor">Asesor:</label>
+    <input id="asesor" maxlength="150" placeholder="Tu nombre" type="text" />
+
+    <label for="correo">Correo corporativo:</label>
+    <input
+      id="correo"
+      maxlength="254"
+      placeholder="nombre@distribuidoronline.com"
+      type="email"
+    />
+
+    <button id="guardarAsesor">Guardar identidad</button>
+    <p id="identidadEstado" role="status"></p>
+
+    <textarea id="resultado" readonly></textarea>
+    <button id="extraer">Extraer datos</button>
+    <button id="copiar">Copiar y enviar</button>
+  </body>
+</html>

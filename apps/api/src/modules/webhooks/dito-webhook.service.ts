@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 
 import type {
-  DitoLegacyOrderEnvelopeV1,
+  DitoIncomingOrderEnvelope,
   DitoOrderIngestionResponse,
 } from '@repo/contracts';
 
@@ -69,12 +69,45 @@ export class DitoWebhookService {
 
     const agentNameNormalized = normalizeAgentAlias(envelope.agent.name_raw);
 
-    const agentUserId = agentNameNormalized
-      ? await this.repository.resolveAgentUserIdByAlias(
-          organization.id,
-          agentNameNormalized,
-        )
+    const isIdentityEnvelope = envelope.schema_version === '2.0';
+
+    const submitterInstallationId = isIdentityEnvelope
+      ? envelope.submitted_by.installation_id
       : null;
+    const submitterEmailRaw = isIdentityEnvelope
+      ? envelope.submitted_by.email
+      : null;
+    const submitterEmailNormalized = submitterEmailRaw
+      ? submitterEmailRaw.trim().toLowerCase()
+      : null;
+
+    const installationConflict =
+      submitterInstallationId && submitterEmailNormalized
+        ? await this.repository.hasInstallationEmailConflict(
+            organization.id,
+            submitterInstallationId,
+            submitterEmailNormalized,
+          )
+        : false;
+
+    const emailAssignment =
+      isIdentityEnvelope && submitterEmailNormalized && !installationConflict
+        ? await this.repository.resolveAgentAssignmentByEmail(
+            organization.id,
+            submitterEmailNormalized,
+          )
+        : null;
+
+    const legacyAgentUserId =
+      !isIdentityEnvelope && agentNameNormalized
+        ? await this.repository.resolveAgentUserIdByAlias(
+            organization.id,
+            agentNameNormalized,
+          )
+        : null;
+
+    const agentUserId = emailAssignment?.userId ?? legacyAgentUserId;
+    const assignedTeamId = emailAssignment?.teamId ?? null;
 
     const parseStatus = this.determineParseStatus(envelope);
 
@@ -87,6 +120,13 @@ export class DitoWebhookService {
         agentNameNormalized,
 
         agentUserId,
+        assignedTeamId,
+
+        submitterInstallationId,
+        submitterEmailRaw,
+        submitterEmailNormalized,
+
+        matchStatus: installationConflict ? 'NEEDS_REVIEW' : 'UNMATCHED',
         parseStatus,
         registeredAt,
         approvedAt,
@@ -119,7 +159,7 @@ export class DitoWebhookService {
   private async resolveDuplicate(
     organizationId: string,
 
-    envelope: DitoLegacyOrderEnvelopeV1,
+    envelope: DitoIncomingOrderEnvelope,
 
     sourceFingerprint: string,
   ): Promise<DitoOrderIngestionResponse> {
@@ -152,7 +192,7 @@ export class DitoWebhookService {
   }
 
   private determineParseStatus(
-    envelope: DitoLegacyOrderEnvelopeV1,
+    envelope: DitoIncomingOrderEnvelope,
   ): 'PARSED' | 'PARTIAL' {
     const isPartial =
       envelope.product_type === 'UNKNOWN' ||
@@ -165,7 +205,7 @@ export class DitoWebhookService {
     return isPartial ? 'PARTIAL' : 'PARSED';
   }
 
-  private createSourceFingerprint(envelope: DitoLegacyOrderEnvelopeV1): string {
+  private createSourceFingerprint(envelope: DitoIncomingOrderEnvelope): string {
     const normalizedSummary = envelope.raw_summary
       .replace(/\r\n/g, '\n')
       .replace(/[ \t]+/g, ' ')
@@ -214,11 +254,27 @@ export class DitoWebhookService {
         province: envelope.delivery.province,
 
         district: envelope.delivery.district,
+
+        contact_phone: envelope.delivery.contact_phone,
+
+        time_range: envelope.delivery.time_range,
+
+        address: envelope.delivery.address,
+
+        reference: envelope.delivery.reference,
+
+        latitude: envelope.delivery.latitude,
+
+        longitude: envelope.delivery.longitude,
       },
 
       agent: {
         name_raw: envelope.agent.name_raw,
       },
+
+      ...(envelope.schema_version === '2.0'
+        ? { submitted_by: envelope.submitted_by }
+        : {}),
 
       raw_summary: normalizedSummary,
     };

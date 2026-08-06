@@ -2,6 +2,10 @@
 
 import { useActionState, useEffect, useRef } from "react";
 
+import { Button } from "@repo/ui/button";
+import { InlineFeedback } from "@repo/ui/feedback";
+import { Field, SelectInput, TextInput } from "@repo/ui/field";
+
 import { createUserAction } from "../server/create-user-action";
 
 import type { CreateUserActionState } from "../server/user-action.types";
@@ -26,13 +30,10 @@ export function CreateUserForm() {
   }, [state]);
 
   return (
-    <form action={formAction} className="space-y-4" ref={formRef}>
-      <label className="block space-y-1.5 text-sm">
-        <span className="font-medium text-neutral-800">Nombre completo</span>
-
-        <input
+    <form action={formAction} className="ui-form-stack" ref={formRef}>
+      <Field error={state.fieldErrors?.name} label="Nombre completo">
+        <TextInput
           autoComplete="name"
-          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
           disabled={pending}
           maxLength={150}
           name="name"
@@ -40,18 +41,11 @@ export function CreateUserForm() {
           required
           type="text"
         />
+      </Field>
 
-        {state.fieldErrors?.name ? (
-          <span className="text-xs text-red-600">{state.fieldErrors.name}</span>
-        ) : null}
-      </label>
-
-      <label className="block space-y-1.5 text-sm">
-        <span className="font-medium text-neutral-800">Correo</span>
-
-        <input
+      <Field error={state.fieldErrors?.email} label="Correo">
+        <TextInput
           autoComplete="email"
-          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
           disabled={pending}
           maxLength={254}
           name="email"
@@ -59,19 +53,10 @@ export function CreateUserForm() {
           required
           type="email"
         />
+      </Field>
 
-        {state.fieldErrors?.email ? (
-          <span className="text-xs text-red-600">
-            {state.fieldErrors.email}
-          </span>
-        ) : null}
-      </label>
-
-      <label className="block space-y-1.5 text-sm">
-        <span className="font-medium text-neutral-800">Rol</span>
-
-        <select
-          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
+      <Field error={state.fieldErrors?.role} label="Rol">
+        <SelectInput
           defaultValue=""
           disabled={pending}
           name="role"
@@ -85,19 +70,12 @@ export function CreateUserForm() {
           <option value="BACKOFFICE">Back office</option>
           <option value="SUPERVISOR">Supervisor</option>
           <option value="ADMIN">Administrador</option>
-        </select>
+        </SelectInput>
+      </Field>
 
-        {state.fieldErrors?.role ? (
-          <span className="text-xs text-red-600">{state.fieldErrors.role}</span>
-        ) : null}
-      </label>
-
-      <label className="block space-y-1.5 text-sm">
-        <span className="font-medium text-neutral-800">Contraseña inicial</span>
-
-        <input
+      <Field error={state.fieldErrors?.password} hint="Compártela por un canal seguro. No podrá consultarse posteriormente." label="Contraseña inicial">
+        <TextInput
           autoComplete="new-password"
-          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900 outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
           disabled={pending}
           maxLength={128}
           minLength={12}
@@ -106,40 +84,10 @@ export function CreateUserForm() {
           required
           type="password"
         />
+      </Field>
 
-        <span className="block text-xs leading-5 text-neutral-500">
-          Compártela por un canal seguro. No podrá consultarse posteriormente.
-        </span>
-
-        {state.fieldErrors?.password ? (
-          <span className="text-xs text-red-600">
-            {state.fieldErrors.password}
-          </span>
-        ) : null}
-      </label>
-
-      <div className="space-y-3 pt-1">
-        <p
-          aria-live="polite"
-          className={
-            state.type === "error"
-              ? "text-sm text-red-600"
-              : state.type === "success"
-                ? "text-sm text-emerald-700"
-                : "text-sm text-neutral-500"
-          }
-        >
-          {state.message}
-        </p>
-
-        <button
-          className="w-full rounded-lg bg-neutral-950 px-4 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={pending}
-          type="submit"
-        >
-          {pending ? "Creando usuario..." : "Crear usuario"}
-        </button>
-      </div>
+      <InlineFeedback message={state.message} tone={state.type === "error" ? "danger" : "success"} />
+      <Button disabled={pending} fullWidth type="submit">{pending ? "Creando usuario..." : "Crear usuario"}</Button>
     </form>
   );
 }

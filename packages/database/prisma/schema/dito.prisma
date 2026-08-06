@@ -96,8 +96,13 @@ model DitoOrder {
   holderDocumentType   DocumentType @default(UNKNOWN) @map("holder_document_type")
   holderDocumentNumber String       @map("holder_document_number") @db.VarChar(30)
 
-  serviceNumber        String @map("service_number") @db.VarChar(30)
-  deliveryContactPhone String @map("delivery_contact_phone") @db.VarChar(30)
+  serviceNumber        String   @map("service_number") @db.VarChar(30)
+  deliveryContactPhone String   @map("delivery_contact_phone") @db.VarChar(30)
+  deliveryTimeRangeRaw String?  @map("delivery_time_range_raw") @db.VarChar(100)
+  deliveryAddress      String?  @map("delivery_address") @db.VarChar(500)
+  deliveryReference    String?  @map("delivery_reference") @db.VarChar(500)
+  deliveryLatitude     Decimal? @map("delivery_latitude") @db.Decimal(11, 8)
+  deliveryLongitude    Decimal? @map("delivery_longitude") @db.Decimal(12, 8)
 
   deliveryMethod    DitoDeliveryMethod @default(UNKNOWN) @map("delivery_method")
   deliveryMethodRaw String?            @map("delivery_method_raw") @db.VarChar(150)
@@ -106,9 +111,13 @@ model DitoOrder {
   province   String @db.VarChar(100)
   district   String @db.VarChar(100)
 
-  agentNameRaw        String  @map("agent_name_raw") @db.VarChar(150)
-  agentNameNormalized String? @map("agent_name_normalized") @db.VarChar(150)
-  agentUserId         String? @map("agent_user_id") @db.Uuid
+  agentNameRaw             String  @map("agent_name_raw") @db.VarChar(150)
+  agentNameNormalized      String? @map("agent_name_normalized") @db.VarChar(150)
+  submitterInstallationId  String? @map("submitter_installation_id") @db.Uuid
+  submitterEmailRaw        String? @map("submitter_email_raw") @db.VarChar(254)
+  submitterEmailNormalized String? @map("submitter_email_normalized") @db.VarChar(254)
+  agentUserId              String? @map("agent_user_id") @db.Uuid
+  assignedTeamId           String? @map("assigned_team_id") @db.Uuid
 
   rawSummary        String @map("raw_summary") @db.Text
   additionalDetails Json   @map("additional_details") @db.JsonB
@@ -162,6 +171,8 @@ model DitoOrder {
 
   agent User? @relation("DitoOrderAgent", fields: [agentUserId], references: [id], onDelete: SetNull)
 
+  assignedTeam CommercialTeam? @relation("DitoOrderAssignedTeam", fields: [assignedTeamId], references: [id], onDelete: SetNull)
+
   approvalUpdatedBy User? @relation("DitoOrderApprovalUpdatedBy", fields: [approvalUpdatedByUserId], references: [id], onDelete: SetNull)
 
   commercialService CommercialService? @relation(fields: [commercialServiceId], references: [id], onDelete: SetNull)
@@ -170,8 +181,10 @@ model DitoOrder {
 
   linkHistory DitoOrderLinkHistory[]
 
-  statusHistory DitoOrderStatusHistory[]
-  escalations   DeliveryEscalation[]
+  statusHistory                DitoOrderStatusHistory[]
+  escalations                  DeliveryEscalation[]
+  ditoOrderAssignmentHistories DitoOrderAssignmentHistory[]
+  ditoOrderAssignmentRequests  DitoOrderAssignmentRequest[]
 
   @@unique([organizationId, eventId], map: "dito_orders_org_event_key")
   @@unique([organizationId, orderCodeNormalized], map: "dito_orders_org_order_code_key")
@@ -179,9 +192,14 @@ model DitoOrder {
   @@index([organizationId, deliveryStatus, deliveryDueAt], map: "dito_orders_org_delivery_due_idx")
   @@index([organizationId, agentUserId, capturedAt], map: "dito_orders_org_agent_captured_idx")
   @@index([organizationId, agentNameNormalized, capturedAt], map: "dito_orders_org_agent_name_idx")
+  @@index([organizationId, submitterInstallationId, capturedAt], map: "dito_orders_org_submitter_installation_idx")
+  @@index([organizationId, submitterEmailNormalized, capturedAt], map: "dito_orders_org_submitter_email_idx")
   @@index([commercialServiceId], map: "dito_orders_commercial_service_idx")
   @@index([organizationId, status, registeredAt], map: "dito_orders_org_status_registered_idx")
   @@index([organizationId, status, sentSubstatus, registeredAt], map: "dito_orders_org_status_substatus_registered_idx")
+  @@index([organizationId, assignedTeamId, status, registeredAt], map: "dito_orders_org_team_status_registered_idx")
+  @@index([organizationId, assignedTeamId, agentUserId, registeredAt], map: "dito_orders_org_team_agent_registered_idx")
+  @@index([organizationId, agentUserId, assignedTeamId, registeredAt], map: "dito_orders_org_agent_team_registered_idx")
   @@map("dito_orders")
 }
 

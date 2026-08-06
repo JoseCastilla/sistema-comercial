@@ -33,9 +33,18 @@ export interface OrderInboxItem {
   holderName: string;
   documentNumber: string;
   serviceNumber: string;
+  salesCode: string | null;
+  billingCycleDay: number | null;
+  paymentDueDay: number | null;
 
   deliveryMethod: string;
   deliveryMethodLabel: string;
+  deliveryContactPhone: string;
+  deliveryTimeRange: string | null;
+  deliveryAddress: string | null;
+  deliveryReference: string | null;
+  deliveryLatitude: string | null;
+  deliveryLongitude: string | null;
 
   department: string;
   province: string;

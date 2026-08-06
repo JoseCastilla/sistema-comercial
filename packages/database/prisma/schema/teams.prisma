@@ -1,0 +1,209 @@
+enum CommercialTeamStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum CommercialTeamMemberRole {
+  SUPERVISOR
+  AGENT
+}
+
+enum CommercialTeamAuditAction {
+  TEAM_CREATED
+  TEAM_DISABLED
+  MEMBER_ASSIGNED
+}
+
+enum DitoOrderAssignmentReason {
+  REGISTERED_FOR_ANOTHER_AGENT
+  INCORRECT_ALIAS
+  AGENT_ABSENCE
+  WORKLOAD_BALANCING
+  TEAM_TRANSFER
+  DATA_CORRECTION
+  OTHER
+}
+
+enum DitoOrderAssignmentSource {
+  ALIAS_AUTO
+  MANUAL
+  BACKFILL
+  ORPHAN_CLAIM
+  REQUEST_APPROVAL
+  SYSTEM
+}
+
+enum DitoOrderAssignmentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum DitoOrderAssignmentRequestSource {
+  AGENT_REQUEST
+  BACKOFFICE_SUGGESTION
+  SUPERVISOR_REVIEW
+  SYSTEM_REVIEW
+}
+
+model CommercialTeam {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  name           String               @db.VarChar(150)
+  normalizedName String               @map("normalized_name") @db.VarChar(150)
+  code           String?              @db.VarChar(50)
+  status         CommercialTeamStatus @default(ACTIVE)
+
+  createdByUserId String @map("created_by_user_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("CommercialTeamCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  members            CommercialTeamMember[]
+  ditoOrders         DitoOrder[]            @relation("DitoOrderAssignedTeam")
+  commercialRequests CommercialRequest[]    @relation("CommercialRequestAssignedTeam")
+
+  previousAssignmentHistory DitoOrderAssignmentHistory[] @relation("DitoAssignmentPreviousTeam")
+  newAssignmentHistory      DitoOrderAssignmentHistory[] @relation("DitoAssignmentNewTeam")
+
+  assignmentRequests DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestSuggestedTeam")
+  auditLogs          CommercialTeamAuditLog[]
+
+  @@index([organizationId, status], map: "commercial_teams_org_status_idx")
+  @@index([organizationId, normalizedName], map: "commercial_teams_org_name_idx")
+  @@map("commercial_teams")
+}
+
+model CommercialTeamAuditLog {
+  id             String                    @id @default(uuid()) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  teamId         String                    @map("team_id") @db.Uuid
+  action         CommercialTeamAuditAction
+  actorUserId    String                    @map("actor_user_id") @db.Uuid
+  targetUserId   String?                   @map("target_user_id") @db.Uuid
+  previousValues Json?                     @map("previous_values") @db.JsonB
+  newValues      Json?                     @map("new_values") @db.JsonB
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  team         CommercialTeam @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  actor        User           @relation("CommercialTeamAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  targetUser   User?          @relation("CommercialTeamAuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt], map: "commercial_team_audit_org_created_idx")
+  @@index([teamId, createdAt], map: "commercial_team_audit_team_created_idx")
+  @@index([actorUserId, createdAt], map: "commercial_team_audit_actor_created_idx")
+  @@map("commercial_team_audit_logs")
+}
+
+model CommercialTeamMember {
+  teamId String @map("team_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  memberRole CommercialTeamMemberRole @map("member_role")
+  isPrimary  Boolean                  @default(false) @map("is_primary")
+  isActive   Boolean                  @default(true) @map("is_active")
+
+  assignedByUserId String @map("assigned_by_user_id") @db.Uuid
+
+  validFrom  DateTime  @default(now()) @map("valid_from") @db.Timestamptz(3)
+  validUntil DateTime? @map("valid_until") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  team       CommercialTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user       User           @relation("CommercialTeamMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy User           @relation("CommercialTeamMemberAssignedBy", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
+  @@id([teamId, userId])
+  @@index([teamId, memberRole, isActive], map: "commercial_team_members_team_role_active_idx")
+  @@index([userId, memberRole, isActive], map: "commercial_team_members_user_role_active_idx")
+  @@index([assignedByUserId, createdAt], map: "commercial_team_members_assigner_created_idx")
+  @@map("commercial_team_members")
+}
+
+model DitoOrderAssignmentHistory {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  ditoOrderId    String @map("dito_order_id") @db.Uuid
+
+  previousAgentUserId String? @map("previous_agent_user_id") @db.Uuid
+  newAgentUserId      String? @map("new_agent_user_id") @db.Uuid
+
+  previousTeamId String? @map("previous_team_id") @db.Uuid
+  newTeamId      String? @map("new_team_id") @db.Uuid
+
+  originalAgentNameRaw        String  @map("original_agent_name_raw") @db.VarChar(150)
+  originalAgentNameNormalized String? @map("original_agent_name_normalized") @db.VarChar(150)
+
+  reason      DitoOrderAssignmentReason
+  observation String?                   @db.Text
+  source      DitoOrderAssignmentSource
+
+  performedByUserId String?  @map("performed_by_user_id") @db.Uuid
+  performedAt       DateTime @default(now()) @map("performed_at") @db.Timestamptz(3)
+
+  orderUpdatedAtBefore DateTime @map("order_updated_at_before") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  ditoOrder    DitoOrder    @relation(fields: [ditoOrderId], references: [id], onDelete: Cascade)
+
+  previousAgent User? @relation("DitoAssignmentPreviousAgent", fields: [previousAgentUserId], references: [id], onDelete: SetNull)
+  newAgent      User? @relation("DitoAssignmentNewAgent", fields: [newAgentUserId], references: [id], onDelete: SetNull)
+
+  previousTeam CommercialTeam? @relation("DitoAssignmentPreviousTeam", fields: [previousTeamId], references: [id], onDelete: SetNull)
+  newTeam      CommercialTeam? @relation("DitoAssignmentNewTeam", fields: [newTeamId], references: [id], onDelete: SetNull)
+
+  performedBy User? @relation("DitoAssignmentPerformedBy", fields: [performedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([ditoOrderId, performedAt], map: "dito_assignment_history_order_performed_idx")
+  @@index([organizationId, performedAt], map: "dito_assignment_history_org_performed_idx")
+  @@index([performedByUserId, performedAt], map: "dito_assignment_history_actor_performed_idx")
+  @@index([newTeamId, performedAt], map: "dito_assignment_history_new_team_performed_idx")
+  @@map("dito_order_assignment_history")
+}
+
+model DitoOrderAssignmentRequest {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  ditoOrderId    String @map("dito_order_id") @db.Uuid
+
+  status DitoOrderAssignmentRequestStatus @default(PENDING)
+  source DitoOrderAssignmentRequestSource
+
+  requestedByUserId String? @map("requested_by_user_id") @db.Uuid
+
+  suggestedAgentUserId String? @map("suggested_agent_user_id") @db.Uuid
+  suggestedTeamId      String? @map("suggested_team_id") @db.Uuid
+
+  comment String @db.Text
+
+  reviewedByUserId String?   @map("reviewed_by_user_id") @db.Uuid
+  reviewComment    String?   @map("review_comment") @db.Text
+  reviewedAt       DateTime? @map("reviewed_at") @db.Timestamptz(3)
+
+  orderUpdatedAtSnapshot DateTime? @map("order_updated_at_snapshot") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  ditoOrder    DitoOrder    @relation(fields: [ditoOrderId], references: [id], onDelete: Cascade)
+
+  requestedBy    User? @relation("DitoAssignmentRequestCreatedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  suggestedAgent User? @relation("DitoAssignmentRequestSuggestedAgent", fields: [suggestedAgentUserId], references: [id], onDelete: SetNull)
+  reviewedBy     User? @relation("DitoAssignmentRequestReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  suggestedTeam CommercialTeam? @relation("DitoAssignmentRequestSuggestedTeam", fields: [suggestedTeamId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, createdAt], map: "dito_assignment_requests_org_status_created_idx")
+  @@index([ditoOrderId, status], map: "dito_assignment_requests_order_status_idx")
+  @@index([suggestedTeamId, status], map: "dito_assignment_requests_team_status_idx")
+  @@index([requestedByUserId, createdAt], map: "dito_assignment_requests_requester_created_idx")
+  @@map("dito_order_assignment_requests")
+}

@@ -448,6 +448,12 @@ export interface DitoLegacyOrderEnvelopeV1 {
     department: string;
     province: string;
     district: string;
+    contact_phone?: string | null;
+    time_range?: string | null;
+    address?: string | null;
+    reference?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
   };
 
   agent: {
@@ -471,6 +477,28 @@ export interface DitoLegacyOrderEnvelopeV1 {
    */
   additional_details: Record<string, unknown>;
 }
+
+/**
+ * Envelope emitido por la extensión DITO con identidad del remitente.
+ *
+ * El correo corporativo identifica al asesor dentro de la organización.
+ * installation_id permite detectar una instalación reutilizada con otra
+ * identidad. agent.name_raw continúa siendo evidencia literal de DITO.
+ */
+export interface DitoExtensionOrderEnvelopeV2
+  extends Omit<DitoLegacyOrderEnvelopeV1, "schema_version" | "source"> {
+  schema_version: "2.0";
+  source: "DITO_EXTENSION";
+
+  submitted_by: {
+    installation_id: string;
+    email: string;
+  };
+}
+
+export type DitoIncomingOrderEnvelope =
+  | DitoLegacyOrderEnvelopeV1
+  | DitoExtensionOrderEnvelopeV2;
 
 /**
  * Respuesta de la API al recibir una orden DITO.

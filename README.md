@@ -1,159 +1,102 @@
-# Turborepo starter
+# Sistema Comercial Omnicanal
 
-This Turborepo starter is maintained by the Turborepo core team.
+Plataforma comercial multiempresa para centralizar la ingesta, supervisión y
+auditoría de leads de GHL y órdenes de DITO. El MVP reemplaza progresivamente
+Google Sheets/Excel como almacenamiento operativo, sin escribir todavía de
+regreso a GHL.
 
-## Using this example
+## Estado actual
 
-Run the following command:
+- Ingesta idempotente de contactos y oportunidades desde GHL.
+- Ingesta idempotente de órdenes DITO y detección de reenvíos modificados.
+- Autenticación web, organizaciones, roles y autorización server-side.
+- Bandeja `/orders` con seguimiento manual e historial de estados.
+- Administración de usuarios y vínculos de alias DITO.
+- SPEC-001 aprobada para equipos comerciales, visibilidad y reasignación.
+- Esquema y migración de persistencia de SPEC-001 preparados; aplicación local
+  y servicios de negocio todavía pendientes.
 
-```sh
-npx create-turbo@latest
+El contexto funcional consolidado se mantiene fuera del repositorio en
+`PLATAFORMA_COMERCIAL_CONTEXTO_MAESTRO_V20.md`. Las decisiones ejecutables y su
+trazabilidad viven en [`docs/specs`](docs/specs).
+
+## Arquitectura
+
+Monorepo TypeScript administrado con pnpm y Turborepo:
+
+```text
+apps/
+├── api       API NestJS y webhooks
+├── web       Aplicación Next.js
+└── worker    Proceso NestJS standalone
+
+packages/
+├── contracts
+├── database  Prisma y PostgreSQL
+├── validation
+└── ui
 ```
 
-## What's inside?
+La aplicación se mantiene como monolito modular. PostgreSQL guarda instantes en
+UTC y la operación comercial usa `America/Lima`.
 
-This Turborepo includes the following packages/apps:
+## Requisitos
 
-### Apps and Packages
+- Node.js `>=22.13.1 <23`
+- pnpm `11.18.0`
+- PostgreSQL 17
+- Docker, para el entorno local recomendado
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+Las versiones son deliberadamente estrictas para que la evidencia de pruebas y
+migraciones sea reproducible.
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+## Comandos principales
 
 ```sh
-cd my-turborepo
-turbo build
+pnpm install
+pnpm build
+pnpm lint
+pnpm check-types
+pnpm dev
 ```
 
-Without global `turbo`, use your package manager:
+La aplicación web de desarrollo se abre en `http://localhost:3100`. Las rutas
+principales para revisar la experiencia actual son `/orders`, `/admin/users` y
+`/admin/teams`.
+
+Validación de base de datos:
 
 ```sh
-cd my-turborepo
-npx turbo build
-npm dlx turbo build
-npm exec turbo build
+pnpm --filter @repo/database db:generate
+pnpm --filter @repo/database db:migrate:status
+pnpm --filter @repo/database db:migrate:dev
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+Pruebas del dominio compartido:
 
 ```sh
-turbo build --filter=docs
+pnpm --filter @repo/validation test
 ```
 
-Without global `turbo`:
+## Desarrollo guiado por especificaciones
 
-```sh
-npx turbo build --filter=docs
-npm exec turbo build --filter=docs
-npm exec turbo build --filter=docs
-```
+Cada incremento debe conservar cuatro artefactos en `docs/specs/<incremento>`:
 
-### Develop
+1. `spec.md`: problema, alcance, reglas, invariantes y criterios de aceptación.
+2. `plan.md`: arquitectura, seguridad, migración, pruebas y despliegue.
+3. `tasks.md`: ejecución ordenada y estado real de cada tarea.
+4. `verification.md`: evidencia automatizada y operativa, riesgos y decisión.
 
-To develop all apps and packages, run the following command:
+Una tarea se marca completada solo cuando existe el artefacto y la evidencia
+proporcional. Una especificación pasa a `VERIFIED` únicamente después de validar
+todos sus criterios obligatorios o documentar excepciones aceptadas.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+## Límites vigentes
 
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-npm exec turbo dev
-npm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-npm exec turbo dev --filter=web
-npm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-npm exec turbo login
-npm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-npm exec turbo link
-npm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+- No hay escritura desde el Sistema Comercial hacia GHL.
+- Una orden DITO cancelada o rechazada no convierte automáticamente el lead en
+  perdido.
+- El alias original recibido desde DITO es evidencia inmutable.
+- La asociación entre órdenes DITO y casos comerciales requiere confirmación
+  humana.
+- Toda consulta y mutación debe aislar primero por organización.

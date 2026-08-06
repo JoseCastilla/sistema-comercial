@@ -152,6 +152,7 @@ model CommercialRequest {
   requesterContactId String? @map("requester_contact_id") @db.Uuid
   referrerContactId  String? @map("referrer_contact_id") @db.Uuid
   agentUserId        String? @map("agent_user_id") @db.Uuid
+  assignedTeamId     String? @map("assigned_team_id") @db.Uuid
 
   leadOrigin LeadOrigin              @default(UNKNOWN) @map("lead_origin")
   status     CommercialRequestStatus @default(OPEN)
@@ -179,6 +180,8 @@ model CommercialRequest {
 
   agent User? @relation("CommercialRequestAgent", fields: [agentUserId], references: [id], onDelete: SetNull)
 
+  assignedTeam CommercialTeam? @relation("CommercialRequestAssignedTeam", fields: [assignedTeamId], references: [id], onDelete: SetNull)
+
   services CommercialService[]
 
   previousOrderLinks DitoOrderLinkHistory[] @relation("DitoOrderLinkPreviousRequest")
@@ -190,6 +193,8 @@ model CommercialRequest {
   @@index([organizationId, agentUserId, createdAt], map: "commercial_requests_org_agent_created_idx")
   @@index([requesterContactId], map: "commercial_requests_requester_idx")
   @@index([referrerContactId], map: "commercial_requests_referrer_idx")
+  @@index([organizationId, assignedTeamId, createdAt], map: "commercial_requests_org_team_created_idx")
+  @@index([organizationId, assignedTeamId, agentUserId, createdAt], map: "commercial_requests_org_team_agent_created_idx")
   @@map("commercial_requests")
 }
 

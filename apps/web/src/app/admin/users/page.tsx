@@ -1,5 +1,10 @@
 import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 
+import { EmptyState } from "@repo/ui/empty-state";
+import { PageHeader } from "@repo/ui/page-header";
+import { SectionPanel } from "@repo/ui/section-panel";
+import { StatusBadge } from "@repo/ui/status-badge";
+
 import { AssignAgentAliasForm } from "@/features/users/components/assign-agent-alias-form";
 import { CreateUserForm } from "@/features/users/components/create-user-form";
 import { ResetUserPasswordForm } from "@/features/users/components/reset-user-password-form";
@@ -21,22 +26,6 @@ const statusLabels: Record<string, string> = {
   INVITED: "Invitado",
   DISABLED: "Deshabilitado",
 };
-
-function getStatusClasses(status: string): string {
-  switch (status) {
-    case "ACTIVE":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-
-    case "INVITED":
-      return "border-amber-200 bg-amber-50 text-amber-800";
-
-    case "DISABLED":
-      return "border-neutral-300 bg-neutral-100 text-neutral-600";
-
-    default:
-      return "border-neutral-200 bg-neutral-50 text-neutral-600";
-  }
-}
 
 export default async function AdminUsersPage() {
   const { session, membership } = await requireAdminAccess();
@@ -101,80 +90,35 @@ export default async function AdminUsersPage() {
 
   return (
     <CommercialAppShell
-      activeSection="team"
+      activeSection="people"
       organizationName={membership.organization.name}
       role={membership.role}
       signOut={<SignOutButton />}
       userName={session.user.name}
     >
-      <div className="space-y-6">
-        <section>
-          <p className="text-sm font-medium text-neutral-500">Administración</p>
-
-          <div className="mt-1 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
-                Equipo y usuarios
-              </h1>
-
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-                Crea cuentas, restablece contraseñas y vincula asesores con los
-                nombres recibidos desde DITO.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                Usuarios activos
-              </p>
-
-              <p className="mt-1 text-2xl font-semibold text-neutral-950">
-                {activeUsers}
-                <span className="text-sm font-normal text-neutral-500">
-                  {" "}
-                  de {members.length}
-                </span>
-              </p>
-            </div>
-          </div>
-        </section>
+      <div className="ui-page-stack">
+        <PageHeader
+          description="Crea cuentas, administra permisos y vincula asesores con los nombres recibidos desde DITO."
+          eyebrow="Administración"
+          meta={<>{activeUsers} de {members.length} personas activas</>}
+          title="Personas"
+        />
 
         <section className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-          <article className="self-start rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm xl:sticky xl:top-8">
-            <h2 className="font-semibold text-neutral-950">Crear usuario</h2>
-
-            <p className="mt-1 text-sm leading-6 text-neutral-500">
-              La cuenta quedará activa inmediatamente y vinculada a esta
-              organización.
-            </p>
-
-            <div className="mt-5">
+          <div className="self-start xl:sticky xl:top-8">
+            <SectionPanel description="La cuenta quedará activa inmediatamente y vinculada a esta organización." title="Nueva persona">
               <CreateUserForm />
-            </div>
-          </article>
+            </SectionPanel>
+          </div>
 
-          <article className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-            <div className="border-b border-neutral-200 px-5 py-4">
-              <h2 className="font-semibold text-neutral-950">
-                Miembros de la organización
-              </h2>
-
-              <p className="mt-1 text-sm text-neutral-500">
-                Revisa las cuentas, roles, estados y aliases DITO.
-              </p>
-            </div>
-
+          <SectionPanel description="Revisa las cuentas, roles, estados y vínculos DITO." title="Personas de la organización">
             {members.length === 0 ? (
-              <div className="px-6 py-14 text-center">
-                <p className="font-medium text-neutral-900">
-                  No existen usuarios registrados
-                </p>
-              </div>
+              <EmptyState description="Crea la primera cuenta para comenzar a organizar la operación." title="No existen personas registradas" />
             ) : (
               <div className="divide-y divide-neutral-100">
                 {members.map((member) => (
                   <article
-                    className="grid gap-4 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_150px_120px_190px] sm:items-center"
+                    className="grid gap-4 px-1 py-4 sm:grid-cols-[minmax(0,1fr)_170px] sm:items-start"
                     key={member.user.id}
                   >
                     <div className="min-w-0">
@@ -186,34 +130,21 @@ export default async function AdminUsersPage() {
                         {member.user.email}
                       </p>
 
-                      <p className="mt-1 text-xs text-neutral-400">
+                      <p className="mt-1 text-xs leading-5 text-neutral-400">
                         Miembro desde {dateFormatter.format(member.createdAt)}
                         {" · "}
                         {member.user.emailVerified
                           ? "Correo verificado"
                           : "Correo pendiente"}
                       </p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-                        Rol
-                      </p>
-
-                      <p className="mt-1 text-sm font-medium text-neutral-800">
-                        {roleLabels[member.role] ?? member.role}
-                      </p>
-                    </div>
-
-                    <div className="sm:text-right">
-                      <span
-                        className={[
-                          "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-                          getStatusClasses(member.user.status),
-                        ].join(" ")}
-                      >
-                        {statusLabels[member.user.status] ?? member.user.status}
-                      </span>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-medium text-neutral-600">
+                          {roleLabels[member.role] ?? member.role}
+                        </span>
+                        <StatusBadge tone={member.user.status === "ACTIVE" ? "success" : member.user.status === "INVITED" ? "warning" : "neutral"}>
+                          {statusLabels[member.user.status] ?? member.user.status}
+                        </StatusBadge>
+                      </div>
                     </div>
 
                     <ResetUserPasswordForm
@@ -223,7 +154,7 @@ export default async function AdminUsersPage() {
                     />
 
                     {member.role === "AGENT" ? (
-                      <div className="sm:col-span-4">
+                      <div className="sm:col-span-2">
                         <AssignAgentAliasForm
                           aliases={member.user.agentAliases}
                           userId={member.user.id}
@@ -235,7 +166,7 @@ export default async function AdminUsersPage() {
                 ))}
               </div>
             )}
-          </article>
+          </SectionPanel>
         </section>
       </div>
     </CommercialAppShell>

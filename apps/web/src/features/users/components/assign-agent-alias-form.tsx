@@ -44,7 +44,7 @@ export function AssignAgentAliasForm({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-            Alias DITO
+            Vínculos de alias DITO
           </p>
 
           <p className="mt-1 text-sm text-neutral-700">
@@ -71,7 +71,7 @@ export function AssignAgentAliasForm({
         </div>
       ) : (
         <p className="mt-3 text-xs text-neutral-500">
-          Este asesor todavía no tiene aliases configurados.
+          Este asesor todavía no tiene vínculos de alias configurados.
         </p>
       )}
 
@@ -127,7 +127,7 @@ export function AssignAgentAliasForm({
         ].join(" ")}
       >
         {state.message ||
-          "Al agregarlo, las órdenes históricas sin asignar que coincidan con el alias serán vinculadas."}
+          "El vínculo se usará para órdenes nuevas. Las órdenes históricas y su alias original no se modifican."}
       </p>
     </div>
   );
