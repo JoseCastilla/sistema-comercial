@@ -9,6 +9,7 @@ import { Surface } from "@repo/ui/surface";
 
 import { OrderStatusForm } from "./order-status-form";
 import { OrderCorrectionForm } from "./order-correction-form";
+import { OrderRealtimeStatus } from "./order-realtime-status";
 
 import type {
   OrderInboxData,
@@ -643,7 +644,12 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       <PageHeader
         description="Revisa incidencias, recupera pedidos y actualiza el avance informado por Integratel."
         eyebrow="Operación comercial"
-        meta={<>Actualizado: {data.generatedAt}</>}
+        meta={
+          <span className="flex flex-wrap items-center justify-end gap-2">
+            <OrderRealtimeStatus />
+            <span>Actualizado: {data.generatedAt}</span>
+          </span>
+        }
         title="Seguimiento de órdenes"
       />
 

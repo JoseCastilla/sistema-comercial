@@ -1,13 +1,9 @@
-export {
-  createPrismaClient,
-} from './client.js';
+export { createPrismaClient } from "./client.js";
 
-export type {
-  DatabaseClient,
-} from './client.js';
+export { createPostgresNotificationClient } from "./notifications.js";
 
-export {
-  Prisma,
-} from './generated/prisma/client.js';
+export type { DatabaseClient } from "./client.js";
 
-export * from './generated/prisma/enums.js';
+export { Prisma } from "./generated/prisma/client.js";
+
+export * from "./generated/prisma/enums.js";
