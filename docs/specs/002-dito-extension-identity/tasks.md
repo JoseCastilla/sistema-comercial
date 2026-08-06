@@ -19,6 +19,9 @@
 - [x] **T-022** Persistir agente y equipo de forma conjunta.
 - [x] **T-023** Conservar resolución heredada únicamente para 1.0.
 - [x] **T-024** Añadir pruebas de servicio y repositorio.
+- [x] **T-025** Marcar para revisión la identidad 2.0 sin agente/equipo resoluble.
+- [x] **T-026** Permitir recuperación ADMIN por correo exacto con historial.
+- [ ] **T-027** Probar concurrencia, autorización y ausencia de fallback por alias.
 
 ## Fase 4 — Integraciones
 

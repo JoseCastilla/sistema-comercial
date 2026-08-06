@@ -453,6 +453,27 @@ describe('DitoWebhookService', () => {
     });
   });
 
+  it('marks an unresolved corporate identity for review', async () => {
+    const envelope = createIdentityEnvelope();
+
+    validationService.parse.mockResolvedValue(envelope);
+    repository.resolveAgentAssignmentByEmail.mockResolvedValue(null);
+    repository.create.mockResolvedValue({
+      id: 'dito-order-unresolved-email',
+      sourceFingerprint: 'fingerprint-unresolved-email',
+    });
+
+    await service.ingest(envelope, 'test-dito-webhook-secret');
+
+    expect(repository.resolveAgentUserIdByAlias).not.toHaveBeenCalled();
+    expect(repository.create.mock.calls[0]?.[0]).toMatchObject({
+      agentUserId: null,
+      assignedTeamId: null,
+      submitterEmailNormalized: 'carmen.ramirez@distribuidoronline.com',
+      matchStatus: 'NEEDS_REVIEW',
+    });
+  });
+
   it('does not fall back to alias when an installation changes email', async () => {
     const envelope = createIdentityEnvelope();
 

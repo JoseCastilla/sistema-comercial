@@ -108,6 +108,7 @@ export class DitoWebhookService {
 
     const agentUserId = emailAssignment?.userId ?? legacyAgentUserId;
     const assignedTeamId = emailAssignment?.teamId ?? null;
+    const identityNeedsReview = isIdentityEnvelope && !emailAssignment;
 
     const parseStatus = this.determineParseStatus(envelope);
 
@@ -126,7 +127,7 @@ export class DitoWebhookService {
       submitterEmailNormalized,
 
       matchStatus:
-        installationConflict || parseStatus === 'PARTIAL'
+        identityNeedsReview || parseStatus === 'PARTIAL'
           ? 'NEEDS_REVIEW'
           : 'UNMATCHED',
       parseStatus,

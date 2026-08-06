@@ -36,6 +36,11 @@ La consulta por correo debe comprobar en una sola operación lógica:
 
 El resultado devuelve `{ userId, teamId }` o `null`.
 
+Una respuesta `null` para un envelope 2.0 deja la orden en revisión. Después de
+configurar el equipo primario, `ADMIN` puede reintentar la misma consulta exacta
+desde la orden. La recuperación debe comprobar la versión de la orden y crear
+historial de asignación dentro de la misma transacción.
+
 ## 4. Despliegue
 
 1. Desplegar migración y API compatible.

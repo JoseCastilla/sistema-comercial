@@ -116,7 +116,10 @@ describe('DitoOrdersRepository', () => {
         organizationId: 'organization-1',
         role: 'AGENT',
         user: {
-          email: 'carmen.ramirez@distribuidoronline.com',
+          email: {
+            equals: 'carmen.ramirez@distribuidoronline.com',
+            mode: 'insensitive',
+          },
           status: 'ACTIVE',
         },
       },

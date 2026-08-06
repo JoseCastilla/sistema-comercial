@@ -56,6 +56,12 @@ El resto de la estructura comercial permanece igual al envelope 1.0.
 - **BR-010:** envelopes 1.0 continúan aceptándose durante la transición.
 - **BR-011:** el flujo 1.0 conserva su resolución heredada por alias hasta retirar la compatibilidad.
 - **BR-012:** recibir un correo desconocido nunca crea usuarios automáticamente.
+- **BR-013:** una identidad 2.0 que no pueda resolver simultáneamente agente y
+  equipo queda sin responsable y marcada para revisión administrativa.
+- **BR-014:** después de configurar el equipo primario, `ADMIN` puede reintentar
+  la resolución usando exclusivamente el correo corporativo recibido.
+- **BR-015:** una recuperación administrativa conserva concurrencia optimista e
+  historial de asignación; nunca modifica el nombre ni la identidad recibida.
 
 ## 5. Invariantes
 
@@ -75,6 +81,10 @@ El resto de la estructura comercial permanece igual al envelope 1.0.
 - **AC-006:** un envelope 1.0 válido continúa siendo aceptado.
 - **AC-007:** un correo externo al dominio corporativo es rechazado por validación.
 - **AC-008:** ningún dato recibido crea o modifica usuarios.
+- **AC-009:** un correo válido cuyo asesor no tiene equipo produce
+  `NEEDS_REVIEW`, no una orden aparentemente normal sin responsable.
+- **AC-010:** después de asignar el equipo, un administrador puede recuperar la
+  orden por correo exacto y la orden aparece en la bandeja del asesor.
 
 ## 7. Fuera de alcance
 

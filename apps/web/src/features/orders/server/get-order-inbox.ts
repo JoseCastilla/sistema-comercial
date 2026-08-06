@@ -76,7 +76,9 @@ const orderSelect = {
   district: true,
   agentNameRaw: true,
   agentNameNormalized: true,
+  submitterEmailNormalized: true,
   agentUserId: true,
+  assignedTeamId: true,
   matchStatus: true,
   parseStatus: true,
   deliveryStatus: true,
@@ -550,6 +552,7 @@ export async function getOrderInbox(
       ),
 
       agentName: order.agentNameNormalized ?? order.agentNameRaw,
+      submitterEmail: order.submitterEmailNormalized,
 
       matchStatus: String(order.matchStatus),
       parseStatus: String(order.parseStatus),
@@ -584,6 +587,11 @@ export async function getOrderInbox(
 
       canUpdate: access.role !== "AGENT" || order.agentUserId === access.userId,
       canCorrect: access.role === "ADMIN",
+      canResolveAssignment:
+        access.role === "ADMIN" &&
+        Boolean(order.submitterEmailNormalized) &&
+        order.agentUserId === null &&
+        order.assignedTeamId === null,
       updatedAt: order.updatedAt.toISOString(),
     };
   });

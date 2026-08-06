@@ -8,6 +8,7 @@ import { PageHeader } from "@repo/ui/page-header";
 import { Surface } from "@repo/ui/surface";
 
 import { OrderStatusForm } from "./order-status-form";
+import { OrderAssignmentResolution } from "./order-assignment-resolution";
 import { OrderCorrectionForm } from "./order-correction-form";
 import { OrderRealtimeStatus } from "./order-realtime-status";
 
@@ -290,6 +291,10 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
 
         <DetailItem label="Estado de asociación" value={order.matchStatus} />
       </dl>
+
+      {order.canResolveAssignment ? (
+        <OrderAssignmentResolution order={order} />
+      ) : null}
 
       {hasDitoDetails ? (
         <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">

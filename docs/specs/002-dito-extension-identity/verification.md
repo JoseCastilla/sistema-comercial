@@ -2,16 +2,16 @@
 
 **Estado:** `IN_PROGRESS`
 
-| Criterio | Evidencia prevista |
-| --- | --- |
-| AC-001 | pruebas con dos usuarios y el mismo alias |
-| AC-002 | prueba de correo desconocido |
-| AC-003 | prueba de agente sin equipo activo |
-| AC-004 | prueba de instalación reutilizada |
-| AC-005 | consulta de orden persistida |
-| AC-006 | suite de regresión 1.0 |
-| AC-007 | validación Zod de dominio corporativo |
-| AC-008 | prueba de ausencia de aprovisionamiento |
+| Criterio | Evidencia prevista                        |
+| -------- | ----------------------------------------- |
+| AC-001   | pruebas con dos usuarios y el mismo alias |
+| AC-002   | prueba de correo desconocido              |
+| AC-003   | prueba de agente sin equipo activo        |
+| AC-004   | prueba de instalación reutilizada         |
+| AC-005   | consulta de orden persistida              |
+| AC-006   | suite de regresión 1.0                    |
+| AC-007   | validación Zod de dominio corporativo     |
+| AC-008   | prueba de ausencia de aprovisionamiento   |
 
 ## Evidencia por incremento
 
@@ -107,3 +107,24 @@
   - caso corporativo ejecutado: envelope 2.0 con correo esperado;
   - caso inválido ejecutado: `api_ready=false`, envelope nulo y advertencias esperadas.
 - **Riesgo residual:** la importación debe volver a vincular o confirmar credenciales de n8n. La sustitución requiere desactivar el workflow anterior antes de activar el nuevo porque ambos usan `ventas-televentas`.
+
+### INC-005 — Recuperación de identidades sin equipo
+
+- **Estado:** `IMPLEMENTED_PENDING_PRODUCTION_VALIDATION`
+- **Fecha:** 2026-08-06
+- **Caso real:** la orden `1943794978A` conservó el correo corporativo de
+  Jimena, pero llegó antes de que la asesora tuviera un equipo principal activo;
+  por ello no obtuvo `agentUserId` ni `assignedTeamId` y no apareció en su
+  bandeja.
+- **Cambios:**
+  - identidades 2.0 sin destino compuesto quedan en `NEEDS_REVIEW`;
+  - `ADMIN` puede reintentar la resolución exacta desde la tarjeta de la orden;
+  - la acción exige correo corporativo, usuario `AGENT` activo y un único equipo
+    principal activo;
+  - la actualización usa concurrencia optimista y crea historial `MANUAL` con
+    motivo `DATA_CORRECTION`;
+  - nunca usa el alias como fallback ni altera la identidad recibida.
+- **Evidencia automatizada:** 75 pruebas de validación y 16 pruebas focalizadas
+  de webhook/repositorio aprobadas; lint y tipos de API y Web aprobados.
+- **Pendiente:** desplegar y recuperar la orden real desde la interfaz; añadir
+  prueba automatizada específica de autorización de la acción ADMIN.

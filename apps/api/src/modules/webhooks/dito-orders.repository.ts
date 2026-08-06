@@ -122,7 +122,10 @@ export class DitoOrdersRepository {
         organizationId,
         role: 'AGENT',
         user: {
-          email: normalizedEmail,
+          email: {
+            equals: normalizedEmail,
+            mode: 'insensitive',
+          },
           status: 'ACTIVE',
         },
       },
@@ -141,9 +144,7 @@ export class DitoOrdersRepository {
                 },
               },
               take: 2,
-              select: {
-                teamId: true,
-              },
+              select: { teamId: true },
             },
           },
         },

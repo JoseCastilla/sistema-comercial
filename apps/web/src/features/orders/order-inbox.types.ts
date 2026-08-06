@@ -58,6 +58,7 @@ export interface OrderInboxItem {
   locationLabel: string;
 
   agentName: string;
+  submitterEmail: string | null;
 
   matchStatus: string;
   deliveryStatus: string;
@@ -83,6 +84,7 @@ export interface OrderInboxItem {
 
   canUpdate: boolean;
   canCorrect: boolean;
+  canResolveAssignment: boolean;
   parseStatus: string;
   updatedAt: string;
 }
