@@ -1,0 +1,22 @@
+# SPEC-007 — Tareas
+
+- [x] **T-001** Inspeccionar estructura y representación visual del XLSX real.
+- [x] **T-002** Medir estados, fechas, duplicados internos y completitud.
+- [x] **T-003** Definir campos útiles y campos descartados.
+- [x] **T-004** Confirmar catálogo: `21 = Claro`, `20 = Entel`, `24 = Bitel`.
+- [x] **T-006** Validar la plantilla reducida de 35 columnas.
+- [ ] **T-005** Incorporar catálogo UBIGEO versionado.
+- [ ] **T-010** Añadir dependencia y parser XLSX del lado servidor.
+- [ ] **T-011** Normalizar placeholders, mojibake, fecha/hora y dirección.
+- [ ] **T-012** Añadir fixtures anónimos y pruebas del parser.
+- [ ] **T-020** Crear modelos y migración de lotes, filas e identidades DITO.
+- [ ] **T-021** Implementar vista previa sin mutación, match por orden e idempotencia.
+- [ ] **T-022** Implementar creación y enriquecimiento transaccional con auditoría.
+- [ ] **T-023** Detectar conflictos sin sobrescribir valores válidos.
+- [ ] **T-030** Crear interfaz ADMIN de importación y resolución de asesores.
+- [ ] **T-031** Mostrar resultados por importadas, omitidas, inválidas y excluidas.
+- [ ] **T-040** Probar autorización, aislamiento, concurrencia y reimportación.
+- [ ] **T-041** Ejecutar tipos, lint, pruebas y builds Docker.
+- [ ] **T-050** Desplegar Web/API y aplicar migración.
+- [ ] **T-051** Previsualizar el archivo del 01/08 en producción.
+- [ ] **T-052** Confirmar la carga solo después de revisar el resumen final.

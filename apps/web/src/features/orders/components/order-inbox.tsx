@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { EmptyState } from "@repo/ui/empty-state";
 import { Metric, MetricGroup } from "@repo/ui/metric";
@@ -447,6 +447,107 @@ function MobileOrderCard({
   );
 }
 
+function CopyOrderCodeButton({ orderCode }: { orderCode: string }) {
+  const [copyState, setCopyState] = useState<"COPIED" | "ERROR" | null>(null);
+
+  useEffect(() => {
+    if (copyState === null) return;
+
+    const timeout = window.setTimeout(() => {
+      setCopyState(null);
+    }, 2_000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [copyState]);
+
+  async function copyOrderCode() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(orderCode);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = orderCode;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        const copied = document.execCommand("copy");
+        textarea.remove();
+
+        if (!copied) throw new Error("Clipboard unavailable");
+      }
+
+      setCopyState("COPIED");
+    } catch {
+      setCopyState("ERROR");
+    }
+  }
+
+  const feedback =
+    copyState === "COPIED"
+      ? "Orden copiada"
+      : copyState === "ERROR"
+        ? "No se pudo copiar"
+        : "";
+
+  return (
+    <button
+      aria-label={`Copiar orden ${orderCode}`}
+      className={[
+        "group flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 font-mono text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2",
+        copyState === "COPIED"
+          ? "bg-emerald-50 text-emerald-700"
+          : copyState === "ERROR"
+            ? "bg-red-50 text-red-700"
+            : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950",
+      ].join(" ")}
+      onClick={copyOrderCode}
+      title={feedback || `Copiar orden ${orderCode}`}
+      type="button"
+    >
+      <span className="truncate">{orderCode}</span>
+
+      <span aria-hidden="true" className="shrink-0">
+        {copyState === "COPIED" ? (
+          <svg className="size-3.5" fill="none" viewBox="0 0 16 16">
+            <path
+              d="m3.5 8 3 3 6-7"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.75"
+            />
+          </svg>
+        ) : (
+          <svg className="size-3.5" fill="none" viewBox="0 0 16 16">
+            <rect
+              height="8.5"
+              rx="1.5"
+              stroke="currentColor"
+              width="8.5"
+              x="5"
+              y="4.5"
+            />
+            <path
+              d="M3.5 10.5h-1a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v1"
+              stroke="currentColor"
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+      </span>
+
+      <span aria-live="polite" className="sr-only">
+        {feedback}
+      </span>
+    </button>
+  );
+}
+
 function DesktopOrderList({
   items,
   selectedOrderId,
@@ -471,7 +572,7 @@ function DesktopOrderList({
           const selected = selectedOrderId === order.id;
 
           return (
-            <button
+            <div
               className={[
                 "grid w-full grid-cols-[140px_minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] items-center gap-3 px-4 py-3 text-left transition",
                 selected ? "bg-neutral-100" : "hover:bg-neutral-50",
@@ -480,39 +581,42 @@ function DesktopOrderList({
                   : "border-l-4 border-l-transparent",
               ].join(" ")}
               key={order.id}
-              onClick={() => {
-                onSelect(order.id);
-              }}
-              type="button"
             >
-              <span className="font-mono text-xs font-semibold text-neutral-700">
-                {order.orderCode}
-              </span>
+              <CopyOrderCodeButton orderCode={order.orderCode} />
 
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-medium text-neutral-950">
-                  {order.holderName}
+              <button
+                aria-pressed={selected}
+                className="col-span-4 grid min-w-0 grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
+                onClick={() => {
+                  onSelect(order.id);
+                }}
+                type="button"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-neutral-950">
+                    {order.holderName}
+                  </span>
+
+                  <span className="mt-0.5 block truncate text-xs text-neutral-500">
+                    {order.serviceNumber}
+                    {" · "}
+                    {order.district || order.province}
+                  </span>
                 </span>
 
-                <span className="mt-0.5 block truncate text-xs text-neutral-500">
-                  {order.serviceNumber}
-                  {" · "}
-                  {order.district || order.province}
+                <span className="truncate text-sm text-neutral-700">
+                  {order.agentName}
                 </span>
-              </span>
 
-              <span className="truncate text-sm text-neutral-700">
-                {order.agentName}
-              </span>
+                <span>
+                  <StatusBadge order={order} />
+                </span>
 
-              <span>
-                <StatusBadge order={order} />
-              </span>
-
-              <span>
-                <SlaBadge order={order} />
-              </span>
-            </button>
+                <span>
+                  <SlaBadge order={order} />
+                </span>
+              </button>
+            </div>
           );
         })}
       </div>
