@@ -1,14 +1,14 @@
 @layer theme {
   :root {
-    --ui-canvas: #f4f5f3;
+    --ui-canvas: #eef1ed;
     --ui-surface: #ffffff;
-    --ui-surface-subtle: #f8f8f6;
-    --ui-surface-strong: #20231f;
-    --ui-text: #1c1f1b;
-    --ui-text-muted: #686d65;
-    --ui-text-soft: #70766d;
-    --ui-border: #dfe2dc;
-    --ui-border-strong: #c7cbc3;
+    --ui-surface-subtle: #f3f5f2;
+    --ui-surface-strong: #18201b;
+    --ui-text: #111510;
+    --ui-text-muted: #4c554c;
+    --ui-text-soft: #5c655c;
+    --ui-border: #cfd4cc;
+    --ui-border-strong: #aeb6ac;
     --ui-accent: #185f4b;
     --ui-accent-soft: #e6f2ed;
     --ui-danger: #b53b35;
@@ -20,7 +20,8 @@
     --ui-radius-sm: 0.5rem;
     --ui-radius-md: 0.75rem;
     --ui-radius-lg: 1rem;
-    --ui-shadow-raised: 0 1px 2px rgb(28 31 27 / 5%), 0 8px 24px rgb(28 31 27 / 4%);
+    --ui-shadow-raised:
+      0 1px 2px rgb(17 21 16 / 8%), 0 10px 28px rgb(17 21 16 / 7%);
     --ui-focus: 0 0 0 3px rgb(24 95 75 / 18%);
     --ui-content-width: 100rem;
     --ui-duration-fast: 140ms;

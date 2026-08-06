@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { EmptyState } from "@repo/ui/empty-state";
 import { Metric, MetricGroup } from "@repo/ui/metric";
@@ -12,12 +12,10 @@ import { OrderCorrectionForm } from "./order-correction-form";
 
 import type {
   OrderInboxData,
+  OrderFilter,
   OrderInboxItem,
   OrderSlaState,
 } from "../order-inbox.types";
-
-type OrderFilter =
-  "ACTIVE" | "INCIDENTS" | "RECOVERY" | "DELIVERED" | "FINAL" | "ALL";
 
 const filterOptions: Array<{
   value: OrderFilter;
@@ -49,41 +47,65 @@ const filterOptions: Array<{
   },
 ];
 
-function normalizeSearch(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
+const periodOptions: Array<{
+  value: OrderInboxData["period"];
+  label: string;
+}> = [
+  { value: "TODAY", label: "Hoy" },
+  { value: "WEEK", label: "Semana" },
+  { value: "MONTH", label: "Mes actual" },
+];
+
+function ordersHref(
+  data: OrderInboxData,
+  overrides: {
+    period?: OrderInboxData["period"];
+    filter?: OrderFilter;
+    search?: string;
+    page?: number;
+  } = {},
+): string {
+  const period = overrides.period ?? data.period;
+  const filter = overrides.filter ?? data.filter;
+  const search = overrides.search ?? data.search;
+  const page = overrides.page ?? 1;
+  const parameters = new URLSearchParams({ period });
+  if (filter !== "ALL") parameters.set("status", filter);
+  if (search) parameters.set("q", search);
+  if (page > 1) parameters.set("page", String(page));
+  return `/orders?${parameters.toString()}`;
 }
 
-function matchesFilter(order: OrderInboxItem, filter: OrderFilter): boolean {
-  switch (filter) {
-    case "ACTIVE":
-      return order.status !== "CLOSED" && order.status !== "CANCELLED";
+function PeriodNavigation({ data }: { data: OrderInboxData }) {
+  return (
+    <Surface className="ui-period-bar" raised>
+      <div>
+        <p className="ui-period-bar__eyebrow">Período de ventas</p>
+        <p className="ui-period-bar__label">{data.periodLabel}</p>
+      </div>
 
-    case "INCIDENTS":
-      return (
-        order.noStatusIncident ||
-        order.sentSubstatus === "REJECTED" ||
-        order.slaState === "OVERDUE"
-      );
+      <nav aria-label="Período de ventas" className="ui-period-navigation">
+        {periodOptions.map((option) => (
+          <a
+            aria-current={data.period === option.value ? "page" : undefined}
+            className="ui-period-navigation__item"
+            href={ordersHref(data, { period: option.value })}
+            key={option.value}
+          >
+            {option.label}
+          </a>
+        ))}
 
-    case "RECOVERY":
-      return (
-        order.sentSubstatus === "NOT_DELIVERED" ||
-        order.sentSubstatus === "REJECTED"
-      );
-
-    case "DELIVERED":
-      return order.sentSubstatus === "DELIVERED" || order.status === "CLOSED";
-
-    case "FINAL":
-      return order.status === "CLOSED" || order.status === "CANCELLED";
-
-    case "ALL":
-      return true;
-  }
+        <a
+          aria-current={data.period === "HISTORY" ? "page" : undefined}
+          className="ui-period-navigation__history"
+          href={ordersHref(data, { period: "HISTORY" })}
+        >
+          Histórico
+        </a>
+      </nav>
+    </Surface>
+  );
 }
 
 function getStatusClasses(status: string): string {
@@ -499,54 +521,17 @@ function DesktopOrderList({
 }
 
 export function OrderInbox({ data }: { data: OrderInboxData }) {
-  const [filter, setFilter] = useState<OrderFilter>("ACTIVE");
-
-  const [search, setSearch] = useState("");
-
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(
     data.items[0]?.id ?? null,
   );
 
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
-  const filteredItems = useMemo(() => {
-    const normalizedSearch = normalizeSearch(search);
-
-    return data.items.filter((order) => {
-      if (!matchesFilter(order, filter)) {
-        return false;
-      }
-
-      if (!normalizedSearch) {
-        return true;
-      }
-
-      const searchableContent = normalizeSearch(
-        [
-          order.orderCode,
-          order.holderName,
-          order.documentNumber,
-          order.serviceNumber,
-          order.salesCode ?? "",
-          order.deliveryContactPhone,
-          order.deliveryAddress ?? "",
-          order.deliveryReference ?? "",
-          order.agentName,
-          order.locationLabel,
-          order.statusLabel,
-          order.sentSubstatusLabel ?? "",
-        ].join(" "),
-      );
-
-      return searchableContent.includes(normalizedSearch);
-    });
-  }, [data.items, filter, search]);
-
   const selectedOrder =
-    filteredItems.find((order) => {
+    data.items.find((order) => {
       return order.id === selectedOrderId;
     }) ??
-    filteredItems[0] ??
+    data.items[0] ??
     null;
 
   return (
@@ -558,8 +543,13 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         title="Seguimiento de órdenes"
       />
 
+      <PeriodNavigation data={data} />
+
       <MetricGroup>
-        <Metric label="Órdenes visibles" value={data.totals.visible} />
+        <Metric
+          label={`Ventas · ${data.periodLabel}`}
+          value={data.totals.visible}
+        />
         <Metric
           label="Incidencias"
           tone={data.totals.incidents > 0 ? "danger" : "neutral"}
@@ -574,87 +564,126 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         />
       </MetricGroup>
 
-      <Surface className="ui-filter-bar" raised>
-        <label className="block lg:hidden">
-          <span className="sr-only">Filtrar pedidos</span>
-          <select
-            className="ui-filter-select"
-            onChange={(event) => {
-              setFilter(event.target.value as OrderFilter);
-              setExpandedOrderId(null);
-            }}
-            value={filter}
+      {data.pendingBeforeMonth > 0 && data.period !== "HISTORY" ? (
+        <div className="ui-prior-pending">
+          <div>
+            <p className="ui-prior-pending__title">
+              {data.pendingBeforeMonth} pendientes de meses anteriores
+            </p>
+            <p className="ui-prior-pending__description">
+              No se mezclan con las ventas del mes actual.
+            </p>
+          </div>
+          <a
+            className="ui-prior-pending__link"
+            href={ordersHref(data, { period: "HISTORY", filter: "ACTIVE" })}
           >
-            {filterOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            Revisar pendientes
+          </a>
+        </div>
+      ) : null}
 
-        <div className="ui-segmented-scroll hidden lg:block">
+      <Surface className="ui-filter-bar" raised>
+        <form className="flex gap-2 lg:hidden" method="get">
+          <input name="period" type="hidden" value={data.period} />
+          {data.search ? (
+            <input name="q" type="hidden" value={data.search} />
+          ) : null}
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Filtrar pedidos</span>
+            <select
+              className="ui-filter-select"
+              defaultValue={data.filter}
+              name="status"
+            >
+              {filterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="ui-filter-submit" type="submit">
+            Aplicar
+          </button>
+        </form>
+
+        <nav
+          aria-label="Estado de los pedidos"
+          className="ui-segmented-scroll hidden lg:block"
+        >
           <div className="ui-segmented">
             {filterOptions.map((option) => {
-              const active = option.value === filter;
+              const active = option.value === data.filter;
 
               return (
-                <button
-                  aria-pressed={active}
+                <a
+                  aria-current={active ? "page" : undefined}
                   className="ui-segmented__item"
+                  href={ordersHref(data, { filter: option.value })}
                   key={option.value}
-                  onClick={() => {
-                    setFilter(option.value);
-                    setExpandedOrderId(null);
-                  }}
-                  type="button"
                 >
                   {option.label}
-                </button>
+                </a>
               );
             })}
           </div>
-        </div>
+        </nav>
 
-        <label className="relative block w-full lg:max-w-sm">
-          <span className="sr-only">Buscar pedidos</span>
+        <form className="ui-order-search" method="get">
+          <input name="period" type="hidden" value={data.period} />
+          {data.filter !== "ALL" ? (
+            <input name="status" type="hidden" value={data.filter} />
+          ) : null}
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">Buscar pedidos</span>
 
-          <input
-            className="ui-search-input"
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setExpandedOrderId(null);
-            }}
-            placeholder="Buscar orden, cliente, teléfono o asesor"
-            type="search"
-            value={search}
-          />
-        </label>
-        <p className="text-xs text-neutral-500 md:basis-full">
-          {filteredItems.length} órdenes encontradas
-          {data.items.length > 0 && filteredItems.length === 0
-            ? " con el filtro actual"
+            <input
+              className="ui-search-input"
+              defaultValue={data.search}
+              maxLength={100}
+              name="q"
+              placeholder="Buscar orden, cliente, teléfono o asesor"
+              type="search"
+            />
+          </label>
+          <button className="ui-filter-submit" type="submit">
+            Buscar
+          </button>
+        </form>
+
+        <p className="text-xs text-neutral-600 md:basis-full">
+          {data.items.length} órdenes en esta página
+          {data.filteredTotal > data.pagination.pageSize
+            ? ` de ${data.filteredTotal} encontradas`
             : ""}
+          {data.search ? ` para “${data.search}”` : ""}
         </p>
       </Surface>
 
-      {filteredItems.length === 0 ? (
+      {data.items.length === 0 ? (
         <EmptyState
           description={
-            data.items.length > 0
-              ? "Hay pedidos fuera del filtro actual. Selecciona Todos o cambia la búsqueda."
-              : "Los pedidos aparecerán aquí cuando se reciban desde DITO."
+            data.totals.visible > 0
+              ? "No hay ventas que coincidan con este estado o búsqueda."
+              : data.period === "TODAY"
+                ? "No se registraron ventas hoy."
+                : data.period === "WEEK"
+                  ? "No se registraron ventas esta semana."
+                  : data.period === "MONTH"
+                    ? "No se registraron ventas en el mes actual."
+                    : "No se encontraron ventas en el histórico."
           }
           title={
-            data.items.length > 0
-              ? "No hay pedidos en esta vista"
-              : "Aún no hay pedidos"
+            data.totals.visible > 0
+              ? "No hay coincidencias"
+              : "Aún no hay ventas en este período"
           }
         />
       ) : (
         <>
           <section className="space-y-3 lg:hidden">
-            {filteredItems.map((order) => {
+            {data.items.map((order) => {
               const expanded = expandedOrderId === order.id;
 
               return (
@@ -672,7 +701,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
           <section className="hidden grid-cols-[minmax(0,1fr)_420px] gap-5 lg:grid">
             <DesktopOrderList
-              items={filteredItems}
+              items={data.items}
               onSelect={setSelectedOrderId}
               selectedOrderId={selectedOrder?.id ?? null}
             />
@@ -685,6 +714,36 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           </section>
         </>
       )}
+
+      {data.pagination.totalPages > 1 ? (
+        <nav aria-label="Páginas de ventas" className="ui-pagination">
+          {data.pagination.page > 1 ? (
+            <a
+              className="ui-pagination__link"
+              href={ordersHref(data, { page: data.pagination.page - 1 })}
+            >
+              Anterior
+            </a>
+          ) : (
+            <span />
+          )}
+
+          <span className="ui-pagination__status">
+            Página {data.pagination.page} de {data.pagination.totalPages}
+          </span>
+
+          {data.pagination.page < data.pagination.totalPages ? (
+            <a
+              className="ui-pagination__link"
+              href={ordersHref(data, { page: data.pagination.page + 1 })}
+            >
+              Siguiente
+            </a>
+          ) : (
+            <span />
+          )}
+        </nav>
+      ) : null}
     </div>
   );
 }

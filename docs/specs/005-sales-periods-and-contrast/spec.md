@@ -1,6 +1,6 @@
 # SPEC-005 — Ventas por período y contraste operativo
 
-**Estado:** `APPROVED`
+**Estado:** `IMPLEMENTED`
 **Versión:** 1.1
 **Fecha:** 2026-08-06
 **Responsable de producto:** José Castilla

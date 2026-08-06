@@ -19,6 +19,9 @@ export type OrderSentSubstatusValue =
   | "UNKNOWN"
   | null;
 
+export type OrderFilter =
+  "ACTIVE" | "INCIDENTS" | "RECOVERY" | "DELIVERED" | "FINAL" | "ALL";
+
 export interface OrderInboxAccess {
   userId: string;
 
@@ -87,7 +90,21 @@ export interface OrderInboxItem {
 export interface OrderInboxData {
   generatedAt: string;
 
+  period: "TODAY" | "WEEK" | "MONTH" | "HISTORY";
+  periodLabel: string;
+  filter: OrderFilter;
+  search: string;
+  filteredTotal: number;
+
   items: OrderInboxItem[];
+
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+
+  pendingBeforeMonth: number;
 
   totals: {
     visible: number;

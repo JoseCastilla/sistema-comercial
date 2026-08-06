@@ -1,10 +1,16 @@
 import "server-only";
 
+import { getOrderPeriodRange } from "@repo/validation";
+
 import { database } from "@/server/database";
+
+import type { Prisma } from "@repo/database";
+import type { OrderPeriod } from "@repo/validation";
 
 import type {
   OrderInboxAccess,
   OrderInboxData,
+  OrderFilter,
   OrderInboxItem,
   OrderSentSubstatusValue,
   OrderSlaState,
@@ -12,6 +18,14 @@ import type {
 } from "../order-inbox.types";
 
 const businessTimeZone = "America/Lima";
+const pageSize = 50;
+
+export interface OrderInboxQuery {
+  period: OrderPeriod;
+  page?: number;
+  filter: OrderFilter;
+  search?: string;
+}
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: businessTimeZone,
@@ -310,58 +324,166 @@ function getPriority(item: OrderInboxItem): number {
   return 10;
 }
 
+function getStatusFilter(
+  filter: OrderFilter,
+  now: Date,
+  incidentThreshold: Date,
+): Prisma.DitoOrderWhereInput {
+  switch (filter) {
+    case "ACTIVE":
+      return { status: { in: ["OPEN", "SENT", "UNKNOWN"] } };
+    case "INCIDENTS":
+      return {
+        OR: [
+          { sentSubstatus: "REJECTED" },
+          {
+            status: "SENT",
+            sentSubstatus: "NO_STATUS",
+            noStatusDetectedAt: { lte: incidentThreshold },
+          },
+          {
+            deliveryDueAt: { lt: now },
+            status: { notIn: ["CLOSED", "CANCELLED"] },
+            deliveryStatus: { notIn: ["DELIVERED", "CANCELLED"] },
+          },
+        ],
+      };
+    case "RECOVERY":
+      return { sentSubstatus: { in: ["NOT_DELIVERED", "REJECTED"] } };
+    case "DELIVERED":
+      return {
+        OR: [{ status: "CLOSED" }, { sentSubstatus: "DELIVERED" }],
+      };
+    case "FINAL":
+      return { status: { in: ["CLOSED", "CANCELLED"] } };
+    case "ALL":
+      return {};
+  }
+}
+
+function getSearchFilter(search: string): Prisma.DitoOrderWhereInput {
+  if (!search) return {};
+
+  const contains = { contains: search, mode: "insensitive" as const };
+  return {
+    OR: [
+      { orderCodeRaw: contains },
+      { holderFullNameRaw: contains },
+      { holderDocumentNumber: contains },
+      { serviceNumber: contains },
+      { salesCode: contains },
+      { deliveryContactPhone: contains },
+      { deliveryAddress: contains },
+      { deliveryReference: contains },
+      { agentNameRaw: contains },
+      { agentNameNormalized: contains },
+      { department: contains },
+      { province: contains },
+      { district: contains },
+    ],
+  };
+}
+
 export async function getOrderInbox(
   organizationId: string,
   access: OrderInboxAccess,
+  query: OrderInboxQuery,
 ): Promise<OrderInboxData> {
   const now = new Date();
+  const range = getOrderPeriodRange(query.period, now);
+  const requestedPage = Math.max(1, Math.floor(query.page ?? 1));
+  const search = query.search?.trim().slice(0, 100) ?? "";
+  const incidentThreshold = new Date(now.getTime() - 10 * 60 * 1000);
 
-  const accessFilter =
+  const accessFilter: Prisma.DitoOrderWhereInput =
     access.role === "AGENT"
       ? {
           agentUserId: access.userId,
         }
       : {};
 
-  const [activeOrders, recentFinalOrders] = await database.$transaction([
-    database.ditoOrder.findMany({
+  const periodFilter: Prisma.DitoOrderWhereInput =
+    range.start && range.end
+      ? {
+          registeredAt: {
+            gte: range.start,
+            lt: range.end,
+          },
+        }
+      : {};
+  const baseWhere: Prisma.DitoOrderWhereInput = {
+    organizationId,
+    ...accessFilter,
+    ...periodFilter,
+  };
+  const filteredWhere: Prisma.DitoOrderWhereInput = {
+    ...baseWhere,
+    AND: [
+      getStatusFilter(query.filter, now, incidentThreshold),
+      getSearchFilter(search),
+    ],
+  };
+
+  const [
+    totalOrders,
+    filteredTotal,
+    incidentCount,
+    notDeliveredCount,
+    deliveredCount,
+    overdueCount,
+    pendingBeforeMonth,
+  ] = await database.$transaction([
+    database.ditoOrder.count({ where: baseWhere }),
+    database.ditoOrder.count({ where: filteredWhere }),
+    database.ditoOrder.count({
       where: {
-        organizationId,
-        ...accessFilter,
-
-        status: {
-          in: ["OPEN", "SENT", "UNKNOWN"],
-        },
+        ...baseWhere,
+        OR: [
+          { sentSubstatus: "REJECTED" },
+          {
+            status: "SENT",
+            sentSubstatus: "NO_STATUS",
+            noStatusDetectedAt: { lte: incidentThreshold },
+          },
+        ],
       },
-
-      orderBy: {
-        registeredAt: "desc",
-      },
-
-      take: 200,
-      select: orderSelect,
     }),
-
-    database.ditoOrder.findMany({
+    database.ditoOrder.count({
+      where: { ...baseWhere, sentSubstatus: "NOT_DELIVERED" },
+    }),
+    database.ditoOrder.count({
+      where: {
+        ...baseWhere,
+        OR: [{ status: "CLOSED" }, { sentSubstatus: "DELIVERED" }],
+      },
+    }),
+    database.ditoOrder.count({
+      where: {
+        ...baseWhere,
+        deliveryDueAt: { lt: now },
+        status: { notIn: ["CLOSED", "CANCELLED"] },
+        deliveryStatus: { notIn: ["DELIVERED", "CANCELLED"] },
+      },
+    }),
+    database.ditoOrder.count({
       where: {
         organizationId,
         ...accessFilter,
-
-        status: {
-          in: ["CLOSED", "CANCELLED"],
-        },
+        registeredAt: { lt: range.monthStart },
+        status: { in: ["OPEN", "SENT", "UNKNOWN"] },
       },
-
-      orderBy: {
-        statusUpdatedAt: "desc",
-      },
-
-      take: 30,
-      select: orderSelect,
     }),
   ]);
 
-  const orders = [...activeOrders, ...recentFinalOrders];
+  const totalPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const orders = await database.ditoOrder.findMany({
+    where: filteredWhere,
+    orderBy: [{ registeredAt: "desc" }, { id: "desc" }],
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+    select: orderSelect,
+  });
 
   const items = orders.map((order): OrderInboxItem => {
     const status = String(order.status) as OrderStatusValue;
@@ -473,26 +595,35 @@ export async function getOrderInbox(
   return {
     generatedAt: dateTimeFormatter.format(now),
 
+    period: query.period,
+    periodLabel:
+      query.period === "TODAY"
+        ? "Hoy"
+        : query.period === "WEEK"
+          ? "Semana actual"
+          : query.period === "MONTH"
+            ? "Mes actual"
+            : "Histórico",
+    filter: query.filter,
+    search,
+    filteredTotal,
+
     items,
 
+    pagination: {
+      page,
+      pageSize,
+      totalPages,
+    },
+
+    pendingBeforeMonth,
+
     totals: {
-      visible: items.length,
-
-      incidents: items.filter((item) => {
-        return item.noStatusIncident || item.sentSubstatus === "REJECTED";
-      }).length,
-
-      notDelivered: items.filter((item) => {
-        return item.sentSubstatus === "NOT_DELIVERED";
-      }).length,
-
-      delivered: items.filter((item) => {
-        return item.status === "CLOSED" || item.sentSubstatus === "DELIVERED";
-      }).length,
-
-      overdue: items.filter((item) => {
-        return item.slaState === "OVERDUE";
-      }).length,
+      visible: totalOrders,
+      incidents: incidentCount,
+      notDelivered: notDeliveredCount,
+      delivered: deliveredCount,
+      overdue: overdueCount,
     },
   };
 }

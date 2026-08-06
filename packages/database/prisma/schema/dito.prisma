@@ -194,6 +194,7 @@ model DitoOrder {
   @@unique([organizationId, eventId], map: "dito_orders_org_event_key")
   @@unique([organizationId, orderCodeNormalized], map: "dito_orders_org_order_code_key")
   @@index([organizationId, matchStatus, capturedAt], map: "dito_orders_org_match_captured_idx")
+  @@index([organizationId, registeredAt], map: "dito_orders_org_registered_idx")
   @@index([organizationId, deliveryStatus, deliveryDueAt], map: "dito_orders_org_delivery_due_idx")
   @@index([organizationId, agentUserId, capturedAt], map: "dito_orders_org_agent_captured_idx")
   @@index([organizationId, agentNameNormalized, capturedAt], map: "dito_orders_org_agent_name_idx")

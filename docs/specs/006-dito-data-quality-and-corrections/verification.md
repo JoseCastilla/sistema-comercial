@@ -1,6 +1,6 @@
 # SPEC-006 — Verificación
 
-**Estado:** `IMPLEMENTED_PENDING_PRODUCTION`
+**Estado:** `DEPLOYED_PENDING_DITO_VALIDATION`
 
 ## Evidencia inicial
 
@@ -23,6 +23,12 @@
 ## Pendiente de producción
 
 - Instalar la extensión `2.2.0` y validar una captura sobre DITO real.
-- Desplegar API/web y aplicar la migración automática de EasyPanel.
 - Corregir las órdenes de Francis y Ever con los datos reales consultados por código.
 - Añadir pruebas específicas de autorización de la acción ADMIN.
+
+## Evidencia productiva
+
+- Commit `7c817e2` desplegado desde GitHub `main`.
+- API reiniciada por EasyPanel y PostgreSQL reportado como `up`.
+- La API inició correctamente después de ejecutar `prisma migrate deploy`.
+- Web respondió `ok` después del reemplazo.
