@@ -29,6 +29,9 @@ export interface OrderInboxItem {
   id: string;
   orderCode: string;
   operation: string;
+  commercialOperation: string;
+  carrier: string;
+  fixedCharge: string | null;
 
   holderName: string;
   documentNumber: string;
@@ -76,6 +79,9 @@ export interface OrderInboxItem {
   slaLabel: string;
 
   canUpdate: boolean;
+  canCorrect: boolean;
+  parseStatus: string;
+  updatedAt: string;
 }
 
 export interface OrderInboxData {

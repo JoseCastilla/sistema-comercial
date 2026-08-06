@@ -1,4 +1,4 @@
-import { normalizeAgentAlias } from '@repo/validation';
+import { isDitoPlaceholder, normalizeAgentAlias } from '@repo/validation';
 
 import 'dotenv/config';
 
@@ -111,27 +111,32 @@ export class DitoWebhookService {
 
     const parseStatus = this.determineParseStatus(envelope);
 
+    const createInput = {
+      organizationId: organization.id,
+
+      envelope,
+      sourceFingerprint,
+      agentNameNormalized,
+
+      agentUserId,
+      assignedTeamId,
+
+      submitterInstallationId,
+      submitterEmailRaw,
+      submitterEmailNormalized,
+
+      matchStatus:
+        installationConflict || parseStatus === 'PARTIAL'
+          ? 'NEEDS_REVIEW'
+          : 'UNMATCHED',
+      parseStatus,
+      registeredAt,
+      approvedAt,
+      schedule,
+    } as const;
+
     try {
-      const persisted = await this.repository.create({
-        organizationId: organization.id,
-
-        envelope,
-        sourceFingerprint,
-        agentNameNormalized,
-
-        agentUserId,
-        assignedTeamId,
-
-        submitterInstallationId,
-        submitterEmailRaw,
-        submitterEmailNormalized,
-
-        matchStatus: installationConflict ? 'NEEDS_REVIEW' : 'UNMATCHED',
-        parseStatus,
-        registeredAt,
-        approvedAt,
-        schedule,
-      });
+      const persisted = await this.repository.create(createInput);
 
       return {
         accepted: true,
@@ -148,25 +153,17 @@ export class DitoWebhookService {
         throw error;
       }
 
-      return this.resolveDuplicate(
-        organization.id,
-        envelope,
-        sourceFingerprint,
-      );
+      return this.resolveDuplicate(createInput);
     }
   }
 
   private async resolveDuplicate(
-    organizationId: string,
-
-    envelope: DitoIncomingOrderEnvelope,
-
-    sourceFingerprint: string,
+    input: Parameters<DitoOrdersRepository['create']>[0],
   ): Promise<DitoOrderIngestionResponse> {
     const existing = await this.repository.findExisting(
-      organizationId,
-      envelope.event_id,
-      envelope.order.code_normalized,
+      input.organizationId,
+      input.envelope.event_id,
+      input.envelope.order.code_normalized,
     );
 
     if (!existing) {
@@ -175,7 +172,7 @@ export class DitoWebhookService {
       );
     }
 
-    if (existing.sourceFingerprint !== sourceFingerprint) {
+    if (existing.sourceFingerprint !== input.sourceFingerprint) {
       await this.repository.markNeedsReview(existing.id);
     }
 
@@ -183,7 +180,7 @@ export class DitoWebhookService {
       accepted: true,
       duplicate: true,
 
-      event_id: envelope.event_id,
+      event_id: input.envelope.event_id,
 
       dito_order_id: existing.id,
 
@@ -196,11 +193,17 @@ export class DitoWebhookService {
   ): 'PARSED' | 'PARTIAL' {
     const isPartial =
       envelope.product_type === 'UNKNOWN' ||
+      isDitoPlaceholder(envelope.order.operation_raw) ||
       envelope.order.commercial_operation === 'UNKNOWN' ||
-      envelope.order.carrier === 'UNKNOWN' ||
+      (envelope.order.commercial_operation !== 'NEW_LINE' &&
+        envelope.order.carrier === 'UNKNOWN') ||
       envelope.delivery.method === 'UNKNOWN' ||
-      !envelope.holder.document_number ||
-      !envelope.holder.service_number;
+      isDitoPlaceholder(envelope.holder.full_name) ||
+      !/^\d{8,11}$/.test(envelope.holder.document_number.replace(/\D/g, '')) ||
+      !/^\d{7,15}$/.test(envelope.holder.service_number.replace(/\D/g, '')) ||
+      isDitoPlaceholder(envelope.delivery.department) ||
+      isDitoPlaceholder(envelope.delivery.province) ||
+      isDitoPlaceholder(envelope.delivery.district);
 
     return isPartial ? 'PARTIAL' : 'PARSED';
   }

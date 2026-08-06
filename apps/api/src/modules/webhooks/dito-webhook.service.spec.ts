@@ -1,4 +1,12 @@
 jest.mock('@repo/validation', () => ({
+  isDitoPlaceholder: (value: unknown): boolean => {
+    const normalized = (typeof value === 'string' ? value : '')
+      .replace(/\bN\s*\/?\s*A\b/gi, '')
+      .replace(/[-–—./|,\s]/g, '')
+      .trim();
+
+    return normalized.length === 0;
+  },
   normalizeAgentAlias: (value: unknown): string | null => {
     if (typeof value !== 'string') {
       return null;
@@ -28,6 +36,7 @@ import { createHash } from 'node:crypto';
 import type {
   CreateDitoOrderInput,
   DitoOrganization,
+  ExistingDitoOrder,
   PersistedDitoOrder,
 } from './dito-orders.repository';
 
@@ -60,7 +69,7 @@ interface RepositoryMock {
   create: jest.Mock<Promise<PersistedDitoOrder>, [CreateDitoOrderInput]>;
 
   findExisting: jest.Mock<
-    Promise<PersistedDitoOrder | null>,
+    Promise<ExistingDitoOrder | null>,
     [string, string, string]
   >;
 
@@ -293,7 +302,7 @@ describe('DitoWebhookService', () => {
       create: jest.fn<Promise<PersistedDitoOrder>, [CreateDitoOrderInput]>(),
 
       findExisting: jest.fn<
-        Promise<PersistedDitoOrder | null>,
+        Promise<ExistingDitoOrder | null>,
         [string, string, string]
       >(),
 
@@ -303,7 +312,6 @@ describe('DitoWebhookService', () => {
     repository.resolveAgentUserIdByAlias.mockResolvedValue(null);
     repository.resolveAgentAssignmentByEmail.mockResolvedValue(null);
     repository.hasInstallationEmailConflict.mockResolvedValue(false);
-
     repository.findOrganizationBySlug.mockResolvedValue({
       id: 'organization-1',
       slug: 'distribuidor-online',
@@ -520,6 +528,8 @@ describe('DitoWebhookService', () => {
       id: 'existing-order',
 
       sourceFingerprint: fingerprint,
+      parseStatus: 'PARSED',
+      updatedAt: new Date('2026-08-02T15:04:00.000Z'),
     });
 
     const result = await service.ingest(envelope, 'test-dito-webhook-secret');
@@ -575,6 +585,8 @@ describe('DitoWebhookService', () => {
       id: 'existing-order',
 
       sourceFingerprint: createFingerprint(originalEnvelope),
+      parseStatus: 'PARSED',
+      updatedAt: new Date('2026-08-02T15:04:00.000Z'),
     });
 
     const result = await service.ingest(
@@ -600,14 +612,26 @@ describe('DitoWebhookService', () => {
     const envelope = createEnvelope({
       product_type: 'UNKNOWN',
 
+      order: {
+        ...createEnvelope().order,
+        operation_raw: 'N/A N/A N/A N/A N/A',
+        commercial_operation: 'UNKNOWN',
+        carrier: 'UNKNOWN',
+      },
+
+      holder: {
+        ...createEnvelope().holder,
+        service_number: '',
+      },
+
       delivery: {
         method: 'UNKNOWN',
 
-        department: '',
+        department: 'N/A',
 
-        province: '',
+        province: 'N/A',
 
-        district: '',
+        district: 'N/A',
       },
     });
 
@@ -624,6 +648,7 @@ describe('DitoWebhookService', () => {
     const createInput = repository.create.mock.calls[0]?.[0];
 
     expect(createInput?.parseStatus).toBe('PARTIAL');
+    expect(createInput?.matchStatus).toBe('NEEDS_REVIEW');
 
     expect(createInput?.schedule).toEqual({
       serviceLevelHours: null,

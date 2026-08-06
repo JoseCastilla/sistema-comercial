@@ -8,6 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const identidadEstado = document.getElementById("identidadEstado");
     let enviando = false;
     let extractedApiDetails = null;
+    let extractionReady = false;
+
+    copiarBtn.disabled = true;
 
     chrome.storage.local.get(["asesor", "agentEmail", "installationId"], (data) => {
         if (data.asesor) asesorInput.value = data.asesor;
@@ -59,24 +62,51 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     extraerBtn.addEventListener("click", async () => {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-        if (!tab?.id || !tab.url?.startsWith("https://ventas.movistar.com.pe/")) {
-            alert("Abre una venta en ventas.movistar.com.pe antes de extraer datos.");
-            return;
+            if (!tab?.id || !tab.url?.startsWith("https://ventas.movistar.com.pe/")) {
+                alert("Abre una venta en ventas.movistar.com.pe antes de extraer datos.");
+                return;
+            }
+
+            extractionReady = false;
+            extractedApiDetails = null;
+            resultadoArea.value = "";
+            copiarBtn.disabled = true;
+            extraerBtn.disabled = true;
+            extraerBtn.textContent = "Leyendo detalle...";
+
+            const [{ result }] = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                function: extraerDatos
+            });
+
+            if (!result?.ok) {
+                const missing = result?.missingFields?.join(", ") || "detalle del pedido";
+                alert(
+                    result?.reason === "PLACEHOLDER_SEQUENCE"
+                        ? `Información incompleta detectada (N/A). Despliega manualmente “Ver detalle del pedido” en DITO y vuelve a extraer. Revisa: ${missing}.`
+                        : `No se puede enviar esta venta. Despliega manualmente “Ver detalle del pedido” en DITO y verifica: ${missing}.`
+                );
+                return;
+            }
+
+            const { asesor = "N/A" } = await chrome.storage.local.get("asesor");
+            resultadoArea.value = result.summary.replace(
+                "ASESOR: N/A",
+                `ASESOR: ${asesor}`
+            );
+            extractedApiDetails = result.apiDetails;
+            extractionReady = true;
+            copiarBtn.disabled = false;
+        } catch (error) {
+            console.error(error);
+            alert("No se pudo leer el detalle de la venta. Inténtalo nuevamente.");
+        } finally {
+            extraerBtn.disabled = false;
+            extraerBtn.textContent = "Extraer datos";
         }
-
-        const [{ result }] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            function: extraerDatos
-        });
-
-        const { asesor = "N/A" } = await chrome.storage.local.get("asesor");
-        resultadoArea.value = result.summary.replace(
-            "ASESOR: N/A",
-            `ASESOR: ${asesor}`
-        );
-        extractedApiDetails = result.apiDetails;
     });
 
     copiarBtn.addEventListener("click", async () => {
@@ -85,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const datos = resultadoArea.value;
 
-            if (!datos.trim()) {
+            if (!extractionReady || !datos.trim() || !extractedApiDetails) {
                 alert("Primero extrae los datos de la venta.");
                 return;
             }
@@ -141,7 +171,35 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-function extraerDatos() {
+async function extraerDatos() {
+    function isPlaceholder(value) {
+        const normalized = String(value || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\bN\s*\/?\s*A\b/gi, "")
+            .replace(/[-–—./|\s]/g, "")
+            .trim();
+
+        return normalized.length === 0;
+    }
+
+    function hasRenderedDetails() {
+        const titles = [...document.querySelectorAll("app-order-detail-fe .title")];
+        return titles.some((element) => !isPlaceholder(element.textContent));
+    }
+
+    const detailReady = hasRenderedDetails();
+
+    if (!detailReady) {
+        return {
+            ok: false,
+            reason: "DETAIL_COLLAPSED",
+            missingFields: ["detalle desplegado"],
+            summary: "",
+            apiDetails: null
+        };
+    }
+
     function getDetailByTitle(title) {
         let elements = document.querySelectorAll(".title");
         for (let el of elements) {
@@ -207,11 +265,36 @@ function extraerDatos() {
 
     let esVentaFija = getDetailByTitle("PLAN HOGAR") !== "N/A";
 
-    if (esVentaFija) {
-        return extraerVentaFija();
-    } else {
-        return extraerVentaMovil();
+    const extraction = esVentaFija ? extraerVentaFija() : extraerVentaMovil();
+    const missingFields = [];
+    const core = extraction.core;
+    const placeholderSequence = /(?:\bN\s*\/?\s*A\b[\s/|,.-]*){2,}/i.test(
+        extraction.summary
+    );
+
+    if (isPlaceholder(core.operation)) missingFields.push("operación");
+    if (isPlaceholder(core.holderName)) missingFields.push("nombre del cliente");
+    if (!/^\d{8,11}$/.test(String(core.documentNumber || "").replace(/\D/g, ""))) {
+        missingFields.push("documento");
     }
+    if (!/^\d{7,15}$/.test(String(core.serviceNumber || "").replace(/\D/g, ""))) {
+        missingFields.push("teléfono de la operación");
+    }
+    if (isPlaceholder(core.department)) missingFields.push("departamento");
+    if (isPlaceholder(core.province)) missingFields.push("provincia");
+    if (isPlaceholder(core.district)) missingFields.push("distrito");
+    if (isPlaceholder(core.deliveryMethod)) missingFields.push("forma de entrega");
+    if (!/^\d+[A-Z]*$/i.test(String(core.orderCode || "").replace(/\s/g, ""))) {
+        missingFields.push("código de orden");
+    }
+
+    return {
+        ok: missingFields.length === 0 && !placeholderSequence,
+        reason: placeholderSequence ? "PLACEHOLDER_SEQUENCE" : null,
+        missingFields,
+        summary: extraction.summary,
+        apiDetails: extraction.apiDetails
+    };
 
     function extraerVentaMovil() {
         let operacion = getDetailByTitle("TRANSACCIÓN");
@@ -272,6 +355,17 @@ CÓDIGO DE ORDEN: ${orderCode}
 
         return {
             summary,
+            core: {
+                operation: operacionResumen,
+                holderName: nombres,
+                documentNumber: dni,
+                serviceNumber: telefono,
+                department: departamento,
+                province: provincia,
+                district: distrito,
+                deliveryMethod: tipoEntrega,
+                orderCode
+            },
             apiDetails: {
                 billing_cycle_day: parseDay(cicloFacturacionRaw),
                 payment_due_day: parseDay(ultimoDiaPagoRaw),
@@ -335,6 +429,17 @@ CÓDIGO DE VENTA: ${codigoVenta}
 
         return {
             summary,
+            core: {
+                operation: `${operacion} ${tipoProducto} ${velocidad} MBPS`,
+                holderName: nombres,
+                documentNumber: dni,
+                serviceNumber: telefono,
+                department: departamento,
+                province: provincia,
+                district: distrito,
+                deliveryMethod: direccion,
+                orderCode
+            },
             apiDetails: {
                 billing_cycle_day: null,
                 payment_due_day: null,

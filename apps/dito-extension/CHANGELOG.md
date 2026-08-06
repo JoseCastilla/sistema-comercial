@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.0
+
+- Exige que el asesor despliegue manualmente el detalle del pedido antes de extraer.
+- Bloquea el envío cuando faltan campos esenciales o solo existen valores `N/A`.
+- Informa al asesor qué campos debe revisar en DITO.
+
 ## 2.1.2 — 2026-08-05
 
 - Captura `HORARIO DE ENTREGA` para pedidos regulares.

@@ -1,5 +1,7 @@
 # SPEC-004 — Verificación
 
+**Estado:** `VERIFIED`
+
 ## Evidencia previa
 
 - EasyPanel está conectado a `JoseCastilla/sistema-comercial`, rama `main`.
@@ -16,11 +18,6 @@
 - El Dockerfile Web acepta `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` en build para mantener consistencia durante reemplazos.
 - La imagen API instala OpenSSL antes de instalar dependencias y generar Prisma Client.
 
-## Validación pendiente
-
-- Revisión final del diff.
-- Salud y recorrido funcional después del despliegue.
-
 ## Resultados locales
 
 - Tipos: aprobados en Contracts, Validation, Database, UI, API y Web.
@@ -31,3 +28,15 @@
 - API: imagen Docker Linux construida sin advertencias de OpenSSL; el arranque ejecutó las 13 migraciones y respondió HTTP 200 en salud.
 - La migración correctiva se aplicó a la base local y una segunda ejecución confirmó que no quedaban migraciones pendientes.
 - El responsable confirmó que `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` quedó guardada en el servicio Web de EasyPanel.
+
+## Resultados productivos
+
+- Commit desplegado: `4a81e40`.
+- GitHub `main` y el repositorio local quedaron sincronizados.
+- Web y API fueron reemplazados por EasyPanel sin interrupción observada.
+- Web respondió `ok` en `/api/health`.
+- API respondió `ok` en `/api/v1/health/ready` con PostgreSQL `up`.
+- El API inició después de ejecutar las 13 migraciones productivas.
+- `/login` cargó correctamente y `/orders`, `/admin/users` y `/admin/teams`
+  aplicaron la redirección de acceso esperada sin sesión.
+- El responsable validó el despliegue desde la experiencia de usuario.

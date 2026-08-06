@@ -1,6 +1,6 @@
 # SPEC-004 — Despliegue seguro en EasyPanel
 
-**Estado:** `APPROVED`  
+**Estado:** `VERIFIED`
 **Versión:** 1.0  
 **Fecha:** 2026-08-06  
 **Responsable de producto:** José Castilla

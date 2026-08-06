@@ -8,6 +8,7 @@ import { PageHeader } from "@repo/ui/page-header";
 import { Surface } from "@repo/ui/surface";
 
 import { OrderStatusForm } from "./order-status-form";
+import { OrderCorrectionForm } from "./order-correction-form";
 
 import type {
   OrderInboxData,
@@ -190,14 +191,14 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
 
   const hasDitoDetails = Boolean(
     order.salesCode ||
-      order.billingCycleDay ||
-      order.paymentDueDay ||
-      order.deliveryContactPhone !== order.serviceNumber ||
-      order.deliveryTimeRange ||
-      order.deliveryAddress ||
-      order.deliveryReference ||
-      order.deliveryLatitude ||
-      order.deliveryLongitude,
+    order.billingCycleDay ||
+    order.paymentDueDay ||
+    order.deliveryContactPhone !== order.serviceNumber ||
+    order.deliveryTimeRange ||
+    order.deliveryAddress ||
+    order.deliveryReference ||
+    order.deliveryLatitude ||
+    order.deliveryLongitude,
   );
 
   const coordinates =
@@ -225,6 +226,13 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
         <div className="mt-3">
           <StatusBadge order={order} />
         </div>
+
+        {order.parseStatus !== "PARSED" ? (
+          <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+            Datos incompletos: vuelve a capturar con el detalle DITO desplegado
+            o corrige manualmente.
+          </p>
+        ) : null}
       </div>
 
       <div>
@@ -303,10 +311,7 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
             ) : null}
 
             {order.deliveryReference ? (
-              <DetailItem
-                label="Referencia"
-                value={order.deliveryReference}
-              />
+              <DetailItem label="Referencia" value={order.deliveryReference} />
             ) : null}
 
             {coordinates ? (
@@ -327,6 +332,8 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
           </p>
         </div>
       ) : null}
+
+      {order.canCorrect ? <OrderCorrectionForm order={order} /> : null}
 
       <div className="border-t border-neutral-200 pt-5">
         <h4 className="mb-4 text-sm font-semibold text-neutral-900">
@@ -553,10 +560,18 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
       <MetricGroup>
         <Metric label="Órdenes visibles" value={data.totals.visible} />
-        <Metric label="Incidencias" tone={data.totals.incidents > 0 ? "danger" : "neutral"} value={data.totals.incidents} />
+        <Metric
+          label="Incidencias"
+          tone={data.totals.incidents > 0 ? "danger" : "neutral"}
+          value={data.totals.incidents}
+        />
         <Metric label="No entregados" value={data.totals.notDelivered} />
         <Metric label="Entregados" value={data.totals.delivered} />
-        <Metric label="Fuera de plazo" tone={data.totals.overdue > 0 ? "danger" : "neutral"} value={data.totals.overdue} />
+        <Metric
+          label="Fuera de plazo"
+          tone={data.totals.overdue > 0 ? "danger" : "neutral"}
+          value={data.totals.overdue}
+        />
       </MetricGroup>
 
       <Surface className="ui-filter-bar" raised>
@@ -625,8 +640,16 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
       {filteredItems.length === 0 ? (
         <EmptyState
-          description={data.items.length > 0 ? "Hay pedidos fuera del filtro actual. Selecciona Todos o cambia la búsqueda." : "Los pedidos aparecerán aquí cuando se reciban desde DITO."}
-          title={data.items.length > 0 ? "No hay pedidos en esta vista" : "Aún no hay pedidos"}
+          description={
+            data.items.length > 0
+              ? "Hay pedidos fuera del filtro actual. Selecciona Todos o cambia la búsqueda."
+              : "Los pedidos aparecerán aquí cuando se reciban desde DITO."
+          }
+          title={
+            data.items.length > 0
+              ? "No hay pedidos en esta vista"
+              : "Aún no hay pedidos"
+          }
         />
       ) : (
         <>

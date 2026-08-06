@@ -18,6 +18,11 @@ export interface PersistedDitoOrder {
   sourceFingerprint: string;
 }
 
+export interface ExistingDitoOrder extends PersistedDitoOrder {
+  parseStatus: 'PARSED' | 'PARTIAL' | 'FAILED';
+  updatedAt: Date;
+}
+
 export interface DitoAgentAssignment {
   userId: string;
   teamId: string;
@@ -307,7 +312,7 @@ export class DitoOrdersRepository {
     organizationId: string,
     eventId: string,
     orderCodeNormalized: string,
-  ): Promise<PersistedDitoOrder | null> {
+  ): Promise<ExistingDitoOrder | null> {
     const database = this.databaseService.getClient();
 
     return database.ditoOrder.findFirst({
@@ -328,6 +333,8 @@ export class DitoOrdersRepository {
       select: {
         id: true,
         sourceFingerprint: true,
+        parseStatus: true,
+        updatedAt: true,
       },
     });
   }

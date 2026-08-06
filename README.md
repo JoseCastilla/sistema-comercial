@@ -12,9 +12,13 @@ regreso a GHL.
 - Autenticación web, organizaciones, roles y autorización server-side.
 - Bandeja `/orders` con seguimiento manual e historial de estados.
 - Administración de usuarios y vínculos de alias DITO.
-- SPEC-001 aprobada para equipos comerciales, visibilidad y reasignación.
-- Esquema y migración de persistencia de SPEC-001 preparados; aplicación local
-  y servicios de negocio todavía pendientes.
+- Administración inicial de equipos comerciales desplegada en producción.
+- Extensión DITO 2.2.0 preparada para bloquear capturas incompletas antes del envío.
+- SPEC-001 continúa con creación supervisada de agentes, asignación automática,
+  visibilidad jerárquica, pool de órdenes sin asignar y reasignaciones.
+- SPEC-005 aprobada para reforzar contraste y limitar la bandeja al mes en curso.
+- SPEC-006 implementada para conservar capturas antiguas incompletas y permitir
+  su corrección manual auditada por ADMIN.
 
 El contexto funcional consolidado se mantiene fuera del repositorio en
 `PLATAFORMA_COMERCIAL_CONTEXTO_MAESTRO_V20.md`. Las decisiones ejecutables y su

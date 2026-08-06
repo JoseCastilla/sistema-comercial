@@ -52,9 +52,8 @@ function createEnvelope(overrides = {}) {
 
 describe("DITO extension identity envelope 2.0", () => {
   it("accepts a corporate email and installation UUID", () => {
-    const result = ditoExtensionOrderEnvelopeV2Schema.safeParse(
-      createEnvelope(),
-    );
+    const result =
+      ditoExtensionOrderEnvelopeV2Schema.safeParse(createEnvelope());
 
     assert.equal(result.success, true);
   });
@@ -117,8 +116,7 @@ describe("DITO extension identity envelope 2.0", () => {
     envelope.order.payment_due_day = 22;
     envelope.delivery.contact_phone = "941586778";
     envelope.delivery.time_range = "3pm-7pm";
-    envelope.delivery.address =
-      "AVENIDA MARISCAL ANDRES AVELINO CACERES 1220";
+    envelope.delivery.address = "AVENIDA MARISCAL ANDRES AVELINO CACERES 1220";
     envelope.delivery.reference = "garilazo de la vega";
     envelope.delivery.latitude = -13.156957739;
     envelope.delivery.longitude = -74.227206392;
@@ -127,5 +125,20 @@ describe("DITO extension identity envelope 2.0", () => {
       ditoExtensionOrderEnvelopeV2Schema.safeParse(envelope).success,
       true,
     );
+  });
+
+  it("accepts a legacy-compatible placeholder envelope for server-side review", () => {
+    const envelope = createEnvelope();
+    envelope.order.operation_raw = "N/A N/A N/A N/A N/A";
+    envelope.order.commercial_operation = "UNKNOWN";
+    envelope.holder.service_number = "";
+    envelope.delivery.method = "UNKNOWN";
+    envelope.delivery.department = "N/A";
+    envelope.delivery.province = "N/A";
+    envelope.delivery.district = "N/A";
+
+    const result = safeParseDitoIncomingOrderEnvelope(envelope);
+
+    assert.equal(result.success, true);
   });
 });

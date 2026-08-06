@@ -76,6 +76,7 @@ model Organization {
   commercialTeamAuditLogs      CommercialTeamAuditLog[]
   ditoOrderAssignmentHistories DitoOrderAssignmentHistory[]
   ditoOrderAssignmentRequests  DitoOrderAssignmentRequest[]
+  ditoOrderCorrections         DitoOrderCorrection[]
 
   @@map("organizations")
 }
@@ -123,6 +124,7 @@ model User {
   ditoAssignmentRequestsCreated        DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestCreatedBy")
   ditoAssignmentRequestsSuggestedAgent DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestSuggestedAgent")
   ditoAssignmentRequestsReviewed       DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestReviewedBy")
+  ditoOrderCorrectionsPerformed        DitoOrderCorrection[] @relation("DitoOrderCorrectionActor")
 
   @@map("users")
 }

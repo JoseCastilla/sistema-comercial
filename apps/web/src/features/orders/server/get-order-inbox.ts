@@ -41,6 +41,9 @@ const orderSelect = {
   id: true,
   orderCodeRaw: true,
   operationRaw: true,
+  commercialOperation: true,
+  carrier: true,
+  fixedCharge: true,
   holderFullNameRaw: true,
   holderDocumentNumber: true,
   serviceNumber: true,
@@ -61,6 +64,7 @@ const orderSelect = {
   agentNameNormalized: true,
   agentUserId: true,
   matchStatus: true,
+  parseStatus: true,
   deliveryStatus: true,
   deliveryObservation: true,
   status: true,
@@ -69,6 +73,7 @@ const orderSelect = {
   sentSubstatusUpdatedAt: true,
   noStatusDetectedAt: true,
   registeredAt: true,
+  updatedAt: true,
   approvedAt: true,
   deliveryWindowStart: true,
   deliveryWindowEnd: true,
@@ -392,6 +397,9 @@ export async function getOrderInbox(
       id: order.id,
       orderCode: order.orderCodeRaw,
       operation: order.operationRaw,
+      commercialOperation: String(order.commercialOperation),
+      carrier: String(order.carrier),
+      fixedCharge: order.fixedCharge?.toString() ?? null,
 
       holderName: order.holderFullNameRaw,
       documentNumber: order.holderDocumentNumber,
@@ -422,6 +430,7 @@ export async function getOrderInbox(
       agentName: order.agentNameNormalized ?? order.agentNameRaw,
 
       matchStatus: String(order.matchStatus),
+      parseStatus: String(order.parseStatus),
       deliveryStatus,
 
       status,
@@ -452,6 +461,8 @@ export async function getOrderInbox(
       slaLabel: sla.label,
 
       canUpdate: access.role !== "AGENT" || order.agentUserId === access.userId,
+      canCorrect: access.role === "ADMIN",
+      updatedAt: order.updatedAt.toISOString(),
     };
   });
 

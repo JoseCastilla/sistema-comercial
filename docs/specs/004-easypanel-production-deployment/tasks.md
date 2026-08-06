@@ -10,5 +10,5 @@
 - [x] **T-008** Configurar `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` en EasyPanel Web.
 - [x] **T-009** Completar tipos, lint, pruebas y builds locales.
 - [x] **T-010** Revisar y aprobar el contenido del despliegue.
-- [ ] **T-011** Enviar el commit aprobado a `main`.
-- [ ] **T-012** Verificar Web/API y rutas críticas en producción.
+- [x] **T-011** Enviar el commit aprobado a `main`.
+- [x] **T-012** Verificar Web/API y rutas críticas en producción.

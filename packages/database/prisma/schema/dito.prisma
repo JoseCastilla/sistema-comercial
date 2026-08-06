@@ -69,6 +69,10 @@ enum DitoOrderLinkMethod {
   SUGGESTED
 }
 
+enum DitoOrderCorrectionSource {
+  MANUAL_ADMIN
+}
+
 model DitoOrder {
   id             String @id @default(uuid()) @db.Uuid
   organizationId String @map("organization_id") @db.Uuid
@@ -185,6 +189,7 @@ model DitoOrder {
   escalations                  DeliveryEscalation[]
   ditoOrderAssignmentHistories DitoOrderAssignmentHistory[]
   ditoOrderAssignmentRequests  DitoOrderAssignmentRequest[]
+  corrections                  DitoOrderCorrection[]
 
   @@unique([organizationId, eventId], map: "dito_orders_org_event_key")
   @@unique([organizationId, orderCodeNormalized], map: "dito_orders_org_order_code_key")
@@ -201,6 +206,27 @@ model DitoOrder {
   @@index([organizationId, assignedTeamId, agentUserId, registeredAt], map: "dito_orders_org_team_agent_registered_idx")
   @@index([organizationId, agentUserId, assignedTeamId, registeredAt], map: "dito_orders_org_agent_team_registered_idx")
   @@map("dito_orders")
+}
+
+model DitoOrderCorrection {
+  id             String                    @id @default(uuid()) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  ditoOrderId    String                    @map("dito_order_id") @db.Uuid
+  source         DitoOrderCorrectionSource
+  actorUserId    String?                   @map("actor_user_id") @db.Uuid
+  reason         String                    @db.VarChar(500)
+  previousValues Json                      @map("previous_values") @db.JsonB
+  newValues      Json                      @map("new_values") @db.JsonB
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  ditoOrder    DitoOrder    @relation(fields: [ditoOrderId], references: [id], onDelete: Cascade)
+  actor        User?        @relation("DitoOrderCorrectionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt], map: "dito_order_corrections_org_created_idx")
+  @@index([ditoOrderId, createdAt], map: "dito_order_corrections_order_created_idx")
+  @@index([actorUserId, createdAt], map: "dito_order_corrections_actor_created_idx")
+  @@map("dito_order_corrections")
 }
 
 model DitoOrderStatusHistory {
