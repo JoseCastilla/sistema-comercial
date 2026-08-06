@@ -205,6 +205,84 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+async function copyTextToClipboard(value: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  const copied = document.execCommand("copy");
+  textarea.remove();
+
+  if (!copied) throw new Error("Clipboard unavailable");
+}
+
+function InlineCopyValue({ label, value }: { label: string; value: string }) {
+  const [copyState, setCopyState] = useState<"COPIED" | "ERROR" | null>(null);
+
+  useEffect(() => {
+    if (copyState === null) return;
+
+    const timeout = window.setTimeout(() => {
+      setCopyState(null);
+    }, 2_000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [copyState]);
+
+  async function copyValue() {
+    try {
+      await copyTextToClipboard(value);
+      setCopyState("COPIED");
+    } catch {
+      setCopyState("ERROR");
+    }
+  }
+
+  const feedback =
+    copyState === "COPIED"
+      ? `${label} copiado`
+      : copyState === "ERROR"
+        ? `No se pudo copiar ${label}`
+        : `Copiar ${label}`;
+
+  return (
+    <button
+      aria-label={`${feedback}: ${value}`}
+      className={[
+        "rounded px-0.5 font-medium underline decoration-dotted underline-offset-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2",
+        copyState === "COPIED"
+          ? "bg-emerald-50 text-emerald-700 decoration-emerald-400"
+          : copyState === "ERROR"
+            ? "bg-red-50 text-red-700 decoration-red-400"
+            : "text-neutral-700 decoration-neutral-400 hover:bg-neutral-100 hover:text-neutral-950",
+      ].join(" ")}
+      onClick={copyValue}
+      title={`${feedback}: ${value}`}
+      type="button"
+    >
+      {value}
+      <span aria-live="polite" className="sr-only">
+        {copyState === "COPIED"
+          ? `${label} copiado al portapapeles`
+          : copyState === "ERROR"
+            ? `No se pudo copiar ${label}`
+            : ""}
+      </span>
+    </button>
+  );
+}
+
 function OrderDetails({ order }: { order: OrderInboxItem }) {
   const formKey = [
     order.id,
@@ -264,10 +342,14 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
           {order.holderName}
         </h3>
 
-        <p className="mt-1 text-sm text-neutral-600">
-          DNI {order.documentNumber}
-          {" · "}
-          {order.serviceNumber}
+        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-neutral-600">
+          <span>DNI</span>
+          <InlineCopyValue label="DNI" value={order.documentNumber} />
+          <span aria-hidden="true">·</span>
+          <InlineCopyValue
+            label="número de operación"
+            value={order.serviceNumber}
+          />
         </p>
       </div>
 
@@ -480,23 +562,7 @@ function CopyOrderCodeButton({
     onSelect();
 
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(orderCode);
-      } else {
-        const textarea = document.createElement("textarea");
-        textarea.value = orderCode;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-
-        const copied = document.execCommand("copy");
-        textarea.remove();
-
-        if (!copied) throw new Error("Clipboard unavailable");
-      }
-
+      await copyTextToClipboard(orderCode);
       setCopyState("COPIED");
     } catch {
       setCopyState("ERROR");
