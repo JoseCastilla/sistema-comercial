@@ -448,7 +448,15 @@ function MobileOrderCard({
   );
 }
 
-function CopyOrderCodeButton({ orderCode }: { orderCode: string }) {
+function CopyOrderCodeButton({
+  orderCode,
+  selected,
+  onSelect,
+}: {
+  orderCode: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const [copyState, setCopyState] = useState<"COPIED" | "ERROR" | null>(null);
 
   useEffect(() => {
@@ -463,7 +471,9 @@ function CopyOrderCodeButton({ orderCode }: { orderCode: string }) {
     };
   }, [copyState]);
 
-  async function copyOrderCode() {
+  async function selectAndCopyOrderCode() {
+    onSelect();
+
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(orderCode);
@@ -497,7 +507,8 @@ function CopyOrderCodeButton({ orderCode }: { orderCode: string }) {
 
   return (
     <button
-      aria-label={`Copiar orden ${orderCode}`}
+      aria-label={`Seleccionar y copiar orden ${orderCode}`}
+      aria-pressed={selected}
       className={[
         "group flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 font-mono text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2",
         copyState === "COPIED"
@@ -506,8 +517,8 @@ function CopyOrderCodeButton({ orderCode }: { orderCode: string }) {
             ? "bg-red-50 text-red-700"
             : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950",
       ].join(" ")}
-      onClick={copyOrderCode}
-      title={feedback || `Copiar orden ${orderCode}`}
+      onClick={selectAndCopyOrderCode}
+      title={feedback || `Seleccionar y copiar orden ${orderCode}`}
       type="button"
     >
       <span className="truncate">{orderCode}</span>
@@ -583,7 +594,13 @@ function DesktopOrderList({
               ].join(" ")}
               key={order.id}
             >
-              <CopyOrderCodeButton orderCode={order.orderCode} />
+              <CopyOrderCodeButton
+                onSelect={() => {
+                  onSelect(order.id);
+                }}
+                orderCode={order.orderCode}
+                selected={selected}
+              />
 
               <button
                 aria-pressed={selected}
