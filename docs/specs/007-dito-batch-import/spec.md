@@ -1,8 +1,9 @@
 # SPEC-007 — Importación controlada de pedidos DITO
 
-**Estado:** `DRAFT`
+**Estado:** `APPROVED`
 **Versión:** 1.1
 **Fecha:** 2026-08-06
+**Fecha de aprobación:** 2026-08-06
 
 ## Problema
 
@@ -81,25 +82,25 @@ duplicar ventas o asociarlas al asesor equivocado.
 
 ## Campos importados
 
-| Destino | Columna DITO | Tratamiento |
-| --- | --- | --- |
-| Código de orden | `Order ID Móvil` | Normalizar dígitos y presentar con sufijo `A` |
-| Código de venta | `Nro Pedido WC` | Conservar `FE-...` |
-| Registro | Fecha + hora de pedido | Interpretar en `America/Lima` |
-| Asesor | `Usuario DITO` + `Nombre de Usuario` | Resolver por identidad externa |
-| Titular | Nombre, tipo y número de documento | Normalizar espacios y caracteres |
-| Número de servicio | `Nro Servicio Móvil` | Solo dígitos |
-| Operación | Operación + plan | Alta/portabilidad y prepago/postpago |
-| Operador cedente | Código de operador | Catálogo explícito; vacío para alta nueva |
-| Cargo fijo | `Plan Móvil` | Extraer monto cuando exista |
-| Entrega | `Método de Entrega` | Express o Regular 24 h |
-| Ubicación | Departamento, provincia y distrito | Resolver provincia con UBIGEO |
-| Dirección | Componentes de vía y vivienda | Componer sin marcadores internos |
-| Referencia | Referencia + instrucciones útiles | Limpiar y combinar sin duplicar |
-| Coordenadas | X / Y | X = latitud, Y = longitud |
-| Correo del cliente | `Email Cliente` | Conservar como detalle adicional normalizado |
-| Instrucciones | `Instrucciones de Envío` | Conservar separadas de la referencia |
-| Evidencia de origen | Estado DITO, equipo, opción y tipo de carga | Conservar en el lote/detalle adicional |
+| Destino             | Columna DITO                                | Tratamiento                                   |
+| ------------------- | ------------------------------------------- | --------------------------------------------- |
+| Código de orden     | `Order ID Móvil`                            | Normalizar dígitos y presentar con sufijo `A` |
+| Código de venta     | `Nro Pedido WC`                             | Conservar `FE-...`                            |
+| Registro            | Fecha + hora de pedido                      | Interpretar en `America/Lima`                 |
+| Asesor              | `Usuario DITO` + `Nombre de Usuario`        | Resolver por identidad externa                |
+| Titular             | Nombre, tipo y número de documento          | Normalizar espacios y caracteres              |
+| Número de servicio  | `Nro Servicio Móvil`                        | Solo dígitos                                  |
+| Operación           | Operación + plan                            | Alta/portabilidad y prepago/postpago          |
+| Operador cedente    | Código de operador                          | Catálogo explícito; vacío para alta nueva     |
+| Cargo fijo          | `Plan Móvil`                                | Extraer monto cuando exista                   |
+| Entrega             | `Método de Entrega`                         | Express o Regular 24 h                        |
+| Ubicación           | Departamento, provincia y distrito          | Resolver provincia con UBIGEO                 |
+| Dirección           | Componentes de vía y vivienda               | Componer sin marcadores internos              |
+| Referencia          | Referencia + instrucciones útiles           | Limpiar y combinar sin duplicar               |
+| Coordenadas         | X / Y                                       | X = latitud, Y = longitud                     |
+| Correo del cliente  | `Email Cliente`                             | Conservar como detalle adicional normalizado  |
+| Instrucciones       | `Instrucciones de Envío`                    | Conservar separadas de la referencia          |
+| Evidencia de origen | Estado DITO, equipo, opción y tipo de carga | Conservar en el lote/detalle adicional        |
 
 ## Campos deliberadamente no importados
 

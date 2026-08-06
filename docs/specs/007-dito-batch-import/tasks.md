@@ -5,10 +5,10 @@
 - [x] **T-003** Definir campos útiles y campos descartados.
 - [x] **T-004** Confirmar catálogo: `21 = Claro`, `20 = Entel`, `24 = Bitel`.
 - [x] **T-006** Validar la plantilla reducida de 35 columnas.
-- [ ] **T-005** Incorporar catálogo UBIGEO versionado.
-- [ ] **T-010** Añadir dependencia y parser XLSX del lado servidor.
-- [ ] **T-011** Normalizar placeholders, mojibake, fecha/hora y dirección.
-- [ ] **T-012** Añadir fixtures anónimos y pruebas del parser.
+- [x] **T-005** Incorporar catálogo UBIGEO versionado.
+- [x] **T-010** Añadir dependencia y parser XLSX del lado servidor.
+- [x] **T-011** Normalizar placeholders, mojibake, fecha/hora y dirección.
+- [x] **T-012** Añadir fixtures anónimos y pruebas del parser.
 - [ ] **T-020** Crear modelos y migración de lotes, filas e identidades DITO.
 - [ ] **T-021** Implementar vista previa sin mutación, match por orden e idempotencia.
 - [ ] **T-022** Implementar creación y enriquecimiento transaccional con auditoría.
