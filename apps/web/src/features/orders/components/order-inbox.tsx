@@ -87,6 +87,14 @@ function ordersHref(
 }
 
 function PeriodNavigation({ data }: { data: OrderInboxData }) {
+  const advancedPeriodActive =
+    data.period === "HISTORY" || data.period === "RANGE";
+  const [advancedOpen, setAdvancedOpen] = useState(advancedPeriodActive);
+
+  useEffect(() => {
+    setAdvancedOpen(advancedPeriodActive);
+  }, [advancedPeriodActive]);
+
   return (
     <Surface className="ui-period-bar" raised>
       <div>
@@ -106,49 +114,71 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
               {option.label}
             </a>
           ))}
-
-          <a
-            aria-current={data.period === "HISTORY" ? "page" : undefined}
-            className="ui-period-navigation__history"
-            href={ordersHref(data, { period: "HISTORY" })}
-          >
-            Histórico
-          </a>
         </nav>
 
-        <form className="ui-period-range" method="get">
-          <input name="period" type="hidden" value="RANGE" />
-          {data.filter !== "ALL" ? (
-            <input name="status" type="hidden" value={data.filter} />
-          ) : null}
-          {data.search ? (
-            <input name="q" type="hidden" value={data.search} />
-          ) : null}
-          {data.teamFilter !== "ALL" ? (
-            <input name="team" type="hidden" value={data.teamFilter} />
-          ) : null}
-          <label className="ui-period-range__field">
-            <span>Desde</span>
-            <input
-              defaultValue={data.from ?? ""}
-              name="from"
-              required
-              type="date"
-            />
-          </label>
-          <label className="ui-period-range__field">
-            <span>Hasta</span>
-            <input
-              defaultValue={data.to ?? ""}
-              name="to"
-              required
-              type="date"
-            />
-          </label>
-          <button className="ui-period-range__submit" type="submit">
-            Ver rango
-          </button>
-        </form>
+        <details
+          className="ui-period-more"
+          data-active={advancedPeriodActive ? "true" : "false"}
+          onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
+          open={advancedOpen}
+        >
+          <summary>
+            {data.period === "HISTORY"
+              ? "Histórico"
+              : data.period === "RANGE"
+                ? "Rango personalizado"
+                : "Histórico y rango"}
+            <span aria-hidden="true">⌄</span>
+          </summary>
+
+          <div className="ui-period-more__panel">
+            <a
+              aria-current={data.period === "HISTORY" ? "page" : undefined}
+              className="ui-period-more__history"
+              href={ordersHref(data, { period: "HISTORY" })}
+            >
+              <span>
+                <strong>Histórico completo</strong>
+                <small>Consulta ventas y pendientes anteriores.</small>
+              </span>
+              <span aria-hidden="true">→</span>
+            </a>
+
+            <form className="ui-period-range" method="get">
+              <input name="period" type="hidden" value="RANGE" />
+              {data.filter !== "ALL" ? (
+                <input name="status" type="hidden" value={data.filter} />
+              ) : null}
+              {data.search ? (
+                <input name="q" type="hidden" value={data.search} />
+              ) : null}
+              {data.teamFilter !== "ALL" ? (
+                <input name="team" type="hidden" value={data.teamFilter} />
+              ) : null}
+              <label className="ui-period-range__field">
+                <span>Desde</span>
+                <input
+                  defaultValue={data.from ?? ""}
+                  name="from"
+                  required
+                  type="date"
+                />
+              </label>
+              <label className="ui-period-range__field">
+                <span>Hasta</span>
+                <input
+                  defaultValue={data.to ?? ""}
+                  name="to"
+                  required
+                  type="date"
+                />
+              </label>
+              <button className="ui-period-range__submit" type="submit">
+                Ver rango
+              </button>
+            </form>
+          </div>
+        </details>
       </div>
     </Surface>
   );
@@ -826,7 +856,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       ) : null}
 
       <Surface className="ui-filter-bar" raised>
-        <form className="flex gap-2 lg:hidden" method="get">
+        <form className="lg:hidden" method="get">
           <input name="period" type="hidden" value={data.period} />
           {data.from ? (
             <input name="from" type="hidden" value={data.from} />
@@ -844,6 +874,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               className="ui-filter-select"
               defaultValue={data.filter}
               name="status"
+              onChange={(event) => event.currentTarget.form?.requestSubmit()}
             >
               {filterOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -852,9 +883,6 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               ))}
             </select>
           </label>
-          <button className="ui-filter-submit" type="submit">
-            Aplicar
-          </button>
         </form>
 
         <nav
@@ -898,6 +926,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                 className="ui-filter-select"
                 defaultValue={data.teamFilter}
                 name="team"
+                onChange={(event) => event.currentTarget.form?.requestSubmit()}
               >
                 <option value="ALL">{data.teamAllLabel}</option>
                 <option value="UNASSIGNED">Sin asignar</option>
@@ -908,9 +937,6 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                 ))}
               </select>
             </label>
-            <button className="ui-filter-submit" type="submit">
-              Aplicar
-            </button>
           </form>
         ) : null}
 
@@ -938,8 +964,20 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               type="search"
             />
           </label>
-          <button className="ui-filter-submit" type="submit">
-            Buscar
+          <button
+            aria-label="Buscar pedidos"
+            className="ui-filter-submit ui-order-search__submit"
+            type="submit"
+          >
+            <span>Buscar</span>
+            <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+              <circle cx="8.5" cy="8.5" r="5.25" stroke="currentColor" />
+              <path
+                d="m12.4 12.4 4.1 4.1"
+                stroke="currentColor"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </form>
 
