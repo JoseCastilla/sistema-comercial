@@ -9,10 +9,10 @@
 - [x] **T-010** Añadir dependencia y parser XLSX del lado servidor.
 - [x] **T-011** Normalizar placeholders, mojibake, fecha/hora y dirección.
 - [x] **T-012** Añadir fixtures anónimos y pruebas del parser.
-- [ ] **T-020** Crear modelos y migración de lotes, filas e identidades DITO.
-- [ ] **T-021** Implementar vista previa sin mutación, match por orden e idempotencia.
+- [x] **T-020** Crear modelos y migración de lotes, filas e identidades DITO.
+- [x] **T-021** Implementar vista previa sin mutación, match por orden e idempotencia.
 - [ ] **T-022** Implementar creación y enriquecimiento transaccional con auditoría.
-- [ ] **T-023** Detectar conflictos sin sobrescribir valores válidos.
+- [x] **T-023** Detectar conflictos sin sobrescribir valores válidos.
 - [ ] **T-030** Crear interfaz ADMIN de importación y resolución de asesores.
 - [ ] **T-031** Mostrar resultados por importadas, omitidas, inválidas y excluidas.
 - [ ] **T-040** Probar autorización, aislamiento, concurrencia y reimportación.

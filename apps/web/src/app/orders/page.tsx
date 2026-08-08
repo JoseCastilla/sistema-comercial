@@ -1,6 +1,6 @@
 import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 
-import { parseOrderPeriod } from "@repo/validation";
+import { parseOrderPeriod, parseOrderRange } from "@repo/validation";
 
 import { OrderInbox } from "@/features/orders/components/order-inbox";
 
@@ -36,7 +36,13 @@ function parseOrderFilter(value: string | undefined): OrderFilter {
 export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const { session, membership } = await requireCommercialAccess();
   const parameters = await searchParams;
-  const period = parseOrderPeriod(firstValue(parameters.period));
+  const requestedPeriod = parseOrderPeriod(firstValue(parameters.period));
+  const requestedRange = parseOrderRange(
+    firstValue(parameters.from),
+    firstValue(parameters.to),
+  );
+  const period =
+    requestedPeriod === "RANGE" && !requestedRange ? "MONTH" : requestedPeriod;
   const rawPage = Number(firstValue(parameters.page));
   const filter = parseOrderFilter(firstValue(parameters.status));
   const search = firstValue(parameters.q)?.trim().slice(0, 100) ?? "";
@@ -49,6 +55,8 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     },
     {
       period,
+      from: period === "RANGE" ? requestedRange?.from : undefined,
+      to: period === "RANGE" ? requestedRange?.to : undefined,
       page: Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1,
       filter,
       search,

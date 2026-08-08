@@ -136,6 +136,57 @@
     overflow-x: auto;
   }
 
+  .ui-period-controls {
+    display: grid;
+    gap: 0.85rem;
+    min-width: 0;
+  }
+
+  .ui-period-range {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--ui-border);
+  }
+
+  .ui-period-range__field {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+    color: var(--ui-text-soft);
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .ui-period-range__field input {
+    min-width: 0;
+    min-height: 2.35rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    color: var(--ui-text);
+    background: var(--ui-surface);
+    font: inherit;
+  }
+
+  .ui-period-range__field input:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--ui-accent) 35%, transparent);
+    outline-offset: 1px;
+    border-color: var(--ui-accent);
+  }
+
+  .ui-period-range__submit {
+    grid-column: 1 / -1;
+    min-height: 2.35rem;
+    padding: 0.52rem 0.8rem;
+    border-radius: var(--ui-radius-md);
+    color: white;
+    background: var(--ui-accent);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
   .ui-period-navigation__item,
   .ui-period-navigation__history {
     flex: none;
@@ -449,8 +500,23 @@
 
     .ui-period-bar {
       flex-direction: row;
-      align-items: center;
+      align-items: start;
       justify-content: space-between;
+    }
+
+    .ui-period-controls {
+      justify-items: end;
+    }
+
+    .ui-period-range {
+      grid-template-columns: repeat(2, minmax(8.5rem, 1fr)) auto;
+      align-items: end;
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .ui-period-range__submit {
+      grid-column: auto;
     }
   }
 

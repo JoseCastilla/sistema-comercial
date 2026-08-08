@@ -8,6 +8,8 @@ import {
 const maxWorkbookBytes = 10 * 1024 * 1024;
 const businessTimeZoneOffset = '-05:00';
 
+export const ditoBatchParserVersion = '1.0';
+
 const operatorCatalog = {
   '20': 'ENTEL',
   '21': 'CLARO',

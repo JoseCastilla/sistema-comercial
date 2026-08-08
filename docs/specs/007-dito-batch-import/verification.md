@@ -1,6 +1,6 @@
 # SPEC-007 — Verificación
 
-**Estado:** `PARSER_IMPLEMENTED`
+**Estado:** `ADMIN_PREVIEW_UI_IN_PROGRESS`
 **Fecha:** 2026-08-06
 
 ## Incremento 1 — Parser y catálogos
@@ -38,9 +38,43 @@
 - 0 importables porque todas pertenecen al mes anterior.
 - 18 excluidas y 0 inválidas.
 
+## Incremento 2 — Persistencia y clasificación de vista previa
+
+- Modelos separados para lote, filas e identidades externas DITO.
+- Hash SHA-256 único por organización para reutilizar el mismo lote sin duplicarlo.
+- Identidad `Usuario DITO` única por organización y resolución exclusiva a un
+  usuario `AGENT` activo.
+- Comparación por código de orden y control adicional por código de venta.
+- Clasificaciones: nueva, enriquecimiento, sin cambios, excluida, inválida,
+  identidad bloqueada y conflicto.
+- Los enriquecimientos solo proponen valores ausentes o placeholders; una
+  diferencia entre dos valores válidos se conserva como conflicto.
+- La vista previa persiste lote y filas en una transacción, pero no ejecuta
+  `create` ni `update` sobre pedidos.
+- Migración `20260806180000_add_dito_batch_import_preview` aplicada y verificada
+  únicamente en PostgreSQL local.
+- 11 pruebas enfocadas aprobadas para clasificación, conflictos, identidad,
+  persistencia segura e idempotencia por archivo.
+
 ## Pendiente
 
-- Persistir lotes y filas de vista previa sin crear órdenes.
-- Comparar cada código de orden y código de venta con la organización activa.
 - Resolver las cinco identidades DITO antes de habilitar confirmación.
 - Implementar interfaz ADMIN y pruebas de autorización/idempotencia.
+
+## Incremento 3 — Acceso administrativo y primera interfaz
+
+- Endpoint interno de vista previa protegido con firma HMAC ligada al hash del
+  archivo y una vigencia máxima de cinco minutos.
+- La API vuelve a comprobar que el actor sea un `ADMIN` activo de la misma
+  organización; la autorización de la Web no se considera suficiente por sí sola.
+- Nueva ruta local `/admin/dito-imports`, disponible solamente para ADMIN desde
+  la navegación de Ventas.
+- Formulario XLSX con límite de 10 MB y mensaje explícito de que el análisis no
+  modifica pedidos.
+- Paneles para cargas recientes, métricas del lote, identidades pendientes,
+  detalle por fila y confirmación intencionalmente deshabilitada.
+- 18 pruebas enfocadas aprobadas en el módulo de importación, incluidas firma,
+  expiración, rol administrativo, idempotencia y ausencia de mutación de pedidos.
+- Interfaz revisada visualmente en local en vista móvil.
+- Pendiente ejecutar la carga real desde la interfaz cuando la API local pueda
+  reiniciarse con esta versión; no se publicó ningún cambio.

@@ -1,3 +1,5 @@
+import type { OrderPeriod } from "@repo/validation";
+
 export type OrderSlaState =
   | "OVERDUE"
   | "DUE_SOON"
@@ -92,8 +94,10 @@ export interface OrderInboxItem {
 export interface OrderInboxData {
   generatedAt: string;
 
-  period: "TODAY" | "WEEK" | "MONTH" | "HISTORY";
+  period: OrderPeriod;
   periodLabel: string;
+  from: string | null;
+  to: string | null;
   filter: OrderFilter;
   search: string;
   filteredTotal: number;

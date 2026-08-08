@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-export const orderPeriodSchema = z.enum(["TODAY", "WEEK", "MONTH", "HISTORY"]);
+export const orderPeriodSchema = z.enum([
+  "TODAY",
+  "YESTERDAY",
+  "WEEK",
+  "MONTH",
+  "HISTORY",
+  "RANGE",
+]);
 
 export type OrderPeriod = z.infer<typeof orderPeriodSchema>;
 
@@ -10,6 +17,11 @@ export interface OrderPeriodRange {
   end: Date | null;
   monthStart: Date;
   monthEnd: Date;
+}
+
+export interface ParsedOrderRange {
+  from: string;
+  to: string;
 }
 
 const limaDateFormatter = new Intl.DateTimeFormat("en-CA", {
@@ -56,6 +68,10 @@ export function getOrderPeriodRange(
     return { period, start: null, end: null, monthStart, monthEnd };
   }
 
+  if (period === "RANGE") {
+    throw new Error("RANGE requiere fechas from/to válidas.");
+  }
+
   if (period === "MONTH") {
     return { period, start: monthStart, end: monthEnd, monthStart, monthEnd };
   }
@@ -72,6 +88,16 @@ export function getOrderPeriodRange(
     };
   }
 
+  if (period === "YESTERDAY") {
+    return {
+      period,
+      start: limaMidnight(year, month, day - 1),
+      end: todayStart,
+      monthStart,
+      monthEnd,
+    };
+  }
+
   const utcWeekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
   const daysSinceMonday = (utcWeekday + 6) % 7;
   const mondayStart = limaMidnight(year, month, day - daysSinceMonday);
@@ -80,4 +106,55 @@ export function getOrderPeriodRange(
   const end = naturalEnd > monthEnd ? monthEnd : naturalEnd;
 
   return { period, start, end, monthStart, monthEnd };
+}
+
+export function parseOrderRange(
+  from: unknown,
+  to: unknown,
+): ParsedOrderRange | null {
+  if (typeof from !== "string" || typeof to !== "string") return null;
+  if (!isValidIsoDate(from) || !isValidIsoDate(to) || from > to) return null;
+
+  return { from, to };
+}
+
+export function getOrderRange(
+  from: string,
+  to: string,
+  now = new Date(),
+): OrderPeriodRange {
+  const parsed = parseOrderRange(from, to);
+
+  if (!parsed) throw new Error("El rango de fechas no es válido.");
+
+  const startParts = isoDateParts(parsed.from);
+  const endParts = isoDateParts(parsed.to);
+  const current = limaDateParts(now);
+
+  return {
+    period: "RANGE",
+    start: limaMidnight(startParts.year, startParts.month, startParts.day),
+    end: limaMidnight(endParts.year, endParts.month, endParts.day + 1),
+    monthStart: limaMidnight(current.year, current.month, 1),
+    monthEnd: limaMidnight(current.year, current.month + 1, 1),
+  };
+}
+
+function isoDateParts(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+
+  return { year: year ?? 0, month: month ?? 0, day: day ?? 0 };
+}
+
+function isValidIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const { year, month, day } = isoDateParts(value);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    candidate.getUTCFullYear() === year &&
+    candidate.getUTCMonth() === month - 1 &&
+    candidate.getUTCDate() === day
+  );
 }

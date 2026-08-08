@@ -126,7 +126,7 @@ const contact = {
 
   contact_type: 'lead',
 
-  tags: 'campaÃ±a',
+  tags: 'campaña',
 };
 
 function createEnvelope(snapshot: unknown): GhlWebhookEnvelopeV1 {

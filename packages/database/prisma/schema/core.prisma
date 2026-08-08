@@ -77,6 +77,9 @@ model Organization {
   ditoOrderAssignmentHistories DitoOrderAssignmentHistory[]
   ditoOrderAssignmentRequests  DitoOrderAssignmentRequest[]
   ditoOrderCorrections         DitoOrderCorrection[]
+  ditoAgentIdentities          DitoAgentIdentity[]
+  ditoImportBatches            DitoImportBatch[]
+  ditoImportRows               DitoImportRow[]
 
   @@map("organizations")
 }
@@ -111,11 +114,11 @@ model User {
 
   agentAliases AgentAlias[]
 
-  commercialTeamsCreated         CommercialTeam[]       @relation("CommercialTeamCreatedBy")
-  commercialTeamMemberships      CommercialTeamMember[] @relation("CommercialTeamMemberUser")
-  commercialTeamMembershipsGiven CommercialTeamMember[] @relation("CommercialTeamMemberAssignedBy")
-  commercialTeamAuditsPerformed CommercialTeamAuditLog[] @relation("CommercialTeamAuditActor")
-  commercialTeamAuditsAsTarget  CommercialTeamAuditLog[] @relation("CommercialTeamAuditTarget")
+  commercialTeamsCreated         CommercialTeam[]         @relation("CommercialTeamCreatedBy")
+  commercialTeamMemberships      CommercialTeamMember[]   @relation("CommercialTeamMemberUser")
+  commercialTeamMembershipsGiven CommercialTeamMember[]   @relation("CommercialTeamMemberAssignedBy")
+  commercialTeamAuditsPerformed  CommercialTeamAuditLog[] @relation("CommercialTeamAuditActor")
+  commercialTeamAuditsAsTarget   CommercialTeamAuditLog[] @relation("CommercialTeamAuditTarget")
 
   ditoAssignmentsAsPreviousAgent DitoOrderAssignmentHistory[] @relation("DitoAssignmentPreviousAgent")
   ditoAssignmentsAsNewAgent      DitoOrderAssignmentHistory[] @relation("DitoAssignmentNewAgent")
@@ -124,7 +127,11 @@ model User {
   ditoAssignmentRequestsCreated        DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestCreatedBy")
   ditoAssignmentRequestsSuggestedAgent DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestSuggestedAgent")
   ditoAssignmentRequestsReviewed       DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestReviewedBy")
-  ditoOrderCorrectionsPerformed        DitoOrderCorrection[] @relation("DitoOrderCorrectionActor")
+  ditoOrderCorrectionsPerformed        DitoOrderCorrection[]        @relation("DitoOrderCorrectionActor")
+  ditoAgentIdentities                  DitoAgentIdentity[]          @relation("DitoAgentIdentityUser")
+  ditoAgentIdentityResolutions         DitoAgentIdentity[]          @relation("DitoAgentIdentityResolvedBy")
+  ditoImportBatchesUploaded            DitoImportBatch[]            @relation("DitoImportBatchUploadedBy")
+  ditoImportBatchesConfirmed           DitoImportBatch[]            @relation("DitoImportBatchConfirmedBy")
 
   @@map("users")
 }

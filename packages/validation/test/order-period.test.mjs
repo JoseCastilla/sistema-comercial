@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { getOrderPeriodRange, parseOrderPeriod } from "../dist/index.js";
+import {
+  getOrderPeriodRange,
+  getOrderRange,
+  parseOrderPeriod,
+  parseOrderRange,
+} from "../dist/index.js";
 
 describe("order periods in America/Lima", () => {
   it("defaults invalid values to the current month", () => {
@@ -37,5 +42,36 @@ describe("order periods in America/Lima", () => {
 
     assert.equal(range.start.toISOString(), "2026-08-05T05:00:00.000Z");
     assert.equal(range.end.toISOString(), "2026-08-06T05:00:00.000Z");
+  });
+
+  it("calculates yesterday across a month and year boundary", () => {
+    const range = getOrderPeriodRange(
+      "YESTERDAY",
+      new Date("2027-01-01T15:00:00.000Z"),
+    );
+
+    assert.equal(range.start.toISOString(), "2026-12-31T05:00:00.000Z");
+    assert.equal(range.end.toISOString(), "2027-01-01T05:00:00.000Z");
+  });
+
+  it("creates an inclusive custom date range as a semi-open UTC interval", () => {
+    const range = getOrderRange(
+      "2026-07-31",
+      "2026-08-02",
+      new Date("2026-08-08T15:00:00.000Z"),
+    );
+
+    assert.equal(range.start.toISOString(), "2026-07-31T05:00:00.000Z");
+    assert.equal(range.end.toISOString(), "2026-08-03T05:00:00.000Z");
+  });
+
+  it("rejects incomplete, reversed and impossible custom ranges", () => {
+    assert.equal(parseOrderRange(undefined, "2026-08-02"), null);
+    assert.equal(parseOrderRange("2026-08-03", "2026-08-02"), null);
+    assert.equal(parseOrderRange("2026-02-30", "2026-03-01"), null);
+    assert.deepEqual(parseOrderRange("2026-08-01", "2026-08-02"), {
+      from: "2026-08-01",
+      to: "2026-08-02",
+    });
   });
 });

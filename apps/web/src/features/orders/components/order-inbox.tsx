@@ -54,6 +54,7 @@ const periodOptions: Array<{
   label: string;
 }> = [
   { value: "TODAY", label: "Hoy" },
+  { value: "YESTERDAY", label: "Ayer" },
   { value: "WEEK", label: "Semana" },
   { value: "MONTH", label: "Mes actual" },
 ];
@@ -72,6 +73,10 @@ function ordersHref(
   const search = overrides.search ?? data.search;
   const page = overrides.page ?? 1;
   const parameters = new URLSearchParams({ period });
+  if (period === "RANGE") {
+    if (data.from) parameters.set("from", data.from);
+    if (data.to) parameters.set("to", data.to);
+  }
   if (filter !== "ALL") parameters.set("status", filter);
   if (search) parameters.set("q", search);
   if (page > 1) parameters.set("page", String(page));
@@ -86,26 +91,59 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
         <p className="ui-period-bar__label">{data.periodLabel}</p>
       </div>
 
-      <nav aria-label="Período de ventas" className="ui-period-navigation">
-        {periodOptions.map((option) => (
-          <a
-            aria-current={data.period === option.value ? "page" : undefined}
-            className="ui-period-navigation__item"
-            href={ordersHref(data, { period: option.value })}
-            key={option.value}
-          >
-            {option.label}
-          </a>
-        ))}
+      <div className="ui-period-controls">
+        <nav aria-label="Período de ventas" className="ui-period-navigation">
+          {periodOptions.map((option) => (
+            <a
+              aria-current={data.period === option.value ? "page" : undefined}
+              className="ui-period-navigation__item"
+              href={ordersHref(data, { period: option.value })}
+              key={option.value}
+            >
+              {option.label}
+            </a>
+          ))}
 
-        <a
-          aria-current={data.period === "HISTORY" ? "page" : undefined}
-          className="ui-period-navigation__history"
-          href={ordersHref(data, { period: "HISTORY" })}
-        >
-          Histórico
-        </a>
-      </nav>
+          <a
+            aria-current={data.period === "HISTORY" ? "page" : undefined}
+            className="ui-period-navigation__history"
+            href={ordersHref(data, { period: "HISTORY" })}
+          >
+            Histórico
+          </a>
+        </nav>
+
+        <form className="ui-period-range" method="get">
+          <input name="period" type="hidden" value="RANGE" />
+          {data.filter !== "ALL" ? (
+            <input name="status" type="hidden" value={data.filter} />
+          ) : null}
+          {data.search ? (
+            <input name="q" type="hidden" value={data.search} />
+          ) : null}
+          <label className="ui-period-range__field">
+            <span>Desde</span>
+            <input
+              defaultValue={data.from ?? ""}
+              name="from"
+              required
+              type="date"
+            />
+          </label>
+          <label className="ui-period-range__field">
+            <span>Hasta</span>
+            <input
+              defaultValue={data.to ?? ""}
+              name="to"
+              required
+              type="date"
+            />
+          </label>
+          <button className="ui-period-range__submit" type="submit">
+            Ver rango
+          </button>
+        </form>
+      </div>
     </Surface>
   );
 }
@@ -784,6 +822,10 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       <Surface className="ui-filter-bar" raised>
         <form className="flex gap-2 lg:hidden" method="get">
           <input name="period" type="hidden" value={data.period} />
+          {data.from ? (
+            <input name="from" type="hidden" value={data.from} />
+          ) : null}
+          {data.to ? <input name="to" type="hidden" value={data.to} /> : null}
           {data.search ? (
             <input name="q" type="hidden" value={data.search} />
           ) : null}
@@ -830,6 +872,10 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
         <form className="ui-order-search" method="get">
           <input name="period" type="hidden" value={data.period} />
+          {data.from ? (
+            <input name="from" type="hidden" value={data.from} />
+          ) : null}
+          {data.to ? <input name="to" type="hidden" value={data.to} /> : null}
           {data.filter !== "ALL" ? (
             <input name="status" type="hidden" value={data.filter} />
           ) : null}
@@ -866,11 +912,15 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               ? "No hay ventas que coincidan con este estado o búsqueda."
               : data.period === "TODAY"
                 ? "No se registraron ventas hoy."
-                : data.period === "WEEK"
-                  ? "No se registraron ventas esta semana."
-                  : data.period === "MONTH"
-                    ? "No se registraron ventas en el mes actual."
-                    : "No se encontraron ventas en el histórico."
+                : data.period === "YESTERDAY"
+                  ? "No se registraron ventas ayer."
+                  : data.period === "WEEK"
+                    ? "No se registraron ventas esta semana."
+                    : data.period === "MONTH"
+                      ? "No se registraron ventas en el mes actual."
+                      : data.period === "RANGE"
+                        ? "No se registraron ventas en el rango seleccionado."
+                        : "No se encontraron ventas en el histórico."
           }
           title={
             data.totals.visible > 0

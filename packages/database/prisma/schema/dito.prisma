@@ -71,6 +71,32 @@ enum DitoOrderLinkMethod {
 
 enum DitoOrderCorrectionSource {
   MANUAL_ADMIN
+  DITO_BATCH_IMPORT
+}
+
+enum DitoImportBatchStatus {
+  PREVIEW
+  READY
+  CONFIRMING
+  CONFIRMED
+  FAILED
+}
+
+enum DitoImportRowClassification {
+  NEW_ORDER
+  ENRICHMENT
+  UNCHANGED
+  EXCLUDED
+  INVALID
+  BLOCKED_IDENTITY
+  CONFLICT
+}
+
+enum DitoImportRowApplicationStatus {
+  PENDING
+  APPLIED
+  SKIPPED
+  FAILED
 }
 
 model DitoOrder {
@@ -190,6 +216,7 @@ model DitoOrder {
   ditoOrderAssignmentHistories DitoOrderAssignmentHistory[]
   ditoOrderAssignmentRequests  DitoOrderAssignmentRequest[]
   corrections                  DitoOrderCorrection[]
+  importRows                   DitoImportRow[]
 
   @@unique([organizationId, eventId], map: "dito_orders_org_event_key")
   @@unique([organizationId, orderCodeNormalized], map: "dito_orders_org_order_code_key")
@@ -210,24 +237,135 @@ model DitoOrder {
 }
 
 model DitoOrderCorrection {
-  id             String                    @id @default(uuid()) @db.Uuid
-  organizationId String                    @map("organization_id") @db.Uuid
-  ditoOrderId    String                    @map("dito_order_id") @db.Uuid
-  source         DitoOrderCorrectionSource
-  actorUserId    String?                   @map("actor_user_id") @db.Uuid
-  reason         String                    @db.VarChar(500)
-  previousValues Json                      @map("previous_values") @db.JsonB
-  newValues      Json                      @map("new_values") @db.JsonB
-  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  id                String                    @id @default(uuid()) @db.Uuid
+  organizationId    String                    @map("organization_id") @db.Uuid
+  ditoOrderId       String                    @map("dito_order_id") @db.Uuid
+  source            DitoOrderCorrectionSource
+  actorUserId       String?                   @map("actor_user_id") @db.Uuid
+  ditoImportBatchId String?                   @map("dito_import_batch_id") @db.Uuid
+  reason            String                    @db.VarChar(500)
+  previousValues    Json                      @map("previous_values") @db.JsonB
+  newValues         Json                      @map("new_values") @db.JsonB
+  createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  ditoOrder    DitoOrder    @relation(fields: [ditoOrderId], references: [id], onDelete: Cascade)
-  actor        User?        @relation("DitoOrderCorrectionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  ditoOrder    DitoOrder        @relation(fields: [ditoOrderId], references: [id], onDelete: Cascade)
+  actor        User?            @relation("DitoOrderCorrectionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  importBatch  DitoImportBatch? @relation(fields: [ditoImportBatchId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt], map: "dito_order_corrections_org_created_idx")
   @@index([ditoOrderId, createdAt], map: "dito_order_corrections_order_created_idx")
   @@index([actorUserId, createdAt], map: "dito_order_corrections_actor_created_idx")
+  @@index([ditoImportBatchId, createdAt], map: "dito_order_corrections_batch_created_idx")
   @@map("dito_order_corrections")
+}
+
+model DitoAgentIdentity {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  externalUsername           String  @map("external_username") @db.VarChar(150)
+  externalUsernameNormalized String  @map("external_username_normalized") @db.VarChar(150)
+  displayName                String? @map("display_name") @db.VarChar(150)
+  userId                     String? @map("user_id") @db.Uuid
+  isActive                   Boolean @default(true) @map("is_active")
+
+  resolvedByUserId String?   @map("resolved_by_user_id") @db.Uuid
+  resolvedAt       DateTime? @map("resolved_at") @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?           @relation("DitoAgentIdentityUser", fields: [userId], references: [id], onDelete: SetNull)
+  resolvedBy   User?           @relation("DitoAgentIdentityResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  importRows   DitoImportRow[]
+
+  @@unique([organizationId, externalUsernameNormalized], map: "dito_agent_identities_org_username_key")
+  @@index([organizationId, userId, isActive], map: "dito_agent_identities_org_user_active_idx")
+  @@map("dito_agent_identities")
+}
+
+model DitoImportBatch {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  fileName   String @map("file_name") @db.VarChar(255)
+  fileSha256 String @map("file_sha256") @db.Char(64)
+  fileSize   Int    @map("file_size")
+
+  parserVersion        String                @map("parser_version") @db.VarChar(30)
+  ubigeoCatalogVersion String                @map("ubigeo_catalog_version") @db.VarChar(30)
+  sourceSheet          String                @map("source_sheet") @db.VarChar(100)
+  headerRow            Int                   @map("header_row")
+  status               DitoImportBatchStatus @default(PREVIEW)
+
+  sourceRows     Int @map("source_rows")
+  importableRows Int @map("importable_rows")
+  excludedRows   Int @map("excluded_rows")
+  invalidRows    Int @map("invalid_rows")
+  newRows        Int @default(0) @map("new_rows")
+  enrichmentRows Int @default(0) @map("enrichment_rows")
+  unchangedRows  Int @default(0) @map("unchanged_rows")
+  blockedRows    Int @default(0) @map("blocked_rows")
+  conflictRows   Int @default(0) @map("conflict_rows")
+
+  uploadedByUserId  String    @map("uploaded_by_user_id") @db.Uuid
+  uploadedAt        DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(3)
+  confirmedByUserId String?   @map("confirmed_by_user_id") @db.Uuid
+  confirmedAt       DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  failureReason     String?   @map("failure_reason") @db.Text
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  uploadedBy   User                  @relation("DitoImportBatchUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  confirmedBy  User?                 @relation("DitoImportBatchConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  rows         DitoImportRow[]
+  corrections  DitoOrderCorrection[]
+
+  @@unique([organizationId, fileSha256], map: "dito_import_batches_org_file_hash_key")
+  @@index([organizationId, status, uploadedAt], map: "dito_import_batches_org_status_uploaded_idx")
+  @@index([uploadedByUserId, uploadedAt], map: "dito_import_batches_uploader_uploaded_idx")
+  @@map("dito_import_batches")
+}
+
+model DitoImportRow {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  batchId        String @map("batch_id") @db.Uuid
+  sourceRow      Int    @map("source_row")
+
+  classification    DitoImportRowClassification
+  applicationStatus DitoImportRowApplicationStatus @default(PENDING) @map("application_status")
+  issueCodes        String[]                       @default([]) @map("issue_codes")
+
+  orderCodeNormalized    String? @map("order_code_normalized") @db.VarChar(100)
+  displayedOrderCode     String? @map("displayed_order_code") @db.VarChar(100)
+  salesCode              String? @map("sales_code") @db.VarChar(100)
+  ditoUsernameNormalized String? @map("dito_username_normalized") @db.VarChar(150)
+
+  ditoAgentIdentityId String? @map("dito_agent_identity_id") @db.Uuid
+  targetDitoOrderId   String? @map("target_dito_order_id") @db.Uuid
+
+  parsedData      Json      @map("parsed_data") @db.JsonB
+  proposedChanges Json?     @map("proposed_changes") @db.JsonB
+  conflicts       Json?     @db.JsonB
+  appliedAt       DateTime? @map("applied_at") @db.Timestamptz(3)
+  failureReason   String?   @map("failure_reason") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  batch         DitoImportBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  agentIdentity DitoAgentIdentity? @relation(fields: [ditoAgentIdentityId], references: [id], onDelete: SetNull)
+  targetOrder   DitoOrder?         @relation(fields: [targetDitoOrderId], references: [id], onDelete: SetNull)
+
+  @@unique([batchId, sourceRow], map: "dito_import_rows_batch_source_row_key")
+  @@index([organizationId, classification, createdAt], map: "dito_import_rows_org_classification_created_idx")
+  @@index([organizationId, orderCodeNormalized], map: "dito_import_rows_org_order_code_idx")
+  @@index([organizationId, salesCode], map: "dito_import_rows_org_sales_code_idx")
+  @@index([ditoAgentIdentityId], map: "dito_import_rows_agent_identity_idx")
+  @@index([targetDitoOrderId], map: "dito_import_rows_target_order_idx")
+  @@map("dito_import_rows")
 }
 
 model DitoOrderStatusHistory {

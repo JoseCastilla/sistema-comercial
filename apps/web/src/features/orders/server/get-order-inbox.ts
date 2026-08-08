@@ -1,6 +1,10 @@
 import "server-only";
 
-import { getOrderPeriodRange } from "@repo/validation";
+import {
+  getOrderPeriodRange,
+  getOrderRange,
+  parseOrderRange,
+} from "@repo/validation";
 
 import { database } from "@/server/database";
 
@@ -22,6 +26,8 @@ const pageSize = 50;
 
 export interface OrderInboxQuery {
   period: OrderPeriod;
+  from?: string;
+  to?: string;
   page?: number;
   filter: OrderFilter;
   search?: string;
@@ -392,7 +398,13 @@ export async function getOrderInbox(
   query: OrderInboxQuery,
 ): Promise<OrderInboxData> {
   const now = new Date();
-  const range = getOrderPeriodRange(query.period, now);
+  const parsedRange =
+    query.period === "RANGE" ? parseOrderRange(query.from, query.to) : null;
+  const period =
+    query.period === "RANGE" && !parsedRange ? "MONTH" : query.period;
+  const range = parsedRange
+    ? getOrderRange(parsedRange.from, parsedRange.to, now)
+    : getOrderPeriodRange(period, now);
   const requestedPage = Math.max(1, Math.floor(query.page ?? 1));
   const search = query.search?.trim().slice(0, 100) ?? "";
   const incidentThreshold = new Date(now.getTime() - 10 * 60 * 1000);
@@ -603,15 +615,21 @@ export async function getOrderInbox(
   return {
     generatedAt: dateTimeFormatter.format(now),
 
-    period: query.period,
+    period,
     periodLabel:
-      query.period === "TODAY"
+      period === "TODAY"
         ? "Hoy"
-        : query.period === "WEEK"
-          ? "Semana actual"
-          : query.period === "MONTH"
-            ? "Mes actual"
-            : "Histórico",
+        : period === "YESTERDAY"
+          ? "Ayer"
+          : period === "WEEK"
+            ? "Semana actual"
+            : period === "MONTH"
+              ? "Mes actual"
+              : period === "RANGE" && range.start && range.end
+                ? `Del ${dateFormatter.format(range.start)} al ${dateFormatter.format(new Date(range.end.getTime() - 1))}`
+                : "Histórico",
+    from: parsedRange?.from ?? null,
+    to: parsedRange?.to ?? null,
     filter: query.filter,
     search,
     filteredTotal,
