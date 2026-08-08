@@ -16,8 +16,60 @@ import {
   ditoOrderAssignmentSourceSchema,
   isOrphanDitoOrder,
   resolveCommercialContextAccess,
+  resolveDitoOrderScope,
   resolveDitoOrderVisibility,
 } from "../dist/commercial-team-rules.js";
+
+describe("resolveDitoOrderScope", () => {
+  it("grants organizational scope to ADMIN and BACKOFFICE", () => {
+    for (const role of ["ADMIN", "BACKOFFICE"]) {
+      assert.deepEqual(
+        resolveDitoOrderScope({
+          role,
+          userId: "user-1",
+          supervisedTeamIds: [],
+        }),
+        { kind: "ORGANIZATION" },
+      );
+    }
+  });
+
+  it("limits an agent to their own user id", () => {
+    assert.deepEqual(
+      resolveDitoOrderScope({
+        role: "AGENT",
+        userId: "agent-1",
+        supervisedTeamIds: ["ignored-team"],
+      }),
+      { kind: "AGENT", userId: "agent-1" },
+    );
+  });
+
+  it("limits a supervisor to active supervised teams plus orphans", () => {
+    assert.deepEqual(
+      resolveDitoOrderScope({
+        role: "SUPERVISOR",
+        userId: "supervisor-1",
+        supervisedTeamIds: ["team-1", "team-2"],
+      }),
+      {
+        kind: "SUPERVISED_TEAMS_WITH_ORPHANS",
+        teamIds: ["team-1", "team-2"],
+      },
+    );
+  });
+
+  it("returns no scope for a supervisor without active teams", () => {
+    assert.deepEqual(
+      resolveDitoOrderScope({
+        role: "SUPERVISOR",
+        userId: "supervisor-1",
+        supervisedTeamIds: [],
+      }),
+      { kind: "NONE" },
+    );
+  });
+});
 
 describe("canActivateAgentAlias", () => {
   const validInput = {

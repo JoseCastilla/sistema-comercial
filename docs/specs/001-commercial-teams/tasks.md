@@ -65,9 +65,9 @@ La especificación está `APPROVED`. Ejecutar las tareas en orden y mantener tra
 ## Fase 5 — Visibilidad jerárquica y contexto
 
 - [ ] **T-050** Extender contexto de acceso con equipos supervisados.
-- [ ] **T-051** Filtrar bandeja DITO para supervisor.
+- [x] **T-051** Filtrar bandeja DITO para supervisor.
 - [ ] **T-052** Filtrar leads/solicitudes para supervisor.
-- [ ] **T-053** Mantener visibilidad operativa total de back office sin representarlo como supervisor.
+- [x] **T-053** Mantener visibilidad operativa total de back office sin representarlo como supervisor.
 - [ ] **T-054** Añadir pruebas de acceso denegado entre equipos.
 - [ ] **T-055** Añadir pruebas entre organizaciones.
 - [ ] **T-056** Implementar acceso contextual derivado de solo lectura desde orden hacia contacto/solicitud/servicio.
@@ -76,11 +76,11 @@ La especificación está `APPROVED`. Ejecutar las tareas en orden y mantener tra
 
 ## Fase 6 — Pool de huérfanos y reclamación
 
-- [ ] **T-060** Implementar consulta del pool para `ADMIN` y `BACKOFFICE`.
-- [ ] **T-061** Implementar proyección limitada y enmascarada para `SUPERVISOR`.
+- [x] **T-060** Implementar consulta del pool para `ADMIN` y `BACKOFFICE`.
+- [x] **T-061** Implementar proyección limitada y enmascarada para `SUPERVISOR`.
 - [ ] **T-062** Implementar `claimOrphanDitoOrder` con concurrencia e historial.
 - [ ] **T-063** Autorizar supervisor solo hacia sus equipos.
-- [ ] **T-064** Añadir pestaña “Sin asignar” en `/orders`.
+- [x] **T-064** Añadir filtro “Sin asignar” en `/orders`.
 - [ ] **T-065** Hacer que la orden desaparezca del pool tras reclamación exitosa.
 - [ ] **T-066** Probar dos reclamaciones concurrentes.
 

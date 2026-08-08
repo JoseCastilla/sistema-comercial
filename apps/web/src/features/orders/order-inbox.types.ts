@@ -30,6 +30,11 @@ export interface OrderInboxAccess {
   role: "ADMIN" | "SUPERVISOR" | "AGENT" | "BACKOFFICE";
 }
 
+export interface OrderInboxTeamOption {
+  id: string;
+  name: string;
+}
+
 export interface OrderInboxItem {
   id: string;
   orderCode: string;
@@ -100,6 +105,10 @@ export interface OrderInboxData {
   to: string | null;
   filter: OrderFilter;
   search: string;
+  teamFilter: string;
+  teamAllLabel: string;
+  teamOptions: OrderInboxTeamOption[];
+  showTeamFilter: boolean;
   filteredTotal: number;
 
   items: OrderInboxItem[];

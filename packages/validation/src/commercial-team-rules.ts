@@ -84,6 +84,12 @@ export type CommercialAccessRole =
 
 export type DitoOrderVisibility = "FULL" | "LIMITED_ORPHAN" | "NONE";
 
+export type DitoOrderScope =
+  | { kind: "ORGANIZATION" }
+  | { kind: "AGENT"; userId: string }
+  | { kind: "SUPERVISED_TEAMS_WITH_ORPHANS"; teamIds: readonly string[] }
+  | { kind: "NONE" };
+
 export type CommercialContextAccess = "NORMAL" | "DERIVED_READ_ONLY" | "NONE";
 
 type UserStatus = "INVITED" | "ACTIVE" | "DISABLED";
@@ -139,6 +145,29 @@ export function isOrphanDitoOrder(
   assignedTeamId: string | null,
 ): boolean {
   return agentUserId === null && assignedTeamId === null;
+}
+
+export function resolveDitoOrderScope(input: {
+  role: CommercialAccessRole;
+  userId: string;
+  supervisedTeamIds: readonly string[];
+}): DitoOrderScope {
+  if (input.role === "ADMIN" || input.role === "BACKOFFICE") {
+    return { kind: "ORGANIZATION" };
+  }
+
+  if (input.role === "AGENT") {
+    return { kind: "AGENT", userId: input.userId };
+  }
+
+  if (input.supervisedTeamIds.length === 0) {
+    return { kind: "NONE" };
+  }
+
+  return {
+    kind: "SUPERVISED_TEAMS_WITH_ORPHANS",
+    teamIds: input.supervisedTeamIds,
+  };
 }
 
 export function resolveDitoOrderVisibility(input: {

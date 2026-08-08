@@ -4,6 +4,8 @@ import {
   getOrderPeriodRange,
   getOrderRange,
   parseOrderRange,
+  resolveDitoOrderScope,
+  resolveDitoOrderVisibility,
 } from "@repo/validation";
 
 import { database } from "@/server/database";
@@ -31,6 +33,7 @@ export interface OrderInboxQuery {
   page?: number;
   filter: OrderFilter;
   search?: string;
+  team?: string;
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
@@ -392,6 +395,44 @@ function getSearchFilter(search: string): Prisma.DitoOrderWhereInput {
   };
 }
 
+function getSupervisorSearchFilter(
+  search: string,
+  supervisedTeamIds: readonly string[],
+): Prisma.DitoOrderWhereInput {
+  if (!search) return {};
+
+  const contains = { contains: search, mode: "insensitive" as const };
+  return {
+    OR: [
+      {
+        AND: [
+          { assignedTeamId: { in: [...supervisedTeamIds] } },
+          getSearchFilter(search),
+        ],
+      },
+      {
+        agentUserId: null,
+        assignedTeamId: null,
+        OR: [
+          { orderCodeRaw: contains },
+          { salesCode: contains },
+          { operationRaw: contains },
+          { agentNameRaw: contains },
+          { agentNameNormalized: contains },
+          { department: contains },
+          { province: contains },
+          { district: contains },
+        ],
+      },
+    ],
+  };
+}
+
+function maskIdentifier(value: string): string {
+  const visible = value.slice(-4);
+  return visible ? `••••${visible}` : "Protegido";
+}
+
 export async function getOrderInbox(
   organizationId: string,
   access: OrderInboxAccess,
@@ -409,12 +450,67 @@ export async function getOrderInbox(
   const search = query.search?.trim().slice(0, 100) ?? "";
   const incidentThreshold = new Date(now.getTime() - 10 * 60 * 1000);
 
-  const accessFilter: Prisma.DitoOrderWhereInput =
+  const teamOptions =
     access.role === "AGENT"
-      ? {
-          agentUserId: access.userId,
-        }
-      : {};
+      ? []
+      : await database.commercialTeam.findMany({
+          where: {
+            organizationId,
+            status: "ACTIVE",
+            ...(access.role === "SUPERVISOR"
+              ? {
+                  members: {
+                    some: {
+                      userId: access.userId,
+                      memberRole: "SUPERVISOR",
+                      isActive: true,
+                    },
+                  },
+                }
+              : {}),
+          },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        });
+  const supervisedTeamIds =
+    access.role === "SUPERVISOR" ? teamOptions.map((team) => team.id) : [];
+  const requestedTeam = query.team?.trim() ?? "";
+  const canUseTeamFilter =
+    access.role !== "AGENT" &&
+    (access.role !== "SUPERVISOR" || supervisedTeamIds.length > 0);
+  const teamFilter =
+    canUseTeamFilter &&
+    (requestedTeam === "UNASSIGNED" ||
+      teamOptions.some((team) => team.id === requestedTeam))
+      ? requestedTeam
+      : "ALL";
+
+  const orderScope = resolveDitoOrderScope({
+    role: access.role,
+    userId: access.userId,
+    supervisedTeamIds,
+  });
+
+  const accessFilter: Prisma.DitoOrderWhereInput =
+    orderScope.kind === "AGENT"
+      ? { agentUserId: orderScope.userId }
+      : orderScope.kind === "SUPERVISED_TEAMS_WITH_ORPHANS"
+        ? {
+            OR: [
+              { assignedTeamId: { in: [...orderScope.teamIds] } },
+              { agentUserId: null, assignedTeamId: null },
+            ],
+          }
+        : orderScope.kind === "NONE"
+          ? { assignedTeamId: { in: [] } }
+          : {};
+
+  const teamFilterWhere: Prisma.DitoOrderWhereInput =
+    teamFilter === "UNASSIGNED"
+      ? { agentUserId: null, assignedTeamId: null }
+      : teamFilter === "ALL"
+        ? {}
+        : { assignedTeamId: teamFilter };
 
   const periodFilter: Prisma.DitoOrderWhereInput =
     range.start && range.end
@@ -427,14 +523,18 @@ export async function getOrderInbox(
       : {};
   const baseWhere: Prisma.DitoOrderWhereInput = {
     organizationId,
-    ...accessFilter,
-    ...periodFilter,
+    AND: [accessFilter, teamFilterWhere, periodFilter],
   };
   const filteredWhere: Prisma.DitoOrderWhereInput = {
-    ...baseWhere,
+    organizationId,
     AND: [
+      accessFilter,
+      teamFilterWhere,
+      periodFilter,
       getStatusFilter(query.filter, now, incidentThreshold),
-      getSearchFilter(search),
+      access.role === "SUPERVISOR"
+        ? getSupervisorSearchFilter(search, supervisedTeamIds)
+        : getSearchFilter(search),
     ],
   };
 
@@ -482,7 +582,7 @@ export async function getOrderInbox(
     database.ditoOrder.count({
       where: {
         organizationId,
-        ...accessFilter,
+        AND: [accessFilter, teamFilterWhere],
         registeredAt: { lt: range.monthStart },
         status: { in: ["OPEN", "SENT", "UNKNOWN"] },
       },
@@ -500,6 +600,14 @@ export async function getOrderInbox(
   });
 
   const items = orders.map((order): OrderInboxItem => {
+    const visibility = resolveDitoOrderVisibility({
+      role: access.role,
+      userId: access.userId,
+      supervisedTeamIds,
+      orderAgentUserId: order.agentUserId,
+      orderAssignedTeamId: order.assignedTeamId,
+    });
+    const limitedOrphan = visibility === "LIMITED_ORPHAN";
     const status = String(order.status) as OrderStatusValue;
 
     const sentSubstatus = order.sentSubstatus
@@ -537,21 +645,33 @@ export async function getOrderInbox(
       carrier: String(order.carrier),
       fixedCharge: order.fixedCharge?.toString() ?? null,
 
-      holderName: order.holderFullNameRaw,
-      documentNumber: order.holderDocumentNumber,
-      serviceNumber: order.serviceNumber,
+      holderName: limitedOrphan
+        ? "Cliente sin asignar"
+        : order.holderFullNameRaw,
+      documentNumber: limitedOrphan
+        ? maskIdentifier(order.holderDocumentNumber)
+        : order.holderDocumentNumber,
+      serviceNumber: limitedOrphan
+        ? maskIdentifier(order.serviceNumber)
+        : order.serviceNumber,
       salesCode: order.salesCode,
       billingCycleDay: order.billingCycleDay,
       paymentDueDay: order.paymentDueDay,
 
       deliveryMethod,
       deliveryMethodLabel: formatDeliveryMethod(deliveryMethod),
-      deliveryContactPhone: order.deliveryContactPhone,
+      deliveryContactPhone: limitedOrphan
+        ? maskIdentifier(order.deliveryContactPhone)
+        : order.deliveryContactPhone,
       deliveryTimeRange: order.deliveryTimeRangeRaw,
-      deliveryAddress: order.deliveryAddress,
-      deliveryReference: order.deliveryReference,
-      deliveryLatitude: order.deliveryLatitude?.toString() ?? null,
-      deliveryLongitude: order.deliveryLongitude?.toString() ?? null,
+      deliveryAddress: limitedOrphan ? null : order.deliveryAddress,
+      deliveryReference: limitedOrphan ? null : order.deliveryReference,
+      deliveryLatitude: limitedOrphan
+        ? null
+        : (order.deliveryLatitude?.toString() ?? null),
+      deliveryLongitude: limitedOrphan
+        ? null
+        : (order.deliveryLongitude?.toString() ?? null),
 
       department: order.department,
       province: order.province,
@@ -597,8 +717,8 @@ export async function getOrderInbox(
       slaState: sla.state,
       slaLabel: sla.label,
 
-      canUpdate: access.role !== "AGENT" || order.agentUserId === access.userId,
-      canCorrect: access.role === "ADMIN",
+      canUpdate: visibility === "FULL",
+      canCorrect: visibility === "FULL" && access.role === "ADMIN",
       canResolveAssignment:
         access.role === "ADMIN" &&
         Boolean(order.submitterEmailNormalized) &&
@@ -632,6 +752,15 @@ export async function getOrderInbox(
     to: parsedRange?.to ?? null,
     filter: query.filter,
     search,
+    teamFilter,
+    teamAllLabel:
+      access.role === "SUPERVISOR"
+        ? "Mis equipos + sin asignar"
+        : "Todos los equipos",
+    teamOptions,
+    showTeamFilter:
+      access.role !== "AGENT" &&
+      (access.role !== "SUPERVISOR" || supervisedTeamIds.length > 0),
     filteredTotal,
 
     items,

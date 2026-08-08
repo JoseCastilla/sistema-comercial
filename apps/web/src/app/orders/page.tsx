@@ -46,6 +46,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const rawPage = Number(firstValue(parameters.page));
   const filter = parseOrderFilter(firstValue(parameters.status));
   const search = firstValue(parameters.q)?.trim().slice(0, 100) ?? "";
+  const team = firstValue(parameters.team)?.trim().slice(0, 50);
 
   const inbox = await getOrderInbox(
     membership.organization.id,
@@ -60,6 +61,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
       page: Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1,
       filter,
       search,
+      team,
     },
   );
 

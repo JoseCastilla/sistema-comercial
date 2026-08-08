@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   ditoOrderStatusUpdateSchema,
   normalizeDitoOrderState,
+  resolveDitoOrderVisibility,
   resolveDitoDeliveredAt,
   type DitoOrderStatus,
   type DitoSentSubstatus,
@@ -16,18 +17,6 @@ import { database } from "@/server/database";
 import type { OrderStatusActionState } from "./order-status-action.types";
 
 class OrderStatusUpdateError extends Error {}
-
-function canUpdateOrder(
-  role: string,
-  currentUserId: string,
-  agentUserId: string | null,
-): boolean {
-  if (role === "ADMIN" || role === "SUPERVISOR" || role === "BACKOFFICE") {
-    return true;
-  }
-
-  return role === "AGENT" && agentUserId === currentUserId;
-}
 
 function mapStatusRaw(status: DitoOrderStatus): string {
   switch (status) {
@@ -114,6 +103,23 @@ export async function updateOrderStatusAction(
 
   try {
     const result = await database.$transaction(async (transaction) => {
+      const supervisedTeamIds =
+        membership.role === "SUPERVISOR"
+          ? (
+              await transaction.commercialTeamMember.findMany({
+                where: {
+                  userId: session.user.id,
+                  memberRole: "SUPERVISOR",
+                  isActive: true,
+                  team: {
+                    organizationId: membership.organization.id,
+                    status: "ACTIVE",
+                  },
+                },
+                select: { teamId: true },
+              })
+            ).map((membership) => membership.teamId)
+          : [];
       const order = await transaction.ditoOrder.findFirst({
         where: {
           id: parsed.data.orderId,
@@ -127,6 +133,8 @@ export async function updateOrderStatusAction(
           orderCodeRaw: true,
 
           agentUserId: true,
+
+          assignedTeamId: true,
 
           status: true,
 
@@ -154,9 +162,15 @@ export async function updateOrderStatusAction(
         );
       }
 
-      if (
-        !canUpdateOrder(membership.role, session.user.id, order.agentUserId)
-      ) {
+      const visibility = resolveDitoOrderVisibility({
+        role: membership.role,
+        userId: session.user.id,
+        supervisedTeamIds,
+        orderAgentUserId: order.agentUserId,
+        orderAssignedTeamId: order.assignedTeamId,
+      });
+
+      if (visibility !== "FULL") {
         throw new OrderStatusUpdateError(
           "No tienes permiso para actualizar esta orden.",
         );

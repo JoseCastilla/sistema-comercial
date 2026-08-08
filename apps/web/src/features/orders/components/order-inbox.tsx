@@ -65,12 +65,14 @@ function ordersHref(
     period?: OrderInboxData["period"];
     filter?: OrderFilter;
     search?: string;
+    team?: string;
     page?: number;
   } = {},
 ): string {
   const period = overrides.period ?? data.period;
   const filter = overrides.filter ?? data.filter;
   const search = overrides.search ?? data.search;
+  const team = overrides.team ?? data.teamFilter;
   const page = overrides.page ?? 1;
   const parameters = new URLSearchParams({ period });
   if (period === "RANGE") {
@@ -79,6 +81,7 @@ function ordersHref(
   }
   if (filter !== "ALL") parameters.set("status", filter);
   if (search) parameters.set("q", search);
+  if (team !== "ALL") parameters.set("team", team);
   if (page > 1) parameters.set("page", String(page));
   return `/orders?${parameters.toString()}`;
 }
@@ -120,6 +123,9 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
           ) : null}
           {data.search ? (
             <input name="q" type="hidden" value={data.search} />
+          ) : null}
+          {data.teamFilter !== "ALL" ? (
+            <input name="team" type="hidden" value={data.teamFilter} />
           ) : null}
           <label className="ui-period-range__field">
             <span>Desde</span>
@@ -829,6 +835,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           {data.search ? (
             <input name="q" type="hidden" value={data.search} />
           ) : null}
+          {data.teamFilter !== "ALL" ? (
+            <input name="team" type="hidden" value={data.teamFilter} />
+          ) : null}
           <label className="min-w-0 flex-1">
             <span className="sr-only">Filtrar pedidos</span>
             <select
@@ -870,6 +879,41 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           </div>
         </nav>
 
+        {data.showTeamFilter ? (
+          <form className="ui-team-filter" method="get">
+            <input name="period" type="hidden" value={data.period} />
+            {data.from ? (
+              <input name="from" type="hidden" value={data.from} />
+            ) : null}
+            {data.to ? <input name="to" type="hidden" value={data.to} /> : null}
+            {data.filter !== "ALL" ? (
+              <input name="status" type="hidden" value={data.filter} />
+            ) : null}
+            {data.search ? (
+              <input name="q" type="hidden" value={data.search} />
+            ) : null}
+            <label className="ui-team-filter__field">
+              <span>Equipo</span>
+              <select
+                className="ui-filter-select"
+                defaultValue={data.teamFilter}
+                name="team"
+              >
+                <option value="ALL">{data.teamAllLabel}</option>
+                <option value="UNASSIGNED">Sin asignar</option>
+                {data.teamOptions.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="ui-filter-submit" type="submit">
+              Aplicar
+            </button>
+          </form>
+        ) : null}
+
         <form className="ui-order-search" method="get">
           <input name="period" type="hidden" value={data.period} />
           {data.from ? (
@@ -878,6 +922,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           {data.to ? <input name="to" type="hidden" value={data.to} /> : null}
           {data.filter !== "ALL" ? (
             <input name="status" type="hidden" value={data.filter} />
+          ) : null}
+          {data.teamFilter !== "ALL" ? (
+            <input name="team" type="hidden" value={data.teamFilter} />
           ) : null}
           <label className="min-w-0 flex-1">
             <span className="sr-only">Buscar pedidos</span>
