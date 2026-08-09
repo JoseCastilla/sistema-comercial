@@ -97,6 +97,18 @@ export interface OrderInboxItem {
   slaLabel: string;
 
   canUpdate: boolean;
+  canClose: boolean;
+  canCancelDirectly: boolean;
+  canRequestCancellation: boolean;
+  canReviewCancellation: boolean;
+  pendingCancellationRequest: {
+    id: string;
+    reason: string;
+    requestedByName: string;
+    requestedAtLabel: string;
+  } | null;
+  closedByName: string | null;
+  closedAtLabel: string | null;
   canCorrect: boolean;
   canResolveAssignment: boolean;
   canClaimAssignment: boolean;

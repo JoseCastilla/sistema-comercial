@@ -1,6 +1,10 @@
 import "server-only";
 
 import {
+  canCloseDitoOrder,
+  canCancelDitoOrder,
+  canRequestDitoOrderCancellation,
+  canTransitionDitoOrderStatus,
   getOrderPeriodRange,
   getOrderRange,
   parseOrderRange,
@@ -103,6 +107,25 @@ const orderSelect = {
   deliveryWindowStart: true,
   deliveryWindowEnd: true,
   deliveryDueAt: true,
+  closedAt: true,
+  closedBy: {
+    select: {
+      name: true,
+    },
+  },
+  cancellationRequests: {
+    where: { status: "PENDING" },
+    orderBy: { requestedAt: "desc" as const },
+    take: 1,
+    select: {
+      id: true,
+      reason: true,
+      requestedAt: true,
+      requestedBy: {
+        select: { name: true },
+      },
+    },
+  },
 } as const;
 
 function formatDateTime(value: Date | null): string {
@@ -292,6 +315,10 @@ function getSlaState(
 }
 
 function getPriority(item: OrderInboxItem): number {
+  if (item.pendingCancellationRequest) {
+    return 0;
+  }
+
   if (item.noStatusIncident) {
     return 0;
   }
@@ -317,11 +344,11 @@ function getPriority(item: OrderInboxItem): number {
   }
 
   if (item.status === "SENT" && item.sentSubstatus === "DELIVERED") {
-    return 6;
+    return 7;
   }
 
   if (item.status === "SENT") {
-    return 7;
+    return 6;
   }
 
   if (item.status === "UNKNOWN") {
@@ -648,6 +675,7 @@ export async function getOrderInbox(
     });
     const limitedOrphan = visibility === "LIMITED_ORPHAN";
     const status = String(order.status) as OrderStatusValue;
+    const pendingCancellationRequest = order.cancellationRequests[0] ?? null;
 
     const sentSubstatus = order.sentSubstatus
       ? (String(order.sentSubstatus) as Exclude<OrderSentSubstatusValue, null>)
@@ -756,7 +784,41 @@ export async function getOrderInbox(
       slaState: sla.state,
       slaLabel: sla.label,
 
-      canUpdate: visibility === "FULL",
+      canUpdate: canTransitionDitoOrderStatus({
+        role: access.role,
+        visibility,
+        currentStatus: status,
+        targetStatus: "OPEN",
+      }),
+      canClose: canCloseDitoOrder({
+        role: access.role,
+        visibility,
+      }),
+      canCancelDirectly: canCancelDitoOrder({
+        role: access.role,
+        visibility,
+      }),
+      canRequestCancellation: canRequestDitoOrderCancellation({
+        role: access.role,
+        visibility,
+        currentStatus: status,
+        hasPendingRequest: pendingCancellationRequest !== null,
+      }),
+      canReviewCancellation:
+        pendingCancellationRequest !== null &&
+        canCancelDitoOrder({ role: access.role, visibility }),
+      pendingCancellationRequest: pendingCancellationRequest
+        ? {
+            id: pendingCancellationRequest.id,
+            reason: pendingCancellationRequest.reason,
+            requestedByName: pendingCancellationRequest.requestedBy.name,
+            requestedAtLabel: formatDateTime(
+              pendingCancellationRequest.requestedAt,
+            ),
+          }
+        : null,
+      closedByName: order.closedBy?.name ?? null,
+      closedAtLabel: order.closedAt ? formatDateTime(order.closedAt) : null,
       canCorrect: visibility === "FULL" && access.role === "ADMIN",
       canResolveAssignment:
         access.role === "ADMIN" &&

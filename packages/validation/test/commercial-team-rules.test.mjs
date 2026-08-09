@@ -2,12 +2,16 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  canCloseDitoOrder,
+  canCancelDitoOrder,
   canAdministerCommercialTeam,
   canAssignCommercialTeamMember,
   canActivateAgentAlias,
   canClaimOrphanDitoOrder,
   canReassignDitoOrder,
   canResolveAutomaticDitoAssignment,
+  canRequestDitoOrderCancellation,
+  canTransitionDitoOrderStatus,
   commercialTeamMemberRoleSchema,
   commercialTeamStatusSchema,
   ditoOrderAssignmentReasonSchema,
@@ -331,6 +335,117 @@ describe("resolveDitoOrderVisibility", () => {
         orderAgentUserId: "user-2",
       }),
       "NONE",
+    );
+  });
+});
+
+describe("controlled DITO order closure", () => {
+  it("allows closing only to explicitly authorized roles with full visibility", () => {
+    for (const role of ["ADMIN", "BACKOFFICE", "SUPERVISOR"]) {
+      assert.equal(canCloseDitoOrder({ role, visibility: "FULL" }), true);
+    }
+
+    assert.equal(
+      canCloseDitoOrder({ role: "AGENT", visibility: "FULL" }),
+      false,
+    );
+    assert.equal(
+      canCloseDitoOrder({ role: "ADMIN", visibility: "NONE" }),
+      false,
+    );
+  });
+
+  it("keeps terminal states immutable in the operational workflow", () => {
+    for (const currentStatus of ["CLOSED", "CANCELLED"]) {
+      assert.equal(
+        canTransitionDitoOrderStatus({
+          role: "ADMIN",
+          visibility: "FULL",
+          currentStatus,
+          targetStatus: "OPEN",
+        }),
+        false,
+      );
+    }
+  });
+
+  it("lets an agent operate their order without closing it", () => {
+    assert.equal(
+      canTransitionDitoOrderStatus({
+        role: "AGENT",
+        visibility: "FULL",
+        currentStatus: "OPEN",
+        targetStatus: "SENT",
+      }),
+      true,
+    );
+    assert.equal(
+      canTransitionDitoOrderStatus({
+        role: "AGENT",
+        visibility: "FULL",
+        currentStatus: "SENT",
+        targetStatus: "CLOSED",
+      }),
+      false,
+    );
+  });
+});
+
+describe("controlled DITO order cancellation", () => {
+  it("reserves direct cancellation for independent authorized roles", () => {
+    for (const role of ["ADMIN", "BACKOFFICE", "SUPERVISOR"]) {
+      assert.equal(canCancelDitoOrder({ role, visibility: "FULL" }), true);
+    }
+
+    assert.equal(
+      canCancelDitoOrder({ role: "AGENT", visibility: "FULL" }),
+      false,
+    );
+  });
+
+  it("lets an agent request one cancellation for a non-terminal own order", () => {
+    assert.equal(
+      canRequestDitoOrderCancellation({
+        role: "AGENT",
+        visibility: "FULL",
+        currentStatus: "SENT",
+        hasPendingRequest: false,
+      }),
+      true,
+    );
+
+    for (const currentStatus of ["CLOSED", "CANCELLED"]) {
+      assert.equal(
+        canRequestDitoOrderCancellation({
+          role: "AGENT",
+          visibility: "FULL",
+          currentStatus,
+          hasPendingRequest: false,
+        }),
+        false,
+      );
+    }
+
+    assert.equal(
+      canRequestDitoOrderCancellation({
+        role: "AGENT",
+        visibility: "FULL",
+        currentStatus: "OPEN",
+        hasPendingRequest: true,
+      }),
+      false,
+    );
+  });
+
+  it("prevents an agent from applying cancellation directly", () => {
+    assert.equal(
+      canTransitionDitoOrderStatus({
+        role: "AGENT",
+        visibility: "FULL",
+        currentStatus: "OPEN",
+        targetStatus: "CANCELLED",
+      }),
+      false,
     );
   });
 });

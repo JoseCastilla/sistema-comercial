@@ -11,11 +11,12 @@
 - [x] **T-012** Añadir fixtures anónimos y pruebas del parser.
 - [x] **T-020** Crear modelos y migración de lotes, filas e identidades DITO.
 - [x] **T-021** Implementar vista previa sin mutación, match por orden e idempotencia.
-- [ ] **T-022** Implementar creación y enriquecimiento transaccional con auditoría.
+- [x] **T-022** Implementar creación y enriquecimiento transaccional con auditoría.
 - [x] **T-023** Detectar conflictos sin sobrescribir valores válidos.
-- [ ] **T-030** Crear interfaz ADMIN de importación y resolución de asesores.
-- [ ] **T-031** Mostrar resultados por importadas, omitidas, inválidas y excluidas.
-- [ ] **T-040** Probar autorización, aislamiento, concurrencia y reimportación.
+- [x] **T-024** Resolver cuentas DITO compartidas mediante asignación auditable por fila.
+- [x] **T-030** Crear interfaz ADMIN de importación y resolución de asesores.
+- [x] **T-031** Mostrar resultados por importadas, omitidas, inválidas y excluidas.
+- [x] **T-040** Probar autorización, aislamiento, concurrencia y reimportación.
 - [ ] **T-041** Ejecutar tipos, lint, pruebas y builds Docker.
 - [ ] **T-050** Desplegar Web/API y aplicar migración.
 - [ ] **T-051** Previsualizar el archivo del 01/08 en producción.

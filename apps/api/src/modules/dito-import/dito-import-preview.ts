@@ -30,11 +30,17 @@ export interface ExistingDitoOrderSnapshot {
   department: string;
   province: string;
   district: string;
+  agentUserId: string | null;
+  assignedTeamId: string | null;
+  agentNameRaw: string;
+  agentNameNormalized: string | null;
 }
 
 export interface DitoAgentIdentitySnapshot {
   id: string;
   userId: string | null;
+  teamId: string | null;
+  isSharedAccount: boolean;
 }
 
 export interface DitoImportFieldDifference {
@@ -112,7 +118,7 @@ export function classifyDitoImportRow(
     };
   }
 
-  if (!context.identity?.userId) {
+  if (!context.identity?.userId || !context.identity.teamId) {
     return {
       ...base,
       classification: 'BLOCKED_IDENTITY',
@@ -125,25 +131,76 @@ export function classifyDitoImportRow(
   }
 
   const comparison = compareExistingOrder(context.orderByCode, row);
+  const ownership = compareExistingOwnership(
+    context.orderByCode,
+    context.identity,
+  );
 
-  if (comparison.conflicts.length > 0) {
+  if (comparison.conflicts.length > 0 || ownership.conflicts.length > 0) {
     return {
       ...base,
       classification: 'CONFLICT',
       issueCodes: [...base.issueCodes, 'VALID_VALUE_CONFLICT'],
-      conflicts: comparison.conflicts,
+      conflicts: [...comparison.conflicts, ...ownership.conflicts],
     };
   }
 
-  if (Object.keys(comparison.proposedChanges).length > 0) {
+  const proposedChanges = {
+    ...comparison.proposedChanges,
+    ...ownership.proposedChanges,
+  };
+
+  if (Object.keys(proposedChanges).length > 0) {
     return {
       ...base,
       classification: 'ENRICHMENT',
-      proposedChanges: comparison.proposedChanges,
+      proposedChanges,
     };
   }
 
   return { ...base, classification: 'UNCHANGED' };
+}
+
+function compareExistingOwnership(
+  current: ExistingDitoOrderSnapshot,
+  identity: DitoAgentIdentitySnapshot,
+): {
+  proposedChanges: Record<string, string>;
+  conflicts: DitoImportFieldDifference[];
+} {
+  if (!identity.userId || !identity.teamId) {
+    return { proposedChanges: {}, conflicts: [] };
+  }
+
+  if (current.agentUserId === null && current.assignedTeamId === null) {
+    return {
+      proposedChanges: {
+        agentUserId: identity.userId,
+        assignedTeamId: identity.teamId,
+      },
+      conflicts: [],
+    };
+  }
+
+  if (
+    current.agentUserId === identity.userId &&
+    current.assignedTeamId === identity.teamId
+  ) {
+    return { proposedChanges: {}, conflicts: [] };
+  }
+
+  return {
+    proposedChanges: {},
+    conflicts: [
+      {
+        field: 'assignment',
+        current: [current.agentUserId, current.assignedTeamId]
+          .filter(Boolean)
+          .join(':'),
+        incoming: `${identity.userId}:${identity.teamId}`,
+      },
+    ],
+  };
 }
 
 function compareExistingOrder(

@@ -1,7 +1,11 @@
 import Link from "next/link";
 
 import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
+import { AssignSharedDitoImportRowsForm } from "@/features/dito-imports/components/assign-shared-dito-import-rows-form";
+import { ConfirmDitoImportForm } from "@/features/dito-imports/components/confirm-dito-import-form";
 import { DitoImportUploadForm } from "@/features/dito-imports/components/dito-import-upload-form";
+import { MarkDitoAgentIdentitySharedForm } from "@/features/dito-imports/components/mark-dito-agent-identity-shared-form";
+import { ResolveDitoAgentIdentityForm } from "@/features/dito-imports/components/resolve-dito-agent-identity-form";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -34,7 +38,7 @@ const batchStatusLabels: Record<string, string> = {
 export default async function DitoImportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ batch?: string }>;
+  searchParams: Promise<{ batch?: string; confirmed?: string }>;
 }) {
   const { session, membership } = await requireAdminAccess();
   const parameters = await searchParams;
@@ -63,7 +67,9 @@ export default async function DitoImportsPage({
           fileName: true,
           fileSha256: true,
           status: true,
+          updatedAt: true,
           uploadedAt: true,
+          confirmedAt: true,
           sourceRows: true,
           importableRows: true,
           excludedRows: true,
@@ -74,21 +80,35 @@ export default async function DitoImportsPage({
           blockedRows: true,
           conflictRows: true,
           uploadedBy: { select: { name: true } },
+          confirmedBy: { select: { name: true } },
           rows: {
             orderBy: { sourceRow: "asc" },
             take: 100,
             select: {
               id: true,
               sourceRow: true,
+              updatedAt: true,
               classification: true,
+              applicationStatus: true,
               issueCodes: true,
               displayedOrderCode: true,
               ditoUsernameNormalized: true,
               parsedData: true,
+              manualAgentUserId: true,
+              manualAgent: { select: { name: true } },
+              targetOrder: {
+                select: {
+                  agentUserId: true,
+                  assignedTeamId: true,
+                  agent: { select: { name: true } },
+                },
+              },
               agentIdentity: {
                 select: {
+                  id: true,
                   externalUsername: true,
                   displayName: true,
+                  isSharedAccount: true,
                   user: { select: { name: true } },
                 },
               },
@@ -102,12 +122,14 @@ export default async function DitoImportsPage({
         where: {
           organizationId,
           isActive: true,
+          isSharedAccount: false,
           userId: null,
           importRows: { some: { batchId: selectedBatch.id } },
         },
         orderBy: { externalUsernameNormalized: "asc" },
         select: {
           id: true,
+          updatedAt: true,
           externalUsername: true,
           displayName: true,
           _count: {
@@ -116,11 +138,83 @@ export default async function DitoImportsPage({
         },
       })
     : [];
+  const eligibleAgentMembers = selectedBatch
+    ? await database.organizationMember.findMany({
+        where: {
+          organizationId,
+          role: "AGENT",
+          user: {
+            status: "ACTIVE",
+            commercialTeamMemberships: {
+              some: {
+                memberRole: "AGENT",
+                isPrimary: true,
+                isActive: true,
+                team: { organizationId, status: "ACTIVE" },
+              },
+            },
+          },
+        },
+        orderBy: { user: { name: "asc" } },
+        select: {
+          userId: true,
+          user: {
+            select: {
+              name: true,
+              commercialTeamMemberships: {
+                where: {
+                  memberRole: "AGENT",
+                  isPrimary: true,
+                  isActive: true,
+                  team: { organizationId, status: "ACTIVE" },
+                },
+                take: 2,
+                select: { team: { select: { name: true } } },
+              },
+            },
+          },
+        },
+      })
+    : [];
+  const eligibleAgents = eligibleAgentMembers.flatMap((member) => {
+    const memberships = member.user.commercialTeamMemberships;
+
+    return memberships.length === 1 && memberships[0]
+      ? [
+          {
+            id: member.userId,
+            name: member.user.name,
+            teamName: memberships[0].team.name,
+          },
+        ]
+      : [];
+  });
+  const sharedRows =
+    selectedBatch?.rows.filter(
+      (row) =>
+        row.agentIdentity?.isSharedAccount &&
+        row.classification !== "EXCLUDED" &&
+        row.classification !== "INVALID",
+    ) ?? [];
+  const sharedRowsNeedingManualAssignment = sharedRows.filter(
+    (row) => !row.targetOrder?.agentUserId || !row.targetOrder.assignedTeamId,
+  );
+  const pendingSharedRows = sharedRowsNeedingManualAssignment.filter(
+    (row) => !row.manualAgentUserId,
+  ).length;
   const dateFormatter = new Intl.DateTimeFormat("es-PE", {
     timeZone: membership.organization.timezone,
     dateStyle: "short",
     timeStyle: "short",
   });
+  const confirmationDisabledReason = selectedBatch
+    ? getConfirmationDisabledReason(
+        selectedBatch.status,
+        unresolvedIdentities.length,
+        pendingSharedRows,
+        selectedBatch.conflictRows,
+      )
+    : null;
 
   return (
     <CommercialAppShell
@@ -215,13 +309,17 @@ export default async function DitoImportsPage({
                     <Metric
                       label="Requieren atención"
                       tone={
-                        selectedBatch.blockedRows + selectedBatch.conflictRows >
+                        unresolvedIdentities.length +
+                          pendingSharedRows +
+                          selectedBatch.conflictRows >
                         0
                           ? "danger"
                           : "neutral"
                       }
                       value={
-                        selectedBatch.blockedRows + selectedBatch.conflictRows
+                        unresolvedIdentities.length +
+                        pendingSharedRows +
+                        selectedBatch.conflictRows
                       }
                     />
                   </MetricGroup>
@@ -238,7 +336,7 @@ export default async function DitoImportsPage({
 
                 {unresolvedIdentities.length > 0 ? (
                   <SectionPanel
-                    description="Cada identidad se vincula una sola vez con un asesor activo."
+                    description="Vincula cuentas personales. Si varias personas utilizaron la misma cuenta, asigna sus ventas por orden."
                     title={`Asesores pendientes (${unresolvedIdentities.length})`}
                   >
                     <div className="divide-y divide-neutral-100">
@@ -257,12 +355,55 @@ export default async function DitoImportsPage({
                               {identity._count.importRows} filas
                             </p>
                           </div>
-                          <StatusBadge tone="warning">
-                            Pendiente de vincular
-                          </StatusBadge>
+                          <div className="space-y-2">
+                            <ResolveDitoAgentIdentityForm
+                              agents={eligibleAgents}
+                              batchId={selectedBatch.id}
+                              identity={{
+                                id: identity.id,
+                                updatedAt: identity.updatedAt.toISOString(),
+                              }}
+                            />
+                            <MarkDitoAgentIdentitySharedForm
+                              batchId={selectedBatch.id}
+                              identity={{
+                                id: identity.id,
+                                updatedAt: identity.updatedAt.toISOString(),
+                              }}
+                            />
+                          </div>
                         </article>
                       ))}
                     </div>
+                  </SectionPanel>
+                ) : null}
+
+                {sharedRows.length > 0 ? (
+                  <SectionPanel
+                    description="La cuenta de reserva no identifica al vendedor. Las órdenes ya asociadas conservan su responsable; completa únicamente las pendientes."
+                    title={`Cuenta compartida · ${pendingSharedRows} pendientes`}
+                  >
+                    {sharedRowsNeedingManualAssignment.length > 0 ? (
+                      <AssignSharedDitoImportRowsForm
+                        agents={eligibleAgents}
+                        batchId={selectedBatch.id}
+                        rows={sharedRowsNeedingManualAssignment.map((row) => ({
+                          id: row.id,
+                          orderCode:
+                            row.displayedOrderCode ?? "Orden sin código",
+                          customerName:
+                            readJsonText(row.parsedData, "holderName") ??
+                            "Cliente no registrado",
+                          updatedAt: row.updatedAt.toISOString(),
+                          assignedUserId: row.manualAgentUserId,
+                        }))}
+                      />
+                    ) : (
+                      <p className="text-sm text-emerald-800">
+                        Todas las ventas de esta cuenta ya tienen un responsable
+                        confiable.
+                      </p>
+                    )}
                   </SectionPanel>
                 ) : null}
 
@@ -297,17 +438,33 @@ export default async function DitoImportsPage({
                                 "No registrado"}
                             </td>
                             <td className="px-3 py-3 text-neutral-600">
-                              {row.agentIdentity?.user?.name ??
+                              {row.manualAgent?.name ??
+                                row.targetOrder?.agent?.name ??
+                                row.agentIdentity?.user?.name ??
                                 row.agentIdentity?.displayName ??
                                 row.ditoUsernameNormalized ??
                                 "No registrado"}
                             </td>
                             <td className="px-3 py-3">
                               <StatusBadge
-                                tone={classificationTone(row.classification)}
+                                tone={
+                                  row.manualAgentUserId ||
+                                  (row.agentIdentity?.isSharedAccount &&
+                                    row.targetOrder?.agentUserId &&
+                                    row.targetOrder.assignedTeamId)
+                                    ? "success"
+                                    : classificationTone(row.classification)
+                                }
                               >
-                                {classificationLabels[row.classification] ??
-                                  row.classification}
+                                {row.manualAgentUserId
+                                  ? "Asesor asignado"
+                                  : row.agentIdentity?.isSharedAccount &&
+                                      row.targetOrder?.agentUserId &&
+                                      row.targetOrder.assignedTeamId
+                                    ? "Conservar asesor"
+                                    : (classificationLabels[
+                                        row.classification
+                                      ] ?? row.classification)}
                               </StatusBadge>
                             </td>
                           </tr>
@@ -318,16 +475,31 @@ export default async function DitoImportsPage({
                 </SectionPanel>
 
                 <SectionPanel
-                  description="La confirmación se habilitará después de resolver asesores y revisar conflictos."
+                  description="Aplica todo el lote en una sola transacción y conserva el historial de los datos completados."
                   title="Confirmar importación"
                 >
-                  <button
-                    className="w-full cursor-not-allowed rounded-xl bg-neutral-200 px-4 py-3 text-sm font-semibold text-neutral-500"
-                    disabled
-                    type="button"
-                  >
-                    Confirmación todavía no disponible
-                  </button>
+                  {selectedBatch.status === "CONFIRMED" ? (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
+                      <p className="font-semibold">Importación confirmada</p>
+                      <p className="mt-1">
+                        {selectedBatch.newRows} ventas creadas ·{" "}
+                        {selectedBatch.enrichmentRows} completadas ·{" "}
+                        {selectedBatch.unchangedRows} sin cambios.
+                      </p>
+                      {selectedBatch.confirmedAt ? (
+                        <p className="mt-1 text-emerald-800">
+                          {selectedBatch.confirmedBy?.name ?? "Administrador"} ·{" "}
+                          {dateFormatter.format(selectedBatch.confirmedAt)}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <ConfirmDitoImportForm
+                      batchId={selectedBatch.id}
+                      disabledReason={confirmationDisabledReason}
+                      expectedUpdatedAt={selectedBatch.updatedAt.toISOString()}
+                    />
+                  )}
                 </SectionPanel>
               </>
             )}
@@ -368,4 +540,26 @@ function classificationTone(
   }
 
   return "neutral";
+}
+
+function getConfirmationDisabledReason(
+  status: string,
+  unresolvedIdentities: number,
+  pendingSharedRows: number,
+  conflicts: number,
+): string | null {
+  if (status === "CONFIRMING") {
+    return "La importación ya está siendo procesada.";
+  }
+  if (unresolvedIdentities > 0) {
+    return `Vincula ${unresolvedIdentities} ${unresolvedIdentities === 1 ? "asesor pendiente" : "asesores pendientes"} antes de confirmar.`;
+  }
+  if (pendingSharedRows > 0) {
+    return `Identifica al asesor de ${pendingSharedRows} ${pendingSharedRows === 1 ? "venta de cuenta compartida" : "ventas de cuenta compartida"} antes de confirmar.`;
+  }
+  if (conflicts > 0) {
+    return `Revisa ${conflicts} ${conflicts === 1 ? "conflicto" : "conflictos"} antes de confirmar.`;
+  }
+
+  return null;
 }

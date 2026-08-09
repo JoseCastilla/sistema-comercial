@@ -64,6 +64,19 @@ export const ditoOrderStatusUpdateSchema = z
         message: "Los subestados solo corresponden al estado Enviado",
       });
     }
+
+    if (
+      value.status === "CANCELLED" &&
+      (value.observation === null || value.observation.length < 10)
+    ) {
+      context.addIssue({
+        code: "custom",
+
+        path: ["observation"],
+
+        message: "Indica un motivo de cancelación de al menos 10 caracteres",
+      });
+    }
   });
 
 export type DitoOrderStatusUpdateInput = z.infer<

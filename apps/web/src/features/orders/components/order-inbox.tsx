@@ -8,6 +8,7 @@ import { PageHeader } from "@repo/ui/page-header";
 import { Surface } from "@repo/ui/surface";
 
 import { OrderStatusForm } from "./order-status-form";
+import { OrderCancellationRequestPanel } from "./order-cancellation-request-panel";
 import { OrderAssignmentResolution } from "./order-assignment-resolution";
 import { OrderCorrectionForm } from "./order-correction-form";
 import { OrderRealtimeStatus } from "./order-realtime-status";
@@ -249,6 +250,12 @@ function StatusBadge({ order }: { order: OrderInboxItem }) {
           Incidencia +10 min
         </span>
       ) : null}
+
+      {order.pendingCancellationRequest ? (
+        <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">
+          Cancelación pendiente
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -453,6 +460,17 @@ function OrderDetails({
         />
 
         <DetailItem label="Estado de asociación" value={order.matchStatus} />
+
+        {order.status === "CLOSED" ? (
+          <DetailItem
+            label="Cierre"
+            value={
+              order.closedByName && order.closedAtLabel
+                ? `${order.closedByName} · ${order.closedAtLabel}`
+                : "Cierre histórico sin atribución"
+            }
+          />
+        ) : null}
       </dl>
 
       {order.canResolveAssignment || order.canClaimAssignment ? (
@@ -524,6 +542,13 @@ function OrderDetails({
         </div>
       ) : null}
 
+      {order.pendingCancellationRequest ? (
+        <OrderCancellationRequestPanel
+          canReview={order.canReviewCancellation}
+          request={order.pendingCancellationRequest}
+        />
+      ) : null}
+
       {order.canCorrect ? <OrderCorrectionForm order={order} /> : null}
 
       <div className="border-t border-neutral-200 pt-5">
@@ -533,6 +558,9 @@ function OrderDetails({
 
         <OrderStatusForm
           key={formKey}
+          canCancelDirectly={order.canCancelDirectly}
+          canClose={order.canClose}
+          canRequestCancellation={order.canRequestCancellation}
           canUpdate={order.canUpdate}
           initialObservation={order.deliveryObservation}
           initialSentSubstatus={order.sentSubstatus}

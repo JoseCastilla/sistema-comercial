@@ -70,8 +70,9 @@ model CommercialTeam {
   previousAssignmentHistory DitoOrderAssignmentHistory[] @relation("DitoAssignmentPreviousTeam")
   newAssignmentHistory      DitoOrderAssignmentHistory[] @relation("DitoAssignmentNewTeam")
 
-  assignmentRequests DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestSuggestedTeam")
-  auditLogs          CommercialTeamAuditLog[]
+  assignmentRequests         DitoOrderAssignmentRequest[] @relation("DitoAssignmentRequestSuggestedTeam")
+  auditLogs                  CommercialTeamAuditLog[]
+  ditoImportRowsAsManualTeam DitoImportRow[]              @relation("DitoImportRowManualTeam")
 
   @@index([organizationId, status], map: "commercial_teams_org_status_idx")
   @@index([organizationId, normalizedName], map: "commercial_teams_org_name_idx")

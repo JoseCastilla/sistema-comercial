@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { DitoOrderStatus } from "./dito-order-state.js";
+
 export const commercialTeamStatuses = ["ACTIVE", "DISABLED"] as const;
 
 export const commercialTeamMemberRoles = ["SUPERVISOR", "AGENT"] as const;
@@ -197,6 +199,70 @@ export function resolveDitoOrderVisibility(input: {
   }
 
   return input.orderAgentUserId === input.userId ? "FULL" : "NONE";
+}
+
+export function canCloseDitoOrder(input: {
+  role: CommercialAccessRole;
+  visibility: DitoOrderVisibility;
+}): boolean {
+  return (
+    input.visibility === "FULL" &&
+    (input.role === "ADMIN" ||
+      input.role === "BACKOFFICE" ||
+      input.role === "SUPERVISOR")
+  );
+}
+
+export function canCancelDitoOrder(input: {
+  role: CommercialAccessRole;
+  visibility: DitoOrderVisibility;
+}): boolean {
+  return (
+    input.visibility === "FULL" &&
+    (input.role === "ADMIN" ||
+      input.role === "BACKOFFICE" ||
+      input.role === "SUPERVISOR")
+  );
+}
+
+export function canRequestDitoOrderCancellation(input: {
+  role: CommercialAccessRole;
+  visibility: DitoOrderVisibility;
+  currentStatus: DitoOrderStatus;
+  hasPendingRequest: boolean;
+}): boolean {
+  return (
+    input.role === "AGENT" &&
+    input.visibility === "FULL" &&
+    input.currentStatus !== "CLOSED" &&
+    input.currentStatus !== "CANCELLED" &&
+    !input.hasPendingRequest
+  );
+}
+
+export function canTransitionDitoOrderStatus(input: {
+  role: CommercialAccessRole;
+  visibility: DitoOrderVisibility;
+  currentStatus: DitoOrderStatus;
+  targetStatus: DitoOrderStatus;
+}): boolean {
+  if (input.visibility !== "FULL") {
+    return false;
+  }
+
+  if (input.currentStatus === "CLOSED" || input.currentStatus === "CANCELLED") {
+    return false;
+  }
+
+  if (input.targetStatus === "CLOSED") {
+    return canCloseDitoOrder(input);
+  }
+
+  if (input.targetStatus === "CANCELLED") {
+    return canCancelDitoOrder(input);
+  }
+
+  return input.targetStatus !== "UNKNOWN";
 }
 
 export function canClaimOrphanDitoOrder(input: {

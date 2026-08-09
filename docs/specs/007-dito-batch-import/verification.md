@@ -1,7 +1,7 @@
 # SPEC-007 — Verificación
 
-**Estado:** `ADMIN_PREVIEW_UI_IN_PROGRESS`
-**Fecha:** 2026-08-06
+**Estado:** `LOCAL_CONFIRMATION_VALIDATED`
+**Fecha:** 2026-08-08
 
 ## Incremento 1 — Parser y catálogos
 
@@ -78,3 +78,65 @@
 - Interfaz revisada visualmente en local en vista móvil.
 - Pendiente ejecutar la carga real desde la interfaz cuando la API local pueda
   reiniciarse con esta versión; no se publicó ningún cambio.
+
+## Incremento 4 — Resolución y confirmación transaccional
+
+- La pantalla ADMIN permite vincular una identidad DITO pendiente únicamente
+  con un asesor activo que tenga un solo equipo principal activo.
+- La vinculación usa control de versión y no permite remapear silenciosamente
+  una identidad ya resuelta.
+- La confirmación está protegida por la misma firma interna y vuelve a validar
+  actor, organización y versión del lote.
+- Todas las filas se reclasifican contra el estado actual de PostgreSQL dentro
+  de una transacción; cualquier identidad pendiente o conflicto cancela todo el
+  lote.
+- Las ventas nuevas reciben asesor, equipo, `matchStatus = LINKED` y el mismo
+  cálculo inicial de SLA utilizado por las capturas de DITO.
+- Los pedidos existentes solo reciben campos permitidos que sigan ausentes. El
+  cambio genera `DitoOrderCorrection` y, cuando completa responsable/equipo,
+  también `DitoOrderAssignmentHistory`.
+- Una segunda confirmación de un lote confirmado devuelve su resumen y no crea
+  ni actualiza pedidos otra vez.
+- La interfaz muestra un único llamado a confirmar, explica por qué está
+  bloqueado y, al finalizar, presenta creadas, completadas y sin cambios junto
+  al administrador y la fecha.
+
+## Evidencia automatizada del incremento 4
+
+- 15 pruebas enfocadas de preview, clasificación y confirmación: aprobadas.
+- 3 pruebas del contrato de resolución/confirmación: aprobadas.
+- TypeScript en API y Web: sin errores.
+- ESLint enfocado en API, Web y validación compartida: sin errores.
+- Revisión visual local de `/admin/dito-imports`: carga inicial correcta y sin
+  errores de consola.
+
+## Pendiente de salida
+
+- Ejecutar la carga real del archivo del 01/08 en local para revisar las cinco
+  vinculaciones y el resumen final.
+- Completar builds de contenedores antes de marcar T-041.
+- No desplegar ni confirmar datos en producción hasta la aprobación explícita
+  del resumen local.
+
+## Incremento 5 — Cuenta DITO compartida
+
+- `jcastilla` se registró localmente como cuenta de reserva permanente y no fue
+  asociado globalmente con José Castilla.
+- La vista previa detectó seis filas importables de esa cuenta y mantiene la
+  confirmación bloqueada hasta identificar sus responsables.
+- Las órdenes que ya tengan asesor y equipo confiables conservan esa asociación;
+  la cuenta compartida no puede provocar una reasignación silenciosa.
+- Las ventas restantes se muestran en un solo formulario por código de orden y
+  permiten guardado parcial, utilizando únicamente asesores activos con un solo
+  equipo principal activo.
+- Cada resolución conserva asesor, equipo, administrador, fecha y motivo
+  `SHARED_DITO_ACCOUNT` en la fila de importación.
+- La confirmación vuelve a validar la membresía y el equipo dentro de la misma
+  transacción antes de crear o enriquecer pedidos.
+- Si el asesor cambia de equipo después de la resolución manual, la confirmación
+  utiliza su único equipo principal activo vigente y sincroniza la fila pendiente;
+  no conserva el equipo anterior ni obliga a repetir la asignación.
+- Migración `20260809010000_add_shared_dito_import_assignment` aplicada y
+  verificada únicamente en PostgreSQL local.
+- 16 pruebas enfocadas de preview/clasificación/confirmación y 5 pruebas de
+  contratos administrativos aprobadas.

@@ -82,7 +82,7 @@ La especificación está `APPROVED`. Ejecutar las tareas en orden y mantener tra
 - [x] **T-063** Autorizar supervisor solo hacia sus equipos.
 - [x] **T-064** Añadir filtro “Sin asignar” en `/orders`.
 - [x] **T-065** Hacer que la orden desaparezca del pool tras reclamación exitosa.
-- [ ] **T-066** Probar dos reclamaciones concurrentes.
+- [x] **T-066** Probar dos reclamaciones concurrentes.
 
 ## Fase 7 — Reasignación
 

@@ -242,6 +242,7 @@ async function resolveIdentities(
         id: true,
         userId: true,
         isActive: true,
+        isSharedAccount: true,
         user: {
           select: {
             status: true,
@@ -250,18 +251,33 @@ async function resolveIdentities(
               select: { userId: true },
               take: 1,
             },
+            commercialTeamMemberships: {
+              where: {
+                memberRole: 'AGENT',
+                isPrimary: true,
+                isActive: true,
+                team: { organizationId, status: 'ACTIVE' },
+              },
+              select: { teamId: true },
+              take: 2,
+            },
           },
         },
       },
     });
     const hasActiveAgent =
       identity.isActive &&
+      !identity.isSharedAccount &&
       identity.user?.status === 'ACTIVE' &&
-      identity.user.memberships.length === 1;
+      identity.user.memberships.length === 1 &&
+      identity.user.commercialTeamMemberships.length === 1;
+    const teamId = identity.user?.commercialTeamMemberships[0]?.teamId ?? null;
 
     identities.set(normalized, {
       id: identity.id,
       userId: hasActiveAgent ? identity.userId : null,
+      teamId: hasActiveAgent ? teamId : null,
+      isSharedAccount: identity.isSharedAccount,
     });
   }
 
@@ -307,6 +323,10 @@ async function findExistingOrders(
       department: true,
       province: true,
       district: true,
+      agentUserId: true,
+      assignedTeamId: true,
+      agentNameRaw: true,
+      agentNameNormalized: true,
     },
   });
 
@@ -334,13 +354,15 @@ function planRows(
 
   return rows.map((row) => {
     const normalizedUsername = normalizeDitoUsername(row.ditoUsername);
+    const orderByCode = row.orderCodeNormalized
+      ? (byOrderCode.get(row.orderCodeNormalized) ?? null)
+      : null;
+    const identity = normalizedUsername
+      ? (identities.get(normalizedUsername) ?? null)
+      : null;
     const decision = classifyDitoImportRow(row, {
-      identity: normalizedUsername
-        ? (identities.get(normalizedUsername) ?? null)
-        : null,
-      orderByCode: row.orderCodeNormalized
-        ? (byOrderCode.get(row.orderCodeNormalized) ?? null)
-        : null,
+      identity: effectivePreviewIdentity(identity, orderByCode),
+      orderByCode,
       orderBySalesCode: row.salesCode
         ? (bySalesCode.get(row.salesCode) ?? null)
         : null,
@@ -348,6 +370,21 @@ function planRows(
 
     return { row, ...decision };
   });
+}
+
+function effectivePreviewIdentity(
+  identity: DitoAgentIdentitySnapshot | null,
+  order: ExistingDitoOrderSnapshot | null,
+): DitoAgentIdentitySnapshot | null {
+  if (identity?.isSharedAccount && order?.agentUserId && order.assignedTeamId) {
+    return {
+      ...identity,
+      userId: order.agentUserId,
+      teamId: order.assignedTeamId,
+    };
+  }
+
+  return identity;
 }
 
 function countClassifications(rows: PersistablePreviewRow[]) {

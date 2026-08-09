@@ -1,7 +1,7 @@
 # SPEC-007 — Importación controlada de pedidos DITO
 
 **Estado:** `APPROVED`
-**Versión:** 1.1
+**Versión:** 1.2
 **Fecha:** 2026-08-06
 **Fecha de aprobación:** 2026-08-06
 
@@ -79,6 +79,16 @@ duplicar ventas o asociarlas al asesor equivocado.
   cambia `OPEN`, `SENT`, `CLOSED` ni sus subestados.
 - **BR-022:** la columna `Interior / Nro. Dpto` se ignora cuando repite el
   departamento o contiene un marcador conocido, evitando direcciones corruptas.
+- **BR-023:** una identidad DITO solo puede confirmarse cuando el asesor está
+  activo y pertenece a un único equipo principal activo. La asignación manual
+  completa `agentUserId`, `assignedTeamId` y `matchStatus = LINKED` en conjunto.
+- **BR-024:** antes de aplicar un lote, el servidor vuelve a clasificar todas las
+  filas dentro de la transacción. Una identidad pendiente, un conflicto nuevo o
+  una versión desactualizada cancela el lote completo.
+- **BR-025:** una credencial DITO utilizada por varias personas se registra como
+  cuenta compartida y nunca se vincula globalmente con un usuario. Una orden ya
+  asociada conserva su responsable confiable; las demás se asignan manualmente
+  por código de orden, con actor, fecha, equipo y motivo auditables.
 
 ## Campos importados
 
@@ -138,3 +148,6 @@ servicio como contacto y los demás campos quedan vacíos, sin inventar datos.
   se presenta como conflicto.
 - **AC-013:** repetir un enriquecimiento ya aplicado no genera cambios ni una
   segunda corrección.
+- **AC-014:** una cuenta compartida no permite confirmar mientras alguna fila
+  importable carezca de responsable; guardar asignaciones parciales no altera
+  órdenes ni obliga a completar todo en una sola sesión.

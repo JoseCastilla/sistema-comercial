@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  canRequestDitoOrderCancellation,
+  canTransitionDitoOrderStatus,
   ditoOrderStatusUpdateSchema,
   normalizeDitoOrderState,
   resolveDitoOrderVisibility,
@@ -144,6 +146,10 @@ export async function updateOrderStatusAction(
 
           deliveryObservation: true,
 
+          closedByUserId: true,
+
+          closedAt: true,
+
           noStatusDetectedAt: true,
 
           statusUpdatedAt: true,
@@ -153,6 +159,12 @@ export async function updateOrderStatusAction(
           deliveredAt: true,
 
           updatedAt: true,
+
+          cancellationRequests: {
+            where: { status: "PENDING" },
+            take: 1,
+            select: { id: true },
+          },
         },
       });
 
@@ -194,7 +206,94 @@ export async function updateOrderStatusAction(
         );
       }
 
+      if (membership.role === "AGENT" && normalized.status === "CANCELLED") {
+        const hasPendingRequest = order.cancellationRequests.length > 0;
+        const canRequest = canRequestDitoOrderCancellation({
+          role: membership.role,
+          visibility,
+          currentStatus: order.status,
+          hasPendingRequest,
+        });
+
+        if (!canRequest) {
+          throw new OrderStatusUpdateError(
+            hasPendingRequest
+              ? "Esta orden ya tiene una solicitud de cancelación pendiente."
+              : "No puedes solicitar la cancelación de esta orden.",
+          );
+        }
+
+        const reason = parsed.data.observation;
+
+        if (!reason) {
+          throw new OrderStatusUpdateError(
+            "Indica el motivo de la solicitud de cancelación.",
+          );
+        }
+
+        const requestedAt = changedAt;
+        const touchedOrder = await transaction.ditoOrder.updateMany({
+          where: {
+            id: order.id,
+            organizationId: membership.organization.id,
+            updatedAt: order.updatedAt,
+          },
+          data: { updatedAt: requestedAt },
+        });
+
+        if (touchedOrder.count !== 1) {
+          throw new OrderStatusUpdateError(
+            "La orden fue modificada por otro usuario. Recarga la bandeja e inténtalo nuevamente.",
+          );
+        }
+
+        await transaction.ditoOrderCancellationRequest.create({
+          data: {
+            organizationId: membership.organization.id,
+            ditoOrderId: order.id,
+            reason,
+            requestedByUserId: session.user.id,
+            requestedAt,
+            orderUpdatedAtSnapshot: requestedAt,
+          },
+        });
+
+        return {
+          changed: false,
+          cancellationRequested: true,
+          orderCode: order.orderCodeRaw,
+        };
+      }
+
+      if (
+        !canTransitionDitoOrderStatus({
+          role: membership.role,
+          visibility,
+          currentStatus: order.status,
+          targetStatus: normalized.status,
+        })
+      ) {
+        if (order.status === "CLOSED" || order.status === "CANCELLED") {
+          throw new OrderStatusUpdateError(
+            "La orden está finalizada y no puede modificarse desde el seguimiento operativo.",
+          );
+        }
+
+        if (normalized.status === "CLOSED") {
+          throw new OrderStatusUpdateError(
+            "Tu rol no está autorizado para cerrar órdenes.",
+          );
+        }
+
+        throw new OrderStatusUpdateError(
+          "No tienes permiso para realizar esta transición.",
+        );
+      }
+
       const observation = parsed.data.observation ?? null;
+
+      const enteringClosed =
+        order.status !== "CLOSED" && normalized.status === "CLOSED";
 
       const statusChanged = order.status !== normalized.status;
 
@@ -248,6 +347,12 @@ export async function updateOrderStatusAction(
           deliveryObservation: observation,
 
           deliveredAt,
+
+          closedByUserId: enteringClosed
+            ? session.user.id
+            : order.closedByUserId,
+
+          closedAt: enteringClosed ? changedAt : order.closedAt,
         },
       });
 
@@ -287,6 +392,22 @@ export async function updateOrderStatusAction(
         },
       });
 
+      if (normalized.status === "CANCELLED") {
+        await transaction.ditoOrderCancellationRequest.updateMany({
+          where: {
+            organizationId: membership.organization.id,
+            ditoOrderId: order.id,
+            status: "PENDING",
+          },
+          data: {
+            status: "APPROVED",
+            reviewedByUserId: session.user.id,
+            reviewedAt: changedAt,
+            reviewObservation: observation,
+          },
+        });
+      }
+
       return {
         changed: true,
 
@@ -301,7 +422,9 @@ export async function updateOrderStatusAction(
 
       message: result.changed
         ? `Estado de ${result.orderCode} actualizado.`
-        : "No se encontraron cambios para guardar.",
+        : "cancellationRequested" in result && result.cancellationRequested
+          ? `Solicitud de cancelación de ${result.orderCode} enviada para revisión.`
+          : "No se encontraron cambios para guardar.",
     };
   } catch (error) {
     if (error instanceof OrderStatusUpdateError) {

@@ -111,6 +111,36 @@ describe("ditoOrderStatusUpdateSchema", () => {
     }
   });
 
+  it("requires a descriptive cancellation reason", () => {
+    for (const observation of ["", "   ", "muy corto"]) {
+      const result = ditoOrderStatusUpdateSchema.safeParse({
+        orderId,
+        status: "CANCELLED",
+        sentSubstatus: "",
+        observation,
+      });
+
+      assert.equal(result.success, false);
+
+      if (!result.success) {
+        assert.equal(
+          result.error.flatten().fieldErrors.observation?.[0],
+          "Indica un motivo de cancelación de al menos 10 caracteres",
+        );
+      }
+    }
+
+    assert.equal(
+      ditoOrderStatusUpdateSchema.safeParse({
+        orderId,
+        status: "CANCELLED",
+        sentSubstatus: "",
+        observation: "Cliente desistió de la compra",
+      }).success,
+      true,
+    );
+  });
+
   it("rejects an invalid order identifier", () => {
     const result = ditoOrderStatusUpdateSchema.safeParse({
       orderId: "orden-no-valida",

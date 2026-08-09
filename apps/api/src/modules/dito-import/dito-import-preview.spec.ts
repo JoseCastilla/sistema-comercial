@@ -44,6 +44,8 @@ const parsedRow: ParsedDitoBatchRow = {
 const resolvedIdentity: DitoAgentIdentitySnapshot = {
   id: 'identity-1',
   userId: 'user-1',
+  teamId: 'team-1',
+  isSharedAccount: false,
 };
 
 const existingOrder: ExistingDitoOrderSnapshot = {
@@ -67,6 +69,10 @@ const existingOrder: ExistingDitoOrderSnapshot = {
   department: 'LIMA',
   province: 'LIMA',
   district: 'MIRAFLORES',
+  agentUserId: 'user-1',
+  assignedTeamId: 'team-1',
+  agentNameRaw: 'Asesor Prueba',
+  agentNameNormalized: 'ASESOR PRUEBA',
 };
 
 describe('DITO import preview classification', () => {
@@ -78,7 +84,12 @@ describe('DITO import preview classification', () => {
 
   it('blocks an otherwise valid new order until the DITO identity is resolved', () => {
     const decision = classifyDitoImportRow(parsedRow, {
-      identity: { id: 'identity-1', userId: null },
+      identity: {
+        id: 'identity-1',
+        userId: null,
+        teamId: null,
+        isSharedAccount: false,
+      },
       orderByCode: null,
       orderBySalesCode: null,
     });

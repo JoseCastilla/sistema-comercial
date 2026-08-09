@@ -256,9 +256,8 @@ La especificación cambia a `VERIFIED` únicamente cuando todos los criterios ob
 
 ### INC-006 — Reclamación manual de órdenes huérfanas
 
-- **Estado:** `COMPLETED_WITH_PENDING_OPERATIONAL_VALIDATION`
-- **Tareas completadas:** `T-062`, `T-063`, `T-065`.
-- **Tarea pendiente relacionada:** `T-066`, prueba de integración con dos reclamaciones concurrentes reales.
+- **Estado:** `COMPLETED`
+- **Tareas completadas:** `T-062`, `T-063`, `T-065`, `T-066`.
 - **Fecha:** 2026-08-08.
 - **Alcance:** asignación manual y atómica de una orden sin asesor ni equipo a un asesor activo de un equipo permitido, sin alterar el estado de vinculación comercial `matchStatus`.
 - **Archivos principales:**
@@ -281,4 +280,5 @@ La especificación cambia a `VERIFIED` únicamente cuando todos los criterios ob
   - suite de validación: 85 pruebas aprobadas, incluidas 3 del contrato de reclamación;
   - generación de tipos Next.js y comprobación TypeScript de `apps/web`: aprobadas;
   - lint de los archivos modificados en `apps/web` y `@repo/validation`: aprobado.
-- **Riesgo residual:** falta ejecutar `T-066` contra PostgreSQL local y validar el flujo visual con cuentas reales de `ADMIN` y `SUPERVISOR` antes de desplegar.
+  - prueba autolimpiable contra PostgreSQL local: dos reclamaciones simultáneas produjeron exactamente un ganador, un conflicto y un único registro de historial.
+- **Riesgo residual:** queda como validación operativa observar el flujo con cuentas reales de `ADMIN` y `SUPERVISOR`; la garantía transaccional y su auditoría ya fueron comprobadas localmente.

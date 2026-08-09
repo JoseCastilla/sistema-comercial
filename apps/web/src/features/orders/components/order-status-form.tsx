@@ -73,6 +73,9 @@ export function OrderStatusForm({
   initialStatus,
   initialSentSubstatus,
   initialObservation,
+  canClose,
+  canCancelDirectly,
+  canRequestCancellation,
   canUpdate,
 }: {
   orderId: string;
@@ -82,6 +85,12 @@ export function OrderStatusForm({
   initialSentSubstatus: string | null;
 
   initialObservation: string | null;
+
+  canClose: boolean;
+
+  canCancelDirectly: boolean;
+
+  canRequestCancellation: boolean;
 
   canUpdate: boolean;
 }) {
@@ -99,6 +108,8 @@ export function OrderStatusForm({
   );
 
   const showSubstatus = status === "SENT";
+  const requiresObservation = status === "CANCELLED";
+  const requestsCancellation = status === "CANCELLED" && !canCancelDirectly;
 
   useEffect(() => {
     if (!showSubstatus) {
@@ -134,11 +145,22 @@ export function OrderStatusForm({
           >
             <option value="">Seleccionar</option>
 
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {statusOptions
+              .filter((option) => {
+                if (option.value === "CLOSED") return canClose;
+                if (option.value === "CANCELLED") {
+                  return canCancelDirectly || canRequestCancellation;
+                }
+
+                return true;
+              })
+              .map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.value === "CANCELLED" && !canCancelDirectly
+                    ? "Solicitar cancelación"
+                    : option.label}
+                </option>
+              ))}
           </select>
 
           {actionState.fieldErrors?.status ? (
@@ -181,15 +203,25 @@ export function OrderStatusForm({
       </div>
 
       <label className="block space-y-1.5 text-sm">
-        <span className="font-medium text-neutral-800">Observación</span>
+        <span className="font-medium text-neutral-800">
+          Observación{requiresObservation ? " obligatoria" : ""}
+        </span>
 
         <textarea
           className="min-h-24 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900"
           defaultValue={initialObservation ?? ""}
           disabled={pending}
           maxLength={2000}
+          minLength={requiresObservation ? 10 : undefined}
           name="observation"
-          placeholder="Motivo, incidencia o acción realizada"
+          placeholder={
+            requiresObservation
+              ? requestsCancellation
+                ? "Explica por qué solicitas cancelar la venta"
+                : "Explica el motivo de la cancelación"
+              : "Motivo, incidencia o acción realizada"
+          }
+          required={requiresObservation}
         />
 
         {actionState.fieldErrors?.observation ? (
@@ -218,7 +250,11 @@ export function OrderStatusForm({
           disabled={pending || !status}
           type="submit"
         >
-          {pending ? "Guardando..." : "Guardar estado"}
+          {pending
+            ? "Guardando..."
+            : requestsCancellation
+              ? "Enviar solicitud"
+              : "Guardar estado"}
         </button>
       </div>
     </form>

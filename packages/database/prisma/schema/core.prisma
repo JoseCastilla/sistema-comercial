@@ -67,9 +67,10 @@ model Organization {
   ditoOrders           DitoOrder[]
   ditoOrderLinkHistory DitoOrderLinkHistory[]
 
-  ditoOrderStatusHistory DitoOrderStatusHistory[]
-  deliveryShifts         DeliveryShift[]
-  deliveryEscalations    DeliveryEscalation[]
+  ditoOrderStatusHistory        DitoOrderStatusHistory[]
+  ditoOrderCancellationRequests DitoOrderCancellationRequest[]
+  deliveryShifts                DeliveryShift[]
+  deliveryEscalations           DeliveryEscalation[]
 
   agentAliases                 AgentAlias[]
   commercialTeams              CommercialTeam[]
@@ -105,12 +106,15 @@ model User {
 
   ditoOrdersAsAgent         DitoOrder[]            @relation("DitoOrderAgent")
   ditoOrdersApprovalUpdated DitoOrder[]            @relation("DitoOrderApprovalUpdatedBy")
+  ditoOrdersClosed          DitoOrder[]            @relation("DitoOrderClosedBy")
   ditoOrderLinksPerformed   DitoOrderLinkHistory[] @relation("DitoOrderLinkPerformedBy")
 
-  ditoOrderStatusChanges          DitoOrderStatusHistory[] @relation("DitoOrderStatusChangedBy")
-  deliveryEscalationsCreated      DeliveryEscalation[]     @relation("DeliveryEscalationCreatedBy")
-  deliveryEscalationsAcknowledged DeliveryEscalation[]     @relation("DeliveryEscalationAcknowledgedBy")
-  deliveryEscalationsResolved     DeliveryEscalation[]     @relation("DeliveryEscalationResolvedBy")
+  ditoOrderStatusChanges           DitoOrderStatusHistory[]       @relation("DitoOrderStatusChangedBy")
+  ditoCancellationRequestsCreated  DitoOrderCancellationRequest[] @relation("DitoCancellationRequestCreatedBy")
+  ditoCancellationRequestsReviewed DitoOrderCancellationRequest[] @relation("DitoCancellationRequestReviewedBy")
+  deliveryEscalationsCreated       DeliveryEscalation[]           @relation("DeliveryEscalationCreatedBy")
+  deliveryEscalationsAcknowledged  DeliveryEscalation[]           @relation("DeliveryEscalationAcknowledgedBy")
+  deliveryEscalationsResolved      DeliveryEscalation[]           @relation("DeliveryEscalationResolvedBy")
 
   agentAliases AgentAlias[]
 
@@ -132,6 +136,8 @@ model User {
   ditoAgentIdentityResolutions         DitoAgentIdentity[]          @relation("DitoAgentIdentityResolvedBy")
   ditoImportBatchesUploaded            DitoImportBatch[]            @relation("DitoImportBatchUploadedBy")
   ditoImportBatchesConfirmed           DitoImportBatch[]            @relation("DitoImportBatchConfirmedBy")
+  ditoImportRowsAsManualAgent          DitoImportRow[]              @relation("DitoImportRowManualAgent")
+  ditoImportRowAssignmentsPerformed    DitoImportRow[]              @relation("DitoImportRowManualAssignedBy")
 
   @@map("users")
 }
