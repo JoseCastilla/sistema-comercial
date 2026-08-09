@@ -1,6 +1,6 @@
 # SPEC-014 — Verificación
 
-**Estado:** `LOCAL_VERIFIED`
+**Estado:** `DEPLOYED`
 **Fecha:** 2026-08-09
 
 ## Revisión del plan de origen
@@ -48,8 +48,17 @@
   anterior carece de base.
 - BACKOFFICE recibe importes financieros neutralizados; SUPERVISOR conserva el
   total agregado, pero no montos individuales por asesor.
-- No se modificó el modelo de datos, no se ejecutaron migraciones y no hubo
-  despliegue.
+- No se modificó el modelo de datos ni se ejecutaron migraciones.
+
+## Salida productiva
+
+- Commit funcional `3514ee0` publicado en `main`.
+- GitHub recibió el cambio y activó el despliegue automático de EasyPanel.
+- La salud pública de la Web respondió HTTP 200 con
+  `service: sistema-comercial-web`.
+- Durante el reemplazo, `/performance` respondió 404 desde el contenedor
+  anterior; después del despliegue redirigió correctamente a `/login`, lo que
+  confirma que la nueva ruta está disponible y protegida en producción.
 
 ## Decisión actual
 
