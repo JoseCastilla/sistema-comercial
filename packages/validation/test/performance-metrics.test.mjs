@@ -5,6 +5,7 @@ import {
   calculateAcceleratorOne,
   calculatePerformanceMetrics,
   evaluatePerformanceOrderPayment,
+  getPotentialBaseCommissionCents,
 } from "../dist/performance-metrics.js";
 
 function order(overrides = {}) {
@@ -85,9 +86,8 @@ test("calcula funnel, tasas y comisión base sin pagar altas nuevas", () => {
 
 test("explica de forma determinista por qué una orden no genera comisión", () => {
   assert.equal(
-    evaluatePerformanceOrderPayment(
-      order({ commercialOperation: "NEW_LINE" }),
-    ).reason,
+    evaluatePerformanceOrderPayment(order({ commercialOperation: "NEW_LINE" }))
+      .reason,
     "NEW_LINE_NO_COMMISSION",
   );
   assert.equal(
@@ -108,14 +108,22 @@ test("explica de forma determinista por qué una orden no genera comisión", () 
 });
 
 test("asigna la tarifa base solo a portabilidades entregadas y cerradas", () => {
-  assert.deepEqual(
-    evaluatePerformanceOrderPayment(order()),
-    { reason: "PAYABLE", payable: true, baseCommissionCents: 2_500 },
-  );
+  assert.deepEqual(evaluatePerformanceOrderPayment(order()), {
+    reason: "PAYABLE",
+    payable: true,
+    baseCommissionCents: 2_500,
+  });
   assert.deepEqual(
     evaluatePerformanceOrderPayment(
       order({ commercialOperation: "PORT_PREPAID" }),
     ),
     { reason: "PAYABLE", payable: true, baseCommissionCents: 1_250 },
   );
+});
+
+test("calcula el potencial comercial sin presentarlo como comisión confirmada", () => {
+  assert.equal(getPotentialBaseCommissionCents("PORT_POSTPAID"), 2_500);
+  assert.equal(getPotentialBaseCommissionCents("PORT_PREPAID"), 1_250);
+  assert.equal(getPotentialBaseCommissionCents("NEW_LINE"), 0);
+  assert.equal(getPotentialBaseCommissionCents("UNKNOWN"), 0);
 });

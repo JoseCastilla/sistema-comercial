@@ -115,6 +115,92 @@ function Funnel({ data }: { data: PerformanceDashboardData }) {
   );
 }
 
+function AgentDailyPulse({ data }: { data: PerformanceDashboardData }) {
+  const pulse = data.dailyPulse;
+  if (!pulse) return null;
+
+  const maximum = Math.max(...pulse.days.map((day) => day.entered), 1);
+  const motivation =
+    pulse.entered > 0
+      ? `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} hoy. Sigue cuidando la entrega y activaciÃ³n para convertir el potencial en comisiÃ³n.`
+      : "AÃºn no registras ventas hoy. Tu cartera pendiente sigue siendo una oportunidad para recuperar activaciones.";
+
+  return (
+    <section className="agent-daily" aria-labelledby="agent-daily-title">
+      <header className="agent-daily__header">
+        <div>
+          <p className="performance-panel__eyebrow">Tu pulso de hoy</p>
+          <h2 id="agent-daily-title">{pulse.todayLabel}</h2>
+          <p>{motivation}</p>
+        </div>
+        <span className="agent-daily__live">En curso</span>
+      </header>
+
+      <div className="agent-daily__metrics">
+        <article>
+          <span>Ingresadas hoy</span>
+          <strong>{pulse.entered}</strong>
+          <small>Actividad comercial</small>
+        </article>
+        <article>
+          <span>Potencial de hoy</span>
+          <strong>{money(pulse.potentialCommissionCents)}</strong>
+          <small>Sujeto a entrega y cierre</small>
+        </article>
+        <article data-tone="confirmed">
+          <span>Base confirmada hoy</span>
+          <strong>{money(pulse.confirmedBaseCommissionCents)}</strong>
+          <small>{pulse.confirmed} ventas cerradas y pagables</small>
+        </article>
+        <article>
+          <span>EstimaciÃ³n mensual</span>
+          <strong>{money(data.metrics.estimatedCommissionCents)}</strong>
+          <small>Incluye base y acelerador</small>
+        </article>
+      </div>
+
+      <div className="agent-daily__rhythm">
+        <div className="agent-daily__rhythm-copy">
+          <strong>Ritmo de los Ãºltimos 7 dÃ­as</strong>
+          <small>Ingresos por dÃ­a; debajo, comisiÃ³n base confirmada.</small>
+        </div>
+        <div
+          aria-label="Ventas ingresadas durante los Ãºltimos siete dÃ­as"
+          className="agent-daily__chart"
+        >
+          {pulse.days.map((day) => (
+            <div
+              className="agent-daily__day"
+              data-today={day.isToday ? "true" : undefined}
+              key={day.key}
+              title={`${day.label}: ${day.entered} ingresadas, ${money(day.confirmedBaseCommissionCents)} confirmados`}
+            >
+              <strong>{day.entered}</strong>
+              <div aria-hidden="true" className="agent-daily__bar">
+                <span
+                  style={{
+                    height: `${Math.max(
+                      (day.entered / maximum) * 100,
+                      day.entered > 0 ? 12 : 3,
+                    )}%`,
+                  }}
+                />
+              </div>
+              <span>{day.label}</span>
+              <small>{money(day.confirmedBaseCommissionCents)}</small>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="agent-daily__notice">
+        Potencial no significa comisiÃ³n ganada. Se confirma cuando la
+        portabilidad queda entregada y cerrada.
+      </p>
+    </section>
+  );
+}
+
 export function PerformanceDashboard({
   data,
 }: {
@@ -141,6 +227,8 @@ export function PerformanceDashboard({
         title="Rendimiento comercial"
       />
 
+      <AgentDailyPulse data={data} />
+
       <section className="performance-controls ui-surface">
         <div className="performance-month-nav">
           <Link
@@ -155,7 +243,10 @@ export function PerformanceDashboard({
             <p className="performance-controls__month">{data.monthLabel}</p>
           </div>
           {data.isCurrentMonth ? (
-            <span aria-hidden="true" className="performance-month-nav__spacer" />
+            <span
+              aria-hidden="true"
+              className="performance-month-nav__spacer"
+            />
           ) : (
             <Link
               aria-label="Ver mes siguiente"
@@ -170,17 +261,26 @@ export function PerformanceDashboard({
         <form className="performance-filter" method="get">
           <label>
             <span>Mes</span>
-            <input defaultValue={data.month} max={data.currentMonth} name="month" type="month" />
+            <input
+              defaultValue={data.month}
+              max={data.currentMonth}
+              name="month"
+              type="month"
+            />
           </label>
           {data.showTeamFilter ? (
             <label>
               <span>Equipo</span>
               <select defaultValue={data.teamFilter} name="team">
                 <option value="ALL">
-                  {data.role === "SUPERVISOR" ? "Mis equipos" : "Toda la organización"}
+                  {data.role === "SUPERVISOR"
+                    ? "Mis equipos"
+                    : "Toda la organización"}
                 </option>
                 {data.teamOptions.map((team) => (
-                  <option key={team.id} value={team.id}>{team.name}</option>
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
                 ))}
               </select>
             </label>
@@ -189,7 +289,10 @@ export function PerformanceDashboard({
         </form>
       </section>
 
-      <section className="performance-kpis" aria-label="Indicadores principales">
+      <section
+        className="performance-kpis"
+        aria-label="Indicadores principales"
+      >
         <Kpi
           label="Ventas ingresadas"
           supporting={delta(data.comparison.enteredDelta)}
@@ -258,9 +361,13 @@ export function PerformanceDashboard({
         <section className="performance-panel performance-commission">
           <header className="performance-panel__header">
             <div>
-              <p className="performance-panel__eyebrow">Estimación provisional</p>
+              <p className="performance-panel__eyebrow">
+                Estimación provisional
+              </p>
               <h2>Comisión del período</h2>
-              <p>Se confirma únicamente con portabilidades entregadas y cerradas.</p>
+              <p>
+                Se confirma únicamente con portabilidades entregadas y cerradas.
+              </p>
             </div>
             <div className="performance-commission__aside">
               <strong className="performance-commission__total">
@@ -286,19 +393,23 @@ export function PerformanceDashboard({
               <span>Acelerador 1–15</span>
               <strong>{money(data.metrics.acceleratorOne.amountCents)}</strong>
               <small>
-                {data.metrics.acceleratorOne.confirmed} confirmadas de {data.metrics.acceleratorOne.eligible} ingresadas
+                {data.metrics.acceleratorOne.confirmed} confirmadas de{" "}
+                {data.metrics.acceleratorOne.eligible} ingresadas
               </small>
             </div>
             {data.role === "AGENT" && data.metrics.acceleratorOne.nextTarget ? (
               <div>
                 <span>Siguiente nivel</span>
-                <strong>{data.metrics.acceleratorOne.missingForNextTarget}</strong>
+                <strong>
+                  {data.metrics.acceleratorOne.missingForNextTarget}
+                </strong>
                 <small>activaciones pagables para el siguiente tramo</small>
               </div>
             ) : null}
           </div>
           <p className="performance-commission__notice">
-            No es una liquidación de nómina. Puede cambiar mientras las ventas de esta cohorte maduran.
+            No es una liquidación de nómina. Puede cambiar mientras las ventas
+            de esta cohorte maduran.
           </p>
         </section>
       ) : null}
@@ -309,7 +420,10 @@ export function PerformanceDashboard({
             <div>
               <p className="performance-panel__eyebrow">Lectura del equipo</p>
               <h2>Resultados por asesor</h2>
-              <p>El tamaño de la cartera acompaña la tasa para evitar comparaciones engañosas.</p>
+              <p>
+                El tamaño de la cartera acompaña la tasa para evitar
+                comparaciones engañosas.
+              </p>
             </div>
           </header>
           <div className="performance-table-wrap">
@@ -327,12 +441,17 @@ export function PerformanceDashboard({
               <tbody>
                 {data.breakdown.map((item) => (
                   <tr key={item.id}>
-                    <td><strong>{item.name}</strong><small>{item.teamName ?? "Sin equipo"}</small></td>
+                    <td>
+                      <strong>{item.name}</strong>
+                      <small>{item.teamName ?? "Sin equipo"}</small>
+                    </td>
                     <td>{item.metrics.entered}</td>
                     <td>{item.metrics.delivered}</td>
                     <td>{item.metrics.payable}</td>
                     <td>{percentage(item.metrics.payableRate)}</td>
-                    {data.role === "ADMIN" ? <td>{money(item.metrics.estimatedCommissionCents)}</td> : null}
+                    {data.role === "ADMIN" ? (
+                      <td>{money(item.metrics.estimatedCommissionCents)}</td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

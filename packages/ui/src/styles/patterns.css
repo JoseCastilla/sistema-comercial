@@ -86,6 +86,183 @@
     font-weight: 700;
   }
 
+  .agent-daily {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--ui-accent) 32%, var(--ui-border));
+    border-radius: var(--ui-radius-lg);
+    background:
+      linear-gradient(135deg, var(--ui-accent-soft), transparent 42%),
+      var(--ui-surface);
+    box-shadow: var(--ui-shadow-raised);
+  }
+
+  .agent-daily__header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .agent-daily__header h2 {
+    margin-top: 0.2rem;
+    font-size: clamp(1.25rem, 1.05rem + 0.8vw, 1.7rem);
+    font-weight: 750;
+    text-transform: capitalize;
+  }
+
+  .agent-daily__header p:not(.performance-panel__eyebrow) {
+    max-width: 48rem;
+    margin-top: 0.35rem;
+    color: var(--ui-text-muted);
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  .agent-daily__live {
+    flex: none;
+    padding: 0.3rem 0.55rem;
+    border-radius: 999px;
+    color: var(--ui-accent);
+    background: var(--ui-accent-soft);
+    font-size: 0.68rem;
+    font-weight: 750;
+  }
+
+  .agent-daily__metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-inline: 1rem;
+    overflow: hidden;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
+  }
+
+  .agent-daily__metrics article {
+    display: grid;
+    gap: 0.28rem;
+    min-width: 0;
+    padding: 0.8rem;
+    border-right: 1px solid var(--ui-border);
+    border-bottom: 1px solid var(--ui-border);
+  }
+
+  .agent-daily__metrics article[data-tone="confirmed"] {
+    background: var(--ui-accent-soft);
+  }
+
+  .agent-daily__metrics span,
+  .agent-daily__metrics small {
+    color: var(--ui-text-soft);
+    font-size: 0.67rem;
+  }
+
+  .agent-daily__metrics span {
+    font-weight: 720;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+  }
+
+  .agent-daily__metrics strong {
+    overflow: hidden;
+    font-size: clamp(1.25rem, 1rem + 0.8vw, 1.65rem);
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .agent-daily__rhythm {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .agent-daily__rhythm-copy {
+    display: grid;
+    gap: 0.18rem;
+  }
+
+  .agent-daily__rhythm-copy strong {
+    font-size: 0.8rem;
+  }
+
+  .agent-daily__rhythm-copy small {
+    color: var(--ui-text-soft);
+    font-size: 0.68rem;
+  }
+
+  .agent-daily__chart {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(2.4rem, 1fr));
+    gap: 0.35rem;
+    min-height: 8.5rem;
+  }
+
+  .agent-daily__day {
+    display: grid;
+    grid-template-rows: auto minmax(3.5rem, 1fr) auto auto;
+    gap: 0.25rem;
+    min-width: 0;
+    color: var(--ui-text-soft);
+    text-align: center;
+  }
+
+  .agent-daily__day > strong {
+    color: var(--ui-text);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .agent-daily__bar {
+    display: flex;
+    min-height: 3.5rem;
+    align-items: end;
+    justify-content: center;
+    padding-inline: clamp(0.15rem, 1vw, 0.6rem);
+  }
+
+  .agent-daily__bar span {
+    width: 100%;
+    min-height: 0.18rem;
+    border-radius: 0.35rem 0.35rem 0.15rem 0.15rem;
+    background: color-mix(in srgb, var(--ui-accent) 62%, var(--ui-border));
+  }
+
+  .agent-daily__day[data-today="true"] .agent-daily__bar span {
+    background: var(--ui-accent);
+  }
+
+  .agent-daily__day > span {
+    overflow: hidden;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    text-transform: capitalize;
+    white-space: nowrap;
+  }
+
+  .agent-daily__day[data-today="true"] > span {
+    color: var(--ui-accent);
+  }
+
+  .agent-daily__day > small {
+    overflow: hidden;
+    font-size: 0.58rem;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .agent-daily__notice {
+    padding: 0.65rem 1rem;
+    border-top: 1px solid var(--ui-border);
+    color: var(--ui-text-soft);
+    background: var(--ui-surface-subtle);
+    font-size: 0.68rem;
+    line-height: 1.4;
+  }
+
   .performance-kpis {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -475,6 +652,15 @@
   }
 
   @media (min-width: 48rem) {
+    .agent-daily__metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .agent-daily__rhythm {
+      grid-template-columns: minmax(9rem, 0.3fr) minmax(0, 1fr);
+      align-items: center;
+    }
+
     .performance-kpis {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }

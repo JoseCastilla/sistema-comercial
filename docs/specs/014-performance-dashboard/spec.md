@@ -4,6 +4,21 @@
 **Versión:** 1.0
 **Fecha:** 2026-08-09
 
+## Incremento: pulso diario del asesor
+
+- **BR-013:** la actividad diaria se atribuye por `registeredAt`. El potencial
+  aplica la tarifa base de la operación, pero no es comisión confirmada.
+- **BR-014:** la base confirmada del día se atribuye por `closedAt` y exige que
+  la orden sea pagable. Puede confirmar hoy una venta ingresada antes.
+- **BR-015:** cohorte mensual y aceleradores conservan `registeredAt`; la vista
+  diaria no cambia el período económico de la venta.
+- **AC-011:** el pulso aparece solo para AGENT y en el mes vigente.
+- **AC-012:** una venta ingresada suma actividad y potencial; solo confirma base
+  cuando está entregada, cerrada y es pagable.
+- **AC-013:** los siete días y sus límites se resuelven en `America/Lima`.
+- La interfaz separa potencial, confirmado y estimación mensual, sin rankings
+  diarios ni nuevos botones que compitan con las acciones operativas.
+
 ## Problema
 
 La bandeja permite operar órdenes, pero no explica si el asesor, el equipo y la

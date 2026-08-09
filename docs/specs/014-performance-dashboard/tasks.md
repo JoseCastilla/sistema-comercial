@@ -31,6 +31,9 @@
 
 ## Salida
 
+- [x] **T-041** Separar actividad, potencial y confirmación diaria.
+- [x] **T-042** Mostrar el ritmo de ingresos y confirmaciones de siete días.
+- [ ] **T-043** Validar visualmente con una sesión AGENT real.
 - [ ] **T-900** Ejecutar matriz completa y builds de contenedores.
 - [ ] **T-901** Validar con datos productivos anonimizados o agregados.
 - [ ] **T-902** Desplegar por fase solo después de aprobación operativa.

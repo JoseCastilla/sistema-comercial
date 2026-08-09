@@ -1,8 +1,5 @@
 export type PerformanceCommercialOperation =
-  | "NEW_LINE"
-  | "PORT_PREPAID"
-  | "PORT_POSTPAID"
-  | "UNKNOWN";
+  "NEW_LINE" | "PORT_PREPAID" | "PORT_POSTPAID" | "UNKNOWN";
 
 export interface PerformanceOrderInput {
   commercialOperation: PerformanceCommercialOperation;
@@ -87,6 +84,14 @@ function isPortability(operation: PerformanceCommercialOperation): boolean {
   return operation === "PORT_PREPAID" || operation === "PORT_POSTPAID";
 }
 
+export function getPotentialBaseCommissionCents(
+  operation: PerformanceCommercialOperation,
+): number {
+  if (operation === "PORT_POSTPAID") return 2_500;
+  if (operation === "PORT_PREPAID") return 1_250;
+  return 0;
+}
+
 function limaDay(value: Date): number {
   return Number(limaDayFormatter.format(value));
 }
@@ -111,10 +116,7 @@ export function evaluatePerformanceOrderPayment(
   if (order.status === "CANCELLED") {
     return { reason: "CANCELLED", payable: false, baseCommissionCents: 0 };
   }
-  if (
-    order.deliveryStatus !== "DELIVERED" ||
-    order.deliveredAt === null
-  ) {
+  if (order.deliveryStatus !== "DELIVERED" || order.deliveredAt === null) {
     return { reason: "NOT_DELIVERED", payable: false, baseCommissionCents: 0 };
   }
   if (order.status !== "CLOSED" || order.closedAt === null) {
@@ -127,8 +129,9 @@ export function evaluatePerformanceOrderPayment(
   return {
     reason: "PAYABLE",
     payable: true,
-    baseCommissionCents:
-      order.commercialOperation === "PORT_POSTPAID" ? 2_500 : 1_250,
+    baseCommissionCents: getPotentialBaseCommissionCents(
+      order.commercialOperation,
+    ),
   };
 }
 
@@ -207,8 +210,9 @@ export function calculatePerformanceMetrics(
     if (isActivated) activated += 1;
     if (isPayable) {
       payable += 1;
-      baseCommissionCents +=
-        order.commercialOperation === "PORT_POSTPAID" ? 2_500 : 1_250;
+      baseCommissionCents += getPotentialBaseCommissionCents(
+        order.commercialOperation,
+      );
     }
     if (isDelivered && !isActivated) deliveredPendingActivation += 1;
     if (order.status === "CANCELLED") cancelled += 1;
@@ -243,7 +247,6 @@ export function calculatePerformanceMetrics(
     payableRate: ratio(payable, portability),
     baseCommissionCents,
     acceleratorOne,
-    estimatedCommissionCents:
-      baseCommissionCents + acceleratorOne.amountCents,
+    estimatedCommissionCents: baseCommissionCents + acceleratorOne.amountCents,
   };
 }

@@ -1,7 +1,24 @@
 # SPEC-014 — Verificación
 
-**Estado:** `DEPLOYED`
+**Estado:** `IN_PROGRESS`
 **Fecha:** 2026-08-09
+
+## Extensión diaria local
+
+- 111 pruebas de dominio, tipos y lint del monorepo aprobados localmente.
+- El pulso se limita a AGENT y al mes vigente; los demás roles no cambian.
+- Los ingresos se agrupan por `registeredAt` y la base confirmada por `closedAt`,
+  usando los límites diarios de Lima.
+- La confirmación vuelve a comprobar entrega, cierre, operación comisionable y
+  asesor asignado.
+- Una venta puede generar potencial el día de ingreso y confirmar la base otro
+  día sin salir de su cohorte mensual original.
+- El respaldo del equipo actual se consulta por separado, limitado a la misma
+  organización y solo cuando existe una membresía primaria activa inequívoca.
+- La imagen Docker de producción compiló, inició como usuario no privilegiado y
+  respondió saludable en `/api/health`.
+- La validación visual con una sesión AGENT continúa como seguimiento; el
+  despliegue de este incremento fue autorizado por el responsable del producto.
 
 ## Revisión del plan de origen
 
@@ -25,7 +42,8 @@
 
 ## Evidencia local obtenida
 
-- 110 pruebas de validación aprobadas, incluidos 41 cierres elegibles por
+- 111 pruebas de validación aprobadas, incluidos el potencial diario y 41
+  cierres elegibles por
   S/ 310, maduración posterior a la ventana y límites mensuales de Lima.
 - TypeScript y ESLint aprobados en el monorepo; Web volvió a aprobar tipos tras
   recompilar el paquete compartido.

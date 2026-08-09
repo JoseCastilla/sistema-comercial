@@ -2,6 +2,9 @@ import "server-only";
 
 import {
   calculatePerformanceMetrics,
+  evaluatePerformanceOrderPayment,
+  getOrderPeriodRange,
+  getPotentialBaseCommissionCents,
   getPerformanceMonthRange,
   parsePerformanceMonth,
   resolveDitoOrderScope,
@@ -17,6 +20,7 @@ import type {
 } from "@repo/validation";
 
 import type {
+  AgentDailyPerformance,
   PerformanceDashboardData,
   PerformanceRole,
 } from "../performance.types";
@@ -45,6 +49,19 @@ const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
+});
+
+const limaDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Lima",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const dailyLabelFormatter = new Intl.DateTimeFormat("es-PE", {
+  timeZone: "America/Lima",
+  weekday: "short",
+  day: "numeric",
 });
 
 const orderSelect = {
@@ -113,6 +130,7 @@ function getAccessWhere(
 function groupByAgent(
   orders: readonly PerformanceOrderRecord[],
   role: PerformanceRole,
+  primaryTeamNames: ReadonlyMap<string, string>,
 ) {
   const groups = new Map<string, PerformanceOrderRecord[]>();
 
@@ -124,18 +142,34 @@ function groupByAgent(
   }
 
   return [...groups.entries()]
-    .map(([id, agentOrders]) => ({
-      id,
-      name: agentOrders[0]?.agent?.name ?? "Asesor sin nombre",
-      teamName: agentOrders[0]?.assignedTeam?.name ?? null,
-      metrics:
-        role === "ADMIN"
-          ? calculatePerformanceMetrics(agentOrders.map(toMetricInput))
-          : redactCommission(
-              calculatePerformanceMetrics(agentOrders.map(toMetricInput)),
-            ),
-      showCommission: role === "ADMIN",
-    }))
+    .map(([id, agentOrders]) => {
+      const assignedTeamNames = [
+        ...new Set(
+          agentOrders
+            .map((order) => order.assignedTeam?.name)
+            .filter((name): name is string => Boolean(name)),
+        ),
+      ];
+      const primaryTeamName = primaryTeamNames.get(id);
+      const teamName =
+        assignedTeamNames.length > 1
+          ? "Varios equipos"
+          : (assignedTeamNames[0] ??
+            (primaryTeamName ? `Equipo actual · ${primaryTeamName}` : null));
+
+      return {
+        id,
+        name: agentOrders[0]?.agent?.name ?? "Asesor sin nombre",
+        teamName,
+        metrics:
+          role === "ADMIN"
+            ? calculatePerformanceMetrics(agentOrders.map(toMetricInput))
+            : redactCommission(
+                calculatePerformanceMetrics(agentOrders.map(toMetricInput)),
+              ),
+        showCommission: role === "ADMIN",
+      };
+    })
     .sort(
       (left, right) =>
         right.metrics.payable - left.metrics.payable ||
@@ -205,6 +239,59 @@ function calculateScopedMetrics(
   };
 }
 
+function buildAgentDailyPulse(
+  activityOrders: readonly PerformanceOrderRecord[],
+  confirmationOrders: readonly PerformanceOrderRecord[],
+  todayStart: Date,
+  todayEnd: Date,
+): AgentDailyPerformance {
+  const dayLength = 24 * 60 * 60 * 1000;
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const start = new Date(todayStart.getTime() - (6 - index) * dayLength);
+    return {
+      key: limaDateKeyFormatter.format(start),
+      label: dailyLabelFormatter.format(start).replace(".", ""),
+      entered: 0,
+      potentialCommissionCents: 0,
+      confirmed: 0,
+      confirmedBaseCommissionCents: 0,
+      isToday: index === 6,
+    };
+  });
+  const byKey = new Map(days.map((day) => [day.key, day]));
+
+  for (const order of activityOrders) {
+    const day = byKey.get(limaDateKeyFormatter.format(order.registeredAt));
+    if (!day) continue;
+    day.entered += 1;
+    day.potentialCommissionCents += getPotentialBaseCommissionCents(
+      order.commercialOperation,
+    );
+  }
+
+  for (const order of confirmationOrders) {
+    if (!order.closedAt) continue;
+    const evaluation = evaluatePerformanceOrderPayment(toMetricInput(order));
+    if (!evaluation.payable) continue;
+    const day = byKey.get(limaDateKeyFormatter.format(order.closedAt));
+    if (!day) continue;
+    day.confirmed += 1;
+    day.confirmedBaseCommissionCents += evaluation.baseCommissionCents;
+  }
+
+  const today = days.at(-1);
+  if (!today) throw new Error("No se pudo construir el pulso diario.");
+
+  return {
+    todayLabel: dailyLabelFormatter.format(todayEnd.getTime() - 1),
+    entered: today.entered,
+    potentialCommissionCents: today.potentialCommissionCents,
+    confirmed: today.confirmed,
+    confirmedBaseCommissionCents: today.confirmedBaseCommissionCents,
+    days,
+  };
+}
+
 export async function getPerformanceDashboard(
   organizationId: string,
   access: PerformanceAccess,
@@ -252,35 +339,111 @@ export async function getPerformanceDashboard(
   );
   const teamWhere: Prisma.DitoOrderWhereInput =
     teamFilter === "ALL" ? {} : { assignedTeamId: teamFilter };
+  const isAgentCurrentMonth =
+    access.role === "AGENT" && currentRange.key === currentMonth;
+  const todayRange = getOrderPeriodRange("TODAY", now);
+  if (!todayRange.start || !todayRange.end) {
+    throw new Error("No se pudo resolver el dia actual.");
+  }
+  const lastSevenDaysStart = new Date(
+    todayRange.start.getTime() - 6 * 24 * 60 * 60 * 1000,
+  );
 
-  const [orders, previousOrders] = await Promise.all([
-    database.ditoOrder.findMany({
-      where: {
-        organizationId,
-        AND: [
-          accessWhere,
-          teamWhere,
-          {
-            registeredAt: { gte: currentRange.start, lt: currentRange.end },
+  const [orders, previousOrders, activityOrders, confirmationOrders] =
+    await Promise.all([
+      database.ditoOrder.findMany({
+        where: {
+          organizationId,
+          AND: [
+            accessWhere,
+            teamWhere,
+            {
+              registeredAt: { gte: currentRange.start, lt: currentRange.end },
+            },
+          ],
+        },
+        select: orderSelect,
+      }),
+      database.ditoOrder.findMany({
+        where: {
+          organizationId,
+          AND: [
+            accessWhere,
+            teamWhere,
+            {
+              registeredAt: { gte: previousRange.start, lt: previousRange.end },
+            },
+          ],
+        },
+        select: orderSelect,
+      }),
+      isAgentCurrentMonth
+        ? database.ditoOrder.findMany({
+            where: {
+              organizationId,
+              AND: [
+                accessWhere,
+                {
+                  registeredAt: {
+                    gte: lastSevenDaysStart,
+                    lt: todayRange.end,
+                  },
+                },
+              ],
+            },
+            select: orderSelect,
+          })
+        : Promise.resolve([]),
+      isAgentCurrentMonth
+        ? database.ditoOrder.findMany({
+            where: {
+              organizationId,
+              AND: [
+                accessWhere,
+                {
+                  closedAt: {
+                    gte: lastSevenDaysStart,
+                    lt: todayRange.end,
+                  },
+                },
+              ],
+            },
+            select: orderSelect,
+          })
+        : Promise.resolve([]),
+    ]);
+
+  const visibleAgentIds = [
+    ...new Set(
+      orders
+        .map((order) => order.agentUserId)
+        .filter((userId): userId is string => Boolean(userId)),
+    ),
+  ];
+  const primaryTeamMemberships =
+    access.role === "AGENT" || visibleAgentIds.length === 0
+      ? []
+      : await database.commercialTeamMember.findMany({
+          where: {
+            userId: { in: visibleAgentIds },
+            memberRole: "AGENT",
+            isActive: true,
+            isPrimary: true,
+            team: { organizationId, status: "ACTIVE" },
           },
-        ],
-      },
-      select: orderSelect,
-    }),
-    database.ditoOrder.findMany({
-      where: {
-        organizationId,
-        AND: [
-          accessWhere,
-          teamWhere,
-          {
-            registeredAt: { gte: previousRange.start, lt: previousRange.end },
-          },
-        ],
-      },
-      select: orderSelect,
-    }),
-  ]);
+          select: { userId: true, team: { select: { name: true } } },
+        });
+  const primaryTeamsByAgent = new Map<string, string[]>();
+  for (const membership of primaryTeamMemberships) {
+    const teams = primaryTeamsByAgent.get(membership.userId) ?? [];
+    teams.push(membership.team.name);
+    primaryTeamsByAgent.set(membership.userId, teams);
+  }
+  const primaryTeamNames = new Map(
+    [...primaryTeamsByAgent.entries()]
+      .filter(([, teams]) => teams.length === 1)
+      .map(([userId, teams]) => [userId, teams[0] ?? ""]),
+  );
 
   const scopedMetrics = calculateScopedMetrics(orders, access.role === "AGENT");
   const scopedPreviousMetrics = calculateScopedMetrics(
@@ -312,12 +475,20 @@ export async function getPerformanceDashboard(
     scopeLabel:
       access.role === "AGENT"
         ? "Mi desempeño"
-        : selectedTeam?.name ??
-          (access.role === "SUPERVISOR" ? "Mis equipos" : "Organización"),
+        : (selectedTeam?.name ??
+          (access.role === "SUPERVISOR" ? "Mis equipos" : "Organización")),
     teamFilter,
     teamOptions,
     showTeamFilter: access.role !== "AGENT" && teamOptions.length > 0,
     showCommission: access.role !== "BACKOFFICE",
+    dailyPulse: isAgentCurrentMonth
+      ? buildAgentDailyPulse(
+          activityOrders,
+          confirmationOrders,
+          todayRange.start,
+          todayRange.end,
+        )
+      : null,
     metrics,
     previousMetrics,
     comparison: {
@@ -333,6 +504,8 @@ export async function getPerformanceDashboard(
         : null,
     },
     breakdown:
-      access.role === "AGENT" ? [] : groupByAgent(orders, access.role),
+      access.role === "AGENT"
+        ? []
+        : groupByAgent(orders, access.role, primaryTeamNames),
   };
 }
