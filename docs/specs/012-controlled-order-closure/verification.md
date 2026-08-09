@@ -1,6 +1,6 @@
 # SPEC-012 — Verificación
 
-**Estado:** `LOCAL_VERIFIED`
+**Estado:** `DEPLOYED`
 **Fecha:** 2026-08-09
 
 ## Evidencia obtenida
@@ -27,4 +27,7 @@
 
 ## Salida
 
-- T-050 permanece pendiente: sin commit, push ni despliegue hasta aprobación.
+- Implementación publicada mediante el commit `ef92380`.
+- API reiniciada después de migraciones con PostgreSQL `up`.
+- Web productiva respondió HTTP 200 y las rutas privadas conservaron su control
+  de acceso.

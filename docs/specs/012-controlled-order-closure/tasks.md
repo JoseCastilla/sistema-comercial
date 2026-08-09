@@ -11,4 +11,4 @@
 - [x] **T-032** Adaptar el formulario sin agregar botones.
 - [x] **T-040** Ejecutar pruebas, tipos, lint y builds.
 - [x] **T-041** Verificar la experiencia local y documentar evidencia.
-- [ ] **T-050** Desplegar únicamente después de aprobación local.
+- [x] **T-050** Desplegar únicamente después de aprobación local.

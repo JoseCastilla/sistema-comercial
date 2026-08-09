@@ -1,6 +1,6 @@
 # SPEC-013 — Verificación
 
-**Estado:** `LOCAL_VERIFIED`
+**Estado:** `DEPLOYED`
 **Fecha:** 2026-08-09
 
 ## Evidencia obtenida
@@ -22,7 +22,12 @@
   fue eliminado al terminar.
 - Auditoría final local: 0 solicitudes pendientes temporales y 0 inconsistencias.
 
-## Pendiente de salida
+## Salida productiva
 
-- Crear commit, hacer push y comprobar migración, salud y experiencia en
-  producción.
+- Commit funcional `ef92380` publicado en `main`.
+- EasyPanel reemplazó la API; el proceso reinició después de ejecutar
+  migraciones y reportó PostgreSQL `up`.
+- La Web respondió HTTP 200 en salud y `/orders` redirigió a `/login` sin
+  sesión, como corresponde.
+- No se crearon solicitudes ni se modificaron pedidos durante la verificación
+  productiva.

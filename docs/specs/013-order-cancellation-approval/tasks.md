@@ -8,4 +8,4 @@
 - [x] **T-040** Exponer solicitud y permisos en la bandeja.
 - [x] **T-041** Implementar interfaz contextual compacta.
 - [x] **T-050** Ejecutar migración y validación integral local.
-- [ ] **T-060** Crear commit, push y verificar producción.
+- [x] **T-060** Crear commit, push y verificar producción.
