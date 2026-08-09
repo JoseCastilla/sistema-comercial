@@ -388,6 +388,11 @@ function getStatusFilter(
       };
     case "RECOVERY":
       return { sentSubstatus: { in: ["NOT_DELIVERED", "REJECTED"] } };
+    case "AWAITING_ACTIVATION":
+      return {
+        deliveryStatus: "DELIVERED",
+        status: { notIn: ["CLOSED", "CANCELLED"] },
+      };
     case "DELIVERED":
       return {
         OR: [{ status: "CLOSED" }, { sentSubstatus: "DELIVERED" }],

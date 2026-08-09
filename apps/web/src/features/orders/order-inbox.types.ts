@@ -22,7 +22,13 @@ export type OrderSentSubstatusValue =
   | null;
 
 export type OrderFilter =
-  "ACTIVE" | "INCIDENTS" | "RECOVERY" | "DELIVERED" | "FINAL" | "ALL";
+  | "ACTIVE"
+  | "INCIDENTS"
+  | "RECOVERY"
+  | "AWAITING_ACTIVATION"
+  | "DELIVERED"
+  | "FINAL"
+  | "ALL";
 
 export interface OrderInboxAccess {
   userId: string;

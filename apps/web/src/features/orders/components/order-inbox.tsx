@@ -38,6 +38,10 @@ const filterOptions: Array<{
     label: "Recuperación",
   },
   {
+    value: "AWAITING_ACTIVATION",
+    label: "Por activar",
+  },
+  {
     value: "DELIVERED",
     label: "Entregados",
   },

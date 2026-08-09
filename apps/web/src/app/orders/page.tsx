@@ -25,6 +25,7 @@ function parseOrderFilter(value: string | undefined): OrderFilter {
     "ACTIVE",
     "INCIDENTS",
     "RECOVERY",
+    "AWAITING_ACTIVATION",
     "DELIVERED",
     "FINAL",
     "ALL",

@@ -19,6 +19,8 @@ regreso a GHL.
 - SPEC-005 aprobada para reforzar contraste y limitar la bandeja al mes en curso.
 - SPEC-006 implementada para conservar capturas antiguas incompletas y permitir
   su corrección manual auditada por ADMIN.
+- SPEC-014 incorpora `/performance` con métricas por rol, funnel mensual,
+  comisión provisional y conciliación administrativa por orden.
 
 El contexto funcional consolidado se mantiene fuera del repositorio en
 `PLATAFORMA_COMERCIAL_CONTEXTO_MAESTRO_V20.md`. Las decisiones ejecutables y su

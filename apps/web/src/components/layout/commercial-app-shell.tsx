@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-type ActiveSection = "orders" | "imports" | "people" | "teams";
+type ActiveSection = "performance" | "orders" | "imports" | "people" | "teams";
 type IconName = "home" | "orders" | "sales" | "people" | "teams";
 
 const roleLabels: Record<string, string> = {
@@ -156,9 +156,11 @@ export function CommercialAppShell({
         </div>
         <nav className="app-shell__nav" aria-label="Navegación principal">
           <NavigationItem
-            description="Resumen del negocio"
+            active={activeSection === "performance"}
+            description="Resultados y oportunidades"
+            href="/performance"
             icon="home"
-            label="Inicio"
+            label="Rendimiento"
           />
           <NavigationItem
             active={activeSection === "orders"}
@@ -216,7 +218,12 @@ export function CommercialAppShell({
         <main className="app-shell__main">{children}</main>
       </div>
       <nav className="app-shell__mobile-nav" aria-label="Navegación móvil">
-        <MobileNavigationItem icon="home" label="Inicio" />
+        <MobileNavigationItem
+          active={activeSection === "performance"}
+          href="/performance"
+          icon="home"
+          label="Rendimiento"
+        />
         <MobileNavigationItem
           active={activeSection === "orders"}
           href="/orders"
