@@ -13,6 +13,7 @@ import { OrderCorrectionForm } from "./order-correction-form";
 import { OrderRealtimeStatus } from "./order-realtime-status";
 
 import type {
+  OrderAssignmentTeamOption,
   OrderInboxData,
   OrderFilter,
   OrderInboxItem,
@@ -357,7 +358,13 @@ function InlineCopyValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function OrderDetails({ order }: { order: OrderInboxItem }) {
+function OrderDetails({
+  order,
+  assignmentTeams,
+}: {
+  order: OrderInboxItem;
+  assignmentTeams: OrderAssignmentTeamOption[];
+}) {
   const formKey = [
     order.id,
     order.status,
@@ -448,8 +455,8 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
         <DetailItem label="Estado de asociación" value={order.matchStatus} />
       </dl>
 
-      {order.canResolveAssignment ? (
-        <OrderAssignmentResolution order={order} />
+      {order.canResolveAssignment || order.canClaimAssignment ? (
+        <OrderAssignmentResolution order={order} teams={assignmentTeams} />
       ) : null}
 
       {hasDitoDetails ? (
@@ -539,10 +546,12 @@ function OrderDetails({ order }: { order: OrderInboxItem }) {
 
 function MobileOrderCard({
   order,
+  assignmentTeams,
   expanded,
   onToggle,
 }: {
   order: OrderInboxItem;
+  assignmentTeams: OrderAssignmentTeamOption[];
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -602,7 +611,7 @@ function MobileOrderCard({
 
       {expanded ? (
         <div className="border-t border-neutral-200 p-4">
-          <OrderDetails order={order} />
+          <OrderDetails assignmentTeams={assignmentTeams} order={order} />
         </div>
       ) : null}
     </article>
@@ -995,22 +1004,26 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           description={
             data.totals.visible > 0
               ? "No hay ventas que coincidan con este estado o búsqueda."
-              : data.period === "TODAY"
-                ? "No se registraron ventas hoy."
-                : data.period === "YESTERDAY"
-                  ? "No se registraron ventas ayer."
-                  : data.period === "WEEK"
-                    ? "No se registraron ventas esta semana."
-                    : data.period === "MONTH"
-                      ? "No se registraron ventas en el mes actual."
-                      : data.period === "RANGE"
-                        ? "No se registraron ventas en el rango seleccionado."
-                        : "No se encontraron ventas en el histórico."
+              : data.teamFilter === "UNASSIGNED"
+                ? "No hay ventas pendientes de asignación en este período."
+                : data.period === "TODAY"
+                  ? "No se registraron ventas hoy."
+                  : data.period === "YESTERDAY"
+                    ? "No se registraron ventas ayer."
+                    : data.period === "WEEK"
+                      ? "No se registraron ventas esta semana."
+                      : data.period === "MONTH"
+                        ? "No se registraron ventas en el mes actual."
+                        : data.period === "RANGE"
+                          ? "No se registraron ventas en el rango seleccionado."
+                          : "No se encontraron ventas en el histórico."
           }
           title={
             data.totals.visible > 0
               ? "No hay coincidencias"
-              : "Aún no hay ventas en este período"
+              : data.teamFilter === "UNASSIGNED"
+                ? "Todo está asignado"
+                : "Aún no hay ventas en este período"
           }
         />
       ) : (
@@ -1021,6 +1034,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
               return (
                 <MobileOrderCard
+                  assignmentTeams={data.assignmentTeams}
                   expanded={expanded}
                   key={order.id}
                   onToggle={() => {
@@ -1041,7 +1055,11 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
             <aside className="sticky top-8 max-h-[calc(100vh-64px)] self-start overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
               {selectedOrder ? (
-                <OrderDetails key={selectedOrder.id} order={selectedOrder} />
+                <OrderDetails
+                  assignmentTeams={data.assignmentTeams}
+                  key={selectedOrder.id}
+                  order={selectedOrder}
+                />
               ) : null}
             </aside>
           </section>

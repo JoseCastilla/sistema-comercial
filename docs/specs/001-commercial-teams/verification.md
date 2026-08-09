@@ -253,3 +253,32 @@ La especificación cambia a `VERIFIED` únicamente cuando todos los criterios ob
 - **Riesgo residual:** algunos patrones internos de vínculos DITO y restablecimiento
   de contraseña aún son específicos de la feature. Falta la prueba de usabilidad
   con usuarios de los tres roles (`T-UX-008`) y evidencia visual final (`T-UX-009`).
+
+### INC-006 — Reclamación manual de órdenes huérfanas
+
+- **Estado:** `COMPLETED_WITH_PENDING_OPERATIONAL_VALIDATION`
+- **Tareas completadas:** `T-062`, `T-063`, `T-065`.
+- **Tarea pendiente relacionada:** `T-066`, prueba de integración con dos reclamaciones concurrentes reales.
+- **Fecha:** 2026-08-08.
+- **Alcance:** asignación manual y atómica de una orden sin asesor ni equipo a un asesor activo de un equipo permitido, sin alterar el estado de vinculación comercial `matchStatus`.
+- **Archivos principales:**
+  - `apps/web/src/features/orders/server/claim-orphan-order-action.ts`
+  - `apps/web/src/features/orders/components/order-assignment-resolution.tsx`
+  - `apps/web/src/features/orders/server/get-order-inbox.ts`
+  - `packages/validation/src/dito-order-orphan-claim-schema.ts`
+  - `packages/validation/test/dito-order-orphan-claim-schema.test.mjs`
+- **Comportamiento verificado por implementación:**
+  - `ADMIN` puede reclamar hacia cualquier equipo activo de su organización;
+  - `SUPERVISOR` solo puede reclamar hacia equipos activos que supervisa;
+  - el destino exige un usuario activo, con rol organizacional `AGENT` y membresía activa en el equipo;
+  - la actualización compara `updatedAt` y exige que asesor y equipo continúen vacíos;
+  - la asignación crea historial con fuente `ORPHAN_CLAIM`, actor, motivo y valores anterior/nuevo;
+  - las solicitudes pendientes compatibles se aprueban y las restantes se cancelan para evitar estados obsoletos;
+  - la orden deja de cumplir el filtro `Sin asignar` después de una reclamación exitosa;
+  - `BACKOFFICE` y `AGENT` no reciben la acción ni pueden ejecutarla desde una petición manipulada.
+- **Evidencia automatizada:**
+  - compilación de `@repo/validation`: aprobada;
+  - suite de validación: 85 pruebas aprobadas, incluidas 3 del contrato de reclamación;
+  - generación de tipos Next.js y comprobación TypeScript de `apps/web`: aprobadas;
+  - lint de los archivos modificados en `apps/web` y `@repo/validation`: aprobado.
+- **Riesgo residual:** falta ejecutar `T-066` contra PostgreSQL local y validar el flujo visual con cuentas reales de `ADMIN` y `SUPERVISOR` antes de desplegar.

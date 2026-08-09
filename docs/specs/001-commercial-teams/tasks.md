@@ -78,10 +78,10 @@ La especificación está `APPROVED`. Ejecutar las tareas en orden y mantener tra
 
 - [x] **T-060** Implementar consulta del pool para `ADMIN` y `BACKOFFICE`.
 - [x] **T-061** Implementar proyección limitada y enmascarada para `SUPERVISOR`.
-- [ ] **T-062** Implementar `claimOrphanDitoOrder` con concurrencia e historial.
-- [ ] **T-063** Autorizar supervisor solo hacia sus equipos.
+- [x] **T-062** Implementar `claimOrphanDitoOrder` con concurrencia e historial.
+- [x] **T-063** Autorizar supervisor solo hacia sus equipos.
 - [x] **T-064** Añadir filtro “Sin asignar” en `/orders`.
-- [ ] **T-065** Hacer que la orden desaparezca del pool tras reclamación exitosa.
+- [x] **T-065** Hacer que la orden desaparezca del pool tras reclamación exitosa.
 - [ ] **T-066** Probar dos reclamaciones concurrentes.
 
 ## Fase 7 — Reasignación

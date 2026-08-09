@@ -450,28 +450,67 @@ export async function getOrderInbox(
   const search = query.search?.trim().slice(0, 100) ?? "";
   const incidentThreshold = new Date(now.getTime() - 10 * 60 * 1000);
 
-  const teamOptions =
+  const teamAccessWhere = {
+    organizationId,
+    status: "ACTIVE" as const,
+    ...(access.role === "SUPERVISOR"
+      ? {
+          members: {
+            some: {
+              userId: access.userId,
+              memberRole: "SUPERVISOR" as const,
+              isActive: true,
+            },
+          },
+        }
+      : {}),
+  };
+  const [teamOptions, assignmentTeamRecords] = await Promise.all([
     access.role === "AGENT"
-      ? []
-      : await database.commercialTeam.findMany({
+      ? Promise.resolve([])
+      : database.commercialTeam.findMany({
           where: {
-            organizationId,
-            status: "ACTIVE",
-            ...(access.role === "SUPERVISOR"
-              ? {
-                  members: {
-                    some: {
-                      userId: access.userId,
-                      memberRole: "SUPERVISOR",
-                      isActive: true,
-                    },
-                  },
-                }
-              : {}),
+            ...teamAccessWhere,
           },
           orderBy: { name: "asc" },
           select: { id: true, name: true },
-        });
+        }),
+    access.role === "ADMIN" || access.role === "SUPERVISOR"
+      ? database.commercialTeam.findMany({
+          where: teamAccessWhere,
+          orderBy: { name: "asc" },
+          select: {
+            id: true,
+            name: true,
+            members: {
+              where: {
+                memberRole: "AGENT",
+                isActive: true,
+                user: {
+                  status: "ACTIVE",
+                  memberships: {
+                    some: { organizationId, role: "AGENT" },
+                  },
+                },
+              },
+              select: {
+                userId: true,
+                user: { select: { name: true } },
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+  const assignmentTeams = assignmentTeamRecords
+    .map((team) => ({
+      id: team.id,
+      name: team.name,
+      agents: team.members
+        .map((member) => ({ id: member.userId, name: member.user.name }))
+        .sort((left, right) => left.name.localeCompare(right.name, "es")),
+    }))
+    .filter((team) => team.agents.length > 0);
   const supervisedTeamIds =
     access.role === "SUPERVISOR" ? teamOptions.map((team) => team.id) : [];
   const requestedTeam = query.team?.trim() ?? "";
@@ -724,6 +763,11 @@ export async function getOrderInbox(
         Boolean(order.submitterEmailNormalized) &&
         order.agentUserId === null &&
         order.assignedTeamId === null,
+      canClaimAssignment:
+        (access.role === "ADMIN" || access.role === "SUPERVISOR") &&
+        assignmentTeams.length > 0 &&
+        order.agentUserId === null &&
+        order.assignedTeamId === null,
       updatedAt: order.updatedAt.toISOString(),
     };
   });
@@ -758,6 +802,7 @@ export async function getOrderInbox(
         ? "Mis equipos + sin asignar"
         : "Todos los equipos",
     teamOptions,
+    assignmentTeams,
     showTeamFilter:
       access.role !== "AGENT" &&
       (access.role !== "SUPERVISOR" || supervisedTeamIds.length > 0),

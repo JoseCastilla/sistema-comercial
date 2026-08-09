@@ -37,9 +37,9 @@ export async function createDitoImportPreviewAction(
     return { type: "error", message: "El archivo no puede superar 10 MB." };
   }
 
-  const workbook = Buffer.from(await file.arrayBuffer());
+  const workbook = await file.arrayBuffer();
   const resourceFingerprint = createHash("sha256")
-    .update(workbook)
+    .update(new DataView(workbook))
     .digest("hex");
   const timestamp = String(Math.floor(Date.now() / 1000));
   const secret = getInternalSecret();

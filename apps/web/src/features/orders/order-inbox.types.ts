@@ -35,6 +35,13 @@ export interface OrderInboxTeamOption {
   name: string;
 }
 
+export interface OrderAssignmentTeamOption extends OrderInboxTeamOption {
+  agents: Array<{
+    id: string;
+    name: string;
+  }>;
+}
+
 export interface OrderInboxItem {
   id: string;
   orderCode: string;
@@ -92,6 +99,7 @@ export interface OrderInboxItem {
   canUpdate: boolean;
   canCorrect: boolean;
   canResolveAssignment: boolean;
+  canClaimAssignment: boolean;
   parseStatus: string;
   updatedAt: string;
 }
@@ -108,6 +116,7 @@ export interface OrderInboxData {
   teamFilter: string;
   teamAllLabel: string;
   teamOptions: OrderInboxTeamOption[];
+  assignmentTeams: OrderAssignmentTeamOption[];
   showTeamFilter: boolean;
   filteredTotal: number;
 
