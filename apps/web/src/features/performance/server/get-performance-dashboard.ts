@@ -20,7 +20,7 @@ import type {
 } from "@repo/validation";
 
 import type {
-  AgentDailyPerformance,
+  DailyPerformance,
   PerformanceDashboardData,
   PerformanceRole,
 } from "../performance.types";
@@ -239,12 +239,12 @@ function calculateScopedMetrics(
   };
 }
 
-function buildAgentDailyPulse(
+function buildDailyPerformancePulse(
   activityOrders: readonly PerformanceOrderRecord[],
   confirmationOrders: readonly PerformanceOrderRecord[],
   todayStart: Date,
   todayEnd: Date,
-): AgentDailyPerformance {
+): DailyPerformance {
   const dayLength = 24 * 60 * 60 * 1000;
   const days = Array.from({ length: 7 }, (_, index) => {
     const start = new Date(todayStart.getTime() - (6 - index) * dayLength);
@@ -253,6 +253,7 @@ function buildAgentDailyPulse(
       label: dailyLabelFormatter.format(start).replace(".", ""),
       entered: 0,
       potentialCommissionCents: 0,
+      closed: 0,
       confirmed: 0,
       confirmedBaseCommissionCents: 0,
       isToday: index === 6,
@@ -270,11 +271,13 @@ function buildAgentDailyPulse(
   }
 
   for (const order of confirmationOrders) {
-    if (!order.closedAt) continue;
-    const evaluation = evaluatePerformanceOrderPayment(toMetricInput(order));
-    if (!evaluation.payable) continue;
+    if (!order.closedAt || order.status !== "CLOSED") continue;
     const day = byKey.get(limaDateKeyFormatter.format(order.closedAt));
     if (!day) continue;
+    day.closed += 1;
+
+    const evaluation = evaluatePerformanceOrderPayment(toMetricInput(order));
+    if (!evaluation.payable) continue;
     day.confirmed += 1;
     day.confirmedBaseCommissionCents += evaluation.baseCommissionCents;
   }
@@ -286,6 +289,7 @@ function buildAgentDailyPulse(
     todayLabel: dailyLabelFormatter.format(todayEnd.getTime() - 1),
     entered: today.entered,
     potentialCommissionCents: today.potentialCommissionCents,
+    closed: today.closed,
     confirmed: today.confirmed,
     confirmedBaseCommissionCents: today.confirmedBaseCommissionCents,
     days,
@@ -339,8 +343,7 @@ export async function getPerformanceDashboard(
   );
   const teamWhere: Prisma.DitoOrderWhereInput =
     teamFilter === "ALL" ? {} : { assignedTeamId: teamFilter };
-  const isAgentCurrentMonth =
-    access.role === "AGENT" && currentRange.key === currentMonth;
+  const showDailyPulse = currentRange.key === currentMonth;
   const todayRange = getOrderPeriodRange("TODAY", now);
   if (!todayRange.start || !todayRange.end) {
     throw new Error("No se pudo resolver el dia actual.");
@@ -377,12 +380,13 @@ export async function getPerformanceDashboard(
         },
         select: orderSelect,
       }),
-      isAgentCurrentMonth
+      showDailyPulse
         ? database.ditoOrder.findMany({
             where: {
               organizationId,
               AND: [
                 accessWhere,
+                teamWhere,
                 {
                   registeredAt: {
                     gte: lastSevenDaysStart,
@@ -394,12 +398,13 @@ export async function getPerformanceDashboard(
             select: orderSelect,
           })
         : Promise.resolve([]),
-      isAgentCurrentMonth
+      showDailyPulse
         ? database.ditoOrder.findMany({
             where: {
               organizationId,
               AND: [
                 accessWhere,
+                teamWhere,
                 {
                   closedAt: {
                     gte: lastSevenDaysStart,
@@ -481,8 +486,8 @@ export async function getPerformanceDashboard(
     teamOptions,
     showTeamFilter: access.role !== "AGENT" && teamOptions.length > 0,
     showCommission: access.role !== "BACKOFFICE",
-    dailyPulse: isAgentCurrentMonth
-      ? buildAgentDailyPulse(
+    dailyPulse: showDailyPulse
+      ? buildDailyPerformancePulse(
           activityOrders,
           confirmationOrders,
           todayRange.start,

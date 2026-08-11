@@ -5,8 +5,17 @@
 
 ## Extensión diaria local
 
+- La extensión de 2026-08-11 expone el pulso diario también a ADMIN,
+  SUPERVISOR y BACKOFFICE, respetando alcance y equipo seleccionado.
+- Cada día separa ingresadas por `registeredAt`, cerradas por `closedAt` y
+  pagables; el cierre diario no mueve la cohorte mensual de la orden.
+- BACKOFFICE recibe conteos operativos sin potencial ni importes de comisión.
+- Validación local ADMIN con datos reales: organización 18 cerradas hoy, 16
+  pagables; AYACUCHO - MAGISTERIAL 12 cerradas, 11 pagables.
+- A 390 px se muestran cuatro indicadores y ambas series de siete días sin
+  desborde horizontal.
 - 111 pruebas de dominio, tipos y lint del monorepo aprobados localmente.
-- El pulso se limita a AGENT y al mes vigente; los demás roles no cambian.
+- El pulso se limita al mes vigente.
 - Los ingresos se agrupan por `registeredAt` y la base confirmada por `closedAt`,
   usando los límites diarios de Lima.
 - La confirmación vuelve a comprobar entrega, cierre, operación comisionable y

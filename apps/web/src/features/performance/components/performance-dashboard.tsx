@@ -115,21 +115,27 @@ function Funnel({ data }: { data: PerformanceDashboardData }) {
   );
 }
 
-function AgentDailyPulse({ data }: { data: PerformanceDashboardData }) {
+function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
   const pulse = data.dailyPulse;
   if (!pulse) return null;
 
-  const maximum = Math.max(...pulse.days.map((day) => day.entered), 1);
-  const motivation =
-    pulse.entered > 0
-      ? `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} hoy. Sigue cuidando la entrega y activaciÃ³n para convertir el potencial en comisiÃ³n.`
-      : "AÃºn no registras ventas hoy. Tu cartera pendiente sigue siendo una oportunidad para recuperar activaciones.";
+  const maximum = Math.max(
+    ...pulse.days.flatMap((day) => [day.entered, day.closed]),
+    1,
+  );
+  const isAgent = data.role === "AGENT";
+  const heading = isAgent ? "Tu pulso de hoy" : "Pulso diario del alcance";
+  const motivation = isAgent
+    ? pulse.entered > 0
+      ? `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} hoy y ${pulse.closed} ${pulse.closed === 1 ? "cierre logrado" : "cierres logrados"}. Sigue cuidando la entrega para convertir el potencial en comisión.`
+      : "Aún no registras ventas hoy. Tu cartera pendiente sigue siendo una oportunidad para recuperar activaciones."
+    : `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} y ${pulse.closed} ${pulse.closed === 1 ? "venta cerrada" : "ventas cerradas"} hoy en ${data.scopeLabel.toLocaleLowerCase("es-PE")}.`;
 
   return (
     <section className="agent-daily" aria-labelledby="agent-daily-title">
       <header className="agent-daily__header">
         <div>
-          <p className="performance-panel__eyebrow">Tu pulso de hoy</p>
+          <p className="performance-panel__eyebrow">{heading}</p>
           <h2 id="agent-daily-title">{pulse.todayLabel}</h2>
           <p>{motivation}</p>
         </div>
@@ -143,29 +149,58 @@ function AgentDailyPulse({ data }: { data: PerformanceDashboardData }) {
           <small>Actividad comercial</small>
         </article>
         <article>
-          <span>Potencial de hoy</span>
-          <strong>{money(pulse.potentialCommissionCents)}</strong>
-          <small>Sujeto a entrega y cierre</small>
+          {data.showCommission ? (
+            <>
+              <span>Potencial de hoy</span>
+              <strong>{money(pulse.potentialCommissionCents)}</strong>
+              <small>Sujeto a entrega y cierre</small>
+            </>
+          ) : (
+            <>
+              <span>Pagables hoy</span>
+              <strong>{pulse.confirmed}</strong>
+              <small>Entregadas y cerradas</small>
+            </>
+          )}
         </article>
         <article data-tone="confirmed">
-          <span>Base confirmada hoy</span>
-          <strong>{money(pulse.confirmedBaseCommissionCents)}</strong>
-          <small>{pulse.confirmed} ventas cerradas y pagables</small>
+          <span>Cerradas hoy</span>
+          <strong>{pulse.closed}</strong>
+          <small>
+            {pulse.confirmed} pagables
+            {data.showCommission
+              ? ` · ${money(pulse.confirmedBaseCommissionCents)} de base`
+              : ""}
+          </small>
         </article>
         <article>
-          <span>EstimaciÃ³n mensual</span>
-          <strong>{money(data.metrics.estimatedCommissionCents)}</strong>
-          <small>Incluye base y acelerador</small>
+          {data.showCommission ? (
+            <>
+              <span>Estimación mensual</span>
+              <strong>{money(data.metrics.estimatedCommissionCents)}</strong>
+              <small>Incluye base y acelerador</small>
+            </>
+          ) : (
+            <>
+              <span>Entregadas por activar</span>
+              <strong>{data.metrics.deliveredPendingActivation}</strong>
+              <small>Requieren seguimiento</small>
+            </>
+          )}
         </article>
       </div>
 
       <div className="agent-daily__rhythm">
         <div className="agent-daily__rhythm-copy">
-          <strong>Ritmo de los Ãºltimos 7 dÃ­as</strong>
-          <small>Ingresos por dÃ­a; debajo, comisiÃ³n base confirmada.</small>
+          <strong>Ritmo de los últimos 7 días</strong>
+          <small>Compara ventas ingresadas y cerradas por fecha de evento.</small>
+          <div className="agent-daily__legend" aria-hidden="true">
+            <span data-series="entered">Ingresadas</span>
+            <span data-series="closed">Cerradas</span>
+          </div>
         </div>
         <div
-          aria-label="Ventas ingresadas durante los Ãºltimos siete dÃ­as"
+          aria-label="Ventas ingresadas y cerradas durante los últimos siete días"
           className="agent-daily__chart"
         >
           {pulse.days.map((day) => (
@@ -173,11 +208,15 @@ function AgentDailyPulse({ data }: { data: PerformanceDashboardData }) {
               className="agent-daily__day"
               data-today={day.isToday ? "true" : undefined}
               key={day.key}
-              title={`${day.label}: ${day.entered} ingresadas, ${money(day.confirmedBaseCommissionCents)} confirmados`}
+              title={`${day.label}: ${day.entered} ingresadas, ${day.closed} cerradas y ${day.confirmed} pagables`}
             >
-              <strong>{day.entered}</strong>
-              <div aria-hidden="true" className="agent-daily__bar">
+              <div className="agent-daily__totals">
+                <strong>I {day.entered}</strong>
+                <strong>C {day.closed}</strong>
+              </div>
+              <div aria-hidden="true" className="agent-daily__bars">
                 <span
+                  data-series="entered"
                   style={{
                     height: `${Math.max(
                       (day.entered / maximum) * 100,
@@ -185,16 +224,32 @@ function AgentDailyPulse({ data }: { data: PerformanceDashboardData }) {
                     )}%`,
                   }}
                 />
+                <span
+                  data-series="closed"
+                  style={{
+                    height: `${Math.max(
+                      (day.closed / maximum) * 100,
+                      day.closed > 0 ? 12 : 3,
+                    )}%`,
+                  }}
+                />
               </div>
               <span>{day.label}</span>
-              <small>{money(day.confirmedBaseCommissionCents)}</small>
+              <small>
+                {day.confirmed} pagables
+                {data.showCommission
+                  ? ` · ${money(day.confirmedBaseCommissionCents)}`
+                  : ""}
+              </small>
             </div>
           ))}
         </div>
       </div>
 
       <p className="agent-daily__notice">
-        Potencial no significa comisiÃ³n ganada. Se confirma cuando la
+        El cierre se atribuye al día de <code>closedAt</code>; no altera el mes
+        de ingreso de la venta. Potencial no significa comisión ganada: se
+        confirma cuando la
         portabilidad queda entregada y cerrada.
       </p>
     </section>
@@ -227,7 +282,7 @@ export function PerformanceDashboard({
         title="Rendimiento comercial"
       />
 
-      <AgentDailyPulse data={data} />
+      <DailyPerformancePulse data={data} />
 
       <section className="performance-controls ui-surface">
         <div className="performance-month-nav">

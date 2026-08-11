@@ -192,6 +192,34 @@
     font-size: 0.68rem;
   }
 
+  .agent-daily__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.75rem;
+    margin-top: 0.35rem;
+  }
+
+  .agent-daily__legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--ui-text-muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
+
+  .agent-daily__legend span::before {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 0.18rem;
+    background: var(--ui-accent);
+    content: "";
+  }
+
+  .agent-daily__legend span[data-series="closed"]::before {
+    background: var(--ui-info);
+  }
+
   .agent-daily__chart {
     display: grid;
     grid-template-columns: repeat(7, minmax(2.4rem, 1fr));
@@ -208,29 +236,54 @@
     text-align: center;
   }
 
-  .agent-daily__day > strong {
-    color: var(--ui-text);
-    font-size: 0.78rem;
-    font-variant-numeric: tabular-nums;
+  .agent-daily__totals {
+    display: flex;
+    min-width: 0;
+    justify-content: center;
+    gap: clamp(0.2rem, 1vw, 0.55rem);
   }
 
-  .agent-daily__bar {
+  .agent-daily__totals strong {
+    color: var(--ui-text-muted);
+    font-size: 0.65rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .agent-daily__totals strong:last-child {
+    color: var(--ui-info);
+  }
+
+  .agent-daily__bars {
     display: flex;
     min-height: 3.5rem;
     align-items: end;
     justify-content: center;
-    padding-inline: clamp(0.15rem, 1vw, 0.6rem);
+    gap: clamp(0.12rem, 0.6vw, 0.3rem);
+    padding-inline: clamp(0.1rem, 0.7vw, 0.45rem);
   }
 
-  .agent-daily__bar span {
-    width: 100%;
+  .agent-daily__bars span {
+    width: min(42%, 1.1rem);
     min-height: 0.18rem;
     border-radius: 0.35rem 0.35rem 0.15rem 0.15rem;
     background: color-mix(in srgb, var(--ui-accent) 62%, var(--ui-border));
   }
 
-  .agent-daily__day[data-today="true"] .agent-daily__bar span {
+  .agent-daily__bars span[data-series="closed"] {
+    background: color-mix(in srgb, var(--ui-info) 65%, var(--ui-border));
+  }
+
+  .agent-daily__day[data-today="true"]
+    .agent-daily__bars
+    span[data-series="entered"] {
     background: var(--ui-accent);
+  }
+
+  .agent-daily__day[data-today="true"]
+    .agent-daily__bars
+    span[data-series="closed"] {
+    background: var(--ui-info);
   }
 
   .agent-daily__day > span {

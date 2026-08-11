@@ -10,23 +10,25 @@ export interface PerformanceBreakdownItem {
   showCommission: boolean;
 }
 
-export interface AgentDailyPerformanceItem {
+export interface DailyPerformanceItem {
   key: string;
   label: string;
   entered: number;
   potentialCommissionCents: number;
+  closed: number;
   confirmed: number;
   confirmedBaseCommissionCents: number;
   isToday: boolean;
 }
 
-export interface AgentDailyPerformance {
+export interface DailyPerformance {
   todayLabel: string;
   entered: number;
   potentialCommissionCents: number;
+  closed: number;
   confirmed: number;
   confirmedBaseCommissionCents: number;
-  days: AgentDailyPerformanceItem[];
+  days: DailyPerformanceItem[];
 }
 
 export interface PerformanceDashboardData {
@@ -45,7 +47,7 @@ export interface PerformanceDashboardData {
   teamOptions: Array<{ id: string; name: string }>;
   showTeamFilter: boolean;
   showCommission: boolean;
-  dailyPulse: AgentDailyPerformance | null;
+  dailyPulse: DailyPerformance | null;
   metrics: PerformanceMetrics;
   previousMetrics: PerformanceMetrics;
   comparison: {

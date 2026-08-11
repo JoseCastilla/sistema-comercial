@@ -33,6 +33,7 @@
 
 - [x] **T-041** Separar actividad, potencial y confirmación diaria.
 - [x] **T-042** Mostrar el ritmo de ingresos y confirmaciones de siete días.
+- [x] **T-044** Mostrar cierres diarios por `closedAt` para cada alcance y equipo.
 - [ ] **T-043** Validar visualmente con una sesión AGENT real.
 - [ ] **T-900** Ejecutar matriz completa y builds de contenedores.
 - [ ] **T-901** Validar con datos productivos anonimizados o agregados.

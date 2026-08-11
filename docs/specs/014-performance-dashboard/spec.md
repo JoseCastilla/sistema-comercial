@@ -12,10 +12,17 @@
   la orden sea pagable. Puede confirmar hoy una venta ingresada antes.
 - **BR-015:** cohorte mensual y aceleradores conservan `registeredAt`; la vista
   diaria no cambia el período económico de la venta.
-- **AC-011:** el pulso aparece solo para AGENT y en el mes vigente.
+- **AC-011:** el pulso aparece en el mes vigente para todos los roles, respetando
+  su alcance y el equipo seleccionado. El texto mantiene una variante personal
+  para AGENT y una variante agregada para los demás roles.
 - **AC-012:** una venta ingresada suma actividad y potencial; solo confirma base
   cuando está entregada, cerrada y es pagable.
 - **AC-013:** los siete días y sus límites se resuelven en `America/Lima`.
+- **BR-016:** “cerradas por día” cuenta órdenes con `status = CLOSED` y
+  `closedAt` dentro del día consultado. Es una métrica de evento y no cambia la
+  cohorte económica determinada por `registeredAt`.
+- **AC-014:** cada día muestra ingresadas y cerradas como series separadas; las
+  pagables continúan siendo un subconjunto de las cerradas.
 - La interfaz separa potencial, confirmado y estimación mensual, sin rankings
   diarios ni nuevos botones que compitan con las acciones operativas.
 
