@@ -23,13 +23,13 @@ export function DitoImportUploadForm() {
   return (
     <form action={formAction} className="ui-form-stack">
       <label className="block">
-        <span className="mb-2 block text-sm font-medium text-neutral-800">
+        <span className="mb-2 block text-sm font-medium text-ui-text">
           Archivo de la bandeja DITO
         </span>
 
         <input
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          className="block w-full cursor-pointer rounded-xl border border-neutral-300 bg-white px-3 py-3 text-sm text-neutral-700 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-900 file:px-3 file:py-2 file:font-medium file:text-white hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-offset-2"
+          className="block w-full cursor-pointer rounded-xl border border-ui-border-strong bg-ui-surface px-3 py-3 text-sm text-ui-muted file:mr-3 file:rounded-lg file:border-0 file:bg-ui-strong file:px-3 file:py-2 file:font-medium file:text-ui-on-strong hover:border-ui-border-strong focus:outline-none focus:ring-2 focus:ring-ui-accent focus:ring-offset-2"
           disabled={pending}
           name="file"
           required
@@ -37,7 +37,7 @@ export function DitoImportUploadForm() {
         />
       </label>
 
-      <p className="text-xs leading-5 text-neutral-500">
+      <p className="text-xs leading-5 text-ui-muted">
         Máximo 10 MB. Analizar el archivo no crea ni modifica pedidos.
       </p>
 

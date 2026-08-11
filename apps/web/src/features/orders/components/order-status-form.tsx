@@ -119,7 +119,7 @@ export function OrderStatusForm({
 
   if (!canUpdate) {
     return (
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-ui-muted">
         No tienes permiso para modificar esta orden.
       </p>
     );
@@ -131,10 +131,10 @@ export function OrderStatusForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1.5 text-sm">
-          <span className="font-medium text-neutral-800">Estado</span>
+          <span className="font-medium text-ui-text">Estado</span>
 
           <select
-            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900"
+            className="w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-ui-text"
             disabled={pending}
             name="status"
             onChange={(event) => {
@@ -164,19 +164,17 @@ export function OrderStatusForm({
           </select>
 
           {actionState.fieldErrors?.status ? (
-            <span className="text-xs text-red-600">
+            <span className="text-xs text-ui-danger">
               {actionState.fieldErrors.status}
             </span>
           ) : null}
         </label>
 
         <label className="space-y-1.5 text-sm">
-          <span className="font-medium text-neutral-800">
-            Subestado de Enviado
-          </span>
+          <span className="font-medium text-ui-text">Subestado de Enviado</span>
 
           <select
-            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900 disabled:bg-neutral-100"
+            className="w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-ui-text disabled:bg-ui-subtle"
             disabled={pending || !showSubstatus}
             name="sentSubstatus"
             onChange={(event) => {
@@ -195,7 +193,7 @@ export function OrderStatusForm({
           </select>
 
           {actionState.fieldErrors?.sentSubstatus ? (
-            <span className="text-xs text-red-600">
+            <span className="text-xs text-ui-danger">
               {actionState.fieldErrors.sentSubstatus}
             </span>
           ) : null}
@@ -203,12 +201,12 @@ export function OrderStatusForm({
       </div>
 
       <label className="block space-y-1.5 text-sm">
-        <span className="font-medium text-neutral-800">
+        <span className="font-medium text-ui-text">
           Observación{requiresObservation ? " obligatoria" : ""}
         </span>
 
         <textarea
-          className="min-h-24 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-neutral-900"
+          className="min-h-24 w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-ui-text"
           defaultValue={initialObservation ?? ""}
           disabled={pending}
           maxLength={2000}
@@ -225,7 +223,7 @@ export function OrderStatusForm({
         />
 
         {actionState.fieldErrors?.observation ? (
-          <span className="text-xs text-red-600">
+          <span className="text-xs text-ui-danger">
             {actionState.fieldErrors.observation}
           </span>
         ) : null}
@@ -236,17 +234,17 @@ export function OrderStatusForm({
           aria-live="polite"
           className={
             actionState.type === "error"
-              ? "text-sm text-red-600"
+              ? "text-sm text-ui-danger"
               : actionState.type === "success"
-                ? "text-sm text-emerald-700"
-                : "text-sm text-neutral-500"
+                ? "text-sm text-ui-success"
+                : "text-sm text-ui-muted"
           }
         >
           {actionState.message}
         </p>
 
         <button
-          className="rounded-lg bg-neutral-950 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-ui-strong px-4 py-2 text-sm font-medium text-ui-on-strong disabled:cursor-not-allowed disabled:opacity-50"
           disabled={pending || !status}
           type="submit"
         >

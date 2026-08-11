@@ -10,7 +10,11 @@
   }
 
   ::selection {
-    color: white;
+    color: var(--ui-on-accent);
     background: var(--ui-accent);
+  }
+
+  * {
+    scrollbar-color: var(--ui-border-strong) var(--ui-surface-subtle);
   }
 }

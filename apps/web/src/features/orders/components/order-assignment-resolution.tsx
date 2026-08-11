@@ -62,12 +62,12 @@ export function OrderAssignmentResolution({
   }
 
   return (
-    <section className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-      <h4 className="text-sm font-semibold text-amber-950">
+    <section className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4">
+      <h4 className="text-sm font-semibold text-ui-warning">
         Asignación pendiente
       </h4>
 
-      <p className="mt-2 text-sm leading-6 text-amber-900">
+      <p className="mt-2 text-sm leading-6 text-ui-warning">
         Esta venta todavía no pertenece a un asesor ni a un equipo comercial.
       </p>
 
@@ -80,7 +80,7 @@ export function OrderAssignmentResolution({
             value={order.updatedAt}
           />
 
-          <p className="text-xs leading-5 text-amber-800">
+          <p className="text-xs leading-5 text-ui-warning">
             Correo informado: {order.submitterEmail}
           </p>
 
@@ -105,10 +105,10 @@ export function OrderAssignmentResolution({
 
       {order.canClaimAssignment ? (
         <details
-          className="mt-4 border-t border-amber-200 pt-4"
+          className="mt-4 border-t border-ui-warning-border pt-4"
           open={!order.canResolveAssignment}
         >
-          <summary className="cursor-pointer text-sm font-semibold text-amber-950">
+          <summary className="cursor-pointer text-sm font-semibold text-ui-warning">
             Asignar responsable manualmente
           </summary>
 

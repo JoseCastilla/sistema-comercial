@@ -175,7 +175,9 @@ export default async function AdminTeamsPage() {
                     </span>
                     <span className="ui-team-overview__supervision">
                       <small>Supervisión</small>
-                      <strong className={needsSupervisor ? "text-red-700" : ""}>
+                      <strong
+                        className={needsSupervisor ? "text-ui-danger" : ""}
+                      >
                         {needsSupervisor
                           ? "Sin supervisor"
                           : teamSupervisors

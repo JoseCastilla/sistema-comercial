@@ -39,7 +39,7 @@ export function AssignSharedDitoImportRowsForm({
     <form action={action} className="space-y-4">
       <input name="batchId" type="hidden" value={batchId} />
 
-      <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200">
+      <div className="divide-y divide-neutral-100 rounded-xl border border-ui-border">
         {rows.map((row) => (
           <div
             className="grid gap-3 px-3 py-3 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)] md:items-center"
@@ -52,10 +52,10 @@ export function AssignSharedDitoImportRowsForm({
               value={row.updatedAt}
             />
             <div className="min-w-0">
-              <p className="font-mono text-xs font-semibold text-neutral-900">
+              <p className="font-mono text-xs font-semibold text-ui-text">
                 {row.orderCode}
               </p>
-              <p className="mt-1 truncate text-sm text-neutral-600">
+              <p className="mt-1 truncate text-sm text-ui-muted">
                 {row.customerName}
               </p>
             </div>

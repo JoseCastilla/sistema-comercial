@@ -246,7 +246,7 @@ export default async function DitoImportsPage({
               title="Cargas recientes"
             >
               {recentBatches.length === 0 ? (
-                <p className="text-sm text-neutral-500">
+                <p className="text-sm text-ui-muted">
                   Todavía no existen archivos analizados.
                 </p>
               ) : (
@@ -256,14 +256,14 @@ export default async function DitoImportsPage({
                       aria-current={
                         batch.id === selectedBatch?.id ? "page" : undefined
                       }
-                      className="block rounded-xl border border-neutral-200 px-3 py-3 transition hover:border-neutral-400 aria-[current=page]:border-emerald-700 aria-[current=page]:bg-emerald-50"
+                      className="block rounded-xl border border-ui-border px-3 py-3 transition hover:border-ui-border-strong aria-[current=page]:border-ui-success aria-[current=page]:bg-ui-success-soft"
                       href={`/admin/dito-imports?batch=${batch.id}`}
                       key={batch.id}
                     >
-                      <span className="block truncate text-sm font-medium text-neutral-900">
+                      <span className="block truncate text-sm font-medium text-ui-text">
                         {batch.fileName}
                       </span>
-                      <span className="mt-1 block text-xs text-neutral-500">
+                      <span className="mt-1 block text-xs text-ui-muted">
                         {dateFormatter.format(batch.uploadedAt)} ·{" "}
                         {batch.importableRows} aprobadas
                       </span>
@@ -324,11 +324,11 @@ export default async function DitoImportsPage({
                     />
                   </MetricGroup>
 
-                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-neutral-600">
+                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ui-muted">
                     <span>{selectedBatch.excludedRows} excluidas</span>
                     <span>{selectedBatch.invalidRows} inválidas</span>
                     <span>{selectedBatch.unchangedRows} sin cambios</span>
-                    <span className="font-mono text-xs text-neutral-400">
+                    <span className="font-mono text-xs text-ui-soft">
                       {selectedBatch.fileSha256.slice(0, 12)}…
                     </span>
                   </div>
@@ -346,11 +346,11 @@ export default async function DitoImportsPage({
                           key={identity.id}
                         >
                           <div>
-                            <p className="font-medium text-neutral-900">
+                            <p className="font-medium text-ui-text">
                               {identity.displayName ??
                                 identity.externalUsername}
                             </p>
-                            <p className="mt-1 font-mono text-xs text-neutral-500">
+                            <p className="mt-1 font-mono text-xs text-ui-muted">
                               {identity.externalUsername} ·{" "}
                               {identity._count.importRows} filas
                             </p>
@@ -399,7 +399,7 @@ export default async function DitoImportsPage({
                         }))}
                       />
                     ) : (
-                      <p className="text-sm text-emerald-800">
+                      <p className="text-sm text-ui-success">
                         Todas las ventas de esta cuenta ya tienen un responsable
                         confiable.
                       </p>
@@ -413,7 +413,7 @@ export default async function DitoImportsPage({
                 >
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-left text-sm">
-                      <thead className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500">
+                      <thead className="border-b border-ui-border text-xs uppercase tracking-wide text-ui-muted">
                         <tr>
                           <th className="px-3 py-3 font-medium">Fila</th>
                           <th className="px-3 py-3 font-medium">Orden</th>
@@ -427,17 +427,17 @@ export default async function DitoImportsPage({
                       <tbody className="divide-y divide-neutral-100">
                         {selectedBatch.rows.map((row) => (
                           <tr key={row.id}>
-                            <td className="px-3 py-3 text-neutral-500">
+                            <td className="px-3 py-3 text-ui-muted">
                               {row.sourceRow}
                             </td>
-                            <td className="px-3 py-3 font-mono text-xs font-semibold text-neutral-800">
+                            <td className="px-3 py-3 font-mono text-xs font-semibold text-ui-text">
                               {row.displayedOrderCode ?? "Sin código"}
                             </td>
-                            <td className="max-w-56 truncate px-3 py-3 font-medium text-neutral-900">
+                            <td className="max-w-56 truncate px-3 py-3 font-medium text-ui-text">
                               {readJsonText(row.parsedData, "holderName") ??
                                 "No registrado"}
                             </td>
-                            <td className="px-3 py-3 text-neutral-600">
+                            <td className="px-3 py-3 text-ui-muted">
                               {row.manualAgent?.name ??
                                 row.targetOrder?.agent?.name ??
                                 row.agentIdentity?.user?.name ??
@@ -479,7 +479,7 @@ export default async function DitoImportsPage({
                   title="Confirmar importación"
                 >
                   {selectedBatch.status === "CONFIRMED" ? (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
+                    <div className="rounded-xl border border-ui-success bg-ui-success-soft px-4 py-4 text-sm text-ui-success">
                       <p className="font-semibold">Importación confirmada</p>
                       <p className="mt-1">
                         {selectedBatch.newRows} ventas creadas ·{" "}
@@ -487,7 +487,7 @@ export default async function DitoImportsPage({
                         {selectedBatch.unchangedRows} sin cambios.
                       </p>
                       {selectedBatch.confirmedAt ? (
-                        <p className="mt-1 text-emerald-800">
+                        <p className="mt-1 text-ui-success">
                           {selectedBatch.confirmedBy?.name ?? "Administrador"} ·{" "}
                           {dateFormatter.format(selectedBatch.confirmedAt)}
                         </p>

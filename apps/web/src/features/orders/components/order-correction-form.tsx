@@ -20,12 +20,12 @@ export function OrderCorrectionForm({ order }: { order: OrderInboxItem }) {
   );
 
   return (
-    <details className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-      <summary className="cursor-pointer text-sm font-semibold text-amber-950">
+    <details className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4">
+      <summary className="cursor-pointer text-sm font-semibold text-ui-warning">
         Corregir datos recibidos de DITO
       </summary>
 
-      <p className="mt-2 text-sm leading-6 text-amber-900">
+      <p className="mt-2 text-sm leading-6 text-ui-warning">
         Esta acción modifica los datos operativos, conserva el resumen original
         y registra tu identidad y el motivo.
       </p>

@@ -53,7 +53,7 @@ export function LoginForm() {
 
         <input
           autoComplete="email"
-          className="h-11 w-full rounded-lg border border-neutral-300 bg-white px-3 outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-200"
+          className="h-11 w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 outline-none transition focus:border-ui-accent focus:ring-2 focus:ring-ui-border"
           id="email"
           name="email"
           placeholder="nombre@empresa.com"
@@ -69,7 +69,7 @@ export function LoginForm() {
 
         <input
           autoComplete="current-password"
-          className="h-11 w-full rounded-lg border border-neutral-300 bg-white px-3 outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-200"
+          className="h-11 w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 outline-none transition focus:border-ui-accent focus:ring-2 focus:ring-ui-border"
           id="password"
           minLength={12}
           name="password"
@@ -81,7 +81,7 @@ export function LoginForm() {
       {errorMessage ? (
         <p
           aria-live="polite"
-          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          className="rounded-lg border border-ui-danger-border bg-ui-danger-soft px-3 py-2 text-sm text-ui-danger"
           role="alert"
         >
           {errorMessage}
@@ -89,7 +89,7 @@ export function LoginForm() {
       ) : null}
 
       <button
-        className="h-11 w-full rounded-lg bg-neutral-950 px-4 font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-11 w-full rounded-lg bg-ui-strong px-4 font-medium text-ui-on-strong transition hover:bg-ui-strong disabled:cursor-not-allowed disabled:opacity-60"
         disabled={isSubmitting}
         type="submit"
       >

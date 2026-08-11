@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { ThemeControl } from "@repo/ui/theme-control";
+
 type ActiveSection = "performance" | "orders" | "imports" | "people" | "teams";
 type IconName = "home" | "orders" | "sales" | "people" | "teams";
 
@@ -200,6 +202,9 @@ export function CommercialAppShell({
               <p className="app-shell__user-name">{userName}</p>
               <p className="app-shell__user-role">{roleLabel}</p>
             </div>
+            <div className="app-shell__theme">
+              <ThemeControl />
+            </div>
             <div className="app-shell__sign-out">{signOut}</div>
           </div>
         </div>
@@ -213,7 +218,10 @@ export function CommercialAppShell({
               <p className="app-shell__brand-product">{organizationName}</p>
             </div>
           </div>
-          {signOut}
+          <div className="app-shell__mobile-actions">
+            <ThemeControl compact />
+            {signOut}
+          </div>
         </header>
         <main className="app-shell__main">{children}</main>
       </div>

@@ -28,6 +28,8 @@ regreso a GHL.
   con registros de meses anteriores.
 - SPEC-017 convierte Personas y Equipos en directorios operativos compactos y
   retira los alias de la interfaz sin eliminar su compatibilidad heredada.
+- SPEC-018 incorpora apariencia Sistema, Clara y Oscura mediante tokens
+  semánticos compartidos, sin duplicar estilos por módulo.
 
 El contexto funcional consolidado se mantiene fuera del repositorio en
 `PLATAFORMA_COMERCIAL_CONTEXTO_MAESTRO_V20.md`. Las decisiones ejecutables y su

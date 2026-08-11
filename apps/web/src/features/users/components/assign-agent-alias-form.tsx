@@ -40,19 +40,19 @@ export function AssignAgentAliasForm({
   }, [state]);
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+    <div className="rounded-xl border border-ui-border bg-ui-subtle p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <p className="text-xs font-medium uppercase tracking-wide text-ui-muted">
             Vínculos de alias DITO
           </p>
 
-          <p className="mt-1 text-sm text-neutral-700">
+          <p className="mt-1 text-sm text-ui-muted">
             Vincula los nombres recibidos desde DITO con {userName}.
           </p>
         </div>
 
-        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-neutral-600 shadow-sm">
+        <span className="rounded-full bg-ui-surface px-2.5 py-1 text-xs font-medium text-ui-muted shadow-sm">
           {aliases.length} {aliases.length === 1 ? "alias" : "aliases"}
         </span>
       </div>
@@ -61,7 +61,7 @@ export function AssignAgentAliasForm({
         <div className="mt-3 flex flex-wrap gap-2">
           {aliases.map((alias) => (
             <span
-              className="rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs text-neutral-700"
+              className="rounded-full border border-ui-border bg-ui-surface px-2.5 py-1 text-xs text-ui-muted"
               key={alias.id}
               title={`Normalizado: ${alias.normalizedAlias}`}
             >
@@ -70,7 +70,7 @@ export function AssignAgentAliasForm({
           ))}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-neutral-500">
+        <p className="mt-3 text-xs text-ui-muted">
           Este asesor todavía no tiene vínculos de alias configurados.
         </p>
       )}
@@ -89,7 +89,7 @@ export function AssignAgentAliasForm({
 
           <input
             autoComplete="off"
-            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
+            className="w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-sm text-ui-text outline-none focus:border-ui-border-strong focus:ring-2 focus:ring-ui-border"
             disabled={pending}
             id={`alias-${userId}`}
             maxLength={150}
@@ -100,14 +100,14 @@ export function AssignAgentAliasForm({
           />
 
           {state.fieldErrors?.alias ? (
-            <p className="mt-1 text-xs text-red-600">
+            <p className="mt-1 text-xs text-ui-danger">
               {state.fieldErrors.alias}
             </p>
           ) : null}
         </div>
 
         <button
-          className="self-start rounded-lg bg-neutral-950 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="self-start rounded-lg bg-ui-strong px-4 py-2 text-sm font-medium text-ui-on-strong disabled:cursor-not-allowed disabled:opacity-50"
           disabled={pending}
           type="submit"
         >
@@ -120,10 +120,10 @@ export function AssignAgentAliasForm({
         className={[
           "mt-3 text-xs leading-5",
           state.type === "error"
-            ? "text-red-600"
+            ? "text-ui-danger"
             : state.type === "success"
-              ? "text-emerald-700"
-              : "text-neutral-500",
+              ? "text-ui-success"
+              : "text-ui-muted",
         ].join(" ")}
       >
         {state.message ||

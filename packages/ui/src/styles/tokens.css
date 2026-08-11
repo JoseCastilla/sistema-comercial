@@ -1,5 +1,6 @@
 @layer theme {
   :root {
+    color-scheme: light;
     --ui-canvas: #eef1ed;
     --ui-surface: #ffffff;
     --ui-surface-subtle: #f3f5f2;
@@ -17,13 +18,61 @@
     --ui-warning-soft: #fbf2df;
     --ui-info: #315d7d;
     --ui-info-soft: #e9f1f6;
+    --ui-success: #185f4b;
+    --ui-success-soft: #e6f2ed;
+    --ui-danger-border: #edc3bd;
+    --ui-warning-border: #dfc58f;
+    --ui-info-border: #b8d3e3;
+    --ui-on-accent: #ffffff;
+    --ui-on-strong: #ffffff;
+    --ui-on-warning: #ffffff;
+    --ui-action-hover: #343832;
+    --ui-overlay: rgb(18 22 19 / 45%);
     --ui-radius-sm: 0.5rem;
     --ui-radius-md: 0.75rem;
     --ui-radius-lg: 1rem;
     --ui-shadow-raised:
       0 1px 2px rgb(17 21 16 / 8%), 0 10px 28px rgb(17 21 16 / 7%);
+    --ui-shadow-dialog: 0 24px 80px rgb(0 0 0 / 28%);
+    --ui-shadow-mobile-nav: 0 -8px 24px rgb(28 31 27 / 5%);
     --ui-focus: 0 0 0 3px rgb(24 95 75 / 18%);
     --ui-content-width: 100rem;
     --ui-duration-fast: 140ms;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ui-canvas: #0f1411;
+    --ui-surface: #171d19;
+    --ui-surface-subtle: #202722;
+    --ui-surface-strong: #28342d;
+    --ui-text: #f0f5f1;
+    --ui-text-muted: #bac5bc;
+    --ui-text-soft: #919e94;
+    --ui-border: #303a32;
+    --ui-border-strong: #465249;
+    --ui-accent: #70d0aa;
+    --ui-accent-soft: #193a2f;
+    --ui-danger: #ff958d;
+    --ui-danger-soft: #3a211f;
+    --ui-warning: #efbd68;
+    --ui-warning-soft: #392d1c;
+    --ui-info: #8dc5e8;
+    --ui-info-soft: #1d3040;
+    --ui-success: #70d0aa;
+    --ui-success-soft: #193a2f;
+    --ui-danger-border: #70403b;
+    --ui-warning-border: #6d5732;
+    --ui-info-border: #38566a;
+    --ui-on-accent: #071a12;
+    --ui-on-strong: #f7faf8;
+    --ui-on-warning: #241704;
+    --ui-action-hover: #34443a;
+    --ui-overlay: rgb(0 0 0 / 62%);
+    --ui-shadow-raised:
+      0 1px 2px rgb(0 0 0 / 28%), 0 12px 32px rgb(0 0 0 / 22%);
+    --ui-shadow-dialog: 0 24px 80px rgb(0 0 0 / 52%);
+    --ui-shadow-mobile-nav: 0 -8px 24px rgb(0 0 0 / 28%);
+    --ui-focus: 0 0 0 3px rgb(112 208 170 / 25%);
   }
 }

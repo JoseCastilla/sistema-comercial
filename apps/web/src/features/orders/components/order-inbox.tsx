@@ -209,41 +209,41 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
 function getStatusClasses(status: string): string {
   switch (status) {
     case "OPEN":
-      return "border-sky-200 bg-sky-50 text-sky-700";
+      return "border-ui-info-border bg-ui-info-soft text-ui-info";
 
     case "SENT":
-      return "border-amber-200 bg-amber-50 text-amber-800";
+      return "border-ui-warning-border bg-ui-warning-soft text-ui-warning";
 
     case "CLOSED":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border-ui-success bg-ui-success-soft text-ui-success";
 
     case "CANCELLED":
-      return "border-red-200 bg-red-50 text-red-700";
+      return "border-ui-danger-border bg-ui-danger-soft text-ui-danger";
 
     default:
-      return "border-neutral-200 bg-neutral-100 text-neutral-600";
+      return "border-ui-border bg-ui-subtle text-ui-muted";
   }
 }
 
 function getSlaClasses(state: OrderSlaState): string {
   switch (state) {
     case "OVERDUE":
-      return "border-red-200 bg-red-50 text-red-700";
+      return "border-ui-danger-border bg-ui-danger-soft text-ui-danger";
 
     case "DUE_SOON":
-      return "border-amber-200 bg-amber-50 text-amber-800";
+      return "border-ui-warning-border bg-ui-warning-soft text-ui-warning";
 
     case "ON_TIME":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border-ui-success bg-ui-success-soft text-ui-success";
 
     case "PENDING_SHIFT":
-      return "border-sky-200 bg-sky-50 text-sky-700";
+      return "border-ui-info-border bg-ui-info-soft text-ui-info";
 
     case "CLOSED":
-      return "border-neutral-200 bg-neutral-100 text-neutral-600";
+      return "border-ui-border bg-ui-subtle text-ui-muted";
 
     default:
-      return "border-violet-200 bg-violet-50 text-violet-700";
+      return "border-ui-info-border bg-ui-info-soft text-ui-info";
   }
 }
 
@@ -260,19 +260,19 @@ function StatusBadge({ order }: { order: OrderInboxItem }) {
       </span>
 
       {order.sentSubstatusLabel ? (
-        <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-xs font-medium text-neutral-700">
+        <span className="rounded-full border border-ui-border bg-ui-subtle px-2.5 py-1 text-xs font-medium text-ui-muted">
           {order.sentSubstatusLabel}
         </span>
       ) : null}
 
       {order.noStatusIncident ? (
-        <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+        <span className="rounded-full border border-ui-danger-border bg-ui-danger-soft px-2.5 py-1 text-xs font-medium text-ui-danger">
           Incidencia +10 min
         </span>
       ) : null}
 
       {order.pendingCancellationRequest ? (
-        <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">
+        <span className="rounded-full border border-ui-warning-border bg-ui-warning-soft px-2.5 py-1 text-xs font-medium text-ui-warning">
           Cancelación pendiente
         </span>
       ) : null}
@@ -296,11 +296,11 @@ function SlaBadge({ order }: { order: OrderInboxItem }) {
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+      <dt className="text-xs font-medium uppercase tracking-wide text-ui-soft">
         {label}
       </dt>
 
-      <dd className="mt-1 text-sm font-medium text-neutral-900">
+      <dd className="mt-1 text-sm font-medium text-ui-text">
         {value || "No registrado"}
       </dd>
     </div>
@@ -362,12 +362,12 @@ function InlineCopyValue({ label, value }: { label: string; value: string }) {
     <button
       aria-label={`${feedback}: ${value}`}
       className={[
-        "rounded px-0.5 font-medium underline decoration-dotted underline-offset-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2",
+        "rounded px-0.5 font-medium underline decoration-dotted underline-offset-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2",
         copyState === "COPIED"
-          ? "bg-emerald-50 text-emerald-700 decoration-emerald-400"
+          ? "bg-ui-success-soft text-ui-success decoration-ui-success"
           : copyState === "ERROR"
-            ? "bg-red-50 text-red-700 decoration-red-400"
-            : "text-neutral-700 decoration-neutral-400 hover:bg-neutral-100 hover:text-neutral-950",
+            ? "bg-ui-danger-soft text-ui-danger decoration-ui-danger"
+            : "text-ui-muted decoration-ui-soft hover:bg-ui-subtle hover:text-ui-text",
       ].join(" ")}
       onClick={copyValue}
       title={`${feedback}: ${value}`}
@@ -421,11 +421,11 @@ function OrderDetails({
       <div>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-sm font-semibold text-neutral-950">
+            <p className="font-mono text-sm font-semibold text-ui-text">
               {order.orderCode}
             </p>
 
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-xs text-ui-muted">
               Registrado {order.registeredAtLabel}
             </p>
           </div>
@@ -438,7 +438,7 @@ function OrderDetails({
         </div>
 
         {order.parseStatus !== "PARSED" ? (
-          <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+          <p className="mt-3 rounded-lg border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning">
             Datos incompletos: vuelve a capturar con el detalle DITO desplegado
             o corrige manualmente.
           </p>
@@ -446,11 +446,11 @@ function OrderDetails({
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-neutral-950">
+        <h3 className="text-lg font-semibold text-ui-text">
           {order.holderName}
         </h3>
 
-        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-neutral-600">
+        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ui-muted">
           <span>DNI</span>
           <InlineCopyValue label="DNI" value={order.documentNumber} />
           <span aria-hidden="true">·</span>
@@ -498,8 +498,8 @@ function OrderDetails({
       ) : null}
 
       {hasDitoDetails ? (
-        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
-          <h4 className="text-sm font-semibold text-sky-950">Datos DITO</h4>
+        <div className="rounded-xl border border-ui-info-border bg-ui-info-soft p-4">
+          <h4 className="text-sm font-semibold text-ui-info">Datos DITO</h4>
 
           <dl className="mt-4 grid gap-4 sm:grid-cols-2">
             {order.salesCode ? (
@@ -551,12 +551,12 @@ function OrderDetails({
       ) : null}
 
       {order.deliveryObservation ? (
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+        <div className="rounded-xl border border-ui-border bg-ui-subtle p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-ui-muted">
             Observación actual
           </p>
 
-          <p className="mt-2 text-sm leading-6 text-neutral-700">
+          <p className="mt-2 text-sm leading-6 text-ui-muted">
             {order.deliveryObservation}
           </p>
         </div>
@@ -571,8 +571,8 @@ function OrderDetails({
 
       {order.canCorrect ? <OrderCorrectionForm order={order} /> : null}
 
-      <div className="border-t border-neutral-200 pt-5">
-        <h4 className="mb-4 text-sm font-semibold text-neutral-900">
+      <div className="border-t border-ui-border pt-5">
+        <h4 className="mb-4 text-sm font-semibold text-ui-text">
           Actualizar seguimiento
         </h4>
 
@@ -606,12 +606,12 @@ function MobileOrderCard({
   return (
     <article
       className={[
-        "overflow-hidden rounded-2xl border bg-white shadow-sm",
+        "overflow-hidden rounded-2xl border bg-ui-surface shadow-sm",
         order.noStatusIncident
-          ? "border-red-300"
+          ? "border-ui-danger-border"
           : order.sentSubstatus === "NOT_DELIVERED"
-            ? "border-amber-300"
-            : "border-neutral-200",
+            ? "border-ui-warning-border"
+            : "border-ui-border",
       ].join(" ")}
     >
       <button
@@ -622,22 +622,22 @@ function MobileOrderCard({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-mono text-xs font-semibold text-neutral-500">
+            <p className="font-mono text-xs font-semibold text-ui-muted">
               {order.orderCode}
             </p>
 
-            <h3 className="mt-1 truncate text-base font-semibold text-neutral-950">
+            <h3 className="mt-1 truncate text-base font-semibold text-ui-text">
               {order.holderName}
             </h3>
 
-            <p className="mt-1 text-sm text-neutral-600">
+            <p className="mt-1 text-sm text-ui-muted">
               {order.serviceNumber}
               {" · "}
               {order.district || order.province}
             </p>
           </div>
 
-          <span className="shrink-0 text-xl text-neutral-400">
+          <span className="shrink-0 text-xl text-ui-soft">
             {expanded ? "−" : "+"}
           </span>
         </div>
@@ -647,7 +647,7 @@ function MobileOrderCard({
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="truncate text-xs text-neutral-500">
+          <p className="truncate text-xs text-ui-muted">
             {order.agentName}
             {" · "}
             {order.statusAgeLabel}
@@ -658,7 +658,7 @@ function MobileOrderCard({
       </button>
 
       {expanded ? (
-        <div className="border-t border-neutral-200 p-4">
+        <div className="border-t border-ui-border p-4">
           <OrderDetails assignmentTeams={assignmentTeams} order={order} />
         </div>
       ) : null}
@@ -712,12 +712,12 @@ function CopyOrderCodeButton({
       aria-label={`Seleccionar y copiar orden ${orderCode}`}
       aria-pressed={selected}
       className={[
-        "group flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 font-mono text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2",
+        "group flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 font-mono text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2",
         copyState === "COPIED"
-          ? "bg-emerald-50 text-emerald-700"
+          ? "bg-ui-success-soft text-ui-success"
           : copyState === "ERROR"
-            ? "bg-red-50 text-red-700"
-            : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950",
+            ? "bg-ui-danger-soft text-ui-danger"
+            : "text-ui-muted hover:bg-ui-subtle hover:text-ui-text",
       ].join(" ")}
       onClick={selectAndCopyOrderCode}
       title={feedback || `Seleccionar y copiar orden ${orderCode}`}
@@ -772,8 +772,8 @@ function DesktopOrderList({
   onSelect: (orderId: string) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-      <div className="grid grid-cols-[140px_minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
+    <div className="overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-sm">
+      <div className="grid grid-cols-[140px_minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] gap-3 border-b border-ui-border bg-ui-subtle px-4 py-3 text-xs font-medium uppercase tracking-wide text-ui-muted">
         <span>Orden</span>
         <span>Cliente</span>
         <span>Asesor</span>
@@ -789,7 +789,7 @@ function DesktopOrderList({
             <div
               className={[
                 "grid w-full grid-cols-[140px_minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] items-center gap-3 px-4 py-3 text-left transition",
-                selected ? "bg-neutral-100" : "hover:bg-neutral-50",
+                selected ? "bg-ui-subtle" : "hover:bg-ui-subtle",
                 order.noStatusIncident
                   ? "border-l-4 border-l-red-500"
                   : "border-l-4 border-l-transparent",
@@ -806,25 +806,25 @@ function DesktopOrderList({
 
               <button
                 aria-pressed={selected}
-                className="col-span-4 grid min-w-0 grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
+                className="col-span-4 grid min-w-0 grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2"
                 onClick={() => {
                   onSelect(order.id);
                 }}
                 type="button"
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-neutral-950">
+                  <span className="block truncate text-sm font-medium text-ui-text">
                     {order.holderName}
                   </span>
 
-                  <span className="mt-0.5 block truncate text-xs text-neutral-500">
+                  <span className="mt-0.5 block truncate text-xs text-ui-muted">
                     {order.serviceNumber}
                     {" · "}
                     {order.district || order.province}
                   </span>
                 </span>
 
-                <span className="truncate text-sm text-neutral-700">
+                <span className="truncate text-sm text-ui-muted">
                   {order.agentName}
                 </span>
 
@@ -1078,7 +1078,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           </button>
         </form>
 
-        <p className="text-xs text-neutral-600 md:basis-full">
+        <p className="text-xs text-ui-muted md:basis-full">
           {data.items.length} órdenes en esta página
           {data.filteredTotal > data.pagination.pageSize
             ? ` de ${data.filteredTotal} encontradas`
@@ -1145,7 +1145,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               selectedOrderId={selectedOrder?.id ?? null}
             />
 
-            <aside className="sticky top-8 max-h-[calc(100vh-64px)] self-start overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+            <aside className="sticky top-8 max-h-[calc(100vh-64px)] self-start overflow-y-auto rounded-2xl border border-ui-border bg-ui-surface p-5 shadow-sm">
               {selectedOrder ? (
                 <OrderDetails
                   assignmentTeams={data.assignmentTeams}

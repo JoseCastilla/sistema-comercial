@@ -1,38 +1,189 @@
 @layer components {
-  .ui-form-stack { display: grid; gap: 1rem; }
-  .ui-field { display: grid; gap: .38rem; color: var(--ui-text); font-size: .82rem; }
-  .ui-field__label { font-weight: 650; }
-  .ui-field__hint { color: var(--ui-text-soft); font-size: .72rem; line-height: 1.45; }
-  .ui-field__error { color: var(--ui-danger); font-size: .72rem; font-weight: 600; }
-  .ui-control { width: 100%; min-height: 2.625rem; padding: .55rem .75rem; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-md); color: var(--ui-text); background: var(--ui-surface); font-size: .875rem; transition: border var(--ui-duration-fast), box-shadow var(--ui-duration-fast); }
-  .ui-control::placeholder { color: var(--ui-text-soft); }
-  .ui-control:focus { border-color: var(--ui-accent); box-shadow: var(--ui-focus); outline: 0; }
-  .ui-control:disabled { cursor: not-allowed; color: var(--ui-text-soft); background: var(--ui-surface-subtle); }
-  .ui-control--select { padding-right: 2.25rem; }
-  .ui-button { display: inline-flex; min-height: 2.5rem; align-items: center; justify-content: center; gap: .45rem; padding: .55rem .9rem; border: 1px solid transparent; border-radius: var(--ui-radius-md); font-size: .8rem; font-weight: 700; transition: color var(--ui-duration-fast), background var(--ui-duration-fast), border var(--ui-duration-fast); }
-  .ui-button:disabled { cursor: not-allowed; opacity: .5; }
-  .ui-button--full { width: 100%; }
-  .ui-button--primary { color: white; background: var(--ui-surface-strong); }
-  .ui-button--primary:hover:not(:disabled) { background: #343832; }
-  .ui-button--secondary { border-color: var(--ui-border-strong); color: var(--ui-text); background: var(--ui-surface); }
-  .ui-button--secondary:hover:not(:disabled), .ui-button--quiet:hover:not(:disabled) { background: var(--ui-surface-subtle); }
-  .ui-button--danger { border-color: color-mix(in srgb,var(--ui-danger) 28%,transparent); color: var(--ui-danger); background: var(--ui-danger-soft); }
-  .ui-button--danger:hover:not(:disabled) { background: color-mix(in srgb,var(--ui-danger-soft) 76%,var(--ui-danger)); }
-  .ui-button--quiet { color: var(--ui-text-muted); background: transparent; }
-  .ui-feedback { color: var(--ui-text-muted); font-size: .78rem; line-height: 1.45; }
-  .ui-feedback[data-tone="success"] { color: var(--ui-accent); }
-  .ui-feedback[data-tone="danger"] { color: var(--ui-danger); }
-  .ui-feedback[data-tone="warning"] { color: var(--ui-warning); }
-  .ui-section-panel { overflow: hidden; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-shadow-raised); }
-  .ui-section-panel__header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; padding: 1rem 1.1rem; border-bottom: 1px solid var(--ui-border); }
-  .ui-section-panel__title { color: var(--ui-text); font-size: .95rem; font-weight: 700; }
-  .ui-section-panel__description { max-width: 38rem; margin-top: .3rem; color: var(--ui-text-muted); font-size: .8rem; line-height: 1.5; }
-  .ui-section-panel__body { padding: 1.1rem; }
-  .ui-confirm-dialog { width: min(28rem,calc(100vw - 2rem)); padding: 0; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); color: var(--ui-text); background: var(--ui-surface); box-shadow: 0 24px 80px rgb(20 24 20/22%); }
-  .ui-confirm-dialog::backdrop { background: rgb(18 22 19/45%); backdrop-filter: blur(2px); }
-  .ui-confirm-dialog__content { padding: 1.25rem; }
-  .ui-confirm-dialog__eyebrow { color: var(--ui-danger); font-size: .68rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-  .ui-confirm-dialog__title { margin-top: .45rem; font-size: 1.15rem; font-weight: 720; }
-  .ui-confirm-dialog__description { margin-top: .65rem; color: var(--ui-text-muted); font-size: .875rem; line-height: 1.55; }
-  .ui-confirm-dialog__actions { display: flex; justify-content: end; gap: .6rem; margin-top: 1.25rem; }
+  .ui-form-stack {
+    display: grid;
+    gap: 1rem;
+  }
+  .ui-field {
+    display: grid;
+    gap: 0.38rem;
+    color: var(--ui-text);
+    font-size: 0.82rem;
+  }
+  .ui-field__label {
+    font-weight: 650;
+  }
+  .ui-field__hint {
+    color: var(--ui-text-soft);
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+  .ui-field__error {
+    color: var(--ui-danger);
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .ui-control {
+    width: 100%;
+    min-height: 2.625rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: var(--ui-radius-md);
+    color: var(--ui-text);
+    background: var(--ui-surface);
+    font-size: 0.875rem;
+    transition:
+      border var(--ui-duration-fast),
+      box-shadow var(--ui-duration-fast);
+  }
+  .ui-control::placeholder {
+    color: var(--ui-text-soft);
+  }
+  .ui-control:focus {
+    border-color: var(--ui-accent);
+    box-shadow: var(--ui-focus);
+    outline: 0;
+  }
+  .ui-control:disabled {
+    cursor: not-allowed;
+    color: var(--ui-text-soft);
+    background: var(--ui-surface-subtle);
+  }
+  .ui-control--select {
+    padding-right: 2.25rem;
+  }
+  .ui-button {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: var(--ui-radius-md);
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition:
+      color var(--ui-duration-fast),
+      background var(--ui-duration-fast),
+      border var(--ui-duration-fast);
+  }
+  .ui-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .ui-button--full {
+    width: 100%;
+  }
+  .ui-button--primary {
+    color: var(--ui-on-strong);
+    background: var(--ui-surface-strong);
+  }
+  .ui-button--primary:hover:not(:disabled) {
+    background: var(--ui-action-hover);
+  }
+  .ui-button--secondary {
+    border-color: var(--ui-border-strong);
+    color: var(--ui-text);
+    background: var(--ui-surface);
+  }
+  .ui-button--secondary:hover:not(:disabled),
+  .ui-button--quiet:hover:not(:disabled) {
+    background: var(--ui-surface-subtle);
+  }
+  .ui-button--danger {
+    border-color: color-mix(in srgb, var(--ui-danger) 28%, transparent);
+    color: var(--ui-danger);
+    background: var(--ui-danger-soft);
+  }
+  .ui-button--danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--ui-danger-soft) 76%, var(--ui-danger));
+  }
+  .ui-button--quiet {
+    color: var(--ui-text-muted);
+    background: transparent;
+  }
+  .ui-feedback {
+    color: var(--ui-text-muted);
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+  .ui-feedback[data-tone="success"] {
+    color: var(--ui-accent);
+  }
+  .ui-feedback[data-tone="danger"] {
+    color: var(--ui-danger);
+  }
+  .ui-feedback[data-tone="warning"] {
+    color: var(--ui-warning);
+  }
+  .ui-section-panel {
+    overflow: hidden;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-lg);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-raised);
+  }
+  .ui-section-panel__header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--ui-border);
+  }
+  .ui-section-panel__title {
+    color: var(--ui-text);
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .ui-section-panel__description {
+    max-width: 38rem;
+    margin-top: 0.3rem;
+    color: var(--ui-text-muted);
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+  .ui-section-panel__body {
+    padding: 1.1rem;
+  }
+  .ui-confirm-dialog {
+    width: min(28rem, calc(100vw - 2rem));
+    padding: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-lg);
+    color: var(--ui-text);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-dialog);
+  }
+  .ui-confirm-dialog::backdrop {
+    background: var(--ui-overlay);
+    backdrop-filter: blur(2px);
+  }
+  .ui-confirm-dialog__content {
+    padding: 1.25rem;
+  }
+  .ui-confirm-dialog__eyebrow {
+    color: var(--ui-danger);
+    font-size: 0.68rem;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .ui-confirm-dialog__title {
+    margin-top: 0.45rem;
+    font-size: 1.15rem;
+    font-weight: 720;
+  }
+  .ui-confirm-dialog__description {
+    margin-top: 0.65rem;
+    color: var(--ui-text-muted);
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+  .ui-confirm-dialog__actions {
+    display: flex;
+    justify-content: end;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+  }
 }

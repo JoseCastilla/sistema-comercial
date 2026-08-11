@@ -34,9 +34,9 @@ export function ConfirmDitoImportForm({
       <input name="expectedUpdatedAt" type="hidden" value={expectedUpdatedAt} />
 
       {disabledReason ? (
-        <p className="text-sm leading-6 text-amber-800">{disabledReason}</p>
+        <p className="text-sm leading-6 text-ui-warning">{disabledReason}</p>
       ) : (
-        <p className="text-sm leading-6 text-neutral-600">
+        <p className="text-sm leading-6 text-ui-muted">
           Esta acción creará ventas nuevas y completará únicamente campos
           ausentes. No sobrescribirá conflictos.
         </p>

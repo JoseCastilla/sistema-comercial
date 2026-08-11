@@ -287,7 +287,7 @@ export default async function AdminUsersPage({
                     <div className="ui-directory__cell" data-label="Equipo">
                       <span
                         className={
-                          teamLabel === "Sin equipo" ? "text-amber-700" : ""
+                          teamLabel === "Sin equipo" ? "text-ui-warning" : ""
                         }
                       >
                         {teamLabel}

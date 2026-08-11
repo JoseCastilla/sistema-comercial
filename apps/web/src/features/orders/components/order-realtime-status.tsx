@@ -84,8 +84,8 @@ export function OrderRealtimeStatus() {
       className={[
         "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium",
         live
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-          : "border-amber-200 bg-amber-50 text-amber-700",
+          ? "border-ui-success bg-ui-success-soft text-ui-success"
+          : "border-ui-warning-border bg-ui-warning-soft text-ui-warning",
       ].join(" ")}
       title={
         live
@@ -97,7 +97,7 @@ export function OrderRealtimeStatus() {
         aria-hidden="true"
         className={[
           "size-1.5 rounded-full",
-          live ? "bg-emerald-500" : "animate-pulse bg-amber-500",
+          live ? "bg-ui-success" : "animate-pulse bg-ui-warning",
         ].join(" ")}
       />
       {label}

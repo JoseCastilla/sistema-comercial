@@ -101,7 +101,7 @@
   }
 
   .ui-admin-toolbar__submit {
-    color: #fff;
+    color: var(--ui-on-accent);
     background: var(--ui-accent);
   }
 
@@ -268,10 +268,10 @@
     display: grid;
     gap: 0.15rem;
     padding: 0.75rem 0.85rem;
-    border: 1px solid #edc3bd;
+    border: 1px solid var(--ui-danger-border);
     border-radius: var(--ui-radius-md);
-    color: #7d2b20;
-    background: #fff3f1;
+    color: var(--ui-danger);
+    background: var(--ui-danger-soft);
     font-size: 0.76rem;
   }
 
@@ -378,9 +378,9 @@
 
   .ui-team-assignment__notice {
     padding: 0.65rem 0.75rem;
-    border: 1px solid #dfc58f;
+    border: 1px solid var(--ui-warning-border);
     border-radius: var(--ui-radius-md);
-    color: #6d4b18;
+    color: var(--ui-warning);
     background: var(--ui-warning-soft);
     font-size: 0.72rem;
     line-height: 1.5;

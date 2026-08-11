@@ -1,6 +1,34 @@
 @import "tailwindcss";
 @import "@repo/ui/styles.css";
 
+@theme inline {
+  --color-ui-canvas: var(--ui-canvas);
+  --color-ui-surface: var(--ui-surface);
+  --color-ui-subtle: var(--ui-surface-subtle);
+  --color-ui-strong: var(--ui-surface-strong);
+  --color-ui-text: var(--ui-text);
+  --color-ui-muted: var(--ui-text-muted);
+  --color-ui-soft: var(--ui-text-soft);
+  --color-ui-border: var(--ui-border);
+  --color-ui-border-strong: var(--ui-border-strong);
+  --color-ui-accent: var(--ui-accent);
+  --color-ui-accent-soft: var(--ui-accent-soft);
+  --color-ui-success: var(--ui-success);
+  --color-ui-success-soft: var(--ui-success-soft);
+  --color-ui-danger: var(--ui-danger);
+  --color-ui-danger-soft: var(--ui-danger-soft);
+  --color-ui-danger-border: var(--ui-danger-border);
+  --color-ui-warning: var(--ui-warning);
+  --color-ui-warning-soft: var(--ui-warning-soft);
+  --color-ui-warning-border: var(--ui-warning-border);
+  --color-ui-info: var(--ui-info);
+  --color-ui-info-soft: var(--ui-info-soft);
+  --color-ui-info-border: var(--ui-info-border);
+  --color-ui-on-accent: var(--ui-on-accent);
+  --color-ui-on-strong: var(--ui-on-strong);
+  --color-ui-on-warning: var(--ui-on-warning);
+}
+
 :root {
   --app-background: var(--ui-canvas);
   --app-foreground: var(--ui-text);
