@@ -90,8 +90,9 @@
 - Todas las filas se reclasifican contra el estado actual de PostgreSQL dentro
   de una transacción; cualquier identidad pendiente o conflicto cancela todo el
   lote.
-- Las ventas nuevas reciben asesor, equipo, `matchStatus = LINKED` y el mismo
-  cálculo inicial de SLA utilizado por las capturas de DITO.
+- Las ventas nuevas reciben asesor, equipo y el mismo cálculo inicial de SLA
+  utilizado por las capturas de DITO. SPEC-015 separó posteriormente esta
+  asignación del vínculo comercial.
 - Los pedidos existentes solo reciben campos permitidos que sigan ausentes. El
   cambio genera `DitoOrderCorrection` y, cuando completa responsable/equipo,
   también `DitoOrderAssignmentHistory`.

@@ -214,7 +214,6 @@ describe('DitoOrdersRepository', () => {
       submitterInstallationId: 'f24b8f20-6ce3-4c3f-a2bb-c10110c26c2d',
       submitterEmailRaw: 'Carmen.Ramirez@distribuidoronline.com',
       submitterEmailNormalized: 'carmen.ramirez@distribuidoronline.com',
-      matchStatus: 'UNMATCHED',
       parseStatus: 'PARSED',
       registeredAt: new Date('2026-08-05T15:01:00.000Z'),
       approvedAt: new Date('2026-08-05T15:01:00.000Z'),
@@ -236,6 +235,7 @@ describe('DitoOrdersRepository', () => {
       data: {
         agentUserId: 'user-carmen-ramirez',
         assignedTeamId: 'team-lima',
+        commercialLinkStatus: 'UNMATCHED',
         submitterEmailNormalized: 'carmen.ramirez@distribuidoronline.com',
         deliveryContactPhone: '941586778',
         deliveryTimeRangeRaw: '3pm-7pm',

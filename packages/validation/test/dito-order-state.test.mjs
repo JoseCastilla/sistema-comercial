@@ -166,6 +166,8 @@ describe("normalizeDitoOrderState", () => {
     assert.equal(result.deliveryStatus, "CANCELLED");
 
     assert.equal(result.requiresReentryReview, true);
+
+    assert.equal(result.requiresRecovery, true);
   });
 
   it("infers SENT when only a sent substatus is received", () => {

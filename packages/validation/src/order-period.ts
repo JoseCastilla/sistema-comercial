@@ -46,6 +46,16 @@ function limaDateParts(value: Date) {
   };
 }
 
+export function getLimaIsoDate(value = new Date()): string {
+  const { year, month, day } = limaDateParts(value);
+
+  return [
+    year,
+    String(month).padStart(2, "0"),
+    String(day).padStart(2, "0"),
+  ].join("-");
+}
+
 function limaMidnight(year: number, month: number, day: number): Date {
   // Perú usa UTC-05:00 durante todo el año y no aplica horario de verano.
   return new Date(Date.UTC(year, month - 1, day, 5));
@@ -111,9 +121,12 @@ export function getOrderPeriodRange(
 export function parseOrderRange(
   from: unknown,
   to: unknown,
+  now = new Date(),
 ): ParsedOrderRange | null {
   if (typeof from !== "string" || typeof to !== "string") return null;
   if (!isValidIsoDate(from) || !isValidIsoDate(to) || from > to) return null;
+  const today = getLimaIsoDate(now);
+  if (from > today || to > today) return null;
 
   return { from, to };
 }
@@ -123,7 +136,7 @@ export function getOrderRange(
   to: string,
   now = new Date(),
 ): OrderPeriodRange {
-  const parsed = parseOrderRange(from, to);
+  const parsed = parseOrderRange(from, to, now);
 
   if (!parsed) throw new Error("El rango de fechas no es válido.");
 

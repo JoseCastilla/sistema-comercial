@@ -253,6 +253,7 @@ export async function assignTeamMemberAction(
     await transaction.commercialTeamMember.upsert({
       where: { teamId_userId: { teamId, userId } },
       create: {
+        organizationId: membership.organization.id,
         teamId,
         userId,
         memberRole,

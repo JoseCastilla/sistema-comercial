@@ -38,6 +38,6 @@ HEALTHCHECK \
   --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3001/api/v1/health/live').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"
 
-# Las migraciones son aditivas y deben terminar antes de aceptar tráfico.
-# Prisma serializa ejecuciones concurrentes mediante advisory locking.
+# Las migraciones deben terminar antes de aceptar tráfico. Prisma serializa
+# ejecuciones concurrentes mediante advisory locking.
 CMD ["sh", "-c", "pnpm --filter @repo/database exec prisma migrate deploy && exec node apps/api/dist/main.js"]

@@ -80,7 +80,7 @@ export interface OrderInboxItem {
   agentName: string;
   submitterEmail: string | null;
 
-  matchStatus: string;
+  assignmentStatusLabel: string;
   deliveryStatus: string;
 
   status: OrderStatusValue;
@@ -129,6 +129,7 @@ export interface OrderInboxData {
   periodLabel: string;
   from: string | null;
   to: string | null;
+  rangeMaxDate: string;
   filter: OrderFilter;
   search: string;
   teamFilter: string;
@@ -152,6 +153,7 @@ export interface OrderInboxData {
     visible: number;
     incidents: number;
     notDelivered: number;
+    recovery: number;
     delivered: number;
     overdue: number;
   };

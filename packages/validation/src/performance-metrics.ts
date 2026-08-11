@@ -217,8 +217,8 @@ export function calculatePerformanceMetrics(
     if (isDelivered && !isActivated) deliveredPendingActivation += 1;
     if (order.status === "CANCELLED") cancelled += 1;
     if (
-      order.sentSubstatus === "NOT_DELIVERED" ||
-      order.sentSubstatus === "REJECTED"
+      order.status === "CANCELLED" ||
+      (order.status === "SENT" && order.sentSubstatus === "NOT_DELIVERED")
     ) {
       recovery += 1;
     }

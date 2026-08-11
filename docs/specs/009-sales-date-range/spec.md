@@ -1,8 +1,8 @@
 # SPEC-009 — Ventas de ayer y por rango de fechas
 
 **Estado:** `VERIFIED`
-**Versión:** 1.0
-**Fecha:** 2026-08-08
+**Versión:** 1.1
+**Fecha:** 2026-08-11
 
 ## Problema
 
@@ -38,6 +38,10 @@ El histórico conserva su finalidad actual para pendientes anteriores.
   no se reemplaza por Rango.
 - **BR-009:** la consulta mantiene los permisos y el aislamiento por
   organización existentes.
+- **BR-010:** Desde y Hasta no permiten seleccionar una fecha posterior al día
+  actual de `America/Lima`; una URL manipulada con fechas futuras es inválida.
+- **BR-011:** después de aplicar un rango, el panel avanzado se cierra y conserva
+  el período elegido como contexto visible en su resumen.
 
 ## Criterios de aceptación
 
@@ -48,3 +52,5 @@ El histórico conserva su finalidad actual para pendientes anteriores.
 - **AC-005:** al filtrar, buscar, paginar o recargar se conserva el rango.
 - **AC-006:** una URL RANGE inválida muestra Mes actual.
 - **AC-007:** pruebas de dominio, tipos y lint finalizan correctamente.
+- **AC-008:** el calendario limita ambas fechas al día actual de Lima.
+- **AC-009:** Ver rango muestra los resultados y cierra el formulario.

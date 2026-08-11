@@ -45,6 +45,11 @@ infra/.env.local
 # Prisma local database configuration
 packages/database/.env
 
+# Local database snapshots (may contain production PII)
+*.dump
+*.backup
+prod_para_local*.sql
+
 # Generated Prisma Client
 packages/database/src/generated/
 

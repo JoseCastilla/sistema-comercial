@@ -21,6 +21,13 @@ regreso a GHL.
   su corrección manual auditada por ADMIN.
 - SPEC-014 incorpora `/performance` con métricas por rol, funnel mensual,
   comisión provisional y conciliación administrativa por orden.
+- SPEC-015 endurece la base de datos, separa asignación operativa de vínculo
+  comercial y corrige la integridad multiempresa sin agregar estado duplicado.
+- SPEC-016 separa los períodos de venta de la cola operativa y permite al
+  asesor recuperar pedidos no entregados o cancelados del mes sin mezclarlos
+  con registros de meses anteriores.
+- SPEC-017 convierte Personas y Equipos en directorios operativos compactos y
+  retira los alias de la interfaz sin eliminar su compatibilidad heredada.
 
 El contexto funcional consolidado se mantiene fuera del repositorio en
 `PLATAFORMA_COMERCIAL_CONTEXTO_MAESTRO_V20.md`. Las decisiones ejecutables y su

@@ -81,7 +81,8 @@ duplicar ventas o asociarlas al asesor equivocado.
   departamento o contiene un marcador conocido, evitando direcciones corruptas.
 - **BR-023:** una identidad DITO solo puede confirmarse cuando el asesor está
   activo y pertenece a un único equipo principal activo. La asignación manual
-  completa `agentUserId`, `assignedTeamId` y `matchStatus = LINKED` en conjunto.
+  completa `agentUserId` y `assignedTeamId` en conjunto. Desde SPEC-015, el
+  vínculo comercial es independiente y no se altera durante esta operación.
 - **BR-024:** antes de aplicar un lote, el servidor vuelve a clasificar todas las
   filas dentro de la transacción. Una identidad pendiente, un conflicto nuevo o
   una versión desactualizada cancela el lote completo.

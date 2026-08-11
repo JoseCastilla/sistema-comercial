@@ -22,3 +22,8 @@ npm-debug.log*
 pnpm-debug.log*
 
 PLATAFORMA_COMERCIAL_CONTEXTO_MAESTRO_*.md
+
+# Local database snapshots may contain production PII.
+*.sql
+*.dump
+*.backup

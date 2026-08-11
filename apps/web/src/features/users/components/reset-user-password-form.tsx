@@ -45,7 +45,7 @@ export function ResetUserPasswordForm({
         }}
         type="button"
       >
-        {open ? "Cerrar" : "Restablecer contraseña"}
+        {open ? "Cerrar seguridad" : "Seguridad"}
       </button>
 
       {open ? (

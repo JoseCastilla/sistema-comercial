@@ -342,7 +342,7 @@ export function PerformanceDashboard({
               <small>Revisar órdenes que aún no generan pago</small>
             </Link>
             <Link href={ordersHref(data, "RECOVERY")}>
-              <span>No entregadas o rechazadas</span>
+              <span>No entregadas o canceladas</span>
               <strong>{data.metrics.recovery}</strong>
               <small>Abrir la cola de recuperación</small>
             </Link>

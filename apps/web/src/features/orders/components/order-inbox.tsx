@@ -35,7 +35,7 @@ const filterOptions: Array<{
   },
   {
     value: "RECOVERY",
-    label: "Recuperación",
+    label: "Por recuperar",
   },
   {
     value: "AWAITING_ACTIVATION",
@@ -75,8 +75,20 @@ function ordersHref(
     page?: number;
   } = {},
 ): string {
-  const period = overrides.period ?? data.period;
-  const filter = overrides.filter ?? data.filter;
+  let period = overrides.period ?? data.period;
+  let filter = overrides.filter ?? data.filter;
+
+  // Recuperación es la cola operativa del mes en curso, no la fecha que el
+  // usuario estaba explorando antes de abrirla.
+  if (overrides.filter === "RECOVERY" && overrides.period === undefined) {
+    period = "MONTH";
+  } else if (
+    overrides.period !== undefined &&
+    data.filter === "RECOVERY" &&
+    overrides.filter === undefined
+  ) {
+    filter = "ALL";
+  }
   const search = overrides.search ?? data.search;
   const team = overrides.team ?? data.teamFilter;
   const page = overrides.page ?? 1;
@@ -95,11 +107,8 @@ function ordersHref(
 function PeriodNavigation({ data }: { data: OrderInboxData }) {
   const advancedPeriodActive =
     data.period === "HISTORY" || data.period === "RANGE";
-  const [advancedOpen, setAdvancedOpen] = useState(advancedPeriodActive);
-
-  useEffect(() => {
-    setAdvancedOpen(advancedPeriodActive);
-  }, [advancedPeriodActive]);
+  const [rangeFrom, setRangeFrom] = useState(data.from ?? "");
+  const [rangeTo, setRangeTo] = useState(data.to ?? "");
 
   return (
     <Surface className="ui-period-bar" raised>
@@ -125,8 +134,6 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
         <details
           className="ui-period-more"
           data-active={advancedPeriodActive ? "true" : "false"}
-          onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
-          open={advancedOpen}
         >
           <summary>
             {data.period === "HISTORY"
@@ -164,19 +171,28 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
               <label className="ui-period-range__field">
                 <span>Desde</span>
                 <input
-                  defaultValue={data.from ?? ""}
+                  max={rangeTo || data.rangeMaxDate}
                   name="from"
+                  onChange={(event) => {
+                    const nextFrom = event.target.value;
+                    setRangeFrom(nextFrom);
+                    if (rangeTo && nextFrom > rangeTo) setRangeTo("");
+                  }}
                   required
                   type="date"
+                  value={rangeFrom}
                 />
               </label>
               <label className="ui-period-range__field">
                 <span>Hasta</span>
                 <input
-                  defaultValue={data.to ?? ""}
+                  max={data.rangeMaxDate}
+                  min={rangeFrom || undefined}
                   name="to"
+                  onChange={(event) => setRangeTo(event.target.value)}
                   required
                   type="date"
+                  value={rangeTo}
                 />
               </label>
               <button className="ui-period-range__submit" type="submit">
@@ -463,7 +479,7 @@ function OrderDetails({
           value={order.deliveryDueAtLabel ?? "Sin plazo calculado"}
         />
 
-        <DetailItem label="Estado de asociación" value={order.matchStatus} />
+        <DetailItem label="Asignación" value={order.assignmentStatusLabel} />
 
         {order.status === "CLOSED" ? (
           <DetailItem
@@ -841,6 +857,8 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
     }) ??
     data.items[0] ??
     null;
+  const recoveryQueueCount =
+    data.filter === "RECOVERY" ? data.filteredTotal : data.totals.recovery;
 
   return (
     <div className="ui-page-stack">
@@ -868,7 +886,10 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           tone={data.totals.incidents > 0 ? "danger" : "neutral"}
           value={data.totals.incidents}
         />
-        <Metric label="No entregados" value={data.totals.notDelivered} />
+        <Metric
+          label={`No entregados · ${data.periodLabel}`}
+          value={data.totals.notDelivered}
+        />
         <Metric label="Entregados" value={data.totals.delivered} />
         <Metric
           label="Fuera de plazo"
@@ -876,6 +897,41 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           value={data.totals.overdue}
         />
       </MetricGroup>
+
+      {recoveryQueueCount > 0 || data.filter === "RECOVERY" ? (
+        <div className="ui-recovery-queue" role="status">
+          <div className="ui-recovery-queue__count" aria-hidden="true">
+            {recoveryQueueCount}
+          </div>
+          <div className="ui-recovery-queue__content">
+            <p className="ui-recovery-queue__title">
+              {data.filter === "RECOVERY"
+                ? `${recoveryQueueCount} ${recoveryQueueCount === 1 ? "pedido" : "pedidos"} por recuperar · ${data.periodLabel}`
+                : data.totals.recovery === 1
+                  ? "Hay 1 pedido por recuperar este mes"
+                  : `Hay ${data.totals.recovery} pedidos por recuperar este mes`}
+            </p>
+            <p className="ui-recovery-queue__description">
+              Reúne pedidos no entregados y cancelados que todavía pueden
+              convertirse en una nueva venta.
+            </p>
+          </div>
+          {data.filter === "RECOVERY" ? (
+            <span className="ui-recovery-queue__current">Bandeja abierta</span>
+          ) : (
+            <a
+              className="ui-recovery-queue__link"
+              href={ordersHref(data, {
+                period: "MONTH",
+                filter: "RECOVERY",
+                search: "",
+              })}
+            >
+              Revisar ahora
+            </a>
+          )}
+        </div>
+      ) : null}
 
       {data.pendingBeforeMonth > 0 && data.period !== "HISTORY" ? (
         <div className="ui-prior-pending">
@@ -1034,28 +1090,32 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       {data.items.length === 0 ? (
         <EmptyState
           description={
-            data.totals.visible > 0
-              ? "No hay ventas que coincidan con este estado o búsqueda."
-              : data.teamFilter === "UNASSIGNED"
-                ? "No hay ventas pendientes de asignación en este período."
-                : data.period === "TODAY"
-                  ? "No se registraron ventas hoy."
-                  : data.period === "YESTERDAY"
-                    ? "No se registraron ventas ayer."
-                    : data.period === "WEEK"
-                      ? "No se registraron ventas esta semana."
-                      : data.period === "MONTH"
-                        ? "No se registraron ventas en el mes actual."
-                        : data.period === "RANGE"
-                          ? "No se registraron ventas en el rango seleccionado."
-                          : "No se encontraron ventas en el histórico."
+            data.filter === "RECOVERY"
+              ? "No tienes pedidos no entregados o cancelados pendientes de recuperación este mes."
+              : data.totals.visible > 0
+                ? "No hay ventas que coincidan con este estado o búsqueda."
+                : data.teamFilter === "UNASSIGNED"
+                  ? "No hay ventas pendientes de asignación en este período."
+                  : data.period === "TODAY"
+                    ? "No se registraron ventas hoy."
+                    : data.period === "YESTERDAY"
+                      ? "No se registraron ventas ayer."
+                      : data.period === "WEEK"
+                        ? "No se registraron ventas esta semana."
+                        : data.period === "MONTH"
+                          ? "No se registraron ventas en el mes actual."
+                          : data.period === "RANGE"
+                            ? "No se registraron ventas en el rango seleccionado."
+                            : "No se encontraron ventas en el histórico."
           }
           title={
-            data.totals.visible > 0
-              ? "No hay coincidencias"
-              : data.teamFilter === "UNASSIGNED"
-                ? "Todo está asignado"
-                : "Aún no hay ventas en este período"
+            data.filter === "RECOVERY"
+              ? "Recuperación al día"
+              : data.totals.visible > 0
+                ? "No hay coincidencias"
+                : data.teamFilter === "UNASSIGNED"
+                  ? "Todo está asignado"
+                  : "Aún no hay ventas en este período"
           }
         />
       ) : (

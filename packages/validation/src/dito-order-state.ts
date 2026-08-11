@@ -237,7 +237,9 @@ export function normalizeDitoOrderState(
 
     noStatusDetectedAt,
 
-    requiresRecovery: status === "SENT" && sentSubstatus === "NOT_DELIVERED",
+    requiresRecovery:
+      (status === "SENT" && sentSubstatus === "NOT_DELIVERED") ||
+      status === "CANCELLED",
 
     requiresReentryReview:
       (status === "SENT" && sentSubstatus === "REJECTED") ||

@@ -108,8 +108,6 @@ export class DitoWebhookService {
 
     const agentUserId = emailAssignment?.userId ?? legacyAgentUserId;
     const assignedTeamId = emailAssignment?.teamId ?? null;
-    const identityNeedsReview = isIdentityEnvelope && !emailAssignment;
-
     const parseStatus = this.determineParseStatus(envelope);
 
     const createInput = {
@@ -126,10 +124,6 @@ export class DitoWebhookService {
       submitterEmailRaw,
       submitterEmailNormalized,
 
-      matchStatus:
-        identityNeedsReview || parseStatus === 'PARTIAL'
-          ? 'NEEDS_REVIEW'
-          : 'UNMATCHED',
       parseStatus,
       registeredAt,
       approvedAt,

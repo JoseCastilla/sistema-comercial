@@ -26,6 +26,14 @@ enum DitoMatchStatus {
   DISMISSED
 }
 
+enum DitoCommercialLinkStatus {
+  UNMATCHED
+  SUGGESTED
+  LINKED
+  NEEDS_REVIEW
+  DISMISSED
+}
+
 enum ApprovalSource {
   ASSUMED_FROM_REGISTRATION
   MANUAL_INTEGRATEL
@@ -114,10 +122,10 @@ model DitoOrder {
 
   productType DitoProductType @default(UNKNOWN) @map("product_type")
 
-  orderCodeRaw        String  @map("order_code_raw") @db.VarChar(100)
-  orderCodeNormalized String  @map("order_code_normalized") @db.VarChar(100)
-  orderCodeSuffix     String  @map("order_code_suffix") @db.VarChar(10)
-  displayedOrderCode  String? @map("displayed_order_code") @db.VarChar(100)
+  orderCodeRaw             String  @map("order_code_raw") @db.VarChar(100)
+  orderCodeNormalized      String  @map("order_code_normalized") @db.VarChar(100)
+  legacyOrderCodeSuffix    String? @map("order_code_suffix") @ignore @db.VarChar(10)
+  legacyDisplayedOrderCode String? @map("displayed_order_code") @ignore @db.VarChar(100)
 
   operationRaw        String              @map("operation_raw") @db.VarChar(200)
   commercialOperation CommercialOperation @default(UNKNOWN) @map("commercial_operation")
@@ -160,7 +168,8 @@ model DitoOrder {
 
   parseStatus DitoParseStatus @default(PARSED) @map("parse_status")
 
-  matchStatus DitoMatchStatus @default(UNMATCHED) @map("match_status")
+  commercialLinkStatus DitoCommercialLinkStatus @default(UNMATCHED) @map("commercial_link_status")
+  legacyMatchStatus    DitoMatchStatus          @default(UNMATCHED) @map("match_status") @ignore
 
   status DitoOrderStatus @default(UNKNOWN) @map("status")
 
@@ -232,7 +241,7 @@ model DitoOrder {
 
   @@unique([organizationId, eventId], map: "dito_orders_org_event_key")
   @@unique([organizationId, orderCodeNormalized], map: "dito_orders_org_order_code_key")
-  @@index([organizationId, matchStatus, capturedAt], map: "dito_orders_org_match_captured_idx")
+  @@index([organizationId, commercialLinkStatus, capturedAt], map: "dito_orders_org_commercial_link_captured_idx")
   @@index([organizationId, registeredAt], map: "dito_orders_org_registered_idx")
   @@index([organizationId, deliveryStatus, deliveryDueAt], map: "dito_orders_org_delivery_due_idx")
   @@index([organizationId, agentUserId, capturedAt], map: "dito_orders_org_agent_captured_idx")

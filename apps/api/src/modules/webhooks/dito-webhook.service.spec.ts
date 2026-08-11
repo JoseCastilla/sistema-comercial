@@ -449,7 +449,7 @@ describe('DitoWebhookService', () => {
       submitterInstallationId: 'f24b8f20-6ce3-4c3f-a2bb-c10110c26c2d',
       submitterEmailRaw: 'carmen.ramirez@distribuidoronline.com',
       submitterEmailNormalized: 'carmen.ramirez@distribuidoronline.com',
-      matchStatus: 'UNMATCHED',
+      parseStatus: 'PARSED',
     });
   });
 
@@ -470,7 +470,7 @@ describe('DitoWebhookService', () => {
       agentUserId: null,
       assignedTeamId: null,
       submitterEmailNormalized: 'carmen.ramirez@distribuidoronline.com',
-      matchStatus: 'NEEDS_REVIEW',
+      parseStatus: 'PARSED',
     });
   });
 
@@ -492,7 +492,7 @@ describe('DitoWebhookService', () => {
     expect(repository.create.mock.calls[0]?.[0]).toMatchObject({
       agentUserId: null,
       assignedTeamId: null,
-      matchStatus: 'NEEDS_REVIEW',
+      parseStatus: 'PARSED',
     });
   });
 
@@ -669,7 +669,6 @@ describe('DitoWebhookService', () => {
     const createInput = repository.create.mock.calls[0]?.[0];
 
     expect(createInput?.parseStatus).toBe('PARTIAL');
-    expect(createInput?.matchStatus).toBe('NEEDS_REVIEW');
 
     expect(createInput?.schedule).toEqual({
       serviceLevelHours: null,

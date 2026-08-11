@@ -291,7 +291,7 @@ describe('DitoImportConfirmationService', () => {
           agentUserId: 'agent-1',
           assignedTeamId: 'team-1',
           eventId: 'dito-import:batch-1:4',
-          matchStatus: 'LINKED',
+          commercialLinkStatus: 'UNMATCHED',
         }),
       }),
     );

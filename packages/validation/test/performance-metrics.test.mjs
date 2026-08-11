@@ -127,3 +127,32 @@ test("calcula el potencial comercial sin presentarlo como comisión confirmada",
   assert.equal(getPotentialBaseCommissionCents("NEW_LINE"), 0);
   assert.equal(getPotentialBaseCommissionCents("UNKNOWN"), 0);
 });
+
+test("considera recuperables las no entregadas y canceladas, no las rechazadas", () => {
+  const result = calculatePerformanceMetrics([
+    order({
+      status: "SENT",
+      sentSubstatus: "NOT_DELIVERED",
+      deliveryStatus: "NOT_DELIVERED",
+      deliveredAt: null,
+      closedAt: null,
+    }),
+    order({
+      status: "CANCELLED",
+      sentSubstatus: null,
+      deliveryStatus: "CANCELLED",
+      deliveredAt: null,
+      closedAt: null,
+    }),
+    order({
+      status: "SENT",
+      sentSubstatus: "REJECTED",
+      deliveryStatus: "CANCELLED",
+      deliveredAt: null,
+      closedAt: null,
+    }),
+  ]);
+
+  assert.equal(result.recovery, 2);
+  assert.equal(result.cancelled, 1);
+});

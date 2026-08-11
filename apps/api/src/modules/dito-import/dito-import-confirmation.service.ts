@@ -62,14 +62,10 @@ const orderSnapshotSelect = {
   assignedTeamId: true,
   agentNameRaw: true,
   agentNameNormalized: true,
-  matchStatus: true,
   updatedAt: true,
 } as const;
 
-type CurrentOrder = ExistingDitoOrderSnapshot & {
-  matchStatus: string;
-  updatedAt: Date;
-};
+type CurrentOrder = ExistingDitoOrderSnapshot & { updatedAt: Date };
 
 @Injectable()
 export class DitoImportConfirmationService {
@@ -515,8 +511,6 @@ async function createOrder(
       productType: 'MOBILE',
       orderCodeRaw: row.displayedOrderCode,
       orderCodeNormalized: row.orderCodeNormalized,
-      orderCodeSuffix: 'A',
-      displayedOrderCode: row.displayedOrderCode,
       operationRaw: row.operationRaw,
       commercialOperation: row.commercialOperation,
       carrier: row.carrier,
@@ -545,7 +539,7 @@ async function createOrder(
       rawSummary: createRawSummary(row),
       additionalDetails,
       parseStatus: 'PARSED',
-      matchStatus: 'LINKED',
+      commercialLinkStatus: 'UNMATCHED',
       status: 'OPEN',
       statusRaw: 'ABIERTO',
       statusUpdatedAt: row.registeredAt,
@@ -576,17 +570,13 @@ async function enrichOrder(
   const changes = sanitizeChanges(input.changes);
   const completesAssignment =
     'agentUserId' in changes && 'assignedTeamId' in changes;
-  const appliedChanges = completesAssignment
-    ? { ...changes, matchStatus: 'LINKED' }
-    : changes;
+  const appliedChanges = changes;
   const keys = Object.keys(changes);
   const currentValues: Record<string, unknown> = { ...input.current };
   const previousValues: Record<string, string | number | boolean | null> =
     Object.fromEntries(
       keys.map((key) => [key, jsonScalar(currentValues[key])]),
     );
-  if (completesAssignment)
-    previousValues.matchStatus = input.current.matchStatus;
   const updated = await transaction.ditoOrder.updateMany({
     where: {
       id: input.current.id,

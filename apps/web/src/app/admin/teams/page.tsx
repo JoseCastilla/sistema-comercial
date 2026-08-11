@@ -1,7 +1,7 @@
-import { EmptyState } from "@repo/ui/empty-state";
 import { ConfirmSubmitButton } from "@repo/ui/confirm-submit-button";
+import { EmptyState } from "@repo/ui/empty-state";
+import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
-import { SectionPanel } from "@repo/ui/section-panel";
 import { StatusBadge } from "@repo/ui/status-badge";
 
 import { SignOutButton } from "@/app/orders/sign-out-button";
@@ -44,56 +44,240 @@ export default async function AdminTeamsPage() {
       orderBy: { user: { name: "asc" } },
       select: {
         role: true,
-        user: { select: { id: true, name: true, email: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            commercialTeamMemberships: {
+              where: {
+                isActive: true,
+                team: { organizationId },
+              },
+              select: {
+                teamId: true,
+                memberRole: true,
+                isPrimary: true,
+                team: { select: { name: true, status: true } },
+              },
+            },
+          },
+        },
       },
     }),
   ]);
 
-  const agents = candidates.filter((item) => item.role === "AGENT").map((item) => item.user);
-  const supervisors = candidates.filter((item) => item.role === "SUPERVISOR").map((item) => item.user);
+  const toCandidate = (item: (typeof candidates)[number]) => {
+    const activeMemberships = item.user.commercialTeamMemberships.filter(
+      (teamMembership) => teamMembership.team.status === "ACTIVE",
+    );
+    const primaryTeam = activeMemberships.find(
+      (teamMembership) =>
+        teamMembership.memberRole === "AGENT" && teamMembership.isPrimary,
+    );
+
+    return {
+      id: item.user.id,
+      name: item.user.name,
+      email: item.user.email,
+      currentTeamId: primaryTeam?.teamId ?? null,
+      currentTeamName: primaryTeam?.team.name ?? null,
+      activeTeamIds: activeMemberships.map(
+        (teamMembership) => teamMembership.teamId,
+      ),
+    };
+  };
+  const agents = candidates
+    .filter((item) => item.role === "AGENT")
+    .map(toCandidate);
+  const supervisors = candidates
+    .filter((item) => item.role === "SUPERVISOR")
+    .map(toCandidate);
+  const activeTeams = teams.filter((team) => team.status === "ACTIVE");
+  const activeAgentIds = new Set(
+    activeTeams.flatMap((team) =>
+      team.members
+        .filter((member) => member.memberRole === "AGENT")
+        .map((member) => member.user.id),
+    ),
+  );
+  const teamsWithoutSupervisor = activeTeams.filter((team) =>
+    team.members.every((member) => member.memberRole !== "SUPERVISOR"),
+  ).length;
 
   return (
-    <CommercialAppShell activeSection="teams" organizationName={membership.organization.name} role={membership.role} signOut={<SignOutButton />} userName={session.user.name}>
+    <CommercialAppShell
+      activeSection="teams"
+      organizationName={membership.organization.name}
+      role={membership.role}
+      signOut={<SignOutButton />}
+      userName={session.user.name}
+    >
       <div className="ui-page-stack">
-        <PageHeader description="Organiza supervisores y asesores. Cada asesor operativo conserva un solo equipo principal activo." eyebrow="Administración" title="Equipos comerciales" />
+        <PageHeader
+          description="Revisa la estructura comercial, detecta equipos sin supervisión y administra integrantes cuando sea necesario."
+          eyebrow="Administración"
+          title="Equipos comerciales"
+        />
 
-        <section className="grid gap-5 xl:grid-cols-[22rem_minmax(0,1fr)]">
-          <div className="self-start xl:sticky xl:top-8">
-            <SectionPanel description="El nombre debe ser único entre los equipos activos de esta organización." title="Nuevo equipo">
-              <CreateTeamForm />
-            </SectionPanel>
-          </div>
+        <MetricGroup>
+          <Metric label="Equipos activos" value={activeTeams.length} />
+          <Metric label="Asesores asignados" value={activeAgentIds.size} />
+          <Metric label="Supervisores disponibles" value={supervisors.length} />
+          <Metric
+            label="Sin supervisor"
+            tone={teamsWithoutSupervisor > 0 ? "danger" : "neutral"}
+            value={teamsWithoutSupervisor}
+          />
+        </MetricGroup>
 
-          <div className="space-y-4">
-            {teams.length === 0 ? <EmptyState description="Crea el primer equipo para asignar supervisores y asesores." title="Aún no hay equipos comerciales" /> : null}
-            {teams.map((team) => (
-              <SectionPanel
-                aside={team.status === "ACTIVE" ? (
-                  <form action={disableTeamAction}>
-                    <input name="teamId" type="hidden" value={team.id} />
-                    <ConfirmSubmitButton confirmLabel="Deshabilitar equipo" description={`Se cerrarán ${team.members.length} membresías activas. Las órdenes y el historial existente se conservarán.`} title={`¿Deshabilitar ${team.name}?`} triggerLabel="Deshabilitar" />
-                  </form>
-                ) : null}
-                description={`${team.code ? `Código ${team.code} · ` : ""}${team.members.length} integrantes activos`}
-                key={team.id}
-                title={team.name}
-              >
-                <div className="mb-4"><StatusBadge tone={team.status === "ACTIVE" ? "success" : "neutral"}>{team.status === "ACTIVE" ? "Activo" : "Deshabilitado"}</StatusBadge></div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl bg-neutral-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Supervisores</p>
-                    <ul className="mt-2 space-y-1 text-sm text-neutral-700">{team.members.filter((item) => item.memberRole === "SUPERVISOR").map((item) => <li key={item.user.id}>{item.user.name}</li>)}{team.members.every((item) => item.memberRole !== "SUPERVISOR") ? <li className="text-neutral-400">Sin supervisor</li> : null}</ul>
-                  </div>
-                  <div className="rounded-xl bg-neutral-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Asesores</p>
-                    <ul className="mt-2 space-y-1 text-sm text-neutral-700">{team.members.filter((item) => item.memberRole === "AGENT").map((item) => <li key={item.user.id}>{item.user.name}{item.isPrimary ? " · principal" : ""}</li>)}{team.members.every((item) => item.memberRole !== "AGENT") ? <li className="text-neutral-400">Sin asesores</li> : null}</ul>
-                  </div>
-                </div>
-                {team.status === "ACTIVE" ? <div className="mt-4 border-t border-neutral-100 pt-4"><AssignTeamMemberForm agents={agents} supervisors={supervisors} teamId={team.id} /></div> : null}
-              </SectionPanel>
-            ))}
+        <details className="ui-admin-create">
+          <summary>
+            <span>
+              <strong>Nuevo equipo</strong>
+              <small>
+                Crea otro equipo sin interrumpir la revisión actual.
+              </small>
+            </span>
+            <span aria-hidden="true">+</span>
+          </summary>
+          <div className="ui-admin-create__body">
+            <CreateTeamForm />
           </div>
-        </section>
+        </details>
+
+        {teams.length === 0 ? (
+          <EmptyState
+            description="Crea el primer equipo para asignar supervisores y asesores."
+            title="Aún no hay equipos comerciales"
+          />
+        ) : (
+          <section className="ui-team-list" aria-label="Equipos comerciales">
+            {teams.map((team) => {
+              const teamSupervisors = team.members.filter(
+                (member) => member.memberRole === "SUPERVISOR",
+              );
+              const teamAgents = team.members.filter(
+                (member) => member.memberRole === "AGENT",
+              );
+              const active = team.status === "ACTIVE";
+              const needsSupervisor = active && teamSupervisors.length === 0;
+
+              return (
+                <details className="ui-team-overview" key={team.id}>
+                  <summary>
+                    <span className="ui-team-overview__identity">
+                      <strong>{team.name}</strong>
+                      <small>
+                        {team.code ? `Código ${team.code} · ` : ""}
+                        {team.members.length} integrantes activos
+                      </small>
+                    </span>
+                    <span className="ui-team-overview__supervision">
+                      <small>Supervisión</small>
+                      <strong className={needsSupervisor ? "text-red-700" : ""}>
+                        {needsSupervisor
+                          ? "Sin supervisor"
+                          : teamSupervisors
+                              .map((item) => item.user.name)
+                              .join(", ") || "No aplica"}
+                      </strong>
+                    </span>
+                    <span className="ui-team-overview__count">
+                      <strong>{teamAgents.length}</strong>
+                      <small>asesores</small>
+                    </span>
+                    <StatusBadge tone={active ? "success" : "neutral"}>
+                      {active ? "Activo" : "Deshabilitado"}
+                    </StatusBadge>
+                    <span
+                      className="ui-team-overview__chevron"
+                      aria-hidden="true"
+                    >
+                      ⌄
+                    </span>
+                  </summary>
+
+                  <div className="ui-team-overview__body">
+                    {needsSupervisor ? (
+                      <div className="ui-team-warning">
+                        <strong>Este equipo necesita supervisión.</strong>
+                        <span>
+                          Asigna un supervisor para habilitar correctamente su
+                          alcance operativo y seguimiento.
+                        </span>
+                      </div>
+                    ) : null}
+
+                    <div className="ui-team-members">
+                      <section>
+                        <header>
+                          <span>Supervisores</span>
+                          <strong>{teamSupervisors.length}</strong>
+                        </header>
+                        {teamSupervisors.length > 0 ? (
+                          <ul>
+                            {teamSupervisors.map((item) => (
+                              <li key={item.user.id}>
+                                <span>{item.user.name}</span>
+                                <small>{item.user.email}</small>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p>Sin supervisor asignado</p>
+                        )}
+                      </section>
+                      <section>
+                        <header>
+                          <span>Asesores</span>
+                          <strong>{teamAgents.length}</strong>
+                        </header>
+                        {teamAgents.length > 0 ? (
+                          <ul>
+                            {teamAgents.map((item) => (
+                              <li key={item.user.id}>
+                                <span>{item.user.name}</span>
+                                <small>{item.user.email}</small>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p>Sin asesores asignados</p>
+                        )}
+                      </section>
+                    </div>
+
+                    {active ? (
+                      <div className="ui-team-overview__actions">
+                        <details className="ui-team-manage">
+                          <summary>Agregar o trasladar integrante</summary>
+                          <div>
+                            <AssignTeamMemberForm
+                              agents={agents}
+                              supervisors={supervisors}
+                              teamId={team.id}
+                              teamName={team.name}
+                            />
+                          </div>
+                        </details>
+                        <form action={disableTeamAction}>
+                          <input name="teamId" type="hidden" value={team.id} />
+                          <ConfirmSubmitButton
+                            confirmLabel="Deshabilitar equipo"
+                            description={`Se cerrarán ${team.members.length} membresías activas. Las órdenes y el historial existente se conservarán.`}
+                            title={`¿Deshabilitar ${team.name}?`}
+                            triggerLabel="Deshabilitar"
+                          />
+                        </form>
+                      </div>
+                    ) : null}
+                  </div>
+                </details>
+              );
+            })}
+          </section>
+        )}
       </div>
     </CommercialAppShell>
   );

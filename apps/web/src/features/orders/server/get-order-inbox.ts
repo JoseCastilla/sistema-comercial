@@ -5,6 +5,7 @@ import {
   canCancelDitoOrder,
   canRequestDitoOrderCancellation,
   canTransitionDitoOrderStatus,
+  getLimaIsoDate,
   getOrderPeriodRange,
   getOrderRange,
   parseOrderRange,
@@ -92,7 +93,6 @@ const orderSelect = {
   submitterEmailNormalized: true,
   agentUserId: true,
   assignedTeamId: true,
-  matchStatus: true,
   parseStatus: true,
   deliveryStatus: true,
   deliveryObservation: true,
@@ -387,7 +387,12 @@ function getStatusFilter(
         ],
       };
     case "RECOVERY":
-      return { sentSubstatus: { in: ["NOT_DELIVERED", "REJECTED"] } };
+      return {
+        OR: [
+          { status: "SENT", sentSubstatus: "NOT_DELIVERED" },
+          { status: "CANCELLED" },
+        ],
+      };
     case "AWAITING_ACTIVATION":
       return {
         deliveryStatus: "DELIVERED",
@@ -472,12 +477,15 @@ export async function getOrderInbox(
 ): Promise<OrderInboxData> {
   const now = new Date();
   const parsedRange =
-    query.period === "RANGE" ? parseOrderRange(query.from, query.to) : null;
+    query.period === "RANGE"
+      ? parseOrderRange(query.from, query.to, now)
+      : null;
   const period =
     query.period === "RANGE" && !parsedRange ? "MONTH" : query.period;
-  const range = parsedRange
-    ? getOrderRange(parsedRange.from, parsedRange.to, now)
-    : getOrderPeriodRange(period, now);
+  const range =
+    period === "RANGE" && parsedRange
+      ? getOrderRange(parsedRange.from, parsedRange.to, now)
+      : getOrderPeriodRange(period, now);
   const requestedPage = Math.max(1, Math.floor(query.page ?? 1));
   const search = query.search?.trim().slice(0, 100) ?? "";
   const incidentThreshold = new Date(now.getTime() - 10 * 60 * 1000);
@@ -614,6 +622,7 @@ export async function getOrderInbox(
     filteredTotal,
     incidentCount,
     notDeliveredCount,
+    recoveryCount,
     deliveredCount,
     overdueCount,
     pendingBeforeMonth,
@@ -635,6 +644,27 @@ export async function getOrderInbox(
     }),
     database.ditoOrder.count({
       where: { ...baseWhere, sentSubstatus: "NOT_DELIVERED" },
+    }),
+    database.ditoOrder.count({
+      where: {
+        organizationId,
+        AND: [
+          accessFilter,
+          teamFilterWhere,
+          {
+            registeredAt: {
+              gte: range.monthStart,
+              lt: range.monthEnd,
+            },
+          },
+          {
+            OR: [
+              { status: "SENT", sentSubstatus: "NOT_DELIVERED" },
+              { status: "CANCELLED" },
+            ],
+          },
+        ],
+      },
     }),
     database.ditoOrder.count({
       where: {
@@ -758,7 +788,14 @@ export async function getOrderInbox(
       agentName: order.agentNameNormalized ?? order.agentNameRaw,
       submitterEmail: order.submitterEmailNormalized,
 
-      matchStatus: String(order.matchStatus),
+      assignmentStatusLabel:
+        order.agentUserId && order.assignedTeamId
+          ? "Asignado"
+          : order.agentUserId || order.assignedTeamId
+            ? "Asignación incompleta"
+            : order.submitterEmailNormalized
+              ? "Requiere revisión"
+              : "Sin asignar",
       parseStatus: String(order.parseStatus),
       deliveryStatus,
 
@@ -859,8 +896,9 @@ export async function getOrderInbox(
               : period === "RANGE" && range.start && range.end
                 ? `Del ${dateFormatter.format(range.start)} al ${dateFormatter.format(new Date(range.end.getTime() - 1))}`
                 : "Histórico",
-    from: parsedRange?.from ?? null,
-    to: parsedRange?.to ?? null,
+    from: period === "RANGE" ? (parsedRange?.from ?? null) : null,
+    to: period === "RANGE" ? (parsedRange?.to ?? null) : null,
+    rangeMaxDate: getLimaIsoDate(now),
     filter: query.filter,
     search,
     teamFilter,
@@ -889,6 +927,7 @@ export async function getOrderInbox(
       visible: totalOrders,
       incidents: incidentCount,
       notDelivered: notDeliveredCount,
+      recovery: recoveryCount,
       delivered: deliveredCount,
       overdue: overdueCount,
     },

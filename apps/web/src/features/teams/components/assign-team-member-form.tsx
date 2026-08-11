@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
 import { Button } from "@repo/ui/button";
 import { InlineFeedback } from "@repo/ui/feedback";
@@ -8,31 +8,105 @@ import { Field, SelectInput } from "@repo/ui/field";
 
 import { assignTeamMemberAction } from "../server/team-actions";
 
-interface Candidate { id: string; name: string; email: string }
+interface Candidate {
+  id: string;
+  name: string;
+  email: string;
+  currentTeamId: string | null;
+  currentTeamName: string | null;
+  activeTeamIds: string[];
+}
 
 const initialState = { type: "idle" as const, message: "" };
 
-export function AssignTeamMemberForm({ agents, supervisors, teamId }: { agents: Candidate[]; supervisors: Candidate[]; teamId: string }) {
-  const [state, action, pending] = useActionState(assignTeamMemberAction, initialState);
+export function AssignTeamMemberForm({
+  agents,
+  supervisors,
+  teamId,
+  teamName,
+}: {
+  agents: Candidate[];
+  supervisors: Candidate[];
+  teamId: string;
+  teamName: string;
+}) {
+  const [state, action, pending] = useActionState(
+    assignTeamMemberAction,
+    initialState,
+  );
+  const [memberRole, setMemberRole] = useState<"AGENT" | "SUPERVISOR">("AGENT");
+  const [userId, setUserId] = useState("");
+  const candidates = useMemo(() => {
+    const source = memberRole === "AGENT" ? agents : supervisors;
+    return source.filter(
+      (candidate) => !candidate.activeTeamIds.includes(teamId),
+    );
+  }, [agents, memberRole, supervisors, teamId]);
+  const selectedCandidate = candidates.find(
+    (candidate) => candidate.id === userId,
+  );
+  const movesAgent =
+    memberRole === "AGENT" &&
+    selectedCandidate?.currentTeamId &&
+    selectedCandidate.currentTeamId !== teamId;
 
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)_auto] sm:items-end">
+    <form action={action} className="ui-team-assignment">
       <input name="teamId" type="hidden" value={teamId} />
-      <Field label="Tipo">
-        <SelectInput name="memberRole" required>
+      <Field label="Función en el equipo">
+        <SelectInput
+          name="memberRole"
+          onChange={(event) => {
+            setMemberRole(event.target.value as "AGENT" | "SUPERVISOR");
+            setUserId("");
+          }}
+          value={memberRole}
+        >
           <option value="AGENT">Asesor principal</option>
           <option value="SUPERVISOR">Supervisor</option>
         </SelectInput>
       </Field>
-      <Field label="Persona">
-        <SelectInput name="userId" required>
-          <option value="">Seleccionar</option>
-          <optgroup label="Asesores">{agents.map((user) => <option key={`agent-${user.id}`} value={user.id}>{user.name} · {user.email}</option>)}</optgroup>
-          <optgroup label="Supervisores">{supervisors.map((user) => <option key={`supervisor-${user.id}`} value={user.id}>{user.name} · {user.email}</option>)}</optgroup>
+      <Field label={memberRole === "AGENT" ? "Asesor" : "Supervisor"}>
+        <SelectInput
+          disabled={candidates.length === 0}
+          name="userId"
+          onChange={(event) => setUserId(event.target.value)}
+          required
+          value={userId}
+        >
+          <option value="">
+            {candidates.length === 0
+              ? "No hay personas disponibles"
+              : "Seleccionar persona"}
+          </option>
+          {candidates.map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>
+              {candidate.name} · {candidate.email}
+            </option>
+          ))}
         </SelectInput>
       </Field>
-      <Button disabled={pending} type="submit" variant="secondary">{pending ? "Asignando..." : "Asignar"}</Button>
-      <div className="sm:col-span-3"><InlineFeedback message={state.message} tone={state.type === "error" ? "danger" : "success"} /></div>
+      <Button
+        disabled={pending || !userId || candidates.length === 0}
+        type="submit"
+        variant="secondary"
+      >
+        {pending ? "Asignando..." : "Confirmar asignación"}
+      </Button>
+      {movesAgent ? (
+        <p className="ui-team-assignment__notice">
+          {selectedCandidate?.name} se moverá de{" "}
+          <strong>{selectedCandidate?.currentTeamName}</strong> a{" "}
+          <strong>{teamName}</strong>. Sus pedidos históricos conservarán el
+          equipo registrado.
+        </p>
+      ) : null}
+      <div className="ui-team-assignment__feedback">
+        <InlineFeedback
+          message={state.message}
+          tone={state.type === "error" ? "danger" : "success"}
+        />
+      </div>
     </form>
   );
 }

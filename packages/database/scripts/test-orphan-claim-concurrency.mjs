@@ -61,7 +61,6 @@ try {
       sourceFingerprint: createHash("sha256").update(uniqueToken).digest("hex"),
       orderCodeRaw: orderCode,
       orderCodeNormalized: orderCode,
-      displayedOrderCode: orderCode,
       agentUserId: null,
       assignedTeamId: null,
       submitterInstallationId: null,

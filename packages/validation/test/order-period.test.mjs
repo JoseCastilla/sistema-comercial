@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   getOrderPeriodRange,
   getOrderRange,
+  getLimaIsoDate,
   parseOrderPeriod,
   parseOrderRange,
 } from "../dist/index.js";
@@ -66,12 +67,22 @@ describe("order periods in America/Lima", () => {
   });
 
   it("rejects incomplete, reversed and impossible custom ranges", () => {
-    assert.equal(parseOrderRange(undefined, "2026-08-02"), null);
-    assert.equal(parseOrderRange("2026-08-03", "2026-08-02"), null);
-    assert.equal(parseOrderRange("2026-02-30", "2026-03-01"), null);
-    assert.deepEqual(parseOrderRange("2026-08-01", "2026-08-02"), {
+    const now = new Date("2026-08-08T15:00:00.000Z");
+
+    assert.equal(parseOrderRange(undefined, "2026-08-02", now), null);
+    assert.equal(parseOrderRange("2026-08-03", "2026-08-02", now), null);
+    assert.equal(parseOrderRange("2026-02-30", "2026-03-01", now), null);
+    assert.equal(parseOrderRange("2026-08-01", "2026-08-09", now), null);
+    assert.deepEqual(parseOrderRange("2026-08-01", "2026-08-08", now), {
       from: "2026-08-01",
-      to: "2026-08-02",
+      to: "2026-08-08",
     });
+  });
+
+  it("calculates the maximum range date in Lima", () => {
+    assert.equal(
+      getLimaIsoDate(new Date("2026-08-09T03:00:00.000Z")),
+      "2026-08-08",
+    );
   });
 });

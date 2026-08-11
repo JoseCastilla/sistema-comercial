@@ -43,8 +43,6 @@ export interface CreateDitoOrderInput {
   submitterEmailRaw: string | null;
   submitterEmailNormalized: string | null;
 
-  matchStatus: 'UNMATCHED' | 'NEEDS_REVIEW';
-
   parseStatus: 'PARSED' | 'PARTIAL';
 
   registeredAt: Date;
@@ -207,10 +205,6 @@ export class DitoOrdersRepository {
 
         orderCodeNormalized: input.envelope.order.code_normalized,
 
-        orderCodeSuffix: input.envelope.order.code_suffix,
-
-        displayedOrderCode: null,
-
         operationRaw: input.envelope.order.operation_raw,
 
         commercialOperation: input.envelope.order.commercial_operation,
@@ -278,7 +272,7 @@ export class DitoOrdersRepository {
 
         parseStatus: input.parseStatus,
 
-        matchStatus: input.matchStatus,
+        commercialLinkStatus: 'UNMATCHED',
 
         status: 'OPEN',
 
@@ -349,7 +343,7 @@ export class DitoOrdersRepository {
       },
 
       data: {
-        matchStatus: 'NEEDS_REVIEW',
+        parseStatus: 'PARTIAL',
       },
     });
   }

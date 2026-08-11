@@ -74,6 +74,7 @@ model CommercialTeam {
   auditLogs                  CommercialTeamAuditLog[]
   ditoImportRowsAsManualTeam DitoImportRow[]              @relation("DitoImportRowManualTeam")
 
+  @@unique([id, organizationId], map: "commercial_teams_id_organization_key")
   @@index([organizationId, status], map: "commercial_teams_org_status_idx")
   @@index([organizationId, normalizedName], map: "commercial_teams_org_name_idx")
   @@map("commercial_teams")
@@ -102,8 +103,9 @@ model CommercialTeamAuditLog {
 }
 
 model CommercialTeamMember {
-  teamId String @map("team_id") @db.Uuid
-  userId String @map("user_id") @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  teamId         String @map("team_id") @db.Uuid
+  userId         String @map("user_id") @db.Uuid
 
   memberRole CommercialTeamMemberRole @map("member_role")
   isPrimary  Boolean                  @default(false) @map("is_primary")
@@ -117,9 +119,10 @@ model CommercialTeamMember {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  team       CommercialTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user       User           @relation("CommercialTeamMemberUser", fields: [userId], references: [id], onDelete: Cascade)
-  assignedBy User           @relation("CommercialTeamMemberAssignedBy", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  team         CommercialTeam @relation(fields: [teamId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user         User           @relation("CommercialTeamMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy   User           @relation("CommercialTeamMemberAssignedBy", fields: [assignedByUserId], references: [id], onDelete: Restrict)
 
   @@id([teamId, userId])
   @@index([teamId, memberRole, isActive], map: "commercial_team_members_team_role_active_idx")
