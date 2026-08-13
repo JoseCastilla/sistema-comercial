@@ -18,7 +18,10 @@ import {
   type DitoImportPreviewClassification,
   type ExistingDitoOrderSnapshot,
 } from './dito-import-preview';
-import type { ParsedDitoBatchRow } from './dito-xlsx-parser';
+import {
+  ditoBatchParserVersion,
+  type ParsedDitoBatchRow,
+} from './dito-xlsx-parser';
 
 export interface ConfirmDitoImportBatchInput {
   organizationId: string;
@@ -82,6 +85,7 @@ export class DitoImportConfirmationService {
         select: {
           id: true,
           status: true,
+          parserVersion: true,
           updatedAt: true,
           newRows: true,
           enrichmentRows: true,
@@ -103,14 +107,14 @@ export class DitoImportConfirmationService {
                   memberships: {
                     where: {
                       organizationId: input.organizationId,
-                      role: 'AGENT',
+                      role: { in: ['AGENT', 'SUPERVISOR'] },
                     },
                     select: { userId: true },
                     take: 1,
                   },
                   commercialTeamMemberships: {
                     where: {
-                      memberRole: 'AGENT',
+                      salesEnabled: true,
                       isPrimary: true,
                       isActive: true,
                       team: {
@@ -135,14 +139,14 @@ export class DitoImportConfirmationService {
                       memberships: {
                         where: {
                           organizationId: input.organizationId,
-                          role: 'AGENT',
+                          role: { in: ['AGENT', 'SUPERVISOR'] },
                         },
                         select: { userId: true },
                         take: 1,
                       },
                       commercialTeamMemberships: {
                         where: {
-                          memberRole: 'AGENT',
+                          salesEnabled: true,
                           isPrimary: true,
                           isActive: true,
                           team: {
@@ -176,6 +180,12 @@ export class DitoImportConfirmationService {
           unchangedRows: batch.unchangedRows,
           skippedRows: batch.excludedRows + batch.invalidRows,
         };
+      }
+
+      if (batch.parserVersion !== ditoBatchParserVersion) {
+        throw new BadRequestException(
+          'Esta vista previa usa una versión anterior del importador. Genera una nueva con la columna Origen Portabilidad antes de confirmar.',
+        );
       }
 
       if (batch.updatedAt.getTime() !== input.expectedUpdatedAt.getTime()) {
@@ -494,6 +504,7 @@ async function createOrder(
     dito_status: row.ditoStatus,
     dito_username: row.ditoUsername,
     customer_email: row.customerEmail,
+    portability_origin_raw: row.portabilityOriginRaw,
     delivery_instructions: row.deliveryInstructions,
     delivery_option: row.deliveryOption,
     source_load_type: row.sourceLoadType,

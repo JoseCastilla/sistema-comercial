@@ -90,7 +90,7 @@ export async function claimOrphanOrderAction(
           where: {
             teamId: parsed.data.teamId,
             userId: parsed.data.agentUserId,
-            memberRole: "AGENT",
+            salesEnabled: true,
             isActive: true,
             team: {
               organizationId: membership.organization.id,
@@ -101,7 +101,7 @@ export async function claimOrphanOrderAction(
               memberships: {
                 some: {
                   organizationId: membership.organization.id,
-                  role: "AGENT",
+                  role: { in: ["AGENT", "SUPERVISOR"] },
                 },
               },
             },

@@ -43,6 +43,8 @@ export interface PerformanceDashboardData {
   from: string;
   to: string;
   scopeLabel: string;
+  view: "SELF" | "TEAM";
+  canSwitchView: boolean;
   teamFilter: string;
   teamOptions: Array<{ id: string; name: string }>;
   showTeamFilter: boolean;

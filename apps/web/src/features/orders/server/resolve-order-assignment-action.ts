@@ -64,7 +64,7 @@ export async function resolveOrderAssignmentAction(
     const agentMembership = await transaction.organizationMember.findFirst({
       where: {
         organizationId: membership.organization.id,
-        role: "AGENT",
+        role: { in: ["AGENT", "SUPERVISOR"] },
         user: {
           email: {
             equals: order.submitterEmailNormalized,
@@ -80,7 +80,7 @@ export async function resolveOrderAssignmentAction(
             name: true,
             commercialTeamMemberships: {
               where: {
-                memberRole: "AGENT",
+                salesEnabled: true,
                 isPrimary: true,
                 isActive: true,
                 team: {

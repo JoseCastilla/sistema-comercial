@@ -33,6 +33,7 @@ interface PerformanceAccess {
 interface PerformanceQuery {
   month: string;
   team?: string;
+  view?: "SELF" | "TEAM";
 }
 
 const monthLabelFormatter = new Intl.DateTimeFormat("es-PE", {
@@ -332,15 +333,33 @@ export async function getPerformanceDashboard(
         });
   const supervisedTeamIds =
     access.role === "SUPERVISOR" ? teamOptions.map((team) => team.id) : [];
+  const primarySalesMembership =
+    access.role === "SUPERVISOR"
+      ? await database.commercialTeamMember.findFirst({
+          where: {
+            userId: access.userId,
+            salesEnabled: true,
+            isPrimary: true,
+            isActive: true,
+            team: { organizationId, status: "ACTIVE" },
+          },
+          select: { teamId: true },
+        })
+      : null;
+  const canSwitchView = primarySalesMembership !== null;
+  const view =
+    access.role === "AGENT" || (canSwitchView && query.view === "SELF")
+      ? "SELF"
+      : "TEAM";
+  const isIndividualScope = view === "SELF";
   const requestedTeam = query.team?.trim() ?? "";
-  const teamFilter = teamOptions.some((team) => team.id === requestedTeam)
-    ? requestedTeam
-    : "ALL";
-  const accessWhere = getAccessWhere(
-    access.role,
-    access.userId,
-    supervisedTeamIds,
-  );
+  const teamFilter =
+    !isIndividualScope && teamOptions.some((team) => team.id === requestedTeam)
+      ? requestedTeam
+      : "ALL";
+  const accessWhere = isIndividualScope
+    ? { agentUserId: access.userId }
+    : getAccessWhere(access.role, access.userId, supervisedTeamIds);
   const teamWhere: Prisma.DitoOrderWhereInput =
     teamFilter === "ALL" ? {} : { assignedTeamId: teamFilter };
   const showDailyPulse = currentRange.key === currentMonth;
@@ -431,7 +450,7 @@ export async function getPerformanceDashboard(
       : await database.commercialTeamMember.findMany({
           where: {
             userId: { in: visibleAgentIds },
-            memberRole: "AGENT",
+            salesEnabled: true,
             isActive: true,
             isPrimary: true,
             team: { organizationId, status: "ACTIVE" },
@@ -450,10 +469,10 @@ export async function getPerformanceDashboard(
       .map(([userId, teams]) => [userId, teams[0] ?? ""]),
   );
 
-  const scopedMetrics = calculateScopedMetrics(orders, access.role === "AGENT");
+  const scopedMetrics = calculateScopedMetrics(orders, isIndividualScope);
   const scopedPreviousMetrics = calculateScopedMetrics(
     previousOrders,
-    access.role === "AGENT",
+    isIndividualScope,
   );
   const metrics =
     access.role === "BACKOFFICE"
@@ -478,13 +497,15 @@ export async function getPerformanceDashboard(
     from: currentRange.from,
     to: currentRange.to,
     scopeLabel:
-      access.role === "AGENT"
+      isIndividualScope
         ? "Mi desempeño"
         : (selectedTeam?.name ??
           (access.role === "SUPERVISOR" ? "Mis equipos" : "Organización")),
+    view,
+    canSwitchView,
     teamFilter,
     teamOptions,
-    showTeamFilter: access.role !== "AGENT" && teamOptions.length > 0,
+    showTeamFilter: !isIndividualScope && teamOptions.length > 0,
     showCommission: access.role !== "BACKOFFICE",
     dailyPulse: showDailyPulse
       ? buildDailyPerformancePulse(
@@ -509,7 +530,7 @@ export async function getPerformanceDashboard(
         : null,
     },
     breakdown:
-      access.role === "AGENT"
+      isIndividualScope
         ? []
         : groupByAgent(orders, access.role, primaryTeamNames),
   };

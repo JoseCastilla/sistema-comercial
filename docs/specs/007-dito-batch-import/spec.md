@@ -1,7 +1,7 @@
 # SPEC-007 — Importación controlada de pedidos DITO
 
 **Estado:** `APPROVED`
-**Versión:** 1.2
+**Versión:** 1.3
 **Fecha:** 2026-08-06
 **Fecha de aprobación:** 2026-08-06
 
@@ -90,6 +90,15 @@ duplicar ventas o asociarlas al asesor equivocado.
   cuenta compartida y nunca se vincula globalmente con un usuario. Una orden ya
   asociada conserva su responsable confiable; las demás se asignan manualmente
   por código de orden, con actor, fecha, equipo y motivo auditables.
+- **BR-026:** una portabilidad usa exclusivamente la columna
+  `Origen Portabilidad` para diferenciar prepago de postpago. El precio o nombre
+  del plan no se utiliza para inferir esta clasificación.
+- **BR-027:** una portabilidad sin origen o con un valor distinto de prepago o
+  postpago queda inválida y muestra un motivo legible en la vista previa. Una
+  alta nueva no requiere esta columna.
+- **BR-028:** una vista previa no confirmada, creada con una versión anterior
+  del parser, debe regenerarse antes de confirmar para impedir que conserve la
+  clasificación histórica que trataba toda portabilidad como postpago.
 
 ## Campos importados
 
@@ -101,7 +110,7 @@ duplicar ventas o asociarlas al asesor equivocado.
 | Asesor              | `Usuario DITO` + `Nombre de Usuario`        | Resolver por identidad externa                |
 | Titular             | Nombre, tipo y número de documento          | Normalizar espacios y caracteres              |
 | Número de servicio  | `Nro Servicio Móvil`                        | Solo dígitos                                  |
-| Operación           | Operación + plan                            | Alta/portabilidad y prepago/postpago          |
+| Operación           | Operación + `Origen Portabilidad`            | Alta, portabilidad prepago o postpago          |
 | Operador cedente    | Código de operador                          | Catálogo explícito; vacío para alta nueva     |
 | Cargo fijo          | `Plan Móvil`                                | Extraer monto cuando exista                   |
 | Entrega             | `Método de Entrega`                         | Express o Regular 24 h                        |
@@ -152,3 +161,9 @@ servicio como contacto y los demás campos quedan vacíos, sin inventar datos.
 - **AC-014:** una cuenta compartida no permite confirmar mientras alguna fila
   importable carezca de responsable; guardar asignaciones parciales no altera
   órdenes ni obliga a completar todo en una sola sesión.
+- **AC-015:** portabilidades prepago y postpago con planes S/29.90, S/39.90 o
+  S/49.90 conservan el origen declarado y extraen el cargo fijo por separado.
+- **AC-016:** una portabilidad sin `Origen Portabilidad` no se importa y explica
+  el dato faltante; una alta del mismo archivo permanece importable.
+- **AC-017:** una vista previa versión 1.0 pendiente de confirmación es rechazada
+  y solicita generar un análisis nuevo.

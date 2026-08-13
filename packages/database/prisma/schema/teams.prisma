@@ -108,6 +108,7 @@ model CommercialTeamMember {
   userId         String @map("user_id") @db.Uuid
 
   memberRole CommercialTeamMemberRole @map("member_role")
+  salesEnabled Boolean                @default(false) @map("sales_enabled")
   isPrimary  Boolean                  @default(false) @map("is_primary")
   isActive   Boolean                  @default(true) @map("is_active")
 
@@ -127,6 +128,7 @@ model CommercialTeamMember {
   @@id([teamId, userId])
   @@index([teamId, memberRole, isActive], map: "commercial_team_members_team_role_active_idx")
   @@index([userId, memberRole, isActive], map: "commercial_team_members_user_role_active_idx")
+  @@index([userId, salesEnabled, isActive], map: "commercial_team_members_user_sales_active_idx")
   @@index([assignedByUserId, createdAt], map: "commercial_team_members_assigner_created_idx")
   @@map("commercial_team_members")
 }

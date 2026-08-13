@@ -141,3 +141,22 @@
   verificada únicamente en PostgreSQL local.
 - 16 pruebas enfocadas de preview/clasificación/confirmación y 5 pruebas de
   contratos administrativos aprobadas.
+
+## Incremento 6 — Origen explícito de portabilidad
+
+- Los archivos de muestra completo y reducido no incluyen todavía la columna
+  `Origen Portabilidad`; por ello no son una fuente segura para diferenciar
+  prepago de postpago.
+- El parser 1.1 acepta `PREPAGO`, `POSTPAGO` y sus variantes separadas por
+  espacio, sin relacionarlas con el monto del plan.
+- El cargo fijo continúa extrayéndose de `Plan Móvil`, por lo que S/29.90 y
+  S/49.90 se reconocen sin alterar la clasificación comercial.
+- Una portabilidad sin origen queda inválida; una alta nueva del mismo archivo
+  no se bloquea por esa ausencia.
+- Las vistas previas 1.0 que aún no fueron confirmadas deben regenerarse. Los
+  lotes ya confirmados conservan su auditoría histórica.
+- La tabla administrativa muestra la operación, el origen declarado y los
+  motivos de cada fila inválida sin añadir acciones nuevas.
+- 20 pruebas enfocadas del parser, clasificación y confirmación aprobadas.
+- Tipos y lint de API/Web aprobados; la vista ADMIN local mostró el aviso de
+  conciliación y “Portabilidad por revisar” para el lote histórico 1.0.

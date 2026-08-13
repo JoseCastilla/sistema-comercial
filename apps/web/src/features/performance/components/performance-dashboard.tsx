@@ -38,6 +38,7 @@ function performanceHref(
   month: string,
 ): string {
   const parameters = new URLSearchParams({ month });
+  if (data.canSwitchView) parameters.set("view", data.view);
   if (data.teamFilter !== "ALL") parameters.set("team", data.teamFilter);
   return `/performance?${parameters.toString()}`;
 }
@@ -53,7 +54,7 @@ function ordersHref(
     to: data.to,
     status,
   });
-  if (team !== "ALL") parameters.set("team", team);
+  if (data.view !== "SELF" && team !== "ALL") parameters.set("team", team);
   return `/orders?${parameters.toString()}`;
 }
 
@@ -123,7 +124,7 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
     ...pulse.days.flatMap((day) => [day.entered, day.closed]),
     1,
   );
-  const isAgent = data.role === "AGENT";
+  const isAgent = data.view === "SELF";
   const heading = isAgent ? "Tu pulso de hoy" : "Pulso diario del alcance";
   const motivation = isAgent
     ? pulse.entered > 0
@@ -262,7 +263,7 @@ export function PerformanceDashboard({
   data: PerformanceDashboardData;
 }) {
   const description =
-    data.role === "AGENT"
+    data.view === "SELF"
       ? "Entiende cómo avanza tu cartera y qué ventas requieren atención para convertirse en activaciones."
       : data.role === "BACKOFFICE"
         ? "Prioriza los bloqueos operativos que afectan la entrega y activación de las ventas."
@@ -314,6 +315,15 @@ export function PerformanceDashboard({
         </div>
 
         <form className="performance-filter" method="get">
+          {data.canSwitchView ? (
+            <label>
+              <span>Vista</span>
+              <select defaultValue={data.view} name="view">
+                <option value="SELF">Mi rendimiento</option>
+                <option value="TEAM">Mi equipo</option>
+              </select>
+            </label>
+          ) : null}
           <label>
             <span>Mes</span>
             <input
@@ -401,7 +411,7 @@ export function PerformanceDashboard({
               <strong>{data.metrics.recovery}</strong>
               <small>Abrir la cola de recuperación</small>
             </Link>
-            {data.role !== "AGENT" ? (
+            {data.view !== "SELF" ? (
               <Link href={ordersHref(data, "ALL", "UNASSIGNED")}>
                 <span>Sin asesor ni equipo</span>
                 <strong>{data.metrics.unassigned}</strong>
@@ -452,7 +462,7 @@ export function PerformanceDashboard({
                 {data.metrics.acceleratorOne.eligible} ingresadas
               </small>
             </div>
-            {data.role === "AGENT" && data.metrics.acceleratorOne.nextTarget ? (
+            {data.view === "SELF" && data.metrics.acceleratorOne.nextTarget ? (
               <div>
                 <span>Siguiente nivel</span>
                 <strong>

@@ -32,12 +32,12 @@ export async function resolveDitoAgentIdentityAction(
     where: {
       organizationId: membership.organization.id,
       userId: parsed.data.userId,
-      role: "AGENT",
+      role: { in: ["AGENT", "SUPERVISOR"] },
       user: {
         status: "ACTIVE",
         commercialTeamMemberships: {
           some: {
-            memberRole: "AGENT",
+            salesEnabled: true,
             isPrimary: true,
             isActive: true,
             team: {
@@ -55,7 +55,7 @@ export async function resolveDitoAgentIdentityAction(
           name: true,
           commercialTeamMemberships: {
             where: {
-              memberRole: "AGENT",
+              salesEnabled: true,
               isPrimary: true,
               isActive: true,
               team: {

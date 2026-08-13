@@ -435,6 +435,7 @@ function getSearchFilter(search: string): Prisma.DitoOrderWhereInput {
 function getSupervisorSearchFilter(
   search: string,
   supervisedTeamIds: readonly string[],
+  sellerUserId: string | null,
 ): Prisma.DitoOrderWhereInput {
   if (!search) return {};
 
@@ -443,7 +444,12 @@ function getSupervisorSearchFilter(
     OR: [
       {
         AND: [
-          { assignedTeamId: { in: [...supervisedTeamIds] } },
+          {
+            OR: [
+              { assignedTeamId: { in: [...supervisedTeamIds] } },
+              ...(sellerUserId ? [{ agentUserId: sellerUserId }] : []),
+            ],
+          },
           getSearchFilter(search),
         ],
       },
@@ -505,7 +511,8 @@ export async function getOrderInbox(
         }
       : {}),
   };
-  const [teamOptions, assignmentTeamRecords] = await Promise.all([
+  const [teamOptions, assignmentTeamRecords, primarySalesMembership] =
+    await Promise.all([
     access.role === "AGENT"
       ? Promise.resolve([])
       : database.commercialTeam.findMany({
@@ -524,12 +531,15 @@ export async function getOrderInbox(
             name: true,
             members: {
               where: {
-                memberRole: "AGENT",
+                salesEnabled: true,
                 isActive: true,
                 user: {
                   status: "ACTIVE",
                   memberships: {
-                    some: { organizationId, role: "AGENT" },
+                    some: {
+                      organizationId,
+                      role: { in: ["AGENT", "SUPERVISOR"] },
+                    },
                   },
                 },
               },
@@ -541,7 +551,20 @@ export async function getOrderInbox(
           },
         })
       : Promise.resolve([]),
+    access.role === "SUPERVISOR"
+      ? database.commercialTeamMember.findFirst({
+          where: {
+            userId: access.userId,
+            salesEnabled: true,
+            isPrimary: true,
+            isActive: true,
+            team: { organizationId, status: "ACTIVE" },
+          },
+          select: { teamId: true },
+        })
+      : Promise.resolve(null),
   ]);
+  const salesEnabled = primarySalesMembership !== null;
   const assignmentTeams = assignmentTeamRecords
     .map((team) => ({
       id: team.id,
@@ -568,6 +591,7 @@ export async function getOrderInbox(
     role: access.role,
     userId: access.userId,
     supervisedTeamIds,
+    salesEnabled,
   });
 
   const accessFilter: Prisma.DitoOrderWhereInput =
@@ -580,6 +604,14 @@ export async function getOrderInbox(
               { agentUserId: null, assignedTeamId: null },
             ],
           }
+        : orderScope.kind === "SUPERVISED_TEAMS_WITH_OWN_AND_ORPHANS"
+          ? {
+              OR: [
+                { assignedTeamId: { in: [...orderScope.teamIds] } },
+                { agentUserId: orderScope.userId },
+                { agentUserId: null, assignedTeamId: null },
+              ],
+            }
         : orderScope.kind === "NONE"
           ? { assignedTeamId: { in: [] } }
           : {};
@@ -612,7 +644,11 @@ export async function getOrderInbox(
       periodFilter,
       getStatusFilter(query.filter, now, incidentThreshold),
       access.role === "SUPERVISOR"
-        ? getSupervisorSearchFilter(search, supervisedTeamIds)
+        ? getSupervisorSearchFilter(
+            search,
+            supervisedTeamIds,
+            salesEnabled ? access.userId : null,
+          )
         : getSearchFilter(search),
     ],
   };
@@ -707,7 +743,9 @@ export async function getOrderInbox(
       supervisedTeamIds,
       orderAgentUserId: order.agentUserId,
       orderAssignedTeamId: order.assignedTeamId,
+      salesEnabled,
     });
+    const isOwnOrder = order.agentUserId === access.userId;
     const limitedOrphan = visibility === "LIMITED_ORPHAN";
     const status = String(order.status) as OrderStatusValue;
     const pendingCancellationRequest = order.cancellationRequests[0] ?? null;
@@ -831,24 +869,28 @@ export async function getOrderInbox(
         visibility,
         currentStatus: status,
         targetStatus: "OPEN",
+        isOwnOrder,
       }),
       canClose: canCloseDitoOrder({
         role: access.role,
         visibility,
+        isOwnOrder,
       }),
       canCancelDirectly: canCancelDitoOrder({
         role: access.role,
         visibility,
+        isOwnOrder,
       }),
       canRequestCancellation: canRequestDitoOrderCancellation({
         role: access.role,
         visibility,
         currentStatus: status,
         hasPendingRequest: pendingCancellationRequest !== null,
+        isSalesOwner: salesEnabled && isOwnOrder,
       }),
       canReviewCancellation:
         pendingCancellationRequest !== null &&
-        canCancelDitoOrder({ role: access.role, visibility }),
+        canCancelDitoOrder({ role: access.role, visibility, isOwnOrder }),
       pendingCancellationRequest: pendingCancellationRequest
         ? {
             id: pendingCancellationRequest.id,

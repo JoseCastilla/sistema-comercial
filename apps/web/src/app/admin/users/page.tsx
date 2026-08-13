@@ -68,6 +68,7 @@ export default async function AdminUsersPage({
               orderBy: [{ isPrimary: "desc" }, { team: { name: "asc" } }],
               select: {
                 memberRole: true,
+                salesEnabled: true,
                 isPrimary: true,
                 teamId: true,
                 team: { select: { name: true, status: true } },
@@ -112,7 +113,7 @@ export default async function AdminUsersPage({
     (member) =>
       !member.user.commercialTeamMemberships.some(
         (teamMembership) =>
-          teamMembership.memberRole === "AGENT" &&
+          teamMembership.salesEnabled &&
           teamMembership.isPrimary &&
           teamMembership.team.status === "ACTIVE",
       ),
@@ -254,7 +255,7 @@ export default async function AdminUsersPage({
                   );
                 const primaryTeam = activeMemberships.find(
                   (teamMembership) =>
-                    teamMembership.memberRole === "AGENT" &&
+                    teamMembership.salesEnabled &&
                     teamMembership.isPrimary,
                 );
                 const supervisedTeams = activeMemberships.filter(
@@ -283,6 +284,9 @@ export default async function AdminUsersPage({
                     </div>
                     <div className="ui-directory__cell" data-label="Rol">
                       {roleLabels[member.role] ?? member.role}
+                      {member.role === "SUPERVISOR" && primaryTeam
+                        ? " · También vende"
+                        : ""}
                     </div>
                     <div className="ui-directory__cell" data-label="Equipo">
                       <span

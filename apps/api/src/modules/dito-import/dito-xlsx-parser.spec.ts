@@ -15,6 +15,7 @@ const usefulHeaders = [
   'Email Cliente',
   'Nro Servicio Móvil',
   'Operación Comercial Móvil',
+  'Origen Portabilidad',
   'Operador Cedente Móvil',
   'Order ID Móvil',
   'Plan Móvil',
@@ -62,6 +63,7 @@ function createValidEntries(overrides: RowEntry[] = []): RowEntry[] {
     { header: 'Email Cliente', value: 'cliente@example.com' },
     { header: 'Nro Servicio Móvil', value: '900000001' },
     { header: 'Operación Comercial Móvil', value: 'PORTABILIDAD' },
+    { header: 'Origen Portabilidad', value: 'POSTPAGO' },
     { header: 'Operador Cedente Móvil', value: 21 },
     { header: 'Order ID Móvil', value: '1943000001' },
     {
@@ -251,5 +253,103 @@ describe('parseDitoSalesWorkbook', () => {
 
     expect(preview).toMatchObject({ importable: 0, excluded: 0, invalid: 1 });
     expect(preview.rows[0]?.issues).toContain('UNKNOWN_OPERATOR');
+  });
+
+  it('uses explicit portability origin independently from the plan price', async () => {
+    const prepaid = createRow(
+      usefulHeaders,
+      createValidEntries([
+        { header: 'Order ID Móvil', value: '1943000010' },
+        { header: 'Origen Portabilidad', value: 'PREPAGO' },
+        {
+          header: 'Plan Móvil',
+          value: 'Abierto Movistar Libre Plan Movistar Máximo S/29.90',
+        },
+      ]),
+    );
+    const postpaid = createRow(
+      usefulHeaders,
+      createValidEntries([
+        { header: 'Order ID Móvil', value: '1943000011' },
+        { header: 'Origen Portabilidad', value: 'POST PAGO' },
+        {
+          header: 'Plan Móvil',
+          value: 'Abierto Movistar Libre Plan Movistar Máximo S/49.90',
+        },
+      ]),
+    );
+    const input = await createWorkbook(usefulHeaders, [prepaid, postpaid]);
+
+    const preview = await parseDitoSalesWorkbook(
+      input,
+      new Date('2026-08-06T12:00:00.000Z'),
+    );
+
+    expect(preview).toMatchObject({ importable: 2, invalid: 0 });
+    expect(preview.rows[0]).toMatchObject({
+      portabilityOriginRaw: 'PREPAGO',
+      commercialOperation: 'PORT_PREPAID',
+      fixedCharge: 29.9,
+      operationRaw: 'PORTA CLARO PRE 29.9',
+    });
+    expect(preview.rows[1]).toMatchObject({
+      portabilityOriginRaw: 'POST PAGO',
+      commercialOperation: 'PORT_POSTPAID',
+      fixedCharge: 49.9,
+      operationRaw: 'PORTA CLARO POST 49.9',
+    });
+  });
+
+  it('blocks only portability rows when the origin column is absent', async () => {
+    const headersWithoutOrigin = usefulHeaders.filter(
+      (header) => header !== 'Origen Portabilidad',
+    );
+    const portabilityEntries = createValidEntries().filter(
+      (entry) => entry.header !== 'Origen Portabilidad',
+    );
+    const newLineEntries = createValidEntries([
+      { header: 'Order ID Móvil', value: '1943000012' },
+      { header: 'Operación Comercial Móvil', value: 'ALTA' },
+      { header: 'Operador Cedente Móvil', value: 45 },
+    ]).filter((entry) => entry.header !== 'Origen Portabilidad');
+    const input = await createWorkbook(headersWithoutOrigin, [
+      createRow(headersWithoutOrigin, portabilityEntries),
+      createRow(headersWithoutOrigin, newLineEntries),
+    ]);
+
+    const preview = await parseDitoSalesWorkbook(
+      input,
+      new Date('2026-08-06T12:00:00.000Z'),
+    );
+
+    expect(preview).toMatchObject({ importable: 1, invalid: 1 });
+    expect(preview.rows[0]).toMatchObject({
+      commercialOperation: null,
+      portabilityOriginRaw: null,
+    });
+    expect(preview.rows[0]?.issues).toContain('MISSING_PORTABILITY_ORIGIN');
+    expect(preview.rows[1]).toMatchObject({
+      commercialOperation: 'NEW_LINE',
+      operationRaw: 'ALTA NUEVA POST 39.9',
+    });
+  });
+
+  it('rejects an unrecognized portability origin instead of inferring it', async () => {
+    const input = await createWorkbook(usefulHeaders, [
+      createRow(
+        usefulHeaders,
+        createValidEntries([
+          { header: 'Origen Portabilidad', value: 'NO DEFINIDO' },
+        ]),
+      ),
+    ]);
+
+    const preview = await parseDitoSalesWorkbook(
+      input,
+      new Date('2026-08-06T12:00:00.000Z'),
+    );
+
+    expect(preview).toMatchObject({ importable: 0, invalid: 1 });
+    expect(preview.rows[0]?.issues).toContain('UNKNOWN_PORTABILITY_ORIGIN');
   });
 });

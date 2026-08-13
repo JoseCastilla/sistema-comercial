@@ -46,7 +46,7 @@ export async function assignSharedDitoImportRowsAction(
     const agentMembers = await transaction.organizationMember.findMany({
       where: {
         organizationId: membership.organization.id,
-        role: "AGENT",
+        role: { in: ["AGENT", "SUPERVISOR"] },
         userId: { in: parsed.data.assignments.map((item) => item.userId) },
         user: { status: "ACTIVE" },
       },
@@ -56,7 +56,7 @@ export async function assignSharedDitoImportRowsAction(
           select: {
             commercialTeamMemberships: {
               where: {
-                memberRole: "AGENT",
+                salesEnabled: true,
                 isPrimary: true,
                 isActive: true,
                 team: {

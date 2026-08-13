@@ -29,6 +29,7 @@ export default async function AdminTeamsPage() {
           orderBy: [{ memberRole: "desc" }, { user: { name: "asc" } }],
           select: {
             memberRole: true,
+            salesEnabled: true,
             isPrimary: true,
             user: { select: { id: true, name: true, email: true } },
           },
@@ -57,6 +58,7 @@ export default async function AdminTeamsPage() {
               select: {
                 teamId: true,
                 memberRole: true,
+                salesEnabled: true,
                 isPrimary: true,
                 team: { select: { name: true, status: true } },
               },
@@ -73,7 +75,7 @@ export default async function AdminTeamsPage() {
     );
     const primaryTeam = activeMemberships.find(
       (teamMembership) =>
-        teamMembership.memberRole === "AGENT" && teamMembership.isPrimary,
+        teamMembership.salesEnabled && teamMembership.isPrimary,
     );
 
     return {
@@ -97,7 +99,7 @@ export default async function AdminTeamsPage() {
   const activeAgentIds = new Set(
     activeTeams.flatMap((team) =>
       team.members
-        .filter((member) => member.memberRole === "AGENT")
+        .filter((member) => member.salesEnabled)
         .map((member) => member.user.id),
     ),
   );
@@ -222,7 +224,10 @@ export default async function AdminTeamsPage() {
                             {teamSupervisors.map((item) => (
                               <li key={item.user.id}>
                                 <span>{item.user.name}</span>
-                                <small>{item.user.email}</small>
+                                <small>
+                                  {item.user.email}
+                                  {item.salesEnabled ? " · También vende" : ""}
+                                </small>
                               </li>
                             ))}
                           </ul>

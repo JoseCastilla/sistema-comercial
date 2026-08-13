@@ -66,7 +66,7 @@ export async function assignAgentAliasAction(
       where: {
         organizationId: membership.organization.id,
         userId,
-        role: "AGENT",
+        role: { in: ["AGENT", "SUPERVISOR"] },
 
         user: {
           status: "ACTIVE",
@@ -83,7 +83,7 @@ export async function assignAgentAliasAction(
             status: true,
             commercialTeamMemberships: {
               where: {
-                memberRole: "AGENT",
+                salesEnabled: true,
                 isPrimary: true,
                 isActive: true,
                 team: {
@@ -93,6 +93,7 @@ export async function assignAgentAliasAction(
               take: 1,
               select: {
                 isActive: true,
+                salesEnabled: true,
                 team: {
                   select: {
                     status: true,
@@ -120,6 +121,8 @@ export async function assignAgentAliasAction(
         userStatus: targetMembership.user.status,
         organizationRole: targetMembership.role,
         primaryMembershipActive: primaryTeamMembership?.isActive ?? false,
+        primarySalesEnabled:
+          primaryTeamMembership?.salesEnabled ?? false,
         primaryTeamStatus: primaryTeamMembership?.team.status ?? null,
       })
     ) {

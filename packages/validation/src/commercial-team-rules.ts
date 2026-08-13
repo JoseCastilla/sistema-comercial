@@ -90,6 +90,11 @@ export type DitoOrderScope =
   | { kind: "ORGANIZATION" }
   | { kind: "AGENT"; userId: string }
   | { kind: "SUPERVISED_TEAMS_WITH_ORPHANS"; teamIds: readonly string[] }
+  | {
+      kind: "SUPERVISED_TEAMS_WITH_OWN_AND_ORPHANS";
+      teamIds: readonly string[];
+      userId: string;
+    }
   | { kind: "NONE" };
 
 export type CommercialContextAccess = "NORMAL" | "DERIVED_READ_ONLY" | "NONE";
@@ -118,9 +123,13 @@ export function canAssignCommercialTeamMember(input: {
   memberUserStatus: UserStatus;
   memberOrganizationRole: CommercialAccessRole;
   targetMemberRole: CommercialTeamMemberRole;
+  salesEnabled?: boolean;
 }): boolean {
-  const expectedOrganizationRole =
-    input.targetMemberRole === "AGENT" ? "AGENT" : "SUPERVISOR";
+  const compatibleRole =
+    input.targetMemberRole === "AGENT"
+      ? input.memberOrganizationRole === "AGENT"
+      : input.memberOrganizationRole === "SUPERVISOR" ||
+        (input.salesEnabled === true && input.memberOrganizationRole === "AGENT");
 
   return (
     canAdministerCommercialTeam({
@@ -131,7 +140,7 @@ export function canAssignCommercialTeamMember(input: {
     }) &&
     input.memberOrganizationId === input.actorOrganizationId &&
     input.memberUserStatus === "ACTIVE" &&
-    input.memberOrganizationRole === expectedOrganizationRole
+    compatibleRole
   );
 }
 
@@ -153,6 +162,7 @@ export function resolveDitoOrderScope(input: {
   role: CommercialAccessRole;
   userId: string;
   supervisedTeamIds: readonly string[];
+  salesEnabled?: boolean;
 }): DitoOrderScope {
   if (input.role === "ADMIN" || input.role === "BACKOFFICE") {
     return { kind: "ORGANIZATION" };
@@ -160,6 +170,14 @@ export function resolveDitoOrderScope(input: {
 
   if (input.role === "AGENT") {
     return { kind: "AGENT", userId: input.userId };
+  }
+
+  if (input.role === "SUPERVISOR" && input.salesEnabled) {
+    return {
+      kind: "SUPERVISED_TEAMS_WITH_OWN_AND_ORPHANS",
+      teamIds: input.supervisedTeamIds,
+      userId: input.userId,
+    };
   }
 
   if (input.supervisedTeamIds.length === 0) {
@@ -178,12 +196,17 @@ export function resolveDitoOrderVisibility(input: {
   supervisedTeamIds: readonly string[];
   orderAgentUserId: string | null;
   orderAssignedTeamId: string | null;
+  salesEnabled?: boolean;
 }): DitoOrderVisibility {
   if (input.role === "ADMIN" || input.role === "BACKOFFICE") {
     return "FULL";
   }
 
   if (input.role === "SUPERVISOR") {
+    if (input.salesEnabled && input.orderAgentUserId === input.userId) {
+      return "FULL";
+    }
+
     if (includesTeam(input.supervisedTeamIds, input.orderAssignedTeamId)) {
       return "FULL";
     }
@@ -204,9 +227,11 @@ export function resolveDitoOrderVisibility(input: {
 export function canCloseDitoOrder(input: {
   role: CommercialAccessRole;
   visibility: DitoOrderVisibility;
+  isOwnOrder?: boolean;
 }): boolean {
   return (
     input.visibility === "FULL" &&
+    !input.isOwnOrder &&
     (input.role === "ADMIN" ||
       input.role === "BACKOFFICE" ||
       input.role === "SUPERVISOR")
@@ -216,9 +241,11 @@ export function canCloseDitoOrder(input: {
 export function canCancelDitoOrder(input: {
   role: CommercialAccessRole;
   visibility: DitoOrderVisibility;
+  isOwnOrder?: boolean;
 }): boolean {
   return (
     input.visibility === "FULL" &&
+    !input.isOwnOrder &&
     (input.role === "ADMIN" ||
       input.role === "BACKOFFICE" ||
       input.role === "SUPERVISOR")
@@ -230,9 +257,10 @@ export function canRequestDitoOrderCancellation(input: {
   visibility: DitoOrderVisibility;
   currentStatus: DitoOrderStatus;
   hasPendingRequest: boolean;
+  isSalesOwner?: boolean;
 }): boolean {
   return (
-    input.role === "AGENT" &&
+    (input.role === "AGENT" || input.isSalesOwner === true) &&
     input.visibility === "FULL" &&
     input.currentStatus !== "CLOSED" &&
     input.currentStatus !== "CANCELLED" &&
@@ -245,6 +273,7 @@ export function canTransitionDitoOrderStatus(input: {
   visibility: DitoOrderVisibility;
   currentStatus: DitoOrderStatus;
   targetStatus: DitoOrderStatus;
+  isOwnOrder?: boolean;
 }): boolean {
   if (input.visibility !== "FULL") {
     return false;
@@ -351,14 +380,17 @@ export function canResolveAutomaticDitoAssignment(input: {
   userStatus: UserStatus;
   organizationRole: CommercialAccessRole;
   primaryMembershipActive: boolean;
+  primarySalesEnabled: boolean;
   primaryTeamId: string | null;
   primaryTeamStatus: CommercialTeamStatus | null;
 }): boolean {
   return (
     input.aliasMatchCount === 1 &&
     input.userStatus === "ACTIVE" &&
-    input.organizationRole === "AGENT" &&
+    (input.organizationRole === "AGENT" ||
+      input.organizationRole === "SUPERVISOR") &&
     input.primaryMembershipActive &&
+    input.primarySalesEnabled &&
     input.primaryTeamId !== null &&
     input.primaryTeamStatus === "ACTIVE"
   );
@@ -368,12 +400,15 @@ export function canActivateAgentAlias(input: {
   userStatus: UserStatus;
   organizationRole: CommercialAccessRole;
   primaryMembershipActive: boolean;
+  primarySalesEnabled: boolean;
   primaryTeamStatus: CommercialTeamStatus | null;
 }): boolean {
   return (
     input.userStatus === "ACTIVE" &&
-    input.organizationRole === "AGENT" &&
+    (input.organizationRole === "AGENT" ||
+      input.organizationRole === "SUPERVISOR") &&
     input.primaryMembershipActive &&
+    input.primarySalesEnabled &&
     input.primaryTeamStatus === "ACTIVE"
   );
 }

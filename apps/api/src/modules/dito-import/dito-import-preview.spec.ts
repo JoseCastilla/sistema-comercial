@@ -22,6 +22,7 @@ const parsedRow: ParsedDitoBatchRow = {
   holderDocumentNumber: '12345678',
   customerEmail: 'cliente@example.com',
   serviceNumber: '900000001',
+  portabilityOriginRaw: 'POSTPAGO',
   commercialOperation: 'PORT_POSTPAID',
   carrier: 'CLARO',
   fixedCharge: 39.9,

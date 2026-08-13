@@ -8,7 +8,7 @@ import {
 const maxWorkbookBytes = 10 * 1024 * 1024;
 const businessTimeZoneOffset = '-05:00';
 
-export const ditoBatchParserVersion = '1.0';
+export const ditoBatchParserVersion = '1.1';
 
 const operatorCatalog = {
   '20': 'ENTEL',
@@ -18,7 +18,7 @@ const operatorCatalog = {
 
 type DitoCarrier =
   (typeof operatorCatalog)[keyof typeof operatorCatalog] | 'UNKNOWN';
-type DitoCommercialOperation = 'NEW_LINE' | 'PORT_POSTPAID';
+type DitoCommercialOperation = 'NEW_LINE' | 'PORT_PREPAID' | 'PORT_POSTPAID';
 type DitoDeliveryMethod = 'EXPRESS' | 'REGULAR_24H';
 
 export type DitoBatchRowOutcome = 'IMPORTABLE' | 'EXCLUDED' | 'INVALID';
@@ -30,6 +30,8 @@ export type DitoBatchRowIssue =
   | 'INVALID_ORDER_CODE'
   | 'INVALID_REGISTERED_AT'
   | 'UNKNOWN_OPERATION'
+  | 'MISSING_PORTABILITY_ORIGIN'
+  | 'UNKNOWN_PORTABILITY_ORIGIN'
   | 'UNKNOWN_OPERATOR'
   | 'UNKNOWN_DELIVERY_METHOD'
   | 'UNKNOWN_PROVINCE';
@@ -50,6 +52,7 @@ export interface ParsedDitoBatchRow {
   holderDocumentNumber: string | null;
   customerEmail: string | null;
   serviceNumber: string | null;
+  portabilityOriginRaw: string | null;
   commercialOperation: DitoCommercialOperation | null;
   carrier: DitoCarrier | null;
   fixedCharge: number | null;
@@ -92,6 +95,7 @@ interface DitoColumns {
   customerEmail: number;
   serviceNumber: number;
   operation: number;
+  portabilityOrigin: number | null;
   operator: number;
   orderCode: number;
   plan: number;
@@ -238,6 +242,7 @@ function resolveColumns(headers: string[]): DitoColumns {
     customerEmail: find('Email Cliente') as number,
     serviceNumber,
     operation: find('Operación Comercial Móvil', serviceNumber - 1) as number,
+    portabilityOrigin: find('Origen Portabilidad', serviceNumber - 1, false),
     operator: find('Operador Cedente Móvil', serviceNumber - 1) as number,
     orderCode: find('Order ID Móvil', serviceNumber - 1) as number,
     plan: find('Plan Móvil', serviceNumber - 1) as number,
@@ -289,9 +294,14 @@ function parseRow(
     text(columns.registeredTime),
   );
   const operationValue = normalizeLookup(text(columns.operation));
-  const commercialOperation = parseCommercialOperation(operationValue);
+  const portabilityOriginRaw = text(columns.portabilityOrigin);
+  const portabilityOrigin = parsePortabilityOrigin(portabilityOriginRaw);
+  const commercialOperation = parseCommercialOperation(
+    operationValue,
+    portabilityOrigin,
+  );
   const operatorCode = normalizeCode(text(columns.operator));
-  const carrier = resolveCarrier(commercialOperation, operatorCode);
+  const carrier = resolveCarrier(operationValue, operatorCode);
   const plan = text(columns.plan);
   const fixedCharge = parseFixedCharge(plan);
   const orderCodeNormalized = digits(text(columns.orderCode));
@@ -310,8 +320,21 @@ function parseRow(
 
   if (!registeredAt) issues.push('INVALID_REGISTERED_AT');
   if (!orderCodeNormalized) issues.push('INVALID_ORDER_CODE');
-  if (!commercialOperation) issues.push('UNKNOWN_OPERATION');
-  if (!carrier) issues.push('UNKNOWN_OPERATOR');
+  if (operationValue === 'PORTABILIDAD') {
+    if (!normalizeLookup(portabilityOriginRaw)) {
+      issues.push('MISSING_PORTABILITY_ORIGIN');
+    } else if (!portabilityOrigin) {
+      issues.push('UNKNOWN_PORTABILITY_ORIGIN');
+    }
+  } else if (operationValue !== 'ALTA') {
+    issues.push('UNKNOWN_OPERATION');
+  }
+  if (
+    (operationValue === 'PORTABILIDAD' || operationValue === 'ALTA') &&
+    !carrier
+  ) {
+    issues.push('UNKNOWN_OPERATOR');
+  }
   if (!deliveryMethod) issues.push('UNKNOWN_DELIVERY_METHOD');
   if (!province) issues.push('UNKNOWN_PROVINCE');
 
@@ -365,6 +388,7 @@ function parseRow(
     holderDocumentNumber: digits(text(columns.documentNumber)),
     customerEmail: normalizeEmail(text(columns.customerEmail)),
     serviceNumber: digits(text(columns.serviceNumber)),
+    portabilityOriginRaw: cleanOptional(portabilityOriginRaw),
     commercialOperation,
     carrier: carrier ?? null,
     fixedCharge,
@@ -527,18 +551,38 @@ function isCurrentBusinessMonth(value: Date, now: Date): boolean {
 
 function parseCommercialOperation(
   value: string,
+  portabilityOrigin: 'PREPAID' | 'POSTPAID' | null,
 ): DitoCommercialOperation | null {
   if (value === 'ALTA') return 'NEW_LINE';
-  if (value === 'PORTABILIDAD') return 'PORT_POSTPAID';
+  if (value === 'PORTABILIDAD' && portabilityOrigin === 'PREPAID') {
+    return 'PORT_PREPAID';
+  }
+  if (value === 'PORTABILIDAD' && portabilityOrigin === 'POSTPAID') {
+    return 'PORT_POSTPAID';
+  }
+
+  return null;
+}
+
+function parsePortabilityOrigin(
+  value: string | null,
+): 'PREPAID' | 'POSTPAID' | null {
+  const normalized = normalizeLookup(value).replace(/[\s_-]+/g, '');
+
+  if (normalized === 'PREPAGO' || normalized === 'PREPAID') return 'PREPAID';
+  if (normalized === 'POSTPAGO' || normalized === 'POSTPAID') {
+    return 'POSTPAID';
+  }
 
   return null;
 }
 
 function resolveCarrier(
-  operation: DitoCommercialOperation | null,
+  operation: string,
   operatorCode: string | null,
 ): DitoCarrier | null {
-  if (operation === 'NEW_LINE') return 'UNKNOWN';
+  if (operation === 'ALTA') return 'UNKNOWN';
+  if (operation !== 'PORTABILIDAD') return null;
   if (!operatorCode) return null;
 
   return operatorCatalog[operatorCode as keyof typeof operatorCatalog] ?? null;
@@ -566,7 +610,9 @@ function createOperationRaw(
 
   if (!carrier) return null;
 
-  return ['PORTA', carrier, 'POST', charge].filter(Boolean).join(' ');
+  const origin = operation === 'PORT_PREPAID' ? 'PRE' : 'POST';
+
+  return ['PORTA', carrier, origin, charge].filter(Boolean).join(' ');
 }
 
 function parseDeliveryMethod(value: string | null): DitoDeliveryMethod | null {

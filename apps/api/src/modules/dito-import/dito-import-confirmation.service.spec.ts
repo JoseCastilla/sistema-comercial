@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 
 import { DatabaseService } from '../database/database.service';
 
@@ -22,6 +22,7 @@ const parsedRow = {
   holderDocumentNumber: '12345678',
   customerEmail: 'cliente@example.com',
   serviceNumber: '900000001',
+  portabilityOriginRaw: 'POSTPAGO',
   commercialOperation: 'PORT_POSTPAID',
   carrier: 'CLARO',
   fixedCharge: 39.9,
@@ -45,6 +46,7 @@ function batch(overrides: Record<string, unknown> = {}) {
   return {
     id: 'batch-1',
     status: 'READY',
+    parserVersion: '1.1',
     updatedAt: expectedUpdatedAt,
     newRows: 1,
     enrichmentRows: 0,
@@ -190,6 +192,28 @@ describe('DitoImportConfirmationService', () => {
         expectedUpdatedAt,
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+    expect(transaction.ditoImportBatch.updateMany).not.toHaveBeenCalled();
+    expect(transaction.ditoOrder.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unconfirmed preview created by an older parser', async () => {
+    const transaction = {
+      ditoImportBatch: {
+        findFirst: jest.fn().mockResolvedValue(batch({ parserVersion: '1.0' })),
+        updateMany: jest.fn(),
+      },
+      ditoOrder: { create: jest.fn(), updateMany: jest.fn() },
+    };
+    const { service } = createService(transaction);
+
+    await expect(
+      service.confirm({
+        organizationId: 'organization-1',
+        actorUserId: 'admin-1',
+        batchId: 'batch-1',
+        expectedUpdatedAt,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(transaction.ditoImportBatch.updateMany).not.toHaveBeenCalled();
     expect(transaction.ditoOrder.create).not.toHaveBeenCalled();
   });

@@ -88,7 +88,15 @@ export class DitoOrdersRepository {
           memberships: {
             some: {
               organizationId,
-              role: 'AGENT',
+              role: { in: ['AGENT', 'SUPERVISOR'] },
+            },
+          },
+          commercialTeamMemberships: {
+            some: {
+              salesEnabled: true,
+              isPrimary: true,
+              isActive: true,
+              team: { organizationId, status: 'ACTIVE' },
             },
           },
         },
@@ -118,7 +126,7 @@ export class DitoOrdersRepository {
     const membership = await database.organizationMember.findFirst({
       where: {
         organizationId,
-        role: 'AGENT',
+        role: { in: ['AGENT', 'SUPERVISOR'] },
         user: {
           email: {
             equals: normalizedEmail,
@@ -133,7 +141,7 @@ export class DitoOrdersRepository {
           select: {
             commercialTeamMemberships: {
               where: {
-                memberRole: 'AGENT',
+                salesEnabled: true,
                 isPrimary: true,
                 isActive: true,
                 team: {

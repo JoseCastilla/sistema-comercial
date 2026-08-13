@@ -35,6 +35,31 @@ const batchStatusLabels: Record<string, string> = {
   FAILED: "Fallida",
 };
 
+const currentDitoImportParserVersion = "1.1";
+
+const operationLabels: Record<string, string> = {
+  NEW_LINE: "Alta nueva",
+  PORT_PREPAID: "Portabilidad prepago",
+  PORT_POSTPAID: "Portabilidad postpago",
+};
+
+const issueLabels: Record<string, string> = {
+  STATUS_NOT_APPROVED: "Estado DITO no aprobado",
+  OUTSIDE_CURRENT_MONTH: "Fuera del mes actual",
+  MISSING_REQUIRED_VALUE: "Faltan datos requeridos",
+  INVALID_ORDER_CODE: "Código de orden inválido",
+  INVALID_REGISTERED_AT: "Fecha de registro inválida",
+  UNKNOWN_OPERATION: "Operación no reconocida",
+  MISSING_PORTABILITY_ORIGIN: "Falta Origen Portabilidad",
+  UNKNOWN_PORTABILITY_ORIGIN: "Origen de portabilidad no reconocido",
+  UNKNOWN_OPERATOR: "Operador cedente no reconocido",
+  UNKNOWN_DELIVERY_METHOD: "Método de entrega no reconocido",
+  UNKNOWN_PROVINCE: "Provincia no reconocida",
+  UNRESOLVED_DITO_IDENTITY: "Falta vincular al asesor",
+  SALES_CODE_POINTS_TO_ANOTHER_ORDER: "Código de venta en otra orden",
+  VALID_VALUE_CONFLICT: "Datos válidos en conflicto",
+};
+
 export default async function DitoImportsPage({
   searchParams,
 }: {
@@ -66,6 +91,7 @@ export default async function DitoImportsPage({
           id: true,
           fileName: true,
           fileSha256: true,
+          parserVersion: true,
           status: true,
           updatedAt: true,
           uploadedAt: true,
@@ -142,12 +168,12 @@ export default async function DitoImportsPage({
     ? await database.organizationMember.findMany({
         where: {
           organizationId,
-          role: "AGENT",
+          role: { in: ["AGENT", "SUPERVISOR"] },
           user: {
             status: "ACTIVE",
             commercialTeamMemberships: {
               some: {
-                memberRole: "AGENT",
+                salesEnabled: true,
                 isPrimary: true,
                 isActive: true,
                 team: { organizationId, status: "ACTIVE" },
@@ -163,7 +189,7 @@ export default async function DitoImportsPage({
               name: true,
               commercialTeamMemberships: {
                 where: {
-                  memberRole: "AGENT",
+                  salesEnabled: true,
                   isPrimary: true,
                   isActive: true,
                   team: { organizationId, status: "ACTIVE" },
@@ -210,6 +236,8 @@ export default async function DitoImportsPage({
   const confirmationDisabledReason = selectedBatch
     ? getConfirmationDisabledReason(
         selectedBatch.status,
+        selectedBatch.parserVersion,
+        selectedBatch.importableRows,
         unresolvedIdentities.length,
         pendingSharedRows,
         selectedBatch.conflictRows,
@@ -311,6 +339,7 @@ export default async function DitoImportsPage({
                       tone={
                         unresolvedIdentities.length +
                           pendingSharedRows +
+                          selectedBatch.invalidRows +
                           selectedBatch.conflictRows >
                         0
                           ? "danger"
@@ -319,6 +348,7 @@ export default async function DitoImportsPage({
                       value={
                         unresolvedIdentities.length +
                         pendingSharedRows +
+                        selectedBatch.invalidRows +
                         selectedBatch.conflictRows
                       }
                     />
@@ -332,6 +362,14 @@ export default async function DitoImportsPage({
                       {selectedBatch.fileSha256.slice(0, 12)}…
                     </span>
                   </div>
+                  {selectedBatch.parserVersion !==
+                  currentDitoImportParserVersion ? (
+                    <p className="mt-4 rounded-xl border border-ui-warning bg-ui-warning-soft px-4 py-3 text-sm text-ui-warning">
+                      Este lote se procesó antes de leer Origen Portabilidad. Las
+                      portabilidades históricas deben conciliarse por código de
+                      orden antes de usarlas en comisiones.
+                    </p>
+                  ) : null}
                 </SectionPanel>
 
                 {unresolvedIdentities.length > 0 ? (
@@ -418,6 +456,7 @@ export default async function DitoImportsPage({
                           <th className="px-3 py-3 font-medium">Fila</th>
                           <th className="px-3 py-3 font-medium">Orden</th>
                           <th className="px-3 py-3 font-medium">Cliente</th>
+                          <th className="px-3 py-3 font-medium">Operación</th>
                           <th className="px-3 py-3 font-medium">
                             Usuario DITO
                           </th>
@@ -436,6 +475,20 @@ export default async function DitoImportsPage({
                             <td className="max-w-56 truncate px-3 py-3 font-medium text-ui-text">
                               {readJsonText(row.parsedData, "holderName") ??
                                 "No registrado"}
+                            </td>
+                            <td className="px-3 py-3 text-ui-text">
+                              <span className="block font-medium">
+                                {operationLabel(
+                                  row.parsedData,
+                                  selectedBatch.parserVersion,
+                                )}
+                              </span>
+                              <span className="mt-1 block text-xs text-ui-muted">
+                                {portabilityOriginLabel(
+                                  row.parsedData,
+                                  selectedBatch.parserVersion,
+                                )}
+                              </span>
                             </td>
                             <td className="px-3 py-3 text-ui-muted">
                               {row.manualAgent?.name ??
@@ -466,6 +519,15 @@ export default async function DitoImportsPage({
                                         row.classification
                                       ] ?? row.classification)}
                               </StatusBadge>
+                              {row.issueCodes.length > 0 ? (
+                                <span className="mt-1.5 block max-w-64 text-xs leading-5 text-ui-danger">
+                                  {row.issueCodes
+                                    .map(
+                                      (issue) => issueLabels[issue] ?? issue,
+                                    )
+                                    .join(" · ")}
+                                </span>
+                              ) : null}
                             </td>
                           </tr>
                         ))}
@@ -523,6 +585,34 @@ function readJsonText(value: unknown, key: string): string | null {
   return null;
 }
 
+function operationLabel(value: unknown, parserVersion: string): string {
+  const operation = readJsonText(value, "commercialOperation");
+  const origin = readJsonText(value, "portabilityOriginRaw");
+
+  if (
+    parserVersion !== currentDitoImportParserVersion &&
+    operation?.startsWith("PORT_") &&
+    !origin
+  ) {
+    return "Portabilidad por revisar";
+  }
+
+  return operation ? (operationLabels[operation] ?? operation) : "Sin clasificar";
+}
+
+function portabilityOriginLabel(value: unknown, parserVersion: string): string {
+  const operation = readJsonText(value, "commercialOperation");
+  const origin = readJsonText(value, "portabilityOriginRaw");
+
+  if (operation === "NEW_LINE") return "No requiere origen";
+  if (origin) return `Origen declarado: ${origin}`;
+  if (parserVersion !== currentDitoImportParserVersion) {
+    return `Origen no informado · análisis ${parserVersion}`;
+  }
+
+  return "Origen no informado";
+}
+
 function classificationTone(
   classification: string,
 ): "neutral" | "success" | "warning" | "danger" {
@@ -544,12 +634,20 @@ function classificationTone(
 
 function getConfirmationDisabledReason(
   status: string,
+  parserVersion: string,
+  importableRows: number,
   unresolvedIdentities: number,
   pendingSharedRows: number,
   conflicts: number,
 ): string | null {
   if (status === "CONFIRMING") {
     return "La importación ya está siendo procesada.";
+  }
+  if (parserVersion !== currentDitoImportParserVersion) {
+    return "Esta vista previa es anterior al campo Origen Portabilidad. Carga un archivo actualizado para generar un análisis seguro.";
+  }
+  if (importableRows === 0) {
+    return "No existen filas válidas para importar. Revisa los motivos y carga un archivo corregido.";
   }
   if (unresolvedIdentities > 0) {
     return `Vincula ${unresolvedIdentities} ${unresolvedIdentities === 1 ? "asesor pendiente" : "asesores pendientes"} antes de confirmar.`;

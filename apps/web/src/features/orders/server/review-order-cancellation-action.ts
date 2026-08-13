@@ -62,6 +62,23 @@ export async function reviewOrderCancellationAction(
               })
             ).map((teamMembership) => teamMembership.teamId)
           : [];
+      const primarySalesMembership =
+        membership.role === "SUPERVISOR"
+          ? await transaction.commercialTeamMember.findFirst({
+              where: {
+                userId: session.user.id,
+                salesEnabled: true,
+                isPrimary: true,
+                isActive: true,
+                team: {
+                  organizationId: membership.organization.id,
+                  status: "ACTIVE",
+                },
+              },
+              select: { teamId: true },
+            })
+          : null;
+      const salesEnabled = primarySalesMembership !== null;
 
       const request = await transaction.ditoOrderCancellationRequest.findFirst({
         where: {
@@ -105,9 +122,17 @@ export async function reviewOrderCancellationAction(
         supervisedTeamIds,
         orderAgentUserId: order.agentUserId,
         orderAssignedTeamId: order.assignedTeamId,
+        salesEnabled,
       });
+      const isOwnOrder = order.agentUserId === session.user.id;
 
-      if (!canCancelDitoOrder({ role: membership.role, visibility })) {
+      if (
+        !canCancelDitoOrder({
+          role: membership.role,
+          visibility,
+          isOwnOrder,
+        })
+      ) {
         throw new CancellationReviewError(
           "No tienes permiso para revisar esta solicitud.",
         );

@@ -15,6 +15,10 @@
 7. Añadir resultados descargables y enlace desde cada pedido al lote de origen.
 8. Validar primero en local con el archivo del 01/08 y después desplegar Web/API
    antes de ejecutar la carga de producción.
+9. Leer `Origen Portabilidad` como fuente explícita de prepago/postpago. El plan
+   solo aporta el cargo fijo y nunca determina el origen de la portabilidad.
+10. Invalidar portabilidades sin origen reconocido y retirar la confirmación de
+    vistas previas creadas con una versión anterior del parser.
 
 ## Arquitectura de seguridad
 

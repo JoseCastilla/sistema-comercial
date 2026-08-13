@@ -122,6 +122,23 @@ export async function updateOrderStatusAction(
               })
             ).map((membership) => membership.teamId)
           : [];
+      const primarySalesMembership =
+        membership.role === "SUPERVISOR"
+          ? await transaction.commercialTeamMember.findFirst({
+              where: {
+                userId: session.user.id,
+                salesEnabled: true,
+                isPrimary: true,
+                isActive: true,
+                team: {
+                  organizationId: membership.organization.id,
+                  status: "ACTIVE",
+                },
+              },
+              select: { teamId: true },
+            })
+          : null;
+      const salesEnabled = primarySalesMembership !== null;
       const order = await transaction.ditoOrder.findFirst({
         where: {
           id: parsed.data.orderId,
@@ -180,7 +197,11 @@ export async function updateOrderStatusAction(
         supervisedTeamIds,
         orderAgentUserId: order.agentUserId,
         orderAssignedTeamId: order.assignedTeamId,
+        salesEnabled,
       });
+      const isOwnOrder = order.agentUserId === session.user.id;
+      const isSalesOwner =
+        isOwnOrder && (membership.role === "AGENT" || salesEnabled);
 
       if (visibility !== "FULL") {
         throw new OrderStatusUpdateError(
@@ -206,13 +227,14 @@ export async function updateOrderStatusAction(
         );
       }
 
-      if (membership.role === "AGENT" && normalized.status === "CANCELLED") {
+      if (isSalesOwner && normalized.status === "CANCELLED") {
         const hasPendingRequest = order.cancellationRequests.length > 0;
         const canRequest = canRequestDitoOrderCancellation({
           role: membership.role,
           visibility,
           currentStatus: order.status,
           hasPendingRequest,
+          isSalesOwner,
         });
 
         if (!canRequest) {
@@ -271,6 +293,7 @@ export async function updateOrderStatusAction(
           visibility,
           currentStatus: order.status,
           targetStatus: normalized.status,
+          isOwnOrder,
         })
       ) {
         if (order.status === "CLOSED" || order.status === "CANCELLED") {

@@ -22,8 +22,14 @@ function normalizeTeamName(value: string): string {
     .toUpperCase();
 }
 
-function isTeamMemberRole(value: string): value is "AGENT" | "SUPERVISOR" {
-  return value === "AGENT" || value === "SUPERVISOR";
+type TeamAssignmentMode = "AGENT" | "SUPERVISOR" | "SELLING_SUPERVISOR";
+
+function isTeamAssignmentMode(value: string): value is TeamAssignmentMode {
+  return (
+    value === "AGENT" ||
+    value === "SUPERVISOR" ||
+    value === "SELLING_SUPERVISOR"
+  );
 }
 
 function revalidateTeamPages(): void {
@@ -168,13 +174,14 @@ export async function assignTeamMemberAction(
   const { membership, session } = await requireAdminAccess();
   const teamId = readText(formData.get("teamId"));
   const userId = readText(formData.get("userId"));
-  const memberRole = readText(formData.get("memberRole"));
+  const assignmentMode = readText(formData.get("memberRole"));
 
-  if (!teamId || !userId || !isTeamMemberRole(memberRole)) {
+  if (!teamId || !userId || !isTeamAssignmentMode(assignmentMode)) {
     return { type: "error", message: "Selecciona un equipo y una persona válidos." };
   }
 
-  const expectedOrganizationRole = memberRole === "AGENT" ? "AGENT" : "SUPERVISOR";
+  const memberRole = assignmentMode === "AGENT" ? "AGENT" : "SUPERVISOR";
+  const salesEnabled = assignmentMode !== "SUPERVISOR";
 
   const [team, targetMembership] = await Promise.all([
     database.commercialTeam.findFirst({
@@ -189,7 +196,12 @@ export async function assignTeamMemberAction(
       where: {
         organizationId: membership.organization.id,
         userId,
-        role: expectedOrganizationRole,
+        role:
+          assignmentMode === "AGENT"
+            ? "AGENT"
+            : assignmentMode === "SELLING_SUPERVISOR"
+              ? { in: ["AGENT", "SUPERVISOR"] }
+              : "SUPERVISOR",
         user: { status: "ACTIVE" },
       },
       select: {
@@ -218,35 +230,48 @@ export async function assignTeamMemberAction(
       memberUserStatus: targetMembership.user.status,
       memberOrganizationRole: targetMembership.role,
       targetMemberRole: memberRole,
+      salesEnabled,
     })
   ) {
     return { type: "error", message: "La asignación solicitada no está permitida." };
   }
 
   const assignedAt = new Date();
-  const isAgent = memberRole === "AGENT";
+  const isPrimarySeller = salesEnabled;
 
   await database.$transaction(async (transaction) => {
     const previousMembership = await transaction.commercialTeamMember.findFirst({
       where: {
         userId,
-        memberRole,
         isActive: true,
         team: { organizationId: membership.organization.id },
+        ...(salesEnabled ? { salesEnabled: true } : { memberRole }),
       },
-      select: { teamId: true, isPrimary: true },
+      select: { teamId: true, isPrimary: true, salesEnabled: true },
     });
 
-    if (isAgent) {
+    if (salesEnabled) {
       await transaction.commercialTeamMember.updateMany({
         where: {
           userId,
-          memberRole: "AGENT",
+          salesEnabled: true,
           isActive: true,
           team: { organizationId: membership.organization.id },
           NOT: { teamId },
         },
         data: { isActive: false, isPrimary: false, validUntil: assignedAt },
+      });
+    }
+
+    if (assignmentMode === "SELLING_SUPERVISOR") {
+      await transaction.organizationMember.update({
+        where: {
+          organizationId_userId: {
+            organizationId: membership.organization.id,
+            userId,
+          },
+        },
+        data: { role: "SUPERVISOR" },
       });
     }
 
@@ -257,14 +282,16 @@ export async function assignTeamMemberAction(
         teamId,
         userId,
         memberRole,
-        isPrimary: isAgent,
+        salesEnabled,
+        isPrimary: isPrimarySeller,
         isActive: true,
         assignedByUserId: session.user.id,
         validFrom: assignedAt,
       },
       update: {
         memberRole,
-        isPrimary: isAgent,
+        salesEnabled,
+        isPrimary: isPrimarySeller,
         isActive: true,
         assignedByUserId: session.user.id,
         validFrom: assignedAt,
@@ -280,9 +307,20 @@ export async function assignTeamMemberAction(
         actorUserId: session.user.id,
         targetUserId: userId,
         previousValues: previousMembership
-          ? { teamId: previousMembership.teamId, isPrimary: previousMembership.isPrimary }
+          ? {
+              teamId: previousMembership.teamId,
+              isPrimary: previousMembership.isPrimary,
+              salesEnabled: previousMembership.salesEnabled,
+            }
           : undefined,
-        newValues: { teamId, memberRole, isPrimary: isAgent, isActive: true },
+        newValues: {
+          teamId,
+          memberRole,
+          salesEnabled,
+          isPrimary: isPrimarySeller,
+          isActive: true,
+          promotedToSupervisor: assignmentMode === "SELLING_SUPERVISOR",
+        },
       },
     });
   });
@@ -290,6 +328,9 @@ export async function assignTeamMemberAction(
   revalidateTeamPages();
   return {
     type: "success",
-    message: `${targetMembership.user.name} asignado a ${team.name}.`,
+    message:
+      assignmentMode === "SELLING_SUPERVISOR"
+        ? `${targetMembership.user.name} ahora supervisa ${team.name} y mantiene su capacidad de venta.`
+        : `${targetMembership.user.name} asignado a ${team.name}.`,
   };
 }

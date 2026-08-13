@@ -14,6 +14,10 @@
 - [x] **T-022** Implementar creación y enriquecimiento transaccional con auditoría.
 - [x] **T-023** Detectar conflictos sin sobrescribir valores válidos.
 - [x] **T-024** Resolver cuentas DITO compartidas mediante asignación auditable por fila.
+- [x] **T-025** Leer `Origen Portabilidad` sin inferirlo desde el cargo fijo.
+- [x] **T-026** Invalidar portabilidades con origen ausente o desconocido.
+- [x] **T-027** Mostrar operación, origen y causa legible en la vista previa.
+- [x] **T-028** Impedir confirmar vistas previas generadas por parsers anteriores.
 - [x] **T-030** Crear interfaz ADMIN de importación y resolución de asesores.
 - [x] **T-031** Mostrar resultados por importadas, omitidas, inválidas y excluidas.
 - [x] **T-040** Probar autorización, aislamiento, concurrencia y reimportación.

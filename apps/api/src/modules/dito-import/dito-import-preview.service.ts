@@ -247,13 +247,16 @@ async function resolveIdentities(
           select: {
             status: true,
             memberships: {
-              where: { organizationId, role: 'AGENT' },
+              where: {
+                organizationId,
+                role: { in: ['AGENT', 'SUPERVISOR'] },
+              },
               select: { userId: true },
               take: 1,
             },
             commercialTeamMemberships: {
               where: {
-                memberRole: 'AGENT',
+                salesEnabled: true,
                 isPrimary: true,
                 isActive: true,
                 team: { organizationId, status: 'ACTIVE' },

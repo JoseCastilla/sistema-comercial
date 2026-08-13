@@ -34,12 +34,23 @@ export function AssignTeamMemberForm({
     assignTeamMemberAction,
     initialState,
   );
-  const [memberRole, setMemberRole] = useState<"AGENT" | "SUPERVISOR">("AGENT");
+  const [memberRole, setMemberRole] = useState<
+    "AGENT" | "SUPERVISOR" | "SELLING_SUPERVISOR"
+  >("AGENT");
   const [userId, setUserId] = useState("");
   const candidates = useMemo(() => {
-    const source = memberRole === "AGENT" ? agents : supervisors;
+    const source =
+      memberRole === "AGENT"
+        ? agents
+        : memberRole === "SUPERVISOR"
+          ? supervisors
+          : [...agents, ...supervisors].filter(
+              (candidate, index, all) =>
+                all.findIndex((item) => item.id === candidate.id) === index,
+            );
     return source.filter(
-      (candidate) => !candidate.activeTeamIds.includes(teamId),
+      (candidate) =>
+        memberRole !== "AGENT" || !candidate.activeTeamIds.includes(teamId),
     );
   }, [agents, memberRole, supervisors, teamId]);
   const selectedCandidate = candidates.find(
@@ -57,16 +68,24 @@ export function AssignTeamMemberForm({
         <SelectInput
           name="memberRole"
           onChange={(event) => {
-            setMemberRole(event.target.value as "AGENT" | "SUPERVISOR");
+            setMemberRole(
+              event.target.value as
+                | "AGENT"
+                | "SUPERVISOR"
+                | "SELLING_SUPERVISOR",
+            );
             setUserId("");
           }}
           value={memberRole}
         >
           <option value="AGENT">Asesor principal</option>
           <option value="SUPERVISOR">Supervisor</option>
+          <option value="SELLING_SUPERVISOR">
+            Supervisor que también vende
+          </option>
         </SelectInput>
       </Field>
-      <Field label={memberRole === "AGENT" ? "Asesor" : "Supervisor"}>
+      <Field label={memberRole === "AGENT" ? "Asesor" : "Persona"}>
         <SelectInput
           disabled={candidates.length === 0}
           name="userId"
@@ -99,6 +118,12 @@ export function AssignTeamMemberForm({
           <strong>{selectedCandidate?.currentTeamName}</strong> a{" "}
           <strong>{teamName}</strong>. Sus pedidos históricos conservarán el
           equipo registrado.
+        </p>
+      ) : null}
+      {memberRole === "SELLING_SUPERVISOR" && userId ? (
+        <p className="ui-team-assignment__notice">
+          Se promoverá como supervisor y sus ventas nuevas seguirán llegando a
+          este equipo. No podrá cerrar ni cancelar sus propias órdenes.
         </p>
       ) : null}
       <div className="ui-team-assignment__feedback">

@@ -30,6 +30,9 @@ regreso a GHL.
   retira los alias de la interfaz sin eliminar su compatibilidad heredada.
 - SPEC-018 incorpora apariencia Sistema, Clara y Oscura mediante tokens
   semánticos compartidos, sin duplicar estilos por módulo.
+- SPEC-019 separa la autoridad de supervisión de la capacidad de venta para
+  permitir supervisores vendedores sin perder identidad, métricas ni controles
+  antifraude sobre sus propias órdenes.
 
 El contexto funcional consolidado se mantiene fuera del repositorio en
 `PLATAFORMA_COMERCIAL_CONTEXTO_MAESTRO_V20.md`. Las decisiones ejecutables y su

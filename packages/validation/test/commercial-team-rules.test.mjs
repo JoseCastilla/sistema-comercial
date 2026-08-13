@@ -73,6 +73,22 @@ describe("resolveDitoOrderScope", () => {
       { kind: "NONE" },
     );
   });
+
+  it("includes own sales for a supervisor with selling enabled", () => {
+    assert.deepEqual(
+      resolveDitoOrderScope({
+        role: "SUPERVISOR",
+        userId: "supervisor-1",
+        supervisedTeamIds: ["team-1"],
+        salesEnabled: true,
+      }),
+      {
+        kind: "SUPERVISED_TEAMS_WITH_OWN_AND_ORPHANS",
+        teamIds: ["team-1"],
+        userId: "supervisor-1",
+      },
+    );
+  });
 });
 
 describe("canActivateAgentAlias", () => {
@@ -80,6 +96,7 @@ describe("canActivateAgentAlias", () => {
     userStatus: "ACTIVE",
     organizationRole: "AGENT",
     primaryMembershipActive: true,
+    primarySalesEnabled: true,
     primaryTeamStatus: "ACTIVE",
   };
 
@@ -105,7 +122,7 @@ describe("canActivateAgentAlias", () => {
     );
   });
 
-  it("rejects inactive users and non-agent roles", () => {
+  it("accepts a selling supervisor and rejects inactive users", () => {
     assert.equal(
       canActivateAgentAlias({ ...validInput, userStatus: "DISABLED" }),
       false,
@@ -115,7 +132,7 @@ describe("canActivateAgentAlias", () => {
         ...validInput,
         organizationRole: "SUPERVISOR",
       }),
-      false,
+      true,
     );
   });
 });
@@ -185,6 +202,17 @@ describe("commercial team administration isolation", () => {
         memberOrganizationRole: "SUPERVISOR",
       }),
       false,
+    );
+  });
+
+  it("allows promoting an active agent as a selling supervisor", () => {
+    assert.equal(
+      canAssignCommercialTeamMember({
+        ...validAssignment,
+        targetMemberRole: "SUPERVISOR",
+        salesEnabled: true,
+      }),
+      true,
     );
   });
 });
@@ -297,6 +325,19 @@ describe("resolveDitoOrderVisibility", () => {
     );
   });
 
+  it("grants a selling supervisor access to their own historical order", () => {
+    assert.equal(
+      resolveDitoOrderVisibility({
+        ...baseInput,
+        role: "SUPERVISOR",
+        salesEnabled: true,
+        orderAgentUserId: "user-1",
+        orderAssignedTeamId: "previous-team",
+      }),
+      "FULL",
+    );
+  });
+
   it("grants a supervisor limited access to the orphan pool", () => {
     assert.equal(
       resolveDitoOrderVisibility({
@@ -355,6 +396,17 @@ describe("controlled DITO order closure", () => {
     );
   });
 
+  it("prevents a supervisor from closing their own sale", () => {
+    assert.equal(
+      canCloseDitoOrder({
+        role: "SUPERVISOR",
+        visibility: "FULL",
+        isOwnOrder: true,
+      }),
+      false,
+    );
+  });
+
   it("keeps terminal states immutable in the operational workflow", () => {
     for (const currentStatus of ["CLOSED", "CANCELLED"]) {
       assert.equal(
@@ -399,6 +451,27 @@ describe("controlled DITO order cancellation", () => {
 
     assert.equal(
       canCancelDitoOrder({ role: "AGENT", visibility: "FULL" }),
+      false,
+    );
+  });
+
+  it("lets a selling supervisor request but not apply their own cancellation", () => {
+    assert.equal(
+      canRequestDitoOrderCancellation({
+        role: "SUPERVISOR",
+        visibility: "FULL",
+        currentStatus: "SENT",
+        hasPendingRequest: false,
+        isSalesOwner: true,
+      }),
+      true,
+    );
+    assert.equal(
+      canCancelDitoOrder({
+        role: "SUPERVISOR",
+        visibility: "FULL",
+        isOwnOrder: true,
+      }),
       false,
     );
   });
@@ -624,6 +697,7 @@ describe("canResolveAutomaticDitoAssignment", () => {
     userStatus: "ACTIVE",
     organizationRole: "AGENT",
     primaryMembershipActive: true,
+    primarySalesEnabled: true,
     primaryTeamId: "team-1",
     primaryTeamStatus: "ACTIVE",
   };
@@ -650,7 +724,7 @@ describe("canResolveAutomaticDitoAssignment", () => {
     );
   });
 
-  it("rejects an inactive user or a non-agent role", () => {
+  it("accepts a selling supervisor and rejects an inactive user", () => {
     assert.equal(
       canResolveAutomaticDitoAssignment({
         ...validInput,
@@ -664,11 +738,18 @@ describe("canResolveAutomaticDitoAssignment", () => {
         ...validInput,
         organizationRole: "SUPERVISOR",
       }),
-      false,
+      true,
     );
   });
 
   it("rejects a missing or inactive primary team membership", () => {
+    assert.equal(
+      canResolveAutomaticDitoAssignment({
+        ...validInput,
+        primarySalesEnabled: false,
+      }),
+      false,
+    );
     assert.equal(
       canResolveAutomaticDitoAssignment({
         ...validInput,

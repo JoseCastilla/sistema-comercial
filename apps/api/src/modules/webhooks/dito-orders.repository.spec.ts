@@ -114,7 +114,7 @@ describe('DitoOrdersRepository', () => {
     expect(database.organizationMember.findFirst).toHaveBeenCalledWith({
       where: {
         organizationId: 'organization-1',
-        role: 'AGENT',
+        role: { in: ['AGENT', 'SUPERVISOR'] },
         user: {
           email: {
             equals: 'carmen.ramirez@distribuidoronline.com',
@@ -129,7 +129,7 @@ describe('DitoOrdersRepository', () => {
           select: {
             commercialTeamMemberships: {
               where: {
-                memberRole: 'AGENT',
+                salesEnabled: true,
                 isPrimary: true,
                 isActive: true,
                 team: {
