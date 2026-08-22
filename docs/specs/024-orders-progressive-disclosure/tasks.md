@@ -3,6 +3,7 @@
 - [x] Restablecer la tarjeta lateral persistente para escritorio.
 - [x] Añadir columnas de DNI, teléfono y operador.
 - [x] Sustituir la columna Asesor por Plazo para el rol `AGENT`.
+- [x] Recuperar SLA como columna independiente para administración y supervisión.
 - [x] Normalizar la identidad visible del asesor desde nombre y correo corporativo.
 - [x] Mostrar “Alta nueva” cuando una venta nueva no tiene operador cedente.
 - [x] Mantener copiado contextual de orden, DNI y teléfono.
@@ -10,6 +11,17 @@
 - [x] Mantener detalle y gestión de estado en la misma tarjeta lateral.
 - [x] Normalizar operador a capitalización de oración.
 - [x] Unificar fuente, tamaño y peso de las columnas operativas.
+- [x] Unificar el desplazamiento horizontal y vertical en un solo contenedor.
+- [x] Llevar la actualización de seguimiento a la zona prioritaria de la tarjeta.
+- [x] Convertir operación y datos DITO en secciones desplegables accesibles.
+- [x] Abrir el detalle operativo por defecto para roles de control.
+- [x] Ocultar al asesor su nombre y la asignación redundante dentro del detalle.
+- [x] Verificar que el asesor mantiene seguimiento sin cierre ni cancelación directa.
+- [x] Conservar el formulario compacto de seguimiento mediante selectores.
+- [x] Eliminar la tarjeta duplicada de observación y editarla en un único lugar.
+- [x] Ocultar al asesor el seguimiento inactivo de órdenes finalizadas.
+- [x] Abrir el detalle operativo de una orden finalizada para el asesor.
+- [x] Conservar la última observación en el detalle de órdenes no editables.
 - [x] Mantener el detalle desplegable completo en móvil.
 - [x] Centralizar estilos del nuevo patrón.
 - [x] Validar visualmente con una sesión administrativa local.

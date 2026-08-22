@@ -396,10 +396,16 @@ function InlineCopyValue({ label, value }: { label: string; value: string }) {
 function OrderDetails({
   order,
   assignmentTeams,
+  showAdvisor,
 }: {
   order: OrderInboxItem;
   assignmentTeams: OrderAssignmentTeamOption[];
+  showAdvisor: boolean;
 }) {
+  const [operationDetailsOpen, setOperationDetailsOpen] = useState(
+    showAdvisor || !order.canUpdate,
+  );
+
   const formKey = [
     order.id,
     order.status,
@@ -469,105 +475,8 @@ function OrderDetails({
         </p>
       </div>
 
-      <dl className="grid gap-4 sm:grid-cols-2">
-        <DetailItem label="Operación" value={order.operation} />
-
-        <DetailItem label="Estado desde" value={order.statusAgeLabel} />
-
-        <DetailItem label="Agente" value={order.agentName} />
-
-        <DetailItem label="Ubicación" value={order.locationLabel} />
-
-        <DetailItem label="Tipo de entrega" value={order.deliveryMethodLabel} />
-
-        <DetailItem label="Ventana" value={order.deliveryWindowLabel} />
-
-        <DetailItem
-          label="Hora límite"
-          value={order.deliveryDueAtLabel ?? "Sin plazo calculado"}
-        />
-
-        <DetailItem label="Asignación" value={order.assignmentStatusLabel} />
-
-        {order.status === "CLOSED" ? (
-          <DetailItem
-            label="Cierre"
-            value={
-              order.closedByName && order.closedAtLabel
-                ? `${order.closedByName} · ${order.closedAtLabel}`
-                : "Cierre histórico sin atribución"
-            }
-          />
-        ) : null}
-      </dl>
-
       {order.canResolveAssignment || order.canClaimAssignment ? (
         <OrderAssignmentResolution order={order} teams={assignmentTeams} />
-      ) : null}
-
-      {hasDitoDetails ? (
-        <div className="rounded-xl border border-ui-info-border bg-ui-info-soft p-4">
-          <h4 className="text-sm font-semibold text-ui-info">Datos DITO</h4>
-
-          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-            {order.salesCode ? (
-              <DetailItem label="Código de venta" value={order.salesCode} />
-            ) : null}
-
-            {order.deliveryTimeRange ? (
-              <DetailItem
-                label="Horario de entrega"
-                value={order.deliveryTimeRange}
-              />
-            ) : null}
-
-            {order.billingCycleDay ? (
-              <DetailItem
-                label="Ciclo de facturación"
-                value={`Día ${order.billingCycleDay} de cada mes`}
-              />
-            ) : null}
-
-            {order.paymentDueDay ? (
-              <DetailItem
-                label="Último día de pago"
-                value={`Día ${order.paymentDueDay} de cada mes`}
-              />
-            ) : null}
-
-            <DetailItem
-              label="Teléfono de contacto"
-              value={order.deliveryContactPhone}
-            />
-
-            {order.deliveryAddress ? (
-              <DetailItem
-                label="Dirección de entrega"
-                value={order.deliveryAddress}
-              />
-            ) : null}
-
-            {order.deliveryReference ? (
-              <DetailItem label="Referencia" value={order.deliveryReference} />
-            ) : null}
-
-            {coordinates ? (
-              <DetailItem label="Coordenadas" value={coordinates} />
-            ) : null}
-          </dl>
-        </div>
-      ) : null}
-
-      {order.deliveryObservation ? (
-        <div className="rounded-xl border border-ui-border bg-ui-subtle p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-ui-muted">
-            Observación actual
-          </p>
-
-          <p className="mt-2 text-sm leading-6 text-ui-muted">
-            {order.deliveryObservation}
-          </p>
-        </div>
       ) : null}
 
       {order.pendingCancellationRequest ? (
@@ -577,25 +486,161 @@ function OrderDetails({
         />
       ) : null}
 
+      {order.canUpdate || showAdvisor ? (
+        <section
+          className="ui-order-management"
+          aria-label="Actualizar seguimiento"
+        >
+          <h4 className="mb-4 text-sm font-semibold text-ui-text">
+            Actualizar seguimiento
+          </h4>
+
+          <OrderStatusForm
+            key={formKey}
+            canCancelDirectly={order.canCancelDirectly}
+            canClose={order.canClose}
+            canRequestCancellation={order.canRequestCancellation}
+            canUpdate={order.canUpdate}
+            initialObservation={order.deliveryObservation}
+            initialSentSubstatus={order.sentSubstatus}
+            initialStatus={order.status}
+            orderId={order.id}
+          />
+        </section>
+      ) : null}
+
+      <details
+        className="ui-order-disclosure"
+        onToggle={(event) => {
+          setOperationDetailsOpen(event.currentTarget.open);
+        }}
+        open={operationDetailsOpen}
+      >
+        <summary>
+          <span>Detalle de la operación</span>
+          <span className="ui-order-disclosure__hint">
+            {order.operation} · {order.locationLabel}
+          </span>
+        </summary>
+
+        <div className="ui-order-disclosure__content">
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <DetailItem label="Operación" value={order.operation} />
+
+            <DetailItem label="Estado desde" value={order.statusAgeLabel} />
+
+            {showAdvisor ? (
+              <DetailItem label="Asesor" value={order.agentName} />
+            ) : null}
+
+            <DetailItem label="Ubicación" value={order.locationLabel} />
+
+            <DetailItem
+              label="Tipo de entrega"
+              value={order.deliveryMethodLabel}
+            />
+
+            <DetailItem label="Ventana" value={order.deliveryWindowLabel} />
+
+            <DetailItem
+              label="Hora límite"
+              value={order.deliveryDueAtLabel ?? "Sin plazo calculado"}
+            />
+
+            {showAdvisor ? (
+              <DetailItem
+                label="Asignación"
+                value={order.assignmentStatusLabel}
+              />
+            ) : null}
+
+            {order.status === "CLOSED" ? (
+              <DetailItem
+                label="Cierre"
+                value={
+                  order.closedByName && order.closedAtLabel
+                    ? `${order.closedByName} · ${order.closedAtLabel}`
+                    : "Cierre histórico sin atribución"
+                }
+              />
+            ) : null}
+
+            {!order.canUpdate && order.deliveryObservation ? (
+              <div className="sm:col-span-2">
+                <DetailItem
+                  label="Última observación"
+                  value={order.deliveryObservation}
+                />
+              </div>
+            ) : null}
+          </dl>
+        </div>
+      </details>
+
+      {hasDitoDetails ? (
+        <details className="ui-order-disclosure ui-order-disclosure--info">
+          <summary>
+            <span>Venta y entrega DITO</span>
+            <span className="ui-order-disclosure__hint">
+              Código, dirección y facturación
+            </span>
+          </summary>
+
+          <div className="ui-order-disclosure__content">
+            <dl className="grid gap-4 sm:grid-cols-2">
+              {order.salesCode ? (
+                <DetailItem label="Código de venta" value={order.salesCode} />
+              ) : null}
+
+              {order.deliveryTimeRange ? (
+                <DetailItem
+                  label="Horario de entrega"
+                  value={order.deliveryTimeRange}
+                />
+              ) : null}
+
+              {order.billingCycleDay ? (
+                <DetailItem
+                  label="Ciclo de facturación"
+                  value={`Día ${order.billingCycleDay} de cada mes`}
+                />
+              ) : null}
+
+              {order.paymentDueDay ? (
+                <DetailItem
+                  label="Último día de pago"
+                  value={`Día ${order.paymentDueDay} de cada mes`}
+                />
+              ) : null}
+
+              <DetailItem
+                label="Teléfono de contacto"
+                value={order.deliveryContactPhone}
+              />
+
+              {order.deliveryAddress ? (
+                <DetailItem
+                  label="Dirección de entrega"
+                  value={order.deliveryAddress}
+                />
+              ) : null}
+
+              {order.deliveryReference ? (
+                <DetailItem
+                  label="Referencia"
+                  value={order.deliveryReference}
+                />
+              ) : null}
+
+              {coordinates ? (
+                <DetailItem label="Coordenadas" value={coordinates} />
+              ) : null}
+            </dl>
+          </div>
+        </details>
+      ) : null}
+
       {order.canCorrect ? <OrderCorrectionForm order={order} /> : null}
-
-      <div className="border-t border-ui-border pt-5">
-        <h4 className="mb-4 text-sm font-semibold text-ui-text">
-          Actualizar seguimiento
-        </h4>
-
-        <OrderStatusForm
-          key={formKey}
-          canCancelDirectly={order.canCancelDirectly}
-          canClose={order.canClose}
-          canRequestCancellation={order.canRequestCancellation}
-          canUpdate={order.canUpdate}
-          initialObservation={order.deliveryObservation}
-          initialSentSubstatus={order.sentSubstatus}
-          initialStatus={order.status}
-          orderId={order.id}
-        />
-      </div>
     </div>
   );
 }
@@ -670,7 +715,11 @@ function MobileOrderCard({
 
       {expanded ? (
         <div className="border-t border-ui-border p-4">
-          <OrderDetails assignmentTeams={assignmentTeams} order={order} />
+          <OrderDetails
+            assignmentTeams={assignmentTeams}
+            order={order}
+            showAdvisor={showAdvisor}
+          />
         </div>
       ) : null}
     </article>
@@ -787,13 +836,17 @@ function DesktopOrderList({
   return (
     <div className="ui-order-grid">
       <div className="ui-order-grid__scroll">
-        <div className="ui-order-grid__header">
+        <div
+          className="ui-order-grid__header"
+          data-show-advisor={showAdvisorColumn ? "true" : "false"}
+        >
           <span>Orden</span>
           <span>Cliente</span>
           <span>DNI</span>
           <span>Teléfono</span>
           <span>Operador</span>
-          <span>{showAdvisorColumn ? "Asesor" : "Plazo"}</span>
+          {showAdvisorColumn ? <span>Asesor</span> : null}
+          <span>SLA</span>
           <span>Estado</span>
           <span aria-hidden="true" />
         </div>
@@ -807,6 +860,7 @@ function DesktopOrderList({
                 className="ui-order-grid__row"
                 data-incident={order.noStatusIncident ? "true" : "false"}
                 data-selected={selected ? "true" : "false"}
+                data-show-advisor={showAdvisorColumn ? "true" : "false"}
                 key={order.id}
                 onClick={() => onSelect(order.id)}
               >
@@ -829,12 +883,14 @@ function DesktopOrderList({
                   {getOperatorLabel(order)}
                 </span>
 
-                <span className="ui-order-grid__agent">
-                  {showAdvisorColumn ? (
-                    order.agentName
-                  ) : (
-                    <SlaBadge order={order} />
-                  )}
+                {showAdvisorColumn ? (
+                  <span className="ui-order-grid__agent">
+                    {order.agentName}
+                  </span>
+                ) : null}
+
+                <span className="ui-order-grid__sla">
+                  <SlaBadge order={order} />
                 </span>
 
                 <span className="ui-order-grid__status">
@@ -1175,6 +1231,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                   assignmentTeams={data.assignmentTeams}
                   key={selectedOrder.id}
                   order={selectedOrder}
+                  showAdvisor={data.showAdvisorColumn}
                 />
               ) : null}
             </aside>
