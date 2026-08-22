@@ -10,6 +10,7 @@ export * from "./dito-order-assignment-retry-schema.js";
 export * from "./dito-order-orphan-claim-schema.js";
 export * from "./dito-import-admin-schema.js";
 export * from "./order-period.js";
+export * from "./advisor-display-name.js";
 
 export * from "./agent-alias.js";
 

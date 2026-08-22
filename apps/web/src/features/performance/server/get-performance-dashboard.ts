@@ -23,6 +23,8 @@ import type {
   DailyPerformance,
   PerformanceDashboardData,
   PerformanceRole,
+  SalesOperationMix,
+  SalesOperationMixItem,
 } from "../performance.types";
 
 interface PerformanceAccess {
@@ -243,8 +245,10 @@ function calculateScopedMetrics(
 function buildDailyPerformancePulse(
   activityOrders: readonly PerformanceOrderRecord[],
   confirmationOrders: readonly PerformanceOrderRecord[],
+  monthOrders: readonly PerformanceOrderRecord[],
   todayStart: Date,
   todayEnd: Date,
+  weekStart: Date,
 ): DailyPerformance {
   const dayLength = 24 * 60 * 60 * 1000;
   const days = Array.from({ length: 7 }, (_, index) => {
@@ -286,6 +290,14 @@ function buildDailyPerformancePulse(
   const today = days.at(-1);
   if (!today) throw new Error("No se pudo construir el pulso diario.");
 
+  const todayOrders = activityOrders.filter(
+    (order) =>
+      order.registeredAt >= todayStart && order.registeredAt < todayEnd,
+  );
+  const weekOrders = activityOrders.filter(
+    (order) => order.registeredAt >= weekStart && order.registeredAt < todayEnd,
+  );
+
   return {
     todayLabel: dailyLabelFormatter.format(todayEnd.getTime() - 1),
     entered: today.entered,
@@ -293,7 +305,67 @@ function buildDailyPerformancePulse(
     closed: today.closed,
     confirmed: today.confirmed,
     confirmedBaseCommissionCents: today.confirmedBaseCommissionCents,
+    operationMix: {
+      today: buildSalesOperationMix(todayOrders),
+      week: buildSalesOperationMix(weekOrders),
+      month: buildSalesOperationMix(monthOrders),
+    },
     days,
+  };
+}
+
+function emptySalesOperationMix(): SalesOperationMixItem {
+  return {
+    total: 0,
+    newLine: 0,
+    portPostpaid: 0,
+    portPrepaid: 0,
+    unclassified: 0,
+  };
+}
+
+function addToSalesOperationMix(
+  mix: SalesOperationMixItem,
+  order: PerformanceOrderRecord,
+): void {
+  mix.total += 1;
+
+  if (order.commercialOperation === "NEW_LINE") mix.newLine += 1;
+  else if (order.commercialOperation === "PORT_POSTPAID") {
+    mix.portPostpaid += 1;
+  } else if (order.commercialOperation === "PORT_PREPAID") {
+    mix.portPrepaid += 1;
+  } else mix.unclassified += 1;
+}
+
+function buildSalesOperationMix(
+  orders: readonly PerformanceOrderRecord[],
+): SalesOperationMix {
+  const aggregate = emptySalesOperationMix();
+  const byAgent = new Map<
+    string,
+    SalesOperationMixItem & { id: string; name: string }
+  >();
+
+  for (const order of orders) {
+    addToSalesOperationMix(aggregate, order);
+    if (!order.agentUserId) continue;
+
+    const agentMix = byAgent.get(order.agentUserId) ?? {
+      ...emptySalesOperationMix(),
+      id: order.agentUserId,
+      name: order.agent?.name ?? "Asesor sin nombre",
+    };
+    addToSalesOperationMix(agentMix, order);
+    byAgent.set(order.agentUserId, agentMix);
+  }
+
+  return {
+    ...aggregate,
+    byAgent: [...byAgent.values()].sort(
+      (left, right) =>
+        right.total - left.total || left.name.localeCompare(right.name, "es"),
+    ),
   };
 }
 
@@ -367,6 +439,10 @@ export async function getPerformanceDashboard(
   if (!todayRange.start || !todayRange.end) {
     throw new Error("No se pudo resolver el dia actual.");
   }
+  const daysSinceMonday = (todayRange.start.getUTCDay() + 6) % 7;
+  const currentWeekStart = new Date(
+    todayRange.start.getTime() - daysSinceMonday * 24 * 60 * 60 * 1000,
+  );
   const lastSevenDaysStart = new Date(
     todayRange.start.getTime() - 6 * 24 * 60 * 60 * 1000,
   );
@@ -496,11 +572,10 @@ export async function getPerformanceDashboard(
     isCurrentMonth: currentRange.key === currentMonth,
     from: currentRange.from,
     to: currentRange.to,
-    scopeLabel:
-      isIndividualScope
-        ? "Mi desempeño"
-        : (selectedTeam?.name ??
-          (access.role === "SUPERVISOR" ? "Mis equipos" : "Organización")),
+    scopeLabel: isIndividualScope
+      ? "Mi desempeño"
+      : (selectedTeam?.name ??
+        (access.role === "SUPERVISOR" ? "Mis equipos" : "Organización")),
     view,
     canSwitchView,
     teamFilter,
@@ -511,8 +586,10 @@ export async function getPerformanceDashboard(
       ? buildDailyPerformancePulse(
           activityOrders,
           confirmationOrders,
+          orders,
           todayRange.start,
           todayRange.end,
+          currentWeekStart,
         )
       : null,
     metrics,
@@ -529,9 +606,8 @@ export async function getPerformanceDashboard(
         ? pointsDelta(metrics.payableRate, previousMetrics.payableRate)
         : null,
     },
-    breakdown:
-      isIndividualScope
-        ? []
-        : groupByAgent(orders, access.role, primaryTeamNames),
+    breakdown: isIndividualScope
+      ? []
+      : groupByAgent(orders, access.role, primaryTeamNames),
   };
 }

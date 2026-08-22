@@ -4,8 +4,10 @@ import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { AssignSharedDitoImportRowsForm } from "@/features/dito-imports/components/assign-shared-dito-import-rows-form";
 import { ConfirmDitoImportForm } from "@/features/dito-imports/components/confirm-dito-import-form";
 import { DitoImportUploadForm } from "@/features/dito-imports/components/dito-import-upload-form";
+import { DeleteDitoImportBatchForm } from "@/features/dito-imports/components/delete-dito-import-batch-form";
 import { MarkDitoAgentIdentitySharedForm } from "@/features/dito-imports/components/mark-dito-agent-identity-shared-form";
 import { ResolveDitoAgentIdentityForm } from "@/features/dito-imports/components/resolve-dito-agent-identity-form";
+import { ResolveDitoImportConflictForm } from "@/features/dito-imports/components/resolve-dito-import-conflict-form";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -35,7 +37,7 @@ const batchStatusLabels: Record<string, string> = {
   FAILED: "Fallida",
 };
 
-const currentDitoImportParserVersion = "1.1";
+const currentDitoImportParserVersion = "1.7";
 
 const operationLabels: Record<string, string> = {
   NEW_LINE: "Alta nueva",
@@ -46,7 +48,9 @@ const operationLabels: Record<string, string> = {
 const issueLabels: Record<string, string> = {
   STATUS_NOT_APPROVED: "Estado DITO no aprobado",
   OUTSIDE_CURRENT_MONTH: "Fuera del mes actual",
+  NON_MOBILE_PRODUCT: "Venta no móvil (Movistar Hogar)",
   MISSING_REQUIRED_VALUE: "Faltan datos requeridos",
+  INVALID_DOCUMENT_NUMBER: "El DNI debe tener 8 dígitos",
   INVALID_ORDER_CODE: "Código de orden inválido",
   INVALID_REGISTERED_AT: "Fecha de registro inválida",
   UNKNOWN_OPERATION: "Operación no reconocida",
@@ -76,6 +80,8 @@ export default async function DitoImportsPage({
       id: true,
       fileName: true,
       status: true,
+      updatedAt: true,
+      confirmedAt: true,
       uploadedAt: true,
       sourceRows: true,
       importableRows: true,
@@ -117,6 +123,7 @@ export default async function DitoImportsPage({
               classification: true,
               applicationStatus: true,
               issueCodes: true,
+              conflicts: true,
               displayedOrderCode: true,
               ditoUsernameNormalized: true,
               parsedData: true,
@@ -228,6 +235,26 @@ export default async function DitoImportsPage({
   const pendingSharedRows = sharedRowsNeedingManualAssignment.filter(
     (row) => !row.manualAgentUserId,
   ).length;
+  const conflictRows =
+    selectedBatch?.rows.flatMap((row) => {
+      if (row.classification !== "CONFLICT") return [];
+
+      const conflicts = readResolvableConflicts(row.conflicts);
+
+      return conflicts.length > 0
+        ? [
+            {
+              id: row.id,
+              orderCode: row.displayedOrderCode ?? "Orden sin código",
+              customerName:
+                readJsonText(row.parsedData, "holderName") ??
+                "Cliente no registrado",
+              updatedAt: row.updatedAt.toISOString(),
+              conflicts,
+            },
+          ]
+        : [];
+    }) ?? [];
   const dateFormatter = new Intl.DateTimeFormat("es-PE", {
     timeZone: membership.organization.timezone,
     dateStyle: "short",
@@ -270,7 +297,7 @@ export default async function DitoImportsPage({
             </SectionPanel>
 
             <SectionPanel
-              description="Las cargas repetidas reutilizan el mismo análisis."
+              description="Mostramos las 8 últimas. Puedes retirar vistas previas; las confirmadas conservan la trazabilidad."
               title="Cargas recientes"
             >
               {recentBatches.length === 0 ? (
@@ -280,22 +307,35 @@ export default async function DitoImportsPage({
               ) : (
                 <nav aria-label="Cargas DITO recientes" className="space-y-2">
                   {recentBatches.map((batch) => (
-                    <Link
-                      aria-current={
-                        batch.id === selectedBatch?.id ? "page" : undefined
-                      }
-                      className="block rounded-xl border border-ui-border px-3 py-3 transition hover:border-ui-border-strong aria-[current=page]:border-ui-success aria-[current=page]:bg-ui-success-soft"
-                      href={`/admin/dito-imports?batch=${batch.id}`}
+                    <article
+                      className="rounded-xl border border-ui-border px-3 py-3 transition has-[a[aria-current=page]]:border-ui-success has-[a[aria-current=page]]:bg-ui-success-soft"
                       key={batch.id}
                     >
-                      <span className="block truncate text-sm font-medium text-ui-text">
-                        {batch.fileName}
-                      </span>
-                      <span className="mt-1 block text-xs text-ui-muted">
-                        {dateFormatter.format(batch.uploadedAt)} ·{" "}
-                        {batch.importableRows} aprobadas
-                      </span>
-                    </Link>
+                      <Link
+                        aria-current={
+                          batch.id === selectedBatch?.id ? "page" : undefined
+                        }
+                        className="block"
+                        href={`/admin/dito-imports?batch=${batch.id}`}
+                      >
+                        <span className="block truncate text-sm font-medium text-ui-text">
+                          {batch.fileName}
+                        </span>
+                        <span className="mt-1 block text-xs text-ui-muted">
+                          {dateFormatter.format(batch.uploadedAt)} ·{" "}
+                          {batch.importableRows} aprobadas ·{" "}
+                          {batchStatusLabels[batch.status] ?? batch.status}
+                        </span>
+                      </Link>
+                      {!batch.confirmedAt &&
+                      ["PREVIEW", "READY", "FAILED"].includes(batch.status) ? (
+                        <DeleteDitoImportBatchForm
+                          batchId={batch.id}
+                          expectedUpdatedAt={batch.updatedAt.toISOString()}
+                          fileName={batch.fileName}
+                        />
+                      ) : null}
+                    </article>
                   ))}
                 </nav>
               )}
@@ -365,9 +405,9 @@ export default async function DitoImportsPage({
                   {selectedBatch.parserVersion !==
                   currentDitoImportParserVersion ? (
                     <p className="mt-4 rounded-xl border border-ui-warning bg-ui-warning-soft px-4 py-3 text-sm text-ui-warning">
-                      Este lote se procesó antes de leer Origen Portabilidad. Las
-                      portabilidades históricas deben conciliarse por código de
-                      orden antes de usarlas en comisiones.
+                      Este lote se procesó con una versión anterior del lector.
+                      Genera una nueva vista previa para conservar todos los
+                      campos disponibles antes de confirmar.
                     </p>
                   ) : null}
                 </SectionPanel>
@@ -432,6 +472,10 @@ export default async function DitoImportsPage({
                           customerName:
                             readJsonText(row.parsedData, "holderName") ??
                             "Cliente no registrado",
+                          salesAdvisorName: readJsonText(
+                            row.parsedData,
+                            "salesAdvisorName",
+                          ),
                           updatedAt: row.updatedAt.toISOString(),
                           assignedUserId: row.manualAgentUserId,
                         }))}
@@ -442,6 +486,23 @@ export default async function DitoImportsPage({
                         confiable.
                       </p>
                     )}
+                  </SectionPanel>
+                ) : null}
+
+                {conflictRows.length > 0 ? (
+                  <SectionPanel
+                    description="Compara cada diferencia. El sistema conserva el valor actual por defecto y registra tu decisión."
+                    title={`Resolver conflictos (${conflictRows.length})`}
+                  >
+                    <div className="space-y-4">
+                      {conflictRows.map((row) => (
+                        <ResolveDitoImportConflictForm
+                          batchId={selectedBatch.id}
+                          key={row.id}
+                          row={row}
+                        />
+                      ))}
+                    </div>
                   </SectionPanel>
                 ) : null}
 
@@ -458,7 +519,7 @@ export default async function DitoImportsPage({
                           <th className="px-3 py-3 font-medium">Cliente</th>
                           <th className="px-3 py-3 font-medium">Operación</th>
                           <th className="px-3 py-3 font-medium">
-                            Usuario DITO
+                            Asesor / cuenta DITO
                           </th>
                           <th className="px-3 py-3 font-medium">Resultado</th>
                         </tr>
@@ -491,12 +552,25 @@ export default async function DitoImportsPage({
                               </span>
                             </td>
                             <td className="px-3 py-3 text-ui-muted">
-                              {row.manualAgent?.name ??
-                                row.targetOrder?.agent?.name ??
-                                row.agentIdentity?.user?.name ??
-                                row.agentIdentity?.displayName ??
-                                row.ditoUsernameNormalized ??
-                                "No registrado"}
+                              <span className="block font-medium text-ui-text">
+                                {readJsonText(
+                                  row.parsedData,
+                                  "salesAdvisorName",
+                                ) ?? "Asesor no reportado"}
+                              </span>
+                              <span className="mt-1 block font-mono text-xs text-ui-muted">
+                                Cuenta: {row.ditoUsernameNormalized ?? "N/D"}
+                              </span>
+                              {(row.manualAgent?.name ??
+                              row.targetOrder?.agent?.name ??
+                              row.agentIdentity?.user?.name) ? (
+                                <span className="mt-1 block text-xs text-ui-success">
+                                  Vinculado:{" "}
+                                  {row.manualAgent?.name ??
+                                    row.targetOrder?.agent?.name ??
+                                    row.agentIdentity?.user?.name}
+                                </span>
+                              ) : null}
                             </td>
                             <td className="px-3 py-3">
                               <StatusBadge
@@ -522,9 +596,7 @@ export default async function DitoImportsPage({
                               {row.issueCodes.length > 0 ? (
                                 <span className="mt-1.5 block max-w-64 text-xs leading-5 text-ui-danger">
                                   {row.issueCodes
-                                    .map(
-                                      (issue) => issueLabels[issue] ?? issue,
-                                    )
+                                    .map((issue) => issueLabels[issue] ?? issue)
                                     .join(" · ")}
                                 </span>
                               ) : null}
@@ -585,6 +657,61 @@ function readJsonText(value: unknown, key: string): string | null {
   return null;
 }
 
+type ConflictScalar = string | number | null;
+
+const resolvableConflictFields = new Set([
+  "commercialOperation",
+  "carrier",
+  "fixedCharge",
+  "holderFullNameRaw",
+  "holderDocumentType",
+  "holderDocumentNumber",
+  "serviceNumber",
+  "deliveryMethod",
+  "deliveryMethodRaw",
+  "deliveryAddress",
+  "deliveryReference",
+  "deliveryLatitude",
+  "deliveryLongitude",
+  "department",
+  "province",
+  "district",
+]);
+
+function readResolvableConflicts(value: unknown): Array<{
+  field: string;
+  current: ConflictScalar;
+  incoming: ConflictScalar;
+}> {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((entry) => {
+    if (
+      typeof entry !== "object" ||
+      entry === null ||
+      !("field" in entry) ||
+      typeof entry.field !== "string" ||
+      !resolvableConflictFields.has(entry.field) ||
+      !("current" in entry) ||
+      !("incoming" in entry) ||
+      !isConflictScalar(entry.current) ||
+      !isConflictScalar(entry.incoming)
+    ) {
+      return [];
+    }
+
+    return [
+      { field: entry.field, current: entry.current, incoming: entry.incoming },
+    ];
+  });
+}
+
+function isConflictScalar(value: unknown): value is ConflictScalar {
+  return (
+    value === null || typeof value === "string" || typeof value === "number"
+  );
+}
+
 function operationLabel(value: unknown, parserVersion: string): string {
   const operation = readJsonText(value, "commercialOperation");
   const origin = readJsonText(value, "portabilityOriginRaw");
@@ -597,7 +724,9 @@ function operationLabel(value: unknown, parserVersion: string): string {
     return "Portabilidad por revisar";
   }
 
-  return operation ? (operationLabels[operation] ?? operation) : "Sin clasificar";
+  return operation
+    ? (operationLabels[operation] ?? operation)
+    : "Sin clasificar";
 }
 
 function portabilityOriginLabel(value: unknown, parserVersion: string): string {
@@ -644,7 +773,7 @@ function getConfirmationDisabledReason(
     return "La importación ya está siendo procesada.";
   }
   if (parserVersion !== currentDitoImportParserVersion) {
-    return "Esta vista previa es anterior al campo Origen Portabilidad. Carga un archivo actualizado para generar un análisis seguro.";
+    return "Esta vista previa usa un lector anterior. Genera una nueva antes de confirmar.";
   }
   if (importableRows === 0) {
     return "No existen filas válidas para importar. Revisa los motivos y carga un archivo corregido.";

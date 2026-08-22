@@ -22,6 +22,42 @@
     padding: 0 1.25rem;
     border-bottom: 1px solid var(--ui-border);
   }
+  .app-shell__brand-copy,
+  .app-shell__account-copy,
+  .app-nav-item > span:last-child,
+  .app-shell__organization,
+  .app-shell__theme,
+  .app-shell__sign-out {
+    transition: opacity var(--ui-duration-fast);
+  }
+  .app-shell__collapse {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    margin-left: auto;
+    flex: none;
+    place-items: center;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-sm);
+    color: var(--ui-text-muted);
+    background: var(--ui-surface);
+    transition:
+      color var(--ui-duration-fast),
+      background-color var(--ui-duration-fast),
+      transform var(--ui-duration-fast);
+  }
+  .app-shell__collapse:hover {
+    color: var(--ui-text);
+    background: var(--ui-surface-subtle);
+  }
+  .app-shell__collapse:focus-visible {
+    outline: 0;
+    box-shadow: var(--ui-focus);
+  }
+  .app-shell__collapse svg {
+    width: 1rem;
+    height: 1rem;
+  }
   .app-shell__mark {
     display: grid;
     width: 2.5rem;
@@ -280,6 +316,9 @@
     box-shadow: var(--ui-shadow-mobile-nav);
     backdrop-filter: blur(12px);
   }
+  .app-shell__mobile-nav[data-items="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .app-mobile-nav-item {
     display: flex;
     min-width: 0;
@@ -320,6 +359,44 @@
     }
     .app-shell__main {
       padding: 2rem;
+    }
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__sidebar {
+      width: 4.75rem;
+    }
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__content {
+      padding-left: 4.75rem;
+    }
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__brand {
+      min-height: 8.25rem;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.6rem;
+      padding: 0.75rem 0.5rem;
+    }
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__collapse {
+      margin-left: 0;
+      transform: rotate(180deg);
+    }
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__brand-copy,
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__organization,
+    .app-shell[data-sidebar-collapsed="true"] .app-nav-item > span:last-child,
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__account-copy,
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__theme,
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__sign-out {
+      display: none;
+    }
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__nav {
+      padding: 0.65rem 0.45rem;
+    }
+    .app-shell[data-sidebar-collapsed="true"] .app-nav-item {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      padding: 0.45rem;
+    }
+    .app-shell[data-sidebar-collapsed="true"] .app-shell__account-card {
+      display: flex;
+      justify-content: center;
+      padding: 0.5rem;
     }
   }
 }

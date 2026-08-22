@@ -5,6 +5,7 @@ import {
   canCancelDitoOrder,
   canRequestDitoOrderCancellation,
   canTransitionDitoOrderStatus,
+  formatAdvisorCompactName,
   getLimaIsoDate,
   getOrderPeriodRange,
   getOrderRange,
@@ -92,6 +93,12 @@ const orderSelect = {
   agentNameNormalized: true,
   submitterEmailNormalized: true,
   agentUserId: true,
+  agent: {
+    select: {
+      name: true,
+      email: true,
+    },
+  },
   assignedTeamId: true,
   parseStatus: true,
   deliveryStatus: true,
@@ -513,57 +520,57 @@ export async function getOrderInbox(
   };
   const [teamOptions, assignmentTeamRecords, primarySalesMembership] =
     await Promise.all([
-    access.role === "AGENT"
-      ? Promise.resolve([])
-      : database.commercialTeam.findMany({
-          where: {
-            ...teamAccessWhere,
-          },
-          orderBy: { name: "asc" },
-          select: { id: true, name: true },
-        }),
-    access.role === "ADMIN" || access.role === "SUPERVISOR"
-      ? database.commercialTeam.findMany({
-          where: teamAccessWhere,
-          orderBy: { name: "asc" },
-          select: {
-            id: true,
-            name: true,
-            members: {
-              where: {
-                salesEnabled: true,
-                isActive: true,
-                user: {
-                  status: "ACTIVE",
-                  memberships: {
-                    some: {
-                      organizationId,
-                      role: { in: ["AGENT", "SUPERVISOR"] },
+      access.role === "AGENT"
+        ? Promise.resolve([])
+        : database.commercialTeam.findMany({
+            where: {
+              ...teamAccessWhere,
+            },
+            orderBy: { name: "asc" },
+            select: { id: true, name: true },
+          }),
+      access.role === "ADMIN" || access.role === "SUPERVISOR"
+        ? database.commercialTeam.findMany({
+            where: teamAccessWhere,
+            orderBy: { name: "asc" },
+            select: {
+              id: true,
+              name: true,
+              members: {
+                where: {
+                  salesEnabled: true,
+                  isActive: true,
+                  user: {
+                    status: "ACTIVE",
+                    memberships: {
+                      some: {
+                        organizationId,
+                        role: { in: ["AGENT", "SUPERVISOR"] },
+                      },
                     },
                   },
                 },
-              },
-              select: {
-                userId: true,
-                user: { select: { name: true } },
+                select: {
+                  userId: true,
+                  user: { select: { name: true } },
+                },
               },
             },
-          },
-        })
-      : Promise.resolve([]),
-    access.role === "SUPERVISOR"
-      ? database.commercialTeamMember.findFirst({
-          where: {
-            userId: access.userId,
-            salesEnabled: true,
-            isPrimary: true,
-            isActive: true,
-            team: { organizationId, status: "ACTIVE" },
-          },
-          select: { teamId: true },
-        })
-      : Promise.resolve(null),
-  ]);
+          })
+        : Promise.resolve([]),
+      access.role === "SUPERVISOR"
+        ? database.commercialTeamMember.findFirst({
+            where: {
+              userId: access.userId,
+              salesEnabled: true,
+              isPrimary: true,
+              isActive: true,
+              team: { organizationId, status: "ACTIVE" },
+            },
+            select: { teamId: true },
+          })
+        : Promise.resolve(null),
+    ]);
   const salesEnabled = primarySalesMembership !== null;
   const assignmentTeams = assignmentTeamRecords
     .map((team) => ({
@@ -612,9 +619,9 @@ export async function getOrderInbox(
                 { agentUserId: null, assignedTeamId: null },
               ],
             }
-        : orderScope.kind === "NONE"
-          ? { assignedTeamId: { in: [] } }
-          : {};
+          : orderScope.kind === "NONE"
+            ? { assignedTeamId: { in: [] } }
+            : {};
 
   const teamFilterWhere: Prisma.DitoOrderWhereInput =
     teamFilter === "UNASSIGNED"
@@ -823,7 +830,9 @@ export async function getOrderInbox(
         order.district,
       ),
 
-      agentName: order.agentNameNormalized ?? order.agentNameRaw,
+      agentName: order.agent
+        ? formatAdvisorCompactName(order.agent.name, order.agent.email)
+        : (order.agentNameNormalized ?? order.agentNameRaw),
       submitterEmail: order.submitterEmailNormalized,
 
       assignmentStatusLabel:
@@ -953,6 +962,7 @@ export async function getOrderInbox(
     showTeamFilter:
       access.role !== "AGENT" &&
       (access.role !== "SUPERVISOR" || supervisedTeamIds.length > 0),
+    showAdvisorColumn: access.role !== "AGENT",
     filteredTotal,
 
     items,

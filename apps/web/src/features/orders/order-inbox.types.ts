@@ -137,6 +137,7 @@ export interface OrderInboxData {
   teamOptions: OrderInboxTeamOption[];
   assignmentTeams: OrderAssignmentTeamOption[];
   showTeamFilter: boolean;
+  showAdvisorColumn: boolean;
   filteredTotal: number;
 
   items: OrderInboxItem[];

@@ -25,6 +25,7 @@ export function AssignSharedDitoImportRowsForm({
     id: string;
     orderCode: string;
     customerName: string;
+    salesAdvisorName: string | null;
     updatedAt: string;
     assignedUserId: string | null;
   }>;
@@ -58,6 +59,11 @@ export function AssignSharedDitoImportRowsForm({
               <p className="mt-1 truncate text-sm text-ui-muted">
                 {row.customerName}
               </p>
+              {row.salesAdvisorName ? (
+                <p className="mt-1 truncate text-xs font-medium text-ui-text">
+                  Reportado: {row.salesAdvisorName}
+                </p>
+              ) : null}
             </div>
             <SelectInput
               aria-label={`Asesor de la orden ${row.orderCode}`}

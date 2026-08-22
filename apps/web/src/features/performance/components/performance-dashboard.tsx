@@ -191,10 +191,14 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
         </article>
       </div>
 
+      <SalesOperationMix data={data} />
+
       <div className="agent-daily__rhythm">
         <div className="agent-daily__rhythm-copy">
           <strong>Ritmo de los últimos 7 días</strong>
-          <small>Compara ventas ingresadas y cerradas por fecha de evento.</small>
+          <small>
+            Compara ventas ingresadas y cerradas por fecha de evento.
+          </small>
           <div className="agent-daily__legend" aria-hidden="true">
             <span data-series="entered">Ingresadas</span>
             <span data-series="closed">Cerradas</span>
@@ -250,9 +254,145 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
       <p className="agent-daily__notice">
         El cierre se atribuye al día de <code>closedAt</code>; no altera el mes
         de ingreso de la venta. Potencial no significa comisión ganada: se
-        confirma cuando la
-        portabilidad queda entregada y cerrada.
+        confirma cuando la portabilidad queda entregada y cerrada.
       </p>
+    </section>
+  );
+}
+
+function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
+  const mix = data.dailyPulse?.operationMix;
+  if (!mix) return null;
+
+  const rows = [
+    {
+      key: "new-line",
+      label: "Altas nuevas",
+      read: (period: typeof mix.today) => period.newLine,
+    },
+    {
+      key: "port-prepaid",
+      label: "Porta origen prepago",
+      read: (period: typeof mix.today) => period.portPrepaid,
+    },
+    {
+      key: "port-postpaid",
+      label: "Porta origen postpago",
+      read: (period: typeof mix.today) => period.portPostpaid,
+    },
+  ];
+  const periods = [
+    { key: "today", label: "Hoy", value: mix.today },
+    { key: "week", label: "Esta semana", value: mix.week },
+    { key: "month", label: "Este mes", value: mix.month },
+  ];
+
+  return (
+    <section className="sales-mix" aria-labelledby="sales-mix-title">
+      <header className="sales-mix__header">
+        <div>
+          <strong id="sales-mix-title">Mix de ventas</strong>
+          <small>
+            {data.view === "SELF"
+              ? "Tu composición comercial por fecha de ingreso"
+              : `Composición de ${data.scopeLabel.toLocaleLowerCase("es-PE")}`}
+          </small>
+        </div>
+        <span>{mix.month.total} ventas este mes</span>
+      </header>
+
+      <div className="sales-mix__table-wrap">
+        <table className="sales-mix__table">
+          <thead>
+            <tr>
+              <th>Tipo de venta</th>
+              {periods.map((period) => (
+                <th key={period.key}>
+                  <span>{period.label}</span>
+                  <strong>{period.value.total}</strong>
+                  <small>Total</small>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr data-segment={row.key} key={row.key}>
+                <th>{row.label}</th>
+                {periods.map((period) => {
+                  const value = row.read(period.value);
+
+                  return (
+                    <td key={period.key}>
+                      <strong>{value}</strong>
+                      <small>
+                        {period.value.total > 0
+                          ? percentage(value / period.value.total)
+                          : "0%"}
+                      </small>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+            {mix.month.unclassified > 0 ? (
+              <tr data-segment="unclassified">
+                <th>Por clasificar</th>
+                {periods.map((period) => (
+                  <td key={period.key}>
+                    <strong>{period.value.unclassified}</strong>
+                    <small>
+                      {period.value.total > 0
+                        ? percentage(
+                            period.value.unclassified / period.value.total,
+                          )
+                        : "0%"}
+                    </small>
+                  </td>
+                ))}
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+
+      {data.view !== "SELF" && mix.today.byAgent.length > 0 ? (
+        <details className="sales-mix__agents">
+          <summary>
+            Ver mix de hoy por asesor ({mix.today.byAgent.length})
+          </summary>
+          <div className="performance-table-wrap">
+            <table className="performance-table">
+              <thead>
+                <tr>
+                  <th>Asesor</th>
+                  <th>Total</th>
+                  <th>Alta nueva</th>
+                  <th>Porta post</th>
+                  <th>Porta pre</th>
+                  {mix.today.unclassified > 0 ? <th>Por clasificar</th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {mix.today.byAgent.map((agent) => (
+                  <tr key={agent.id}>
+                    <td>
+                      <strong>{agent.name}</strong>
+                    </td>
+                    <td>{agent.total}</td>
+                    <td>{agent.newLine}</td>
+                    <td>{agent.portPostpaid}</td>
+                    <td>{agent.portPrepaid}</td>
+                    {mix.today.unclassified > 0 ? (
+                      <td>{agent.unclassified}</td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }

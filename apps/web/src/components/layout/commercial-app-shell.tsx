@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { ThemeControl } from "@repo/ui/theme-control";
 
@@ -83,6 +85,7 @@ function NavigationItem({
       aria-current={active ? "page" : undefined}
       className="app-nav-item"
       href={href}
+      title={label}
     >
       {content}
     </Link>
@@ -142,15 +145,55 @@ export function CommercialAppShell({
 }) {
   const roleLabel = roleLabels[role] ?? role;
   const isAdmin = role === "ADMIN";
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(role === "AGENT");
+
+  useEffect(() => {
+    const storedPreference = window.localStorage.getItem(
+      "commercial-sidebar-collapsed",
+    );
+    if (storedPreference !== null) {
+      setSidebarCollapsed(storedPreference === "true");
+    }
+  }, []);
+
+  function toggleSidebar() {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem("commercial-sidebar-collapsed", String(next));
+      return next;
+    });
+  }
+
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
+    >
       <aside className="app-shell__sidebar">
         <div className="app-shell__brand">
           <div className="app-shell__mark">DO</div>
-          <div className="min-w-0">
+          <div className="app-shell__brand-copy min-w-0">
             <p className="app-shell__brand-name">Distribuidor Online</p>
             <p className="app-shell__brand-product">Sistema Comercial</p>
           </div>
+          <button
+            aria-label={sidebarCollapsed ? "Expandir menú" : "Contraer menú"}
+            aria-pressed={sidebarCollapsed}
+            className="app-shell__collapse"
+            onClick={toggleSidebar}
+            title={sidebarCollapsed ? "Expandir menú" : "Contraer menú"}
+            type="button"
+          >
+            <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+              <path
+                d="m12 6-4 4 4 4"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.6"
+              />
+            </svg>
+          </button>
         </div>
         <div className="app-shell__organization">
           <p className="app-shell__overline">Organización</p>
@@ -171,39 +214,43 @@ export function CommercialAppShell({
             icon="orders"
             label="Pedidos"
           />
-          <NavigationItem
-            active={activeSection === "imports"}
-            description="Carga y revisión DITO"
-            href={isAdmin ? "/admin/dito-imports" : undefined}
-            icon="sales"
-            label="Ventas"
-          />
-          <NavigationItem
-            active={activeSection === "people"}
-            description="Usuarios, roles y vínculos DITO"
-            href={isAdmin ? "/admin/users" : undefined}
-            icon="people"
-            label="Personas"
-          />
-          <NavigationItem
-            active={activeSection === "teams"}
-            description="Supervisores y asesores"
-            href={isAdmin ? "/admin/teams" : undefined}
-            icon="teams"
-            label="Equipos"
-          />
+          {isAdmin ? (
+            <>
+              <NavigationItem
+                active={activeSection === "imports"}
+                description="Carga y revisión DITO"
+                href="/admin/dito-imports"
+                icon="sales"
+                label="Ventas"
+              />
+              <NavigationItem
+                active={activeSection === "people"}
+                description="Usuarios, roles y vínculos DITO"
+                href="/admin/users"
+                icon="people"
+                label="Personas"
+              />
+              <NavigationItem
+                active={activeSection === "teams"}
+                description="Supervisores y asesores"
+                href="/admin/teams"
+                icon="teams"
+                label="Equipos"
+              />
+            </>
+          ) : null}
         </nav>
         <div className="app-shell__account">
           <div className="app-shell__account-card">
             <div className="app-shell__avatar">
               {userName.slice(0, 1).toUpperCase()}
             </div>
-            <div className="min-w-0">
+            <div className="app-shell__account-copy min-w-0">
               <p className="app-shell__user-name">{userName}</p>
               <p className="app-shell__user-role">{roleLabel}</p>
             </div>
             <div className="app-shell__theme">
-              <ThemeControl />
+              <ThemeControl compact={sidebarCollapsed} />
             </div>
             <div className="app-shell__sign-out">{signOut}</div>
           </div>
@@ -225,7 +272,11 @@ export function CommercialAppShell({
         </header>
         <main className="app-shell__main">{children}</main>
       </div>
-      <nav className="app-shell__mobile-nav" aria-label="Navegación móvil">
+      <nav
+        aria-label="Navegación móvil"
+        className="app-shell__mobile-nav"
+        data-items={isAdmin ? "5" : "2"}
+      >
         <MobileNavigationItem
           active={activeSection === "performance"}
           href="/performance"
@@ -238,24 +289,28 @@ export function CommercialAppShell({
           icon="orders"
           label="Pedidos"
         />
-        <MobileNavigationItem
-          active={activeSection === "imports"}
-          href={isAdmin ? "/admin/dito-imports" : undefined}
-          icon="sales"
-          label="Ventas"
-        />
-        <MobileNavigationItem
-          active={activeSection === "people"}
-          href={isAdmin ? "/admin/users" : undefined}
-          icon="people"
-          label="Personas"
-        />
-        <MobileNavigationItem
-          active={activeSection === "teams"}
-          href={isAdmin ? "/admin/teams" : undefined}
-          icon="teams"
-          label="Equipos"
-        />
+        {isAdmin ? (
+          <>
+            <MobileNavigationItem
+              active={activeSection === "imports"}
+              href="/admin/dito-imports"
+              icon="sales"
+              label="Ventas"
+            />
+            <MobileNavigationItem
+              active={activeSection === "people"}
+              href="/admin/users"
+              icon="people"
+              label="Personas"
+            />
+            <MobileNavigationItem
+              active={activeSection === "teams"}
+              href="/admin/teams"
+              icon="teams"
+              label="Equipos"
+            />
+          </>
+        ) : null}
       </nav>
     </div>
   );

@@ -99,8 +99,11 @@ pedido, no en pantallas administrativas desconectadas.
 
 - nombre visual definitivo y elementos de marca;
 - densidad preferida para la bandeja: cómoda o compacta;
-- campos prioritarios por rol en la primera vista del pedido;
 - métricas operativas que merecen aparecer en Inicio.
+
+Los campos prioritarios de la bandeja quedaron resueltos en SPEC-024: la
+identidad del asesor se muestra a roles de conducción, mientras que el asesor
+ve el plazo de acción en ese mismo espacio.
 
 ## 10. Auditoría inicial de interfaz
 
@@ -136,3 +139,19 @@ pedido, no en pantallas administrativas desconectadas.
 - “Equipo” representaba dos objetos diferentes: personas y equipos comerciales.
 - Se crearon destinos persistentes `Personas` y `Equipos`, con iconografía SVG
   propia, estados activos y permisos aplicados por ruta.
+
+## 11. Patrón transversal de producto
+
+La plataforma adopta una estructura consistente para todos sus módulos:
+
+1. **Resumen:** pocas métricas que expliquen situación, riesgo y progreso.
+2. **Exploración:** filas o tablas densas para comparar información estructurada.
+3. **Acción contextual:** formularios y decisiones aparecen junto al registro que
+   las origina, sin llenar la vista inicial de botones.
+4. **Detalle bajo demanda:** panel lateral para información completa, historial y
+   acciones menos frecuentes.
+
+Este patrón se aplicará de forma incremental a Pedidos, Personas, Equipos,
+Importaciones, Rendimiento y Prospección. Cada migración debe preservar reglas,
+permisos y flujos estables; la coherencia visual no autoriza una reescritura
+simultánea de módulos operativos.

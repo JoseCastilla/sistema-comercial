@@ -8,7 +8,7 @@ import {
 const maxWorkbookBytes = 10 * 1024 * 1024;
 const businessTimeZoneOffset = '-05:00';
 
-export const ditoBatchParserVersion = '1.1';
+export const ditoBatchParserVersion = '1.7';
 
 const operatorCatalog = {
   '20': 'ENTEL',
@@ -26,7 +26,9 @@ export type DitoBatchRowOutcome = 'IMPORTABLE' | 'EXCLUDED' | 'INVALID';
 export type DitoBatchRowIssue =
   | 'STATUS_NOT_APPROVED'
   | 'OUTSIDE_CURRENT_MONTH'
+  | 'NON_MOBILE_PRODUCT'
   | 'MISSING_REQUIRED_VALUE'
+  | 'INVALID_DOCUMENT_NUMBER'
   | 'INVALID_ORDER_CODE'
   | 'INVALID_REGISTERED_AT'
   | 'UNKNOWN_OPERATION'
@@ -47,6 +49,7 @@ export interface ParsedDitoBatchRow {
   registeredAt: Date | null;
   ditoUsername: string | null;
   ditoUserName: string | null;
+  salesAdvisorName: string | null;
   holderName: string | null;
   holderDocumentType: string | null;
   holderDocumentNumber: string | null;
@@ -87,12 +90,17 @@ interface DitoColumns {
   status: number;
   ditoUsername: number;
   ditoUserName: number;
+  salesAdvisorName: number | null;
   registeredDate: number;
   registeredTime: number;
   holderName: number;
   documentType: number;
   documentNumber: number;
   customerEmail: number;
+  fixedServiceNumber: number | null;
+  fixedOperation: number | null;
+  fixedOrderId: number | null;
+  fixedPlan: number | null;
   serviceNumber: number;
   operation: number;
   portabilityOrigin: number | null;
@@ -234,15 +242,22 @@ function resolveColumns(headers: string[]): DitoColumns {
     status: find('Estado Pedido WC') as number,
     ditoUsername: find('Usuario DITO') as number,
     ditoUserName: find('Nombre de Usuario') as number,
+    salesAdvisorName: find('Asesor', serviceNumber - 1, false),
     registeredDate: find('Fecha de Registro de Pedido') as number,
     registeredTime: find('Hora de Registro de Pedido') as number,
     holderName: find('Nombre de Cliente') as number,
     documentType: find('Tipo Documento Cliente') as number,
     documentNumber: find('Nro Documento Cliente') as number,
     customerEmail: find('Email Cliente') as number,
+    fixedServiceNumber: find('Nro Servicio Fijo', -1, false),
+    fixedOperation: find('Operación Comercial Fijo', -1, false),
+    fixedOrderId: find('Order ID Fijo', -1, false),
+    fixedPlan: find('Plan Fijo', -1, false),
     serviceNumber,
     operation: find('Operación Comercial Móvil', serviceNumber - 1) as number,
-    portabilityOrigin: find('Origen Portabilidad', serviceNumber - 1, false),
+    portabilityOrigin:
+      find('Origen Portabilidad', serviceNumber - 1, false) ??
+      find('Origen', serviceNumber - 1, false),
     operator: find('Operador Cedente Móvil', serviceNumber - 1) as number,
     orderCode: find('Order ID Móvil', serviceNumber - 1) as number,
     plan: find('Plan Móvil', serviceNumber - 1) as number,
@@ -290,8 +305,8 @@ function parseRow(
     column ? cleanText(worksheet.getCell(sourceRow, column).text) : null;
   const ditaStatus = normalizeLookup(text(columns.status));
   const registeredAt = parseRegisteredAt(
-    text(columns.registeredDate),
-    text(columns.registeredTime),
+    worksheet.getCell(sourceRow, columns.registeredDate).value,
+    worksheet.getCell(sourceRow, columns.registeredTime).value,
   );
   const operationValue = normalizeLookup(text(columns.operation));
   const portabilityOriginRaw = text(columns.portabilityOrigin);
@@ -310,6 +325,21 @@ function parseRow(
   const department = text(columns.department);
   const province = resolveProvince(department, text(columns.province));
   const district = text(columns.district);
+  const holderDocumentType = text(columns.documentType);
+  const holderDocumentNumber = normalizeDocumentNumber(
+    holderDocumentType,
+    text(columns.documentNumber),
+  );
+  const serviceNumber = digits(text(columns.serviceNumber));
+  const nonMobileProduct =
+    !serviceNumber &&
+    !operationValue &&
+    hasFixedProductData([
+      text(columns.fixedServiceNumber),
+      text(columns.fixedOperation),
+      text(columns.fixedOrderId),
+      text(columns.fixedPlan),
+    ]);
   const issues: DitoBatchRowIssue[] = [];
 
   if (ditaStatus !== 'APROBADO') issues.push('STATUS_NOT_APPROVED');
@@ -318,47 +348,61 @@ function parseRow(
     issues.push('OUTSIDE_CURRENT_MONTH');
   }
 
-  if (!registeredAt) issues.push('INVALID_REGISTERED_AT');
-  if (!orderCodeNormalized) issues.push('INVALID_ORDER_CODE');
-  if (operationValue === 'PORTABILIDAD') {
-    if (!normalizeLookup(portabilityOriginRaw)) {
-      issues.push('MISSING_PORTABILITY_ORIGIN');
-    } else if (!portabilityOrigin) {
-      issues.push('UNKNOWN_PORTABILITY_ORIGIN');
+  if (nonMobileProduct) {
+    issues.push('NON_MOBILE_PRODUCT');
+  } else {
+    if (!registeredAt) issues.push('INVALID_REGISTERED_AT');
+    if (!orderCodeNormalized) issues.push('INVALID_ORDER_CODE');
+    if (operationValue === 'PORTABILIDAD') {
+      if (!normalizeLookup(portabilityOriginRaw)) {
+        issues.push('MISSING_PORTABILITY_ORIGIN');
+      } else if (!portabilityOrigin) {
+        issues.push('UNKNOWN_PORTABILITY_ORIGIN');
+      }
+    } else if (operationValue !== 'ALTA') {
+      issues.push('UNKNOWN_OPERATION');
     }
-  } else if (operationValue !== 'ALTA') {
-    issues.push('UNKNOWN_OPERATION');
-  }
-  if (
-    (operationValue === 'PORTABILIDAD' || operationValue === 'ALTA') &&
-    !carrier
-  ) {
-    issues.push('UNKNOWN_OPERATOR');
-  }
-  if (!deliveryMethod) issues.push('UNKNOWN_DELIVERY_METHOD');
-  if (!province) issues.push('UNKNOWN_PROVINCE');
+    if (
+      (operationValue === 'PORTABILIDAD' || operationValue === 'ALTA') &&
+      !carrier
+    ) {
+      issues.push('UNKNOWN_OPERATOR');
+    }
+    if (!deliveryMethod) issues.push('UNKNOWN_DELIVERY_METHOD');
+    if (!province) issues.push('UNKNOWN_PROVINCE');
+    if (
+      normalizeLookup(holderDocumentType) === 'DNI' &&
+      (!holderDocumentNumber || holderDocumentNumber.length !== 8)
+    ) {
+      issues.push('INVALID_DOCUMENT_NUMBER');
+    }
 
-  const requiredValues = [
-    text(columns.ditoUsername),
-    text(columns.ditoUserName),
-    text(columns.holderName),
-    digits(text(columns.documentNumber)),
-    digits(text(columns.serviceNumber)),
-    department,
-    district,
-  ];
+    const requiredValues = [
+      text(columns.ditoUsername),
+      text(columns.ditoUserName),
+      text(columns.holderName),
+      holderDocumentNumber,
+      serviceNumber,
+      department,
+      district,
+    ];
 
-  if (requiredValues.some((value) => !value)) {
-    issues.push('MISSING_REQUIRED_VALUE');
+    if (requiredValues.some((value) => !value)) {
+      issues.push('MISSING_REQUIRED_VALUE');
+    }
   }
 
   const excluded = issues.some(
     (issue) =>
-      issue === 'STATUS_NOT_APPROVED' || issue === 'OUTSIDE_CURRENT_MONTH',
+      issue === 'STATUS_NOT_APPROVED' ||
+      issue === 'OUTSIDE_CURRENT_MONTH' ||
+      issue === 'NON_MOBILE_PRODUCT',
   );
   const invalid = issues.some(
     (issue) =>
-      issue !== 'STATUS_NOT_APPROVED' && issue !== 'OUTSIDE_CURRENT_MONTH',
+      issue !== 'STATUS_NOT_APPROVED' &&
+      issue !== 'OUTSIDE_CURRENT_MONTH' &&
+      issue !== 'NON_MOBILE_PRODUCT',
   );
   const outcome: DitoBatchRowOutcome = excluded
     ? 'EXCLUDED'
@@ -383,11 +427,12 @@ function parseRow(
     registeredAt,
     ditoUsername: text(columns.ditoUsername),
     ditoUserName: text(columns.ditoUserName),
+    salesAdvisorName: cleanOptional(text(columns.salesAdvisorName)),
     holderName: text(columns.holderName),
-    holderDocumentType: text(columns.documentType),
-    holderDocumentNumber: digits(text(columns.documentNumber)),
+    holderDocumentType,
+    holderDocumentNumber,
     customerEmail: normalizeEmail(text(columns.customerEmail)),
-    serviceNumber: digits(text(columns.serviceNumber)),
+    serviceNumber,
     portabilityOriginRaw: cleanOptional(portabilityOriginRaw),
     commercialOperation,
     carrier: carrier ?? null,
@@ -418,6 +463,10 @@ function parseRow(
     sourceLoadType: cleanOptional(text(columns.loadType)),
     ubigeoCatalogVersion: ineiProvinceCatalogVersion,
   };
+}
+
+function hasFixedProductData(values: Array<string | null>): boolean {
+  return values.some((value) => Boolean(normalizeLookup(value)));
 }
 
 function isBlankRow(
@@ -514,6 +563,17 @@ function digits(value: string | null): string | null {
   return result || null;
 }
 
+function normalizeDocumentNumber(
+  documentType: string | null,
+  value: string | null,
+): string | null {
+  const numeric = digits(value);
+
+  if (!numeric || normalizeLookup(documentType) !== 'DNI') return numeric;
+
+  return numeric.length <= 8 ? numeric.padStart(8, '0') : numeric;
+}
+
 function normalizeCode(value: string | null): string | null {
   if (!value) return null;
 
@@ -523,20 +583,89 @@ function normalizeCode(value: string | null): string | null {
 }
 
 function parseRegisteredAt(
-  dateValue: string | null,
-  timeValue: string | null,
+  dateValue: ExcelJS.CellValue,
+  timeValue: ExcelJS.CellValue,
 ): Date | null {
-  if (!dateValue || !timeValue) return null;
+  const dateParts = parseDateParts(dateValue);
+  const timeParts = parseTimeParts(timeValue);
 
-  const dateMatch = dateValue.match(/(\d{4})-(\d{2})-(\d{2})/);
-  const timeMatch = timeValue.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!dateParts || !timeParts) return null;
 
-  if (!dateMatch || !timeMatch) return null;
-
-  const iso = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}T${timeMatch[1]?.padStart(2, '0')}:${timeMatch[2]}:${timeMatch[3] ?? '00'}${businessTimeZoneOffset}`;
+  const iso = `${dateParts.year}-${String(dateParts.month).padStart(2, '0')}-${String(dateParts.day).padStart(2, '0')}T${String(timeParts.hour).padStart(2, '0')}:${String(timeParts.minute).padStart(2, '0')}:${String(timeParts.second).padStart(2, '0')}${businessTimeZoneOffset}`;
   const parsed = new Date(iso);
 
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseDateParts(
+  value: ExcelJS.CellValue,
+): { year: number; month: number; day: number } | null {
+  if (value instanceof Date) {
+    return {
+      year: value.getUTCFullYear(),
+      month: value.getUTCMonth() + 1,
+      day: value.getUTCDate(),
+    };
+  }
+
+  const text = cellValueToText(value);
+  const isoMatch = text.match(/(\d{4})-(\d{2})-(\d{2})/);
+
+  if (isoMatch) {
+    return {
+      year: Number(isoMatch[1]),
+      month: Number(isoMatch[2]),
+      day: Number(isoMatch[3]),
+    };
+  }
+
+  const serial =
+    typeof value === 'number' ? value : Number(text.replace(',', '.'));
+  if (!Number.isFinite(serial) || serial < 1) return null;
+
+  const excelEpoch = Date.UTC(1899, 11, 30);
+  const date = new Date(excelEpoch + Math.floor(serial) * 86_400_000);
+
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
+function parseTimeParts(
+  value: ExcelJS.CellValue,
+): { hour: number; minute: number; second: number } | null {
+  if (value instanceof Date) {
+    return {
+      hour: value.getUTCHours(),
+      minute: value.getUTCMinutes(),
+      second: value.getUTCSeconds(),
+    };
+  }
+
+  const text = cellValueToText(value);
+  const clockMatch = text.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+
+  if (clockMatch) {
+    return {
+      hour: Number(clockMatch[1]),
+      minute: Number(clockMatch[2]),
+      second: Number(clockMatch[3] ?? '0'),
+    };
+  }
+
+  const fraction =
+    typeof value === 'number' ? value : Number(text.replace(',', '.'));
+  if (!Number.isFinite(fraction) || fraction < 0 || fraction >= 1) return null;
+
+  const totalSeconds = Math.round(fraction * 86_400) % 86_400;
+
+  return {
+    hour: Math.floor(totalSeconds / 3_600),
+    minute: Math.floor((totalSeconds % 3_600) / 60),
+    second: totalSeconds % 60,
+  };
 }
 
 function isCurrentBusinessMonth(value: Date, now: Date): boolean {

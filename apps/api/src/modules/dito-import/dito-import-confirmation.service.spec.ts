@@ -17,6 +17,7 @@ const parsedRow = {
   registeredAt: '2026-08-01T15:30:00.000Z',
   ditoUsername: 'usuario.asesor',
   ditoUserName: 'Asesor Prueba',
+  salesAdvisorName: 'Asesor Prueba',
   holderName: 'CLIENTE PRUEBA',
   holderDocumentType: 'DNI',
   holderDocumentNumber: '12345678',
@@ -46,7 +47,7 @@ function batch(overrides: Record<string, unknown> = {}) {
   return {
     id: 'batch-1',
     status: 'READY',
-    parserVersion: '1.1',
+    parserVersion: '1.7',
     updatedAt: expectedUpdatedAt,
     newRows: 1,
     enrichmentRows: 0,
@@ -80,6 +81,37 @@ function storedRow(resolved: boolean, overrides: Record<string, unknown> = {}) {
           }
         : null,
     },
+    ...overrides,
+  };
+}
+
+function existingOrder(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'order-1',
+    orderCodeNormalized: parsedRow.orderCodeNormalized,
+    salesCode: parsedRow.salesCode,
+    operationRaw: parsedRow.operationRaw,
+    commercialOperation: parsedRow.commercialOperation,
+    carrier: parsedRow.carrier,
+    fixedCharge: { toNumber: () => parsedRow.fixedCharge },
+    holderFullNameRaw: parsedRow.holderName,
+    holderDocumentType: 'DNI',
+    holderDocumentNumber: parsedRow.holderDocumentNumber,
+    serviceNumber: parsedRow.serviceNumber,
+    deliveryMethod: parsedRow.deliveryMethod,
+    deliveryMethodRaw: parsedRow.deliveryMethodRaw,
+    deliveryAddress: parsedRow.deliveryAddress,
+    deliveryReference: parsedRow.deliveryReference,
+    deliveryLatitude: { toNumber: () => parsedRow.deliveryLatitude },
+    deliveryLongitude: { toNumber: () => parsedRow.deliveryLongitude },
+    department: parsedRow.department,
+    province: parsedRow.province,
+    district: parsedRow.district,
+    agentUserId: 'agent-1',
+    assignedTeamId: 'team-1',
+    agentNameRaw: parsedRow.salesAdvisorName,
+    agentNameNormalized: 'ASESOR PRUEBA',
+    updatedAt: new Date('2026-08-08T11:00:00.000Z'),
     ...overrides,
   };
 }
@@ -329,5 +361,111 @@ describe('DitoImportConfirmationService', () => {
         }),
       }),
     );
+  });
+
+  it('reapplies a reviewed conflict when the compared values are unchanged', async () => {
+    const incomingRow = {
+      ...parsedRow,
+      commercialOperation: 'PORT_PREPAID',
+      portabilityOriginRaw: 'PREPAGO',
+      operationRaw: 'PORTA CLARO PRE 39.9',
+      conflictResolutions: [
+        {
+          field: 'commercialOperation',
+          current: 'PORT_POSTPAID',
+          incoming: 'PORT_PREPAID',
+          decision: 'USE_INCOMING',
+          resolvedByUserId: 'admin-1',
+          resolvedAt: '2026-08-08T11:30:00.000Z',
+        },
+      ],
+    };
+    const transaction = {
+      ditoImportBatch: {
+        findFirst: jest.fn().mockResolvedValue(
+          batch({
+            rows: [storedRow(true, { parsedData: incomingRow })],
+          }),
+        ),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      ditoOrder: {
+        findMany: jest.fn().mockResolvedValue([existingOrder()]),
+        create: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      ditoOrderCorrection: { create: jest.fn().mockResolvedValue({}) },
+      ditoOrderAssignmentHistory: { create: jest.fn() },
+      ditoImportRow: { update: jest.fn().mockResolvedValue({}) },
+    };
+    const { service } = createService(transaction);
+
+    await expect(
+      service.confirm({
+        organizationId: 'organization-1',
+        actorUserId: 'admin-1',
+        batchId: 'batch-1',
+        expectedUpdatedAt,
+      }),
+    ).resolves.toMatchObject({
+      status: 'CONFIRMED',
+      enrichedRows: 1,
+    });
+    expect(transaction.ditoOrder.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        data: expect.objectContaining({
+          commercialOperation: 'PORT_PREPAID',
+          operationRaw: 'PORTA CLARO PRE 39.9',
+        }),
+      }),
+    );
+  });
+
+  it('rejects a reviewed conflict when the current order changed afterward', async () => {
+    const incomingRow = {
+      ...parsedRow,
+      commercialOperation: 'PORT_PREPAID',
+      conflictResolutions: [
+        {
+          field: 'commercialOperation',
+          current: 'PORT_POSTPAID',
+          incoming: 'PORT_PREPAID',
+          decision: 'USE_INCOMING',
+        },
+      ],
+    };
+    const transaction = {
+      ditoImportBatch: {
+        findFirst: jest.fn().mockResolvedValue(
+          batch({
+            rows: [storedRow(true, { parsedData: incomingRow })],
+          }),
+        ),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        update: jest.fn(),
+      },
+      ditoOrder: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            existingOrder({ commercialOperation: 'NEW_LINE' }),
+          ]),
+        create: jest.fn(),
+        updateMany: jest.fn(),
+      },
+    };
+    const { service } = createService(transaction);
+
+    await expect(
+      service.confirm({
+        organizationId: 'organization-1',
+        actorUserId: 'admin-1',
+        batchId: 'batch-1',
+        expectedUpdatedAt,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(transaction.ditoOrder.updateMany).not.toHaveBeenCalled();
   });
 });

@@ -21,6 +21,29 @@ export interface DailyPerformanceItem {
   isToday: boolean;
 }
 
+export interface SalesOperationMixItem {
+  total: number;
+  newLine: number;
+  portPostpaid: number;
+  portPrepaid: number;
+  unclassified: number;
+}
+
+export interface SalesOperationMix extends SalesOperationMixItem {
+  byAgent: Array<
+    SalesOperationMixItem & {
+      id: string;
+      name: string;
+    }
+  >;
+}
+
+export interface SalesOperationMixPeriods {
+  today: SalesOperationMix;
+  week: SalesOperationMix;
+  month: SalesOperationMix;
+}
+
 export interface DailyPerformance {
   todayLabel: string;
   entered: number;
@@ -28,6 +51,7 @@ export interface DailyPerformance {
   closed: number;
   confirmed: number;
   confirmedBaseCommissionCents: number;
+  operationMix: SalesOperationMixPeriods;
   days: DailyPerformanceItem[];
 }
 

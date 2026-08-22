@@ -17,6 +17,7 @@ const parsedRow: ParsedDitoBatchRow = {
   registeredAt: new Date('2026-08-01T15:30:00.000Z'),
   ditoUsername: 'usuario.asesor',
   ditoUserName: 'Asesor Prueba',
+  salesAdvisorName: 'Asesor Prueba',
   holderName: 'CLIENTE PRUEBA',
   holderDocumentType: 'DNI',
   holderDocumentNumber: '12345678',
@@ -152,6 +153,20 @@ describe('DITO import preview classification', () => {
         incoming: '900000001',
       },
     ]);
+  });
+
+  it('ignores coordinate differences caused only by spreadsheet precision', () => {
+    const decision = classifyDitoImportRow(
+      { ...parsedRow, deliveryLatitude: -8.426517015 },
+      {
+        identity: resolvedIdentity,
+        orderByCode: { ...existingOrder, deliveryLatitude: -8.42651702 },
+        orderBySalesCode: existingOrder,
+      },
+    );
+
+    expect(decision.classification).toBe('UNCHANGED');
+    expect(decision.conflicts).toBeNull();
   });
 
   it('blocks a sales code that already belongs to another order', () => {

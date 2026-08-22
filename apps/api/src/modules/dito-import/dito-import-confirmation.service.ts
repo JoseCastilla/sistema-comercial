@@ -15,6 +15,7 @@ import {
   classifyDitoImportRow,
   normalizeDitoUsername,
   type DitoAgentIdentitySnapshot,
+  type DitoImportPreviewDecision,
   type DitoImportPreviewClassification,
   type ExistingDitoOrderSnapshot,
 } from './dito-import-preview';
@@ -184,7 +185,7 @@ export class DitoImportConfirmationService {
 
       if (batch.parserVersion !== ditoBatchParserVersion) {
         throw new BadRequestException(
-          'Esta vista previa usa una versión anterior del importador. Genera una nueva con la columna Origen Portabilidad antes de confirmar.',
+          'Esta vista previa usa una versión anterior del importador. Genera una nueva antes de confirmar.',
         );
       }
 
@@ -240,13 +241,16 @@ export class DitoImportConfirmationService {
           baseIdentity,
           orderByCode,
         );
-        const decision = classifyDitoImportRow(row, {
-          identity,
-          orderByCode,
-          orderBySalesCode: row.salesCode
-            ? (bySalesCode.get(row.salesCode) ?? null)
-            : null,
-        });
+        const decision = applyStoredConflictResolutions(
+          classifyDitoImportRow(row, {
+            identity,
+            orderByCode,
+            orderBySalesCode: row.salesCode
+              ? (bySalesCode.get(row.salesCode) ?? null)
+              : null,
+          }),
+          stored.parsedData,
+        );
 
         return { stored, row, identity, decision };
       });
@@ -503,6 +507,7 @@ async function createOrder(
     import_source_row: input.sourceRow,
     dito_status: row.ditoStatus,
     dito_username: row.ditoUsername,
+    sales_advisor_name: row.salesAdvisorName,
     customer_email: row.customerEmail,
     portability_origin_raw: row.portabilityOriginRaw,
     delivery_instructions: row.deliveryInstructions,
@@ -541,9 +546,13 @@ async function createOrder(
       department: row.department,
       province: row.province,
       district: row.district,
-      agentNameRaw: row.ditoUserName ?? row.ditoUsername ?? 'ASESOR DITO',
+      agentNameRaw:
+        row.salesAdvisorName ??
+        row.ditoUserName ??
+        row.ditoUsername ??
+        'ASESOR DITO',
       agentNameNormalized: normalizeDitoUsername(
-        row.ditoUserName ?? row.ditoUsername,
+        row.salesAdvisorName ?? row.ditoUserName ?? row.ditoUsername,
       ),
       agentUserId: input.identity.userId,
       assignedTeamId: input.identity.teamId,
@@ -642,6 +651,7 @@ function sanitizeChanges(
 ): Record<string, string | number | null> {
   const allowed = new Set([
     'salesCode',
+    'operationRaw',
     'commercialOperation',
     'carrier',
     'fixedCharge',
@@ -713,6 +723,122 @@ function readParsedRow(value: Prisma.JsonValue): ParsedDitoBatchRow {
   return { ...stored, registeredAt };
 }
 
+type ConflictScalar = string | number | null;
+
+interface StoredConflictResolution {
+  field: string;
+  current: ConflictScalar;
+  incoming: ConflictScalar;
+  decision: 'KEEP_CURRENT' | 'USE_INCOMING';
+}
+
+function applyStoredConflictResolutions(
+  decision: DitoImportPreviewDecision,
+  parsedData: Prisma.JsonValue,
+): DitoImportPreviewDecision {
+  if (decision.classification !== 'CONFLICT' || !decision.conflicts?.length) {
+    return decision;
+  }
+
+  const resolutions = readConflictResolutions(parsedData);
+  const proposedChanges = { ...(decision.proposedChanges ?? {}) };
+
+  for (const conflict of decision.conflicts) {
+    const resolution = resolutions.findLast(
+      (candidate) =>
+        candidate.field === conflict.field &&
+        sameConflictScalar(candidate.current, conflict.current) &&
+        sameConflictScalar(candidate.incoming, conflict.incoming),
+    );
+
+    if (!resolution) return decision;
+
+    if (resolution.decision === 'USE_INCOMING') {
+      proposedChanges[conflict.field] = conflict.incoming;
+
+      if (conflict.field === 'commercialOperation') {
+        const operationRaw = readJsonText(parsedData, 'operationRaw');
+        if (operationRaw) proposedChanges.operationRaw = operationRaw;
+      }
+    } else {
+      delete proposedChanges[conflict.field];
+      if (conflict.field === 'commercialOperation') {
+        delete proposedChanges.operationRaw;
+      }
+    }
+  }
+
+  return {
+    ...decision,
+    classification:
+      Object.keys(proposedChanges).length > 0 ? 'ENRICHMENT' : 'UNCHANGED',
+    issueCodes: decision.issueCodes.filter(
+      (issue) => issue !== 'VALID_VALUE_CONFLICT',
+    ),
+    proposedChanges:
+      Object.keys(proposedChanges).length > 0 ? proposedChanges : null,
+    conflicts: null,
+  };
+}
+
+function readConflictResolutions(
+  parsedData: Prisma.JsonValue,
+): StoredConflictResolution[] {
+  if (
+    !parsedData ||
+    Array.isArray(parsedData) ||
+    typeof parsedData !== 'object' ||
+    !('conflictResolutions' in parsedData) ||
+    !Array.isArray(parsedData.conflictResolutions)
+  ) {
+    return [];
+  }
+
+  return parsedData.conflictResolutions.flatMap((entry) => {
+    if (
+      !entry ||
+      Array.isArray(entry) ||
+      typeof entry !== 'object' ||
+      typeof entry.field !== 'string' ||
+      !isConflictScalar(entry.current) ||
+      !isConflictScalar(entry.incoming) ||
+      (entry.decision !== 'KEEP_CURRENT' && entry.decision !== 'USE_INCOMING')
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        field: entry.field,
+        current: entry.current,
+        incoming: entry.incoming,
+        decision: entry.decision,
+      },
+    ];
+  });
+}
+
+function readJsonText(value: Prisma.JsonValue, key: string): string | null {
+  if (!value || Array.isArray(value) || typeof value !== 'object') return null;
+  const candidate = value[key];
+  return typeof candidate === 'string' && candidate.trim()
+    ? candidate.trim()
+    : null;
+}
+
+function isConflictScalar(value: unknown): value is ConflictScalar {
+  return (
+    value === null || typeof value === 'string' || typeof value === 'number'
+  );
+}
+
+function sameConflictScalar(
+  left: ConflictScalar,
+  right: ConflictScalar,
+): boolean {
+  return left === right;
+}
+
 function normalizeDocumentType(value: string | null) {
   const normalized = normalizeDitoUsername(value);
 
@@ -731,7 +857,7 @@ function createRawSummary(row: ParsedDitoBatchRow): string {
     `ZONAL: ${row.department} - ${row.province} - ${row.district}`,
     `ENTREGA: ${row.deliveryMethodRaw ?? row.deliveryMethod}`,
     '',
-    `ASESOR: ${row.ditoUserName ?? row.ditoUsername}`,
+    `ASESOR: ${row.salesAdvisorName ?? row.ditoUserName ?? row.ditoUsername}`,
     `CÓDIGO DE ORDEN: ${row.displayedOrderCode}`,
   ].join('\n');
 }

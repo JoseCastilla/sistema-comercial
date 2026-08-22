@@ -4,7 +4,9 @@ import { describe, it } from "node:test";
 import {
   assignSharedDitoImportRowsSchema,
   confirmDitoImportBatchSchema,
+  deleteDitoImportBatchSchema,
   markDitoAgentIdentitySharedSchema,
+  resolveDitoImportConflictSchema,
   resolveDitoAgentIdentitySchema,
 } from "../dist/dito-import-admin-schema.js";
 
@@ -29,6 +31,14 @@ describe("DITO import admin schemas", () => {
   it("accepts a batch confirmation with optimistic concurrency", () => {
     assert.equal(
       confirmDitoImportBatchSchema.safeParse({ batchId, expectedUpdatedAt })
+        .success,
+      true,
+    );
+  });
+
+  it("accepts deleting a preview with optimistic concurrency", () => {
+    assert.equal(
+      deleteDitoImportBatchSchema.safeParse({ batchId, expectedUpdatedAt })
         .success,
       true,
     );
@@ -68,6 +78,36 @@ describe("DITO import admin schemas", () => {
         ],
       }).success,
       true,
+    );
+  });
+
+  it("accepts explicit decisions for import conflicts", () => {
+    assert.equal(
+      resolveDitoImportConflictSchema.safeParse({
+        batchId,
+        rowId: identityId,
+        expectedUpdatedAt,
+        resolutions: [
+          { field: "holderDocumentNumber", decision: "KEEP_CURRENT" },
+          { field: "deliveryLatitude", decision: "USE_INCOMING" },
+        ],
+      }).success,
+      true,
+    );
+  });
+
+  it("rejects duplicate or unsafe conflict fields", () => {
+    assert.equal(
+      resolveDitoImportConflictSchema.safeParse({
+        batchId,
+        rowId: identityId,
+        expectedUpdatedAt,
+        resolutions: [
+          { field: "salesCode", decision: "USE_INCOMING" },
+          { field: "salesCode", decision: "KEEP_CURRENT" },
+        ],
+      }).success,
+      false,
     );
   });
 });

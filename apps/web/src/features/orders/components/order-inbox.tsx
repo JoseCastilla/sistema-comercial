@@ -293,6 +293,14 @@ function SlaBadge({ order }: { order: OrderInboxItem }) {
   );
 }
 
+function getOperatorLabel(order: OrderInboxItem): string {
+  if (order.commercialOperation === "NEW_LINE") return "Alta nueva";
+  if (order.carrier === "UNKNOWN") return "Sin definir";
+
+  const normalized = order.carrier.toLocaleLowerCase("es-PE");
+  return `${normalized.charAt(0).toLocaleUpperCase("es-PE")}${normalized.slice(1)}`;
+}
+
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -597,11 +605,13 @@ function MobileOrderCard({
   assignmentTeams,
   expanded,
   onToggle,
+  showAdvisor,
 }: {
   order: OrderInboxItem;
   assignmentTeams: OrderAssignmentTeamOption[];
   expanded: boolean;
   onToggle: () => void;
+  showAdvisor: boolean;
 }) {
   return (
     <article
@@ -631,9 +641,12 @@ function MobileOrderCard({
             </h3>
 
             <p className="mt-1 text-sm text-ui-muted">
-              {order.serviceNumber}
-              {" · "}
-              {order.district || order.province}
+              DNI {order.documentNumber} · {order.serviceNumber}
+            </p>
+
+            <p className="mt-1 text-xs text-ui-soft">
+              {getOperatorLabel(order)}
+              {showAdvisor ? ` · ${order.agentName}` : ""}
             </p>
           </div>
 
@@ -648,9 +661,7 @@ function MobileOrderCard({
 
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="truncate text-xs text-ui-muted">
-            {order.agentName}
-            {" · "}
-            {order.statusAgeLabel}
+            Estado desde {order.statusAgeLabel}
           </p>
 
           <SlaBadge order={order} />
@@ -712,7 +723,7 @@ function CopyOrderCodeButton({
       aria-label={`Seleccionar y copiar orden ${orderCode}`}
       aria-pressed={selected}
       className={[
-        "group flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 font-mono text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2",
+        "ui-order-grid__order-code group flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2",
         copyState === "COPIED"
           ? "bg-ui-success-soft text-ui-success"
           : copyState === "ERROR"
@@ -766,91 +777,102 @@ function DesktopOrderList({
   items,
   selectedOrderId,
   onSelect,
+  showAdvisorColumn,
 }: {
   items: OrderInboxItem[];
   selectedOrderId: string | null;
   onSelect: (orderId: string) => void;
+  showAdvisorColumn: boolean;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-sm">
-      <div className="grid grid-cols-[140px_minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] gap-3 border-b border-ui-border bg-ui-subtle px-4 py-3 text-xs font-medium uppercase tracking-wide text-ui-muted">
-        <span>Orden</span>
-        <span>Cliente</span>
-        <span>Asesor</span>
-        <span>Estado</span>
-        <span>SLA</span>
-      </div>
+    <div className="ui-order-grid">
+      <div className="ui-order-grid__scroll">
+        <div className="ui-order-grid__header">
+          <span>Orden</span>
+          <span>Cliente</span>
+          <span>DNI</span>
+          <span>Teléfono</span>
+          <span>Operador</span>
+          <span>{showAdvisorColumn ? "Asesor" : "Plazo"}</span>
+          <span>Estado</span>
+          <span aria-hidden="true" />
+        </div>
 
-      <div className="max-h-[calc(100vh-300px)] divide-y divide-neutral-100 overflow-y-auto">
-        {items.map((order) => {
-          const selected = selectedOrderId === order.id;
+        <div className="ui-order-grid__body">
+          {items.map((order) => {
+            const selected = selectedOrderId === order.id;
 
-          return (
-            <div
-              className={[
-                "grid w-full grid-cols-[140px_minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] items-center gap-3 px-4 py-3 text-left transition",
-                selected ? "bg-ui-subtle" : "hover:bg-ui-subtle",
-                order.noStatusIncident
-                  ? "border-l-4 border-l-red-500"
-                  : "border-l-4 border-l-transparent",
-              ].join(" ")}
-              key={order.id}
-            >
-              <CopyOrderCodeButton
-                onSelect={() => {
-                  onSelect(order.id);
-                }}
-                orderCode={order.orderCode}
-                selected={selected}
-              />
-
-              <button
-                aria-pressed={selected}
-                className="col-span-4 grid min-w-0 grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_220px_120px] items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2"
-                onClick={() => {
-                  onSelect(order.id);
-                }}
-                type="button"
+            return (
+              <div
+                className="ui-order-grid__row"
+                data-incident={order.noStatusIncident ? "true" : "false"}
+                data-selected={selected ? "true" : "false"}
+                key={order.id}
+                onClick={() => onSelect(order.id)}
               >
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-ui-text">
-                    {order.holderName}
-                  </span>
+                <CopyOrderCodeButton
+                  onSelect={() => onSelect(order.id)}
+                  orderCode={order.orderCode}
+                  selected={selected}
+                />
 
-                  <span className="mt-0.5 block truncate text-xs text-ui-muted">
-                    {order.serviceNumber}
-                    {" · "}
-                    {order.district || order.province}
-                  </span>
+                <span className="ui-order-grid__client">
+                  <strong>{order.holderName}</strong>
+                  <small>{order.district || order.province}</small>
                 </span>
 
-                <span className="truncate text-sm text-ui-muted">
-                  {order.agentName}
+                <InlineCopyValue label="DNI" value={order.documentNumber} />
+
+                <InlineCopyValue label="teléfono" value={order.serviceNumber} />
+
+                <span className="ui-order-grid__carrier">
+                  {getOperatorLabel(order)}
                 </span>
 
-                <span>
+                <span className="ui-order-grid__agent">
+                  {showAdvisorColumn ? (
+                    order.agentName
+                  ) : (
+                    <SlaBadge order={order} />
+                  )}
+                </span>
+
+                <span className="ui-order-grid__status">
                   <StatusBadge order={order} />
                 </span>
 
-                <span>
-                  <SlaBadge order={order} />
-                </span>
-              </button>
-            </div>
-          );
-        })}
+                <button
+                  aria-label={`Ver y gestionar orden ${order.orderCode}`}
+                  aria-pressed={selected}
+                  className="ui-order-grid__select"
+                  onClick={() => onSelect(order.id)}
+                  title="Ver y gestionar venta"
+                  type="button"
+                >
+                  <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
+                    <path
+                      d="m8 6 4 4-4 4"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.6"
+                    />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
 
 export function OrderInbox({ data }: { data: OrderInboxData }) {
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(
     data.items[0]?.id ?? null,
   );
-
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-
   const selectedOrder =
     data.items.find((order) => {
       return order.id === selectedOrderId;
@@ -1133,19 +1155,21 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                     setExpandedOrderId(expanded ? null : order.id);
                   }}
                   order={order}
+                  showAdvisor={data.showAdvisorColumn}
                 />
               );
             })}
           </section>
 
-          <section className="hidden grid-cols-[minmax(0,1fr)_420px] gap-5 lg:grid">
+          <section className="ui-order-workspace hidden lg:grid">
             <DesktopOrderList
               items={data.items}
               onSelect={setSelectedOrderId}
               selectedOrderId={selectedOrder?.id ?? null}
+              showAdvisorColumn={data.showAdvisorColumn}
             />
 
-            <aside className="sticky top-8 max-h-[calc(100vh-64px)] self-start overflow-y-auto rounded-2xl border border-ui-border bg-ui-surface p-5 shadow-sm">
+            <aside className="ui-order-detail-card">
               {selectedOrder ? (
                 <OrderDetails
                   assignmentTeams={data.assignmentTeams}

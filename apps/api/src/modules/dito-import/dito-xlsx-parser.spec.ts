@@ -39,6 +39,7 @@ const usefulHeaders = [
   'Opción de Entrega',
   'Instrucciones de Envío',
   'Tipo carga',
+  'Asesor',
 ] as const;
 
 type RowValue = string | number | null;
@@ -90,6 +91,7 @@ function createValidEntries(overrides: RowEntry[] = []): RowEntry[] {
     { header: 'Opción de Entrega', value: 'Deliveryundefined' },
     { header: 'Instrucciones de Envío', value: 'CLIENTE DISPONIBLE' },
     { header: 'Tipo carga', value: 'MANUAL' },
+    { header: 'Asesor', value: 'Asesora Reportada' },
   ];
 
   return [...defaults, ...overrides];
@@ -238,6 +240,84 @@ describe('parseDitoSalesWorkbook', () => {
     });
   });
 
+  it('excludes fixed-only sales without blocking the mobile import', async () => {
+    const serviceIndex = usefulHeaders.indexOf('Nro Servicio Móvil');
+    const headers = [
+      ...usefulHeaders.slice(0, serviceIndex),
+      'Nro Servicio Fijo',
+      'Operación Comercial Fijo',
+      'Order ID Fijo',
+      'Plan Fijo',
+      ...usefulHeaders.slice(serviceIndex),
+    ];
+    const fixedOnlyOverrides: RowEntry[] = [
+      { header: 'Nro Servicio Móvil', value: null },
+      { header: 'Operación Comercial Móvil', value: null },
+      { header: 'Operador Cedente Móvil', value: null },
+      { header: 'Plan Móvil', value: null },
+      { header: 'Método de Entrega', value: null },
+      { header: 'Departamento', value: null },
+      { header: 'Provincia', value: null },
+      { header: 'Distrito', value: null },
+      { header: 'Nro Servicio Fijo', value: '012345678' },
+      { header: 'Operación Comercial Fijo', value: 'ALTA' },
+      { header: 'Order ID Fijo', value: 'HOGAR-1001' },
+      { header: 'Plan Fijo', value: 'Internet Fibra 400 Mbps' },
+    ];
+    const approvedFixed = createRow(
+      headers,
+      createValidEntries(fixedOnlyOverrides),
+    );
+    const pendingFixed = createRow(
+      headers,
+      createValidEntries([
+        ...fixedOnlyOverrides,
+        { header: 'Estado Pedido WC', value: 'PENDIENTE' },
+        { header: 'Nro Pedido WC', value: 'FE-HOGAR-002' },
+        { header: 'Order ID Móvil', value: '1943000092' },
+      ]),
+    );
+    const convergentSale = createRow(
+      headers,
+      createValidEntries([
+        { header: 'Nro Servicio Fijo', value: '012345679' },
+        { header: 'Operación Comercial Fijo', value: 'ALTA' },
+        { header: 'Order ID Fijo', value: 'HOGAR-1002' },
+        { header: 'Plan Fijo', value: 'Internet Fibra 400 Mbps' },
+      ]),
+    );
+    const input = await createWorkbook(headers, [
+      approvedFixed,
+      pendingFixed,
+      convergentSale,
+    ]);
+
+    const preview = await parseDitoSalesWorkbook(
+      input,
+      new Date('2026-08-06T12:00:00.000Z'),
+    );
+
+    expect(preview).toMatchObject({
+      sourceRows: 3,
+      importable: 1,
+      excluded: 2,
+      invalid: 0,
+    });
+    expect(preview.rows[0]).toMatchObject({
+      outcome: 'EXCLUDED',
+      issues: ['NON_MOBILE_PRODUCT'],
+      serviceNumber: null,
+      commercialOperation: null,
+    });
+    expect(preview.rows[1]?.issues).toEqual(
+      expect.arrayContaining(['STATUS_NOT_APPROVED', 'NON_MOBILE_PRODUCT']),
+    );
+    expect(preview.rows[2]).toMatchObject({
+      outcome: 'IMPORTABLE',
+      commercialOperation: 'PORT_POSTPAID',
+    });
+  });
+
   it('blocks an approved portability with an unknown operator code', async () => {
     const input = await createWorkbook(usefulHeaders, [
       createRow(
@@ -298,6 +378,38 @@ describe('parseDitoSalesWorkbook', () => {
       fixedCharge: 49.9,
       operationRaw: 'PORTA CLARO POST 49.9',
     });
+  });
+
+  it('accepts the DITO Origen header and numeric Excel date/time values', async () => {
+    const headers = usefulHeaders.map((header) =>
+      header === 'Origen Portabilidad' ? 'Origen' : header,
+    );
+    const entries = createValidEntries([
+      { header: 'Fecha de Registro de Pedido', value: 46235 },
+      { header: 'Hora de Registro de Pedido', value: 0.3445486111111111 },
+      { header: 'Nro Documento Cliente', value: 9386875 },
+    ]).map((entry) =>
+      entry.header === 'Origen Portabilidad'
+        ? { ...entry, header: 'Origen' }
+        : entry,
+    );
+    const input = await createWorkbook(headers, [createRow(headers, entries)]);
+
+    const preview = await parseDitoSalesWorkbook(
+      input,
+      new Date('2026-08-21T12:00:00.000Z'),
+    );
+
+    expect(preview).toMatchObject({ importable: 1, invalid: 0 });
+    expect(preview.rows[0]).toMatchObject({
+      portabilityOriginRaw: 'POSTPAGO',
+      commercialOperation: 'PORT_POSTPAID',
+      salesAdvisorName: 'Asesora Reportada',
+      holderDocumentNumber: '09386875',
+    });
+    expect(preview.rows[0]?.registeredAt?.toISOString()).toBe(
+      '2026-08-01T13:16:09.000Z',
+    );
   });
 
   it('blocks only portability rows when the origin column is absent', async () => {

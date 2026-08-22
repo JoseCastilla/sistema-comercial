@@ -135,20 +135,21 @@ export function classifyDitoImportRow(
     context.orderByCode,
     context.identity,
   );
+  const proposedChanges = {
+    ...comparison.proposedChanges,
+    ...ownership.proposedChanges,
+  };
 
   if (comparison.conflicts.length > 0 || ownership.conflicts.length > 0) {
     return {
       ...base,
       classification: 'CONFLICT',
       issueCodes: [...base.issueCodes, 'VALID_VALUE_CONFLICT'],
+      proposedChanges:
+        Object.keys(proposedChanges).length > 0 ? proposedChanges : null,
       conflicts: [...comparison.conflicts, ...ownership.conflicts],
     };
   }
-
-  const proposedChanges = {
-    ...comparison.proposedChanges,
-    ...ownership.proposedChanges,
-  };
 
   if (Object.keys(proposedChanges).length > 0) {
     return {
@@ -250,8 +251,16 @@ function compareExistingOrder(
       incoming: incoming.deliveryReference,
       equivalent: equivalentText,
     },
-    { field: 'deliveryLatitude', incoming: incoming.deliveryLatitude },
-    { field: 'deliveryLongitude', incoming: incoming.deliveryLongitude },
+    {
+      field: 'deliveryLatitude',
+      incoming: incoming.deliveryLatitude,
+      equivalent: equivalentCoordinate,
+    },
+    {
+      field: 'deliveryLongitude',
+      incoming: incoming.deliveryLongitude,
+      equivalent: equivalentCoordinate,
+    },
     {
       field: 'department',
       incoming: incoming.department,
@@ -328,5 +337,19 @@ function equivalentText(
 ): boolean {
   return (
     normalizeDitoUsername(String(left)) === normalizeDitoUsername(String(right))
+  );
+}
+
+function equivalentCoordinate(
+  left: string | number,
+  right: string | number,
+): boolean {
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+
+  return (
+    Number.isFinite(leftNumber) &&
+    Number.isFinite(rightNumber) &&
+    Math.abs(leftNumber - rightNumber) <= 0.000001
   );
 }
