@@ -116,6 +116,7 @@ model User {
   deliveryEscalationsCreated       DeliveryEscalation[]           @relation("DeliveryEscalationCreatedBy")
   deliveryEscalationsAcknowledged  DeliveryEscalation[]           @relation("DeliveryEscalationAcknowledgedBy")
   deliveryEscalationsResolved      DeliveryEscalation[]           @relation("DeliveryEscalationResolvedBy")
+  deliveryEscalationsTdpEscalated  DeliveryEscalation[]           @relation("DeliveryEscalationTdpEscalatedBy")
 
   agentAliases AgentAlias[]
 

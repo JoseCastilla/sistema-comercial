@@ -12,6 +12,7 @@ import { OrderCancellationRequestPanel } from "./order-cancellation-request-pane
 import { OrderAssignmentResolution } from "./order-assignment-resolution";
 import { OrderCorrectionForm } from "./order-correction-form";
 import { OrderRealtimeStatus } from "./order-realtime-status";
+import { OrderEscalationPanel } from "./order-escalation-panel";
 
 import type {
   OrderAssignmentTeamOption,
@@ -28,6 +29,10 @@ const filterOptions: Array<{
   {
     value: "ACTIVE",
     label: "Activos",
+  },
+  {
+    value: "ESCALATIONS",
+    label: "Escaladas",
   },
   {
     value: "INCIDENTS",
@@ -109,6 +114,23 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
     data.period === "HISTORY" || data.period === "RANGE";
   const [rangeFrom, setRangeFrom] = useState(data.from ?? "");
   const [rangeTo, setRangeTo] = useState(data.to ?? "");
+
+  if (data.filter === "ESCALATIONS") {
+    return (
+      <Surface className="ui-period-bar" raised>
+        <div>
+          <p className="ui-period-bar__eyebrow">Bandeja operativa</p>
+          <p className="ui-period-bar__label">
+            Escalaciones de todas las fechas
+          </p>
+        </div>
+        <p className="max-w-xl text-sm text-ui-muted">
+          Las incidencias permanecen aquí hasta que un supervisor las resuelva,
+          aunque la venta pertenezca a un período anterior.
+        </p>
+      </Surface>
+    );
+  }
 
   return (
     <Surface className="ui-period-bar" raised>
@@ -275,6 +297,10 @@ function StatusBadge({ order }: { order: OrderInboxItem }) {
         <span className="rounded-full border border-ui-warning-border bg-ui-warning-soft px-2.5 py-1 text-xs font-medium text-ui-warning">
           Cancelación pendiente
         </span>
+      ) : null}
+
+      {order.incidentEscalation || order.canEscalate ? (
+        <OrderEscalationPanel order={order} />
       ) : null}
     </div>
   );
@@ -965,6 +991,11 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           value={data.totals.incidents}
         />
         <Metric
+          label="Escaladas al supervisor"
+          tone={data.totals.escalations > 0 ? "danger" : "neutral"}
+          value={data.totals.escalations}
+        />
+        <Metric
           label={`No entregados · ${data.periodLabel}`}
           value={data.totals.notDelivered}
         />
@@ -975,6 +1006,25 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           value={data.totals.overdue}
         />
       </MetricGroup>
+
+      {(data.role === "ADMIN" || data.role === "SUPERVISOR") &&
+      data.totals.escalations > 0 ? (
+        <a
+          className="flex items-center justify-between gap-4 rounded-xl border border-ui-danger-border bg-ui-danger-soft px-4 py-3 text-sm text-ui-danger"
+          href={ordersHref(data, { filter: "ESCALATIONS" })}
+          role="status"
+        >
+          <span>
+            <strong>
+              {data.totals.escalations} incidencia(s) requieren atención
+            </strong>
+            <span className="ml-2">
+              Los asesores esperan respuesta del supervisor.
+            </span>
+          </span>
+          <span className="shrink-0 font-semibold">Ver bandeja →</span>
+        </a>
+      ) : null}
 
       {recoveryQueueCount > 0 || data.filter === "RECOVERY" ? (
         <div className="ui-recovery-queue" role="status">
@@ -1170,30 +1220,34 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           description={
             data.filter === "RECOVERY"
               ? "No tienes pedidos no entregados o cancelados pendientes de recuperación este mes."
-              : data.totals.visible > 0
-                ? "No hay ventas que coincidan con este estado o búsqueda."
-                : data.teamFilter === "UNASSIGNED"
-                  ? "No hay ventas pendientes de asignación en este período."
-                  : data.period === "TODAY"
-                    ? "No se registraron ventas hoy."
-                    : data.period === "YESTERDAY"
-                      ? "No se registraron ventas ayer."
-                      : data.period === "WEEK"
-                        ? "No se registraron ventas esta semana."
-                        : data.period === "MONTH"
-                          ? "No se registraron ventas en el mes actual."
-                          : data.period === "RANGE"
-                            ? "No se registraron ventas en el rango seleccionado."
-                            : "No se encontraron ventas en el histórico."
+              : data.filter === "ESCALATIONS"
+                ? "No hay incidencias escaladas pendientes de atención."
+                : data.totals.visible > 0
+                  ? "No hay ventas que coincidan con este estado o búsqueda."
+                  : data.teamFilter === "UNASSIGNED"
+                    ? "No hay ventas pendientes de asignación en este período."
+                    : data.period === "TODAY"
+                      ? "No se registraron ventas hoy."
+                      : data.period === "YESTERDAY"
+                        ? "No se registraron ventas ayer."
+                        : data.period === "WEEK"
+                          ? "No se registraron ventas esta semana."
+                          : data.period === "MONTH"
+                            ? "No se registraron ventas en el mes actual."
+                            : data.period === "RANGE"
+                              ? "No se registraron ventas en el rango seleccionado."
+                              : "No se encontraron ventas en el histórico."
           }
           title={
             data.filter === "RECOVERY"
               ? "Recuperación al día"
-              : data.totals.visible > 0
-                ? "No hay coincidencias"
-                : data.teamFilter === "UNASSIGNED"
-                  ? "Todo está asignado"
-                  : "Aún no hay ventas en este período"
+              : data.filter === "ESCALATIONS"
+                ? "Escalaciones al día"
+                : data.totals.visible > 0
+                  ? "No hay coincidencias"
+                  : data.teamFilter === "UNASSIGNED"
+                    ? "Todo está asignado"
+                    : "Aún no hay ventas en este período"
           }
         />
       ) : (

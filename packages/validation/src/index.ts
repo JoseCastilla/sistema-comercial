@@ -5,6 +5,7 @@ export * from "./dito-order-schemas.js";
 export * from "./dito-order-state.js";
 export * from "./dito-order-status-update-schema.js";
 export * from "./dito-order-cancellation-request-schema.js";
+export * from "./dito-order-escalation-schema.js";
 export * from "./dito-order-correction-schema.js";
 export * from "./dito-order-assignment-retry-schema.js";
 export * from "./dito-order-orphan-claim-schema.js";

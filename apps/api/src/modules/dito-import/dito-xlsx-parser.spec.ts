@@ -135,6 +135,31 @@ async function createWorkbook(
 }
 
 describe('parseDitoSalesWorkbook', () => {
+  it.each([
+    ['Delivery Regular 24 horas', 'REGULAR_24H'],
+    ['Delivery Regular 48 horas', 'REGULAR_48H'],
+    ['Delivery Regular 72 horas', 'REGULAR_72H'],
+  ] as const)('recognizes %s as %s', async (rawMethod, expectedMethod) => {
+    const input = await createWorkbook(usefulHeaders, [
+      createRow(
+        usefulHeaders,
+        createValidEntries([{ header: 'Método de Entrega', value: rawMethod }]),
+      ),
+    ]);
+
+    const preview = await parseDitoSalesWorkbook(
+      input,
+      new Date('2026-08-06T12:00:00.000Z'),
+    );
+
+    expect(preview).toMatchObject({ importable: 1, invalid: 0 });
+    expect(preview.rows[0]).toMatchObject({
+      deliveryMethod: expectedMethod,
+      deliveryMethodRaw: rawMethod,
+    });
+    expect(preview.rows[0]?.issues).not.toContain('UNKNOWN_DELIVERY_METHOD');
+  });
+
   it('parses approved rows and excludes non-approved or older rows', async () => {
     const approved = createRow(usefulHeaders, createValidEntries());
     const newLine = createRow(

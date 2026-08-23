@@ -23,6 +23,7 @@ export type OrderSentSubstatusValue =
 
 export type OrderFilter =
   | "ACTIVE"
+  | "ESCALATIONS"
   | "INCIDENTS"
   | "RECOVERY"
   | "AWAITING_ACTIVATION"
@@ -107,6 +108,28 @@ export interface OrderInboxItem {
   canCancelDirectly: boolean;
   canRequestCancellation: boolean;
   canReviewCancellation: boolean;
+  canEscalate: boolean;
+  canReviewEscalation: boolean;
+  incidentEscalation: {
+    id: string;
+    status: "OPEN" | "ACKNOWLEDGED" | "RESOLVED" | "CANCELLED";
+    category: string;
+    priority: string;
+    templateType: string;
+    description: string;
+    requestedAction: string;
+    createdByName: string;
+    createdAtLabel: string;
+    acknowledgement: string | null;
+    acknowledgedByName: string | null;
+    acknowledgedAtLabel: string | null;
+    resolution: string | null;
+    tdpTemplate: string | null;
+    tdpEscalatedByName: string | null;
+    tdpEscalatedAtLabel: string | null;
+    resolvedByName: string | null;
+    resolvedAtLabel: string | null;
+  } | null;
   pendingCancellationRequest: {
     id: string;
     reason: string;
@@ -124,6 +147,7 @@ export interface OrderInboxItem {
 
 export interface OrderInboxData {
   generatedAt: string;
+  role: OrderInboxAccess["role"];
 
   period: OrderPeriod;
   periodLabel: string;
@@ -153,6 +177,7 @@ export interface OrderInboxData {
   totals: {
     visible: number;
     incidents: number;
+    escalations: number;
     notDelivered: number;
     recovery: number;
     delivered: number;

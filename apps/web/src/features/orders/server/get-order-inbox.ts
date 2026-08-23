@@ -3,6 +3,8 @@ import "server-only";
 import {
   canCloseDitoOrder,
   canCancelDitoOrder,
+  canCreateDitoOrderEscalation,
+  canReviewDitoOrderEscalation,
   canRequestDitoOrderCancellation,
   canTransitionDitoOrderStatus,
   formatAdvisorCompactName,
@@ -131,6 +133,31 @@ const orderSelect = {
       requestedBy: {
         select: { name: true },
       },
+    },
+  },
+  escalations: {
+    orderBy: { createdAt: "desc" as const },
+    take: 1,
+    select: {
+      id: true,
+      status: true,
+      category: true,
+      priority: true,
+      tdpTemplateType: true,
+      tdpTemplate: true,
+      tdpEscalatedAt: true,
+      observation: true,
+      requestedAction: true,
+      acknowledgement: true,
+      resolution: true,
+      createdAt: true,
+      acknowledgedAt: true,
+      resolvedAt: true,
+      createdByUserId: true,
+      createdBy: { select: { name: true } },
+      acknowledgedBy: { select: { name: true } },
+      resolvedBy: { select: { name: true } },
+      tdpEscalatedBy: { select: { name: true } },
     },
   },
 } as const;
@@ -377,6 +404,10 @@ function getStatusFilter(
   switch (filter) {
     case "ACTIVE":
       return { status: { in: ["OPEN", "SENT", "UNKNOWN"] } };
+    case "ESCALATIONS":
+      return {
+        escalations: { some: { status: { in: ["OPEN", "ACKNOWLEDGED"] } } },
+      };
     case "INCIDENTS":
       return {
         OR: [
@@ -631,7 +662,7 @@ export async function getOrderInbox(
         : { assignedTeamId: teamFilter };
 
   const periodFilter: Prisma.DitoOrderWhereInput =
-    range.start && range.end
+    query.filter !== "ESCALATIONS" && range.start && range.end
       ? {
           registeredAt: {
             gte: range.start,
@@ -663,6 +694,7 @@ export async function getOrderInbox(
   const [
     totalOrders,
     filteredTotal,
+    escalationCount,
     incidentCount,
     notDeliveredCount,
     recoveryCount,
@@ -672,6 +704,15 @@ export async function getOrderInbox(
   ] = await database.$transaction([
     database.ditoOrder.count({ where: baseWhere }),
     database.ditoOrder.count({ where: filteredWhere }),
+    database.ditoOrder.count({
+      where: {
+        organizationId,
+        AND: [accessFilter, teamFilterWhere],
+        escalations: {
+          some: { status: { in: ["OPEN", "ACKNOWLEDGED"] } },
+        },
+      },
+    }),
     database.ditoOrder.count({
       where: {
         ...baseWhere,
@@ -756,6 +797,10 @@ export async function getOrderInbox(
     const limitedOrphan = visibility === "LIMITED_ORPHAN";
     const status = String(order.status) as OrderStatusValue;
     const pendingCancellationRequest = order.cancellationRequests[0] ?? null;
+    const incidentEscalation = order.escalations[0] ?? null;
+    const hasActiveEscalation =
+      incidentEscalation?.status === "OPEN" ||
+      incidentEscalation?.status === "ACKNOWLEDGED";
 
     const sentSubstatus = order.sentSubstatus
       ? (String(order.sentSubstatus) as Exclude<OrderSentSubstatusValue, null>)
@@ -900,6 +945,49 @@ export async function getOrderInbox(
       canReviewCancellation:
         pendingCancellationRequest !== null &&
         canCancelDitoOrder({ role: access.role, visibility, isOwnOrder }),
+      canEscalate: canCreateDitoOrderEscalation({
+        role: access.role,
+        visibility,
+        isSalesOwner: isOwnOrder,
+        assignedTeamId: order.assignedTeamId,
+        hasActiveEscalation,
+      }),
+      canReviewEscalation:
+        Boolean(incidentEscalation && hasActiveEscalation) &&
+        canReviewDitoOrderEscalation({
+          role: access.role,
+          visibility,
+          isRequester: incidentEscalation?.createdByUserId === access.userId,
+        }),
+      incidentEscalation: incidentEscalation
+        ? {
+            id: incidentEscalation.id,
+            status: String(incidentEscalation.status) as
+              "OPEN" | "ACKNOWLEDGED" | "RESOLVED" | "CANCELLED",
+            category: String(incidentEscalation.category),
+            priority: String(incidentEscalation.priority),
+            templateType: incidentEscalation.tdpTemplateType,
+            description: incidentEscalation.observation,
+            requestedAction: incidentEscalation.requestedAction,
+            createdByName: incidentEscalation.createdBy.name,
+            createdAtLabel: formatDateTime(incidentEscalation.createdAt),
+            acknowledgement: incidentEscalation.acknowledgement,
+            acknowledgedByName: incidentEscalation.acknowledgedBy?.name ?? null,
+            acknowledgedAtLabel: incidentEscalation.acknowledgedAt
+              ? formatDateTime(incidentEscalation.acknowledgedAt)
+              : null,
+            resolution: incidentEscalation.resolution,
+            tdpTemplate: incidentEscalation.tdpTemplate,
+            tdpEscalatedByName: incidentEscalation.tdpEscalatedBy?.name ?? null,
+            tdpEscalatedAtLabel: incidentEscalation.tdpEscalatedAt
+              ? formatDateTime(incidentEscalation.tdpEscalatedAt)
+              : null,
+            resolvedByName: incidentEscalation.resolvedBy?.name ?? null,
+            resolvedAtLabel: incidentEscalation.resolvedAt
+              ? formatDateTime(incidentEscalation.resolvedAt)
+              : null,
+          }
+        : null,
       pendingCancellationRequest: pendingCancellationRequest
         ? {
             id: pendingCancellationRequest.id,
@@ -933,6 +1021,7 @@ export async function getOrderInbox(
 
   return {
     generatedAt: dateTimeFormatter.format(now),
+    role: access.role,
 
     period,
     periodLabel:
@@ -978,6 +1067,7 @@ export async function getOrderInbox(
     totals: {
       visible: totalOrders,
       incidents: incidentCount,
+      escalations: escalationCount,
       notDelivered: notDeliveredCount,
       recovery: recoveryCount,
       delivered: deliveredCount,

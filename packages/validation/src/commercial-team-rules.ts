@@ -129,7 +129,8 @@ export function canAssignCommercialTeamMember(input: {
     input.targetMemberRole === "AGENT"
       ? input.memberOrganizationRole === "AGENT"
       : input.memberOrganizationRole === "SUPERVISOR" ||
-        (input.salesEnabled === true && input.memberOrganizationRole === "AGENT");
+        (input.salesEnabled === true &&
+          input.memberOrganizationRole === "AGENT");
 
   return (
     canAdministerCommercialTeam({
@@ -265,6 +266,34 @@ export function canRequestDitoOrderCancellation(input: {
     input.currentStatus !== "CLOSED" &&
     input.currentStatus !== "CANCELLED" &&
     !input.hasPendingRequest
+  );
+}
+
+export function canCreateDitoOrderEscalation(input: {
+  role: CommercialAccessRole;
+  visibility: DitoOrderVisibility;
+  isSalesOwner: boolean;
+  assignedTeamId: string | null;
+  hasActiveEscalation: boolean;
+}): boolean {
+  return (
+    (input.role === "AGENT" || input.role === "SUPERVISOR") &&
+    input.visibility === "FULL" &&
+    input.isSalesOwner &&
+    input.assignedTeamId !== null &&
+    !input.hasActiveEscalation
+  );
+}
+
+export function canReviewDitoOrderEscalation(input: {
+  role: CommercialAccessRole;
+  visibility: DitoOrderVisibility;
+  isRequester: boolean;
+}): boolean {
+  return (
+    (input.role === "ADMIN" || input.role === "SUPERVISOR") &&
+    input.visibility === "FULL" &&
+    !input.isRequester
   );
 }
 

@@ -11,6 +11,8 @@ import {
   canReassignDitoOrder,
   canResolveAutomaticDitoAssignment,
   canRequestDitoOrderCancellation,
+  canCreateDitoOrderEscalation,
+  canReviewDitoOrderEscalation,
   canTransitionDitoOrderStatus,
   commercialTeamMemberRoleSchema,
   commercialTeamStatusSchema,
@@ -770,6 +772,50 @@ describe("canResolveAutomaticDitoAssignment", () => {
       canResolveAutomaticDitoAssignment({
         ...validInput,
         primaryTeamStatus: "DISABLED",
+      }),
+      false,
+    );
+  });
+});
+
+describe("incident escalation permissions", () => {
+  it("allows an advisor to escalate only their assigned sale", () => {
+    assert.equal(
+      canCreateDitoOrderEscalation({
+        role: "AGENT",
+        visibility: "FULL",
+        isSalesOwner: true,
+        assignedTeamId: "team-1",
+        hasActiveEscalation: false,
+      }),
+      true,
+    );
+    assert.equal(
+      canCreateDitoOrderEscalation({
+        role: "AGENT",
+        visibility: "FULL",
+        isSalesOwner: true,
+        assignedTeamId: "team-1",
+        hasActiveEscalation: true,
+      }),
+      false,
+    );
+  });
+
+  it("allows a supervisor to review a team escalation from another user", () => {
+    assert.equal(
+      canReviewDitoOrderEscalation({
+        role: "SUPERVISOR",
+        visibility: "FULL",
+        isRequester: false,
+      }),
+      true,
+    );
+    assert.equal(
+      canReviewDitoOrderEscalation({
+        role: "SUPERVISOR",
+        visibility: "FULL",
+        isRequester: true,
       }),
       false,
     );

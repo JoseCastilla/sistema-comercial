@@ -8,7 +8,7 @@ import {
 const maxWorkbookBytes = 10 * 1024 * 1024;
 const businessTimeZoneOffset = '-05:00';
 
-export const ditoBatchParserVersion = '1.7';
+export const ditoBatchParserVersion = '1.8';
 
 const operatorCatalog = {
   '20': 'ENTEL',
@@ -19,7 +19,8 @@ const operatorCatalog = {
 type DitoCarrier =
   (typeof operatorCatalog)[keyof typeof operatorCatalog] | 'UNKNOWN';
 type DitoCommercialOperation = 'NEW_LINE' | 'PORT_PREPAID' | 'PORT_POSTPAID';
-type DitoDeliveryMethod = 'EXPRESS' | 'REGULAR_24H';
+type DitoDeliveryMethod =
+  'EXPRESS' | 'REGULAR_24H' | 'REGULAR_48H' | 'REGULAR_72H';
 
 export type DitoBatchRowOutcome = 'IMPORTABLE' | 'EXCLUDED' | 'INVALID';
 
@@ -749,6 +750,8 @@ function parseDeliveryMethod(value: string | null): DitoDeliveryMethod | null {
 
   if (normalized.includes('EXPRESS')) return 'EXPRESS';
   if (normalized.includes('REGULAR 24')) return 'REGULAR_24H';
+  if (normalized.includes('REGULAR 48')) return 'REGULAR_48H';
+  if (normalized.includes('REGULAR 72')) return 'REGULAR_72H';
 
   return null;
 }

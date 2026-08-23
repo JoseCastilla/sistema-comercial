@@ -47,7 +47,7 @@ function batch(overrides: Record<string, unknown> = {}) {
   return {
     id: 'batch-1',
     status: 'READY',
-    parserVersion: '1.7',
+    parserVersion: '1.8',
     updatedAt: expectedUpdatedAt,
     newRows: 1,
     enrichmentRows: 0,

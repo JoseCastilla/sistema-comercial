@@ -5,6 +5,8 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { ThemeControl } from "@repo/ui/theme-control";
 
+import { EscalationNotification } from "./escalation-notification";
+
 type ActiveSection = "performance" | "orders" | "imports" | "people" | "teams";
 type IconName = "home" | "orders" | "sales" | "people" | "teams";
 
@@ -169,6 +171,7 @@ export function CommercialAppShell({
       className="app-shell"
       data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
     >
+      <EscalationNotification role={role} />
       <aside className="app-shell__sidebar">
         <div className="app-shell__brand">
           <div className="app-shell__mark">DO</div>

@@ -559,16 +559,19 @@ function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
       key: "new-line",
       label: "Altas nuevas",
       value: mix.newLine,
+      commission: "No generan comisión base",
     },
     {
       key: "port-prepaid",
       label: "Porta origen prepago",
       value: mix.portPrepaid,
+      commission: `${mix.payablePortPrepaid} pagables × ${money(1_250)} = ${money(mix.payablePortPrepaid * 1_250)}`,
     },
     {
       key: "port-postpaid",
       label: "Porta origen postpago",
       value: mix.portPostpaid,
+      commission: `${mix.payablePortPostpaid} pagables × ${money(2_500)} = ${money(mix.payablePortPostpaid * 2_500)}`,
     },
     ...(mix.unclassified > 0
       ? [
@@ -576,6 +579,7 @@ function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
             key: "unclassified",
             label: "Por clasificar",
             value: mix.unclassified,
+            commission: "No generan comisión mientras no se clasifiquen",
           },
         ]
       : []),
@@ -585,15 +589,15 @@ function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
     <section className="sales-mix" aria-labelledby="sales-mix-title">
       <header className="sales-mix__header">
         <div>
-          <strong id="sales-mix-title">Composición de ventas</strong>
+          <strong id="sales-mix-title">Composición de ventas entregadas</strong>
           <small>
             {data.view === "SELF"
-              ? "Tu composición comercial por fecha de ingreso"
-              : `Composición de ${data.scopeLabel.toLocaleLowerCase("es-PE")}`}
+              ? "Así se compone el total entregado de tu cohorte"
+              : `Entregadas de ${data.scopeLabel.toLocaleLowerCase("es-PE")}`}
           </small>
         </div>
         <span>
-          {mix.total} ventas en {data.monthLabel}
+          {mix.total} entregadas en {data.monthLabel}
         </span>
       </header>
 
@@ -609,7 +613,10 @@ function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
               <div aria-hidden="true" className="sales-mix__track">
                 <span style={{ width: `${ratio * 100}%` }} />
               </div>
-              <small>{percentage(ratio)} del total del período</small>
+              <small>
+                {percentage(ratio)} de las entregadas
+                {data.showCommission ? ` · ${row.commission}` : ""}
+              </small>
             </article>
           );
         })}

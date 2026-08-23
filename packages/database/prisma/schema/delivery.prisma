@@ -11,6 +11,22 @@ enum DeliveryEscalationStatus {
   CANCELLED
 }
 
+enum DeliveryEscalationCategory {
+  COMMERCIAL_OFFER
+  CUSTOMER_REQUEST
+  DELIVERY_LOGISTICS
+  ACTIVATION_PAYMENT
+  DATA_QUALITY
+  CANCELLATION
+  OTHER
+}
+
+enum DeliveryEscalationPriority {
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model DeliveryShift {
   id             String @id @default(uuid()) @db.Uuid
   organizationId String @map("organization_id") @db.Uuid
@@ -40,8 +56,16 @@ model DeliveryEscalation {
   organizationId String @map("organization_id") @db.Uuid
   ditoOrderId    String @map("dito_order_id") @db.Uuid
 
-  observation      String @db.Text
-  generatedMessage String @map("generated_message") @db.Text
+  observation      String                     @db.Text
+  generatedMessage String                     @map("generated_message") @db.Text
+  category         DeliveryEscalationCategory @default(OTHER)
+  priority         DeliveryEscalationPriority @default(MEDIUM)
+  requestedAction  String                     @map("requested_action") @db.Text
+  acknowledgement  String?                    @db.Text
+  resolution       String?                    @db.Text
+  teamIdSnapshot   String?                    @map("team_id_snapshot") @db.Uuid
+  tdpTemplateType  String                     @default("OTHER") @map("tdp_template_type") @db.VarChar(50)
+  tdpTemplate      String?                    @map("tdp_template") @db.Text
 
   orderCodeRawSnapshot        String             @map("order_code_raw_snapshot") @db.VarChar(100)
   deliveryMethodSnapshot      DitoDeliveryMethod @map("delivery_method_snapshot")
@@ -57,10 +81,12 @@ model DeliveryEscalation {
   createdByUserId      String  @map("created_by_user_id") @db.Uuid
   acknowledgedByUserId String? @map("acknowledged_by_user_id") @db.Uuid
   resolvedByUserId     String? @map("resolved_by_user_id") @db.Uuid
+  tdpEscalatedByUserId String? @map("tdp_escalated_by_user_id") @db.Uuid
 
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)
   resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(3)
+  tdpEscalatedAt DateTime? @map("tdp_escalated_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   ditoOrder    DitoOrder    @relation(fields: [ditoOrderId], references: [id], onDelete: Restrict)
@@ -68,8 +94,11 @@ model DeliveryEscalation {
   createdBy      User  @relation("DeliveryEscalationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
   acknowledgedBy User? @relation("DeliveryEscalationAcknowledgedBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
   resolvedBy     User? @relation("DeliveryEscalationResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  tdpEscalatedBy User? @relation("DeliveryEscalationTdpEscalatedBy", fields: [tdpEscalatedByUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, status, createdAt], map: "delivery_escalations_org_status_created_idx")
+  @@index([organizationId, teamIdSnapshot, status, createdAt], map: "delivery_escalations_org_team_status_created_idx")
   @@index([ditoOrderId, createdAt], map: "delivery_escalations_order_created_idx")
+  @@index([organizationId, tdpEscalatedAt], map: "delivery_escalations_tdp_escalated_at_idx")
   @@map("delivery_escalations")
 }

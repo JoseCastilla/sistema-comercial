@@ -37,7 +37,7 @@ const batchStatusLabels: Record<string, string> = {
   FAILED: "Fallida",
 };
 
-const currentDitoImportParserVersion = "1.7";
+const currentDitoImportParserVersion = "1.8";
 
 const operationLabels: Record<string, string> = {
   NEW_LINE: "Alta nueva",

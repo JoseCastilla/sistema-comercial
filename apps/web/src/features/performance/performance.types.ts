@@ -50,6 +50,8 @@ export interface SalesOperationMixItem {
   portPostpaid: number;
   portPrepaid: number;
   unclassified: number;
+  payablePortPostpaid: number;
+  payablePortPrepaid: number;
 }
 
 export interface DailyPerformance {

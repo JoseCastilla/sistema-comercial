@@ -23,6 +23,7 @@ function firstValue(value: string | string[] | undefined): string | undefined {
 function parseOrderFilter(value: string | undefined): OrderFilter {
   return [
     "ACTIVE",
+    "ESCALATIONS",
     "INCIDENTS",
     "RECOVERY",
     "AWAITING_ACTIVATION",

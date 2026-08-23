@@ -414,6 +414,8 @@ function emptySalesOperationMix(): SalesOperationMixItem {
     portPostpaid: 0,
     portPrepaid: 0,
     unclassified: 0,
+    payablePortPostpaid: 0,
+    payablePortPrepaid: 0,
   };
 }
 
@@ -421,13 +423,23 @@ function addToSalesOperationMix(
   mix: SalesOperationMixItem,
   order: PerformanceOrderRecord,
 ): void {
+  const isDelivered =
+    order.deliveryStatus === "DELIVERED" && order.deliveredAt !== null;
+  if (!isDelivered) return;
+
   mix.total += 1;
 
   if (order.commercialOperation === "NEW_LINE") mix.newLine += 1;
   else if (order.commercialOperation === "PORT_POSTPAID") {
     mix.portPostpaid += 1;
+    if (order.status === "CLOSED" && order.closedAt !== null) {
+      mix.payablePortPostpaid += 1;
+    }
   } else if (order.commercialOperation === "PORT_PREPAID") {
     mix.portPrepaid += 1;
+    if (order.status === "CLOSED" && order.closedAt !== null) {
+      mix.payablePortPrepaid += 1;
+    }
   } else mix.unclassified += 1;
 }
 
