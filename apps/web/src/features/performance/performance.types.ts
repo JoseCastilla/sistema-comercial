@@ -7,7 +7,30 @@ export interface PerformanceBreakdownItem {
   name: string;
   teamName: string | null;
   metrics: PerformanceMetrics;
+  previousMetrics: PerformanceMetrics;
+  enteredDelta: number | null;
+  isActiveSeller: boolean;
   showCommission: boolean;
+  dailyEntered: number[];
+}
+
+export interface MonthlyPerformanceDay {
+  key: string;
+  day: number;
+  label: string;
+  entered: number;
+  closed: number;
+  cumulative: number;
+  isToday: boolean;
+  isFuture: boolean;
+}
+
+export interface MonthlyPerformanceProgress {
+  days: MonthlyPerformanceDay[];
+  elapsedDays: number;
+  productiveDays: number;
+  averagePerElapsedDay: number;
+  bestDay: MonthlyPerformanceDay | null;
 }
 
 export interface DailyPerformanceItem {
@@ -29,21 +52,6 @@ export interface SalesOperationMixItem {
   unclassified: number;
 }
 
-export interface SalesOperationMix extends SalesOperationMixItem {
-  byAgent: Array<
-    SalesOperationMixItem & {
-      id: string;
-      name: string;
-    }
-  >;
-}
-
-export interface SalesOperationMixPeriods {
-  today: SalesOperationMix;
-  week: SalesOperationMix;
-  month: SalesOperationMix;
-}
-
 export interface DailyPerformance {
   todayLabel: string;
   entered: number;
@@ -51,7 +59,6 @@ export interface DailyPerformance {
   closed: number;
   confirmed: number;
   confirmedBaseCommissionCents: number;
-  operationMix: SalesOperationMixPeriods;
   days: DailyPerformanceItem[];
 }
 
@@ -73,7 +80,9 @@ export interface PerformanceDashboardData {
   teamOptions: Array<{ id: string; name: string }>;
   showTeamFilter: boolean;
   showCommission: boolean;
+  salesMix: SalesOperationMixItem;
   dailyPulse: DailyPerformance | null;
+  monthProgress: MonthlyPerformanceProgress;
   metrics: PerformanceMetrics;
   previousMetrics: PerformanceMetrics;
   comparison: {
@@ -82,5 +91,11 @@ export interface PerformanceDashboardData {
     payableDelta: number | null;
     payableRateDelta: number | null;
   };
+  workforce: {
+    activeSellers: number;
+    sellersWithSales: number;
+    sellersWithoutSales: number;
+    averageEnteredPerSeller: number | null;
+  } | null;
   breakdown: PerformanceBreakdownItem[];
 }

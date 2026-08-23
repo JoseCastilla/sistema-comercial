@@ -33,6 +33,12 @@ function delta(value: number | null, points = false): string {
     : `${sign}${percentage(value)} vs. mes anterior`;
 }
 
+function shortDelta(value: number | null): string {
+  if (value === null) return "—";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${Math.round(value * 100)}%`;
+}
+
 function performanceHref(
   data: PerformanceDashboardData,
   month: string,
@@ -63,17 +69,29 @@ function Kpi({
   value,
   supporting,
   tone = "neutral",
+  href,
 }: {
   label: string;
   value: string | number;
   supporting: string;
-  tone?: "neutral" | "positive" | "attention";
+  tone?: "neutral" | "primary" | "positive" | "attention" | "info";
+  href?: string;
 }) {
-  return (
-    <article className="performance-kpi" data-tone={tone}>
+  const content = (
+    <>
       <p className="performance-kpi__label">{label}</p>
       <p className="performance-kpi__value">{value}</p>
       <p className="performance-kpi__supporting">{supporting}</p>
+    </>
+  );
+
+  return href ? (
+    <Link className="performance-kpi" data-tone={tone} href={href}>
+      {content}
+    </Link>
+  ) : (
+    <article className="performance-kpi" data-tone={tone}>
+      {content}
     </article>
   );
 }
@@ -82,8 +100,7 @@ function Funnel({ data }: { data: PerformanceDashboardData }) {
   const steps = [
     { label: "Ingresadas", value: data.metrics.entered },
     { label: "Entregadas", value: data.metrics.delivered },
-    { label: "Activadas", value: data.metrics.activated },
-    { label: "Pagables", value: data.metrics.payable },
+    { label: "Cerradas", value: data.metrics.activated },
   ];
   const maximum = Math.max(data.metrics.entered, 1);
 
@@ -128,9 +145,9 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
   const heading = isAgent ? "Tu pulso de hoy" : "Pulso diario del alcance";
   const motivation = isAgent
     ? pulse.entered > 0
-      ? `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} hoy y ${pulse.closed} ${pulse.closed === 1 ? "cierre logrado" : "cierres logrados"}. Sigue cuidando la entrega para convertir el potencial en comisión.`
+      ? `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} hoy y ${pulse.closed} ${pulse.closed === 1 ? "cierre registrado" : "cierres registrados"}. Sigue cuidando la entrega para convertir el potencial en comisión.`
       : "Aún no registras ventas hoy. Tu cartera pendiente sigue siendo una oportunidad para recuperar activaciones."
-    : `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} y ${pulse.closed} ${pulse.closed === 1 ? "venta cerrada" : "ventas cerradas"} hoy en ${data.scopeLabel.toLocaleLowerCase("es-PE")}.`;
+    : `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} y ${pulse.closed} ${pulse.closed === 1 ? "cierre registrado" : "cierres registrados"} hoy en ${data.scopeLabel.toLocaleLowerCase("es-PE")}.`;
 
   return (
     <section className="agent-daily" aria-labelledby="agent-daily-title">
@@ -165,7 +182,7 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
           )}
         </article>
         <article data-tone="confirmed">
-          <span>Cerradas hoy</span>
+          <span>Cierres registrados hoy</span>
           <strong>{pulse.closed}</strong>
           <small>
             {pulse.confirmed} pagables
@@ -191,208 +208,412 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
         </article>
       </div>
 
-      <SalesOperationMix data={data} />
-
-      <div className="agent-daily__rhythm">
-        <div className="agent-daily__rhythm-copy">
-          <strong>Ritmo de los últimos 7 días</strong>
-          <small>
-            Compara ventas ingresadas y cerradas por fecha de evento.
-          </small>
-          <div className="agent-daily__legend" aria-hidden="true">
-            <span data-series="entered">Ingresadas</span>
-            <span data-series="closed">Cerradas</span>
+      {!isAgent ? (
+        <div className="agent-daily__rhythm">
+          <div className="agent-daily__rhythm-copy">
+            <strong>Ritmo de los últimos 7 días</strong>
+            <small>
+              Compara ventas ingresadas y cierres registrados por día.
+            </small>
+            <div className="agent-daily__legend" aria-hidden="true">
+              <span data-series="entered">Ingresadas</span>
+              <span data-series="closed">Cerradas</span>
+            </div>
+          </div>
+          <div
+            aria-label="Ventas ingresadas y cierres registrados durante los últimos siete días"
+            className="agent-daily__chart"
+          >
+            {pulse.days.map((day) => (
+              <div
+                className="agent-daily__day"
+                data-today={day.isToday ? "true" : undefined}
+                key={day.key}
+                title={`${day.label}: ${day.entered} ingresadas, ${day.closed} cierres registrados y ${day.confirmed} pagables`}
+              >
+                <div className="agent-daily__totals">
+                  <strong>I {day.entered}</strong>
+                  <strong>C {day.closed}</strong>
+                </div>
+                <div aria-hidden="true" className="agent-daily__bars">
+                  <span
+                    data-series="entered"
+                    style={{
+                      height: `${Math.max(
+                        (day.entered / maximum) * 100,
+                        day.entered > 0 ? 12 : 3,
+                      )}%`,
+                    }}
+                  />
+                  <span
+                    data-series="closed"
+                    style={{
+                      height: `${Math.max(
+                        (day.closed / maximum) * 100,
+                        day.closed > 0 ? 12 : 3,
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <span>{day.label}</span>
+                <small>
+                  {day.confirmed} pagables
+                  {data.showCommission
+                    ? ` · ${money(day.confirmedBaseCommissionCents)}`
+                    : ""}
+                </small>
+              </div>
+            ))}
           </div>
         </div>
-        <div
-          aria-label="Ventas ingresadas y cerradas durante los últimos siete días"
-          className="agent-daily__chart"
-        >
-          {pulse.days.map((day) => (
-            <div
-              className="agent-daily__day"
-              data-today={day.isToday ? "true" : undefined}
-              key={day.key}
-              title={`${day.label}: ${day.entered} ingresadas, ${day.closed} cerradas y ${day.confirmed} pagables`}
-            >
-              <div className="agent-daily__totals">
-                <strong>I {day.entered}</strong>
-                <strong>C {day.closed}</strong>
-              </div>
-              <div aria-hidden="true" className="agent-daily__bars">
-                <span
-                  data-series="entered"
-                  style={{
-                    height: `${Math.max(
-                      (day.entered / maximum) * 100,
-                      day.entered > 0 ? 12 : 3,
-                    )}%`,
-                  }}
-                />
-                <span
-                  data-series="closed"
-                  style={{
-                    height: `${Math.max(
-                      (day.closed / maximum) * 100,
-                      day.closed > 0 ? 12 : 3,
-                    )}%`,
-                  }}
-                />
-              </div>
-              <span>{day.label}</span>
-              <small>
-                {day.confirmed} pagables
-                {data.showCommission
-                  ? ` · ${money(day.confirmedBaseCommissionCents)}`
-                  : ""}
-              </small>
-            </div>
-          ))}
-        </div>
-      </div>
+      ) : null}
 
       <p className="agent-daily__notice">
-        El cierre se atribuye al día de <code>closedAt</code>; no altera el mes
-        de ingreso de la venta. Potencial no significa comisión ganada: se
-        confirma cuando la portabilidad queda entregada y cerrada.
+        Los cierres muestran cuándo se registró la confirmación en la
+        plataforma; cada venta permanece atribuida a su cohorte de ingreso.
       </p>
     </section>
   );
 }
 
+function SalesTrendOverview({ data }: { data: PerformanceDashboardData }) {
+  if (data.view === "SELF") return null;
+
+  const days = data.monthProgress.days.filter((day) => !day.isFuture);
+  const maximum = Math.max(
+    ...days.flatMap((day) => [day.entered, day.closed]),
+    1,
+  );
+  const points = (read: (day: (typeof days)[number]) => number) =>
+    days
+      .map((day, index) => {
+        const x = days.length > 1 ? (index / (days.length - 1)) * 100 : 0;
+        const y = 92 - (read(day) / maximum) * 78;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      })
+      .join(" ");
+  const enteredPoints = points((day) => day.entered);
+  const closedPoints = points((day) => day.closed);
+  const areaPoints = enteredPoints ? `0,92 ${enteredPoints} 100,92` : "";
+  const totalClosures = days.reduce((total, day) => total + day.closed, 0);
+
+  return (
+    <section
+      className="performance-panel performance-sales-trend"
+      aria-labelledby="sales-trend-title"
+    >
+      <header className="performance-panel__header">
+        <div>
+          <p className="performance-panel__eyebrow">Tendencia comercial</p>
+          <h2 id="sales-trend-title">Actividad diaria</h2>
+          <p>Ingresos y cierres registrados durante {data.monthLabel}.</p>
+        </div>
+        <div className="performance-sales-trend__legend" aria-hidden="true">
+          <span data-series="entered">Ingresadas</span>
+          <span data-series="closed">Cierres</span>
+        </div>
+      </header>
+
+      <div className="performance-sales-trend__body">
+        <div className="performance-sales-trend__summary">
+          <dl>
+            <div>
+              <dt>Promedio diario</dt>
+              <dd>{data.monthProgress.averagePerElapsedDay.toFixed(1)}</dd>
+            </div>
+            <div>
+              <dt>Días con ventas</dt>
+              <dd>{data.monthProgress.productiveDays}</dd>
+            </div>
+            <div>
+              <dt>Mejor día</dt>
+              <dd>
+                {data.monthProgress.bestDay
+                  ? `${data.monthProgress.bestDay.entered} ventas`
+                  : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt>Cierres registrados</dt>
+              <dd>{totalClosures}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className="performance-sales-trend__chart">
+          <svg
+            aria-label={`Ventas ingresadas por día en ${data.monthLabel}`}
+            preserveAspectRatio="none"
+            role="img"
+            viewBox="0 0 100 100"
+          >
+            <line x1="0" x2="100" y1="14" y2="14" />
+            <line x1="0" x2="100" y1="40" y2="40" />
+            <line x1="0" x2="100" y1="66" y2="66" />
+            <line x1="0" x2="100" y1="92" y2="92" />
+            {areaPoints ? <polygon points={areaPoints} /> : null}
+            {enteredPoints ? (
+              <polyline data-series="entered" points={enteredPoints} />
+            ) : null}
+            {closedPoints ? (
+              <polyline data-series="closed" points={closedPoints} />
+            ) : null}
+          </svg>
+          <div aria-hidden="true" className="performance-sales-trend__axis">
+            <span>Día 1</span>
+            <span>
+              Día {Math.max(1, Math.ceil(data.monthProgress.elapsedDays / 2))}
+            </span>
+            <span>Día {data.monthProgress.elapsedDays}</span>
+          </div>
+        </div>
+      </div>
+      <p className="performance-sales-trend__notice">
+        Ingresadas usa la fecha de registro; cierres usa la fecha de
+        confirmación. Son ritmos distintos, no etapas del mismo grupo.
+      </p>
+    </section>
+  );
+}
+
+function PersonalMonthlyProgress({ data }: { data: PerformanceDashboardData }) {
+  if (data.view !== "SELF") return null;
+
+  const progress = data.monthProgress;
+  const visibleDays = progress.days.filter((day) => !day.isFuture);
+  const maximum = Math.max(...visibleDays.map((day) => day.entered), 1);
+
+  return (
+    <section
+      className="performance-panel performance-month-progress"
+      aria-labelledby="month-progress-title"
+    >
+      <header className="performance-panel__header">
+        <div>
+          <p className="performance-panel__eyebrow">Tu avance diario</p>
+          <h2 id="month-progress-title">Ritmo de {data.monthLabel}</h2>
+          <p>
+            Cada barra representa las ventas ingresadas ese día; el acumulado
+            muestra tu avance real del mes.
+          </p>
+        </div>
+      </header>
+
+      <dl className="performance-month-progress__summary">
+        <div>
+          <dt>Días transcurridos</dt>
+          <dd>{progress.elapsedDays}</dd>
+        </div>
+        <div>
+          <dt>Días con ventas</dt>
+          <dd>{progress.productiveDays}</dd>
+        </div>
+        <div>
+          <dt>Promedio diario</dt>
+          <dd>{progress.averagePerElapsedDay.toFixed(1)}</dd>
+        </div>
+        <div>
+          <dt>Mejor día</dt>
+          <dd>
+            {progress.bestDay
+              ? `${progress.bestDay.entered} · día ${progress.bestDay.day}`
+              : "—"}
+          </dd>
+        </div>
+      </dl>
+
+      <div
+        aria-label={`Ventas diarias y acumuladas de ${data.monthLabel}`}
+        className="performance-month-progress__chart"
+      >
+        {progress.days.map((day) => (
+          <div
+            className="performance-month-progress__day"
+            data-future={day.isFuture ? "true" : undefined}
+            data-today={day.isToday ? "true" : undefined}
+            key={day.key}
+            title={
+              day.isFuture
+                ? `Día ${day.day}: aún no transcurre`
+                : `Día ${day.day}: ${day.entered} ventas · ${day.cumulative} acumuladas`
+            }
+          >
+            <strong>{day.isFuture ? "" : day.entered}</strong>
+            <div aria-hidden="true">
+              <span
+                style={{
+                  height: `${Math.max(
+                    (day.entered / maximum) * 100,
+                    day.entered > 0 ? 10 : 2,
+                  )}%`,
+                }}
+              />
+            </div>
+            <small>{day.day}</small>
+            <em>{day.isFuture ? "" : day.cumulative}</em>
+          </div>
+        ))}
+      </div>
+      <div className="performance-month-progress__legend">
+        <span>Venta del día</span>
+        <span>Acumulado al cierre del día</span>
+      </div>
+    </section>
+  );
+}
+
+function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
+  const advisors = data.breakdown.filter(
+    (advisor) => advisor.isActiveSeller || advisor.metrics.entered > 0,
+  );
+  if (data.view === "SELF" || advisors.length === 0) return null;
+
+  return (
+    <section
+      className="performance-panel performance-daily-matrix"
+      aria-labelledby="daily-matrix-title"
+    >
+      <header className="performance-panel__header">
+        <div>
+          <p className="performance-panel__eyebrow">Ritmo del equipo</p>
+          <h2 id="daily-matrix-title">Ventas por asesor y día</h2>
+          <p>
+            Identifica continuidad, días sin producción y concentración de
+            ventas durante {data.monthLabel}.
+          </p>
+        </div>
+        <span className="performance-panel__note">Desliza para ver el mes</span>
+      </header>
+
+      <div className="performance-daily-matrix__wrap">
+        <table className="performance-daily-matrix__table">
+          <thead>
+            <tr>
+              <th scope="col">Asesor</th>
+              {data.monthProgress.days.map((day) => (
+                <th
+                  data-future={day.isFuture ? "true" : undefined}
+                  data-today={day.isToday ? "true" : undefined}
+                  key={day.key}
+                  scope="col"
+                  title={day.label}
+                >
+                  {day.day}
+                </th>
+              ))}
+              <th scope="col">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {advisors.map((advisor) => (
+              <tr key={advisor.id}>
+                <th scope="row">
+                  <strong>{advisor.name}</strong>
+                  <small>{advisor.teamName ?? "Sin equipo"}</small>
+                </th>
+                {advisor.dailyEntered.map((value, index) => {
+                  const day = data.monthProgress.days[index];
+                  const isFuture = day?.isFuture ?? false;
+                  return (
+                    <td
+                      aria-label={
+                        isFuture
+                          ? `Día ${day?.day}: aún no transcurre`
+                          : `Día ${day?.day}: ${value} ${value === 1 ? "venta" : "ventas"}`
+                      }
+                      data-future={isFuture ? "true" : undefined}
+                      data-level={
+                        isFuture ? undefined : String(Math.min(value, 4))
+                      }
+                      data-today={day?.isToday ? "true" : undefined}
+                      key={day?.key ?? index}
+                    >
+                      {isFuture || value === 0 ? "" : value}
+                    </td>
+                  );
+                })}
+                <td>{advisor.metrics.entered}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="performance-daily-matrix__legend" aria-hidden="true">
+        <span>Sin ventas</span>
+        <i data-level="1" />
+        <i data-level="2" />
+        <i data-level="3" />
+        <i data-level="4" />
+        <span>Mayor producción</span>
+      </div>
+    </section>
+  );
+}
+
 function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
-  const mix = data.dailyPulse?.operationMix;
-  if (!mix) return null;
+  const mix = data.salesMix;
+  if (!data.isCurrentMonth && mix.total === 0) return null;
 
   const rows = [
     {
       key: "new-line",
       label: "Altas nuevas",
-      read: (period: typeof mix.today) => period.newLine,
+      value: mix.newLine,
     },
     {
       key: "port-prepaid",
       label: "Porta origen prepago",
-      read: (period: typeof mix.today) => period.portPrepaid,
+      value: mix.portPrepaid,
     },
     {
       key: "port-postpaid",
       label: "Porta origen postpago",
-      read: (period: typeof mix.today) => period.portPostpaid,
+      value: mix.portPostpaid,
     },
-  ];
-  const periods = [
-    { key: "today", label: "Hoy", value: mix.today },
-    { key: "week", label: "Esta semana", value: mix.week },
-    { key: "month", label: "Este mes", value: mix.month },
+    ...(mix.unclassified > 0
+      ? [
+          {
+            key: "unclassified",
+            label: "Por clasificar",
+            value: mix.unclassified,
+          },
+        ]
+      : []),
   ];
 
   return (
     <section className="sales-mix" aria-labelledby="sales-mix-title">
       <header className="sales-mix__header">
         <div>
-          <strong id="sales-mix-title">Mix de ventas</strong>
+          <strong id="sales-mix-title">Composición de ventas</strong>
           <small>
             {data.view === "SELF"
               ? "Tu composición comercial por fecha de ingreso"
               : `Composición de ${data.scopeLabel.toLocaleLowerCase("es-PE")}`}
           </small>
         </div>
-        <span>{mix.month.total} ventas este mes</span>
+        <span>
+          {mix.total} ventas en {data.monthLabel}
+        </span>
       </header>
 
-      <div className="sales-mix__table-wrap">
-        <table className="sales-mix__table">
-          <thead>
-            <tr>
-              <th>Tipo de venta</th>
-              {periods.map((period) => (
-                <th key={period.key}>
-                  <span>{period.label}</span>
-                  <strong>{period.value.total}</strong>
-                  <small>Total</small>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr data-segment={row.key} key={row.key}>
-                <th>{row.label}</th>
-                {periods.map((period) => {
-                  const value = row.read(period.value);
-
-                  return (
-                    <td key={period.key}>
-                      <strong>{value}</strong>
-                      <small>
-                        {period.value.total > 0
-                          ? percentage(value / period.value.total)
-                          : "0%"}
-                      </small>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-            {mix.month.unclassified > 0 ? (
-              <tr data-segment="unclassified">
-                <th>Por clasificar</th>
-                {periods.map((period) => (
-                  <td key={period.key}>
-                    <strong>{period.value.unclassified}</strong>
-                    <small>
-                      {period.value.total > 0
-                        ? percentage(
-                            period.value.unclassified / period.value.total,
-                          )
-                        : "0%"}
-                    </small>
-                  </td>
-                ))}
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+      <div className="sales-mix__distribution">
+        {rows.map((row) => {
+          const ratio = mix.total > 0 ? row.value / mix.total : 0;
+          return (
+            <article data-segment={row.key} key={row.key}>
+              <div>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+              </div>
+              <div aria-hidden="true" className="sales-mix__track">
+                <span style={{ width: `${ratio * 100}%` }} />
+              </div>
+              <small>{percentage(ratio)} del total del período</small>
+            </article>
+          );
+        })}
       </div>
-
-      {data.view !== "SELF" && mix.today.byAgent.length > 0 ? (
-        <details className="sales-mix__agents">
-          <summary>
-            Ver mix de hoy por asesor ({mix.today.byAgent.length})
-          </summary>
-          <div className="performance-table-wrap">
-            <table className="performance-table">
-              <thead>
-                <tr>
-                  <th>Asesor</th>
-                  <th>Total</th>
-                  <th>Alta nueva</th>
-                  <th>Porta post</th>
-                  <th>Porta pre</th>
-                  {mix.today.unclassified > 0 ? <th>Por clasificar</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {mix.today.byAgent.map((agent) => (
-                  <tr key={agent.id}>
-                    <td>
-                      <strong>{agent.name}</strong>
-                    </td>
-                    <td>{agent.total}</td>
-                    <td>{agent.newLine}</td>
-                    <td>{agent.portPostpaid}</td>
-                    <td>{agent.portPrepaid}</td>
-                    {mix.today.unclassified > 0 ? (
-                      <td>{agent.unclassified}</td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      ) : null}
     </section>
   );
 }
@@ -410,7 +631,7 @@ export function PerformanceDashboard({
         : "Compara resultados, identifica desvíos y abre las órdenes que requieren intervención.";
 
   return (
-    <div className="ui-page-stack">
+    <div className="ui-page-stack performance-dashboard">
       <PageHeader
         description={description}
         eyebrow={data.scopeLabel}
@@ -420,10 +641,10 @@ export function PerformanceDashboard({
             <span>Actualizado: {data.generatedAt}</span>
           </span>
         }
-        title="Rendimiento comercial"
+        title={
+          data.view === "SELF" ? "Mi rendimiento" : "Rendimiento comercial"
+        }
       />
-
-      <DailyPerformancePulse data={data} />
 
       <section className="performance-controls ui-surface">
         <div className="performance-month-nav">
@@ -501,43 +722,55 @@ export function PerformanceDashboard({
         <Kpi
           label="Ventas ingresadas"
           supporting={delta(data.comparison.enteredDelta)}
+          tone="primary"
           value={data.metrics.entered}
         />
         <Kpi
-          label="Entregadas"
-          supporting={`${percentage(data.metrics.deliveryRate)} de las ingresadas`}
+          label="Ventas entregadas"
+          supporting={`${percentage(data.metrics.deliveryRate)} de ${data.metrics.entered} ingresadas`}
+          tone="info"
           value={data.metrics.delivered}
         />
         <Kpi
-          label="Activadas y pagables"
-          supporting={delta(data.comparison.payableDelta)}
+          label="Portabilidades pagables"
+          supporting={`${percentage(data.metrics.payableRate)} de ${data.metrics.portability} portabilidades · entregadas y cerradas`}
           tone="positive"
           value={data.metrics.payable}
         />
-        <Kpi
-          label="Conversión pagable"
-          supporting={delta(data.comparison.payableRateDelta, true)}
-          value={percentage(data.metrics.payableRate)}
-        />
+        {data.view === "SELF" ? (
+          <Kpi
+            label="Ventas cerradas"
+            supporting={`${percentage(
+              data.metrics.entered > 0
+                ? data.metrics.activated / data.metrics.entered
+                : null,
+            )} de tus ventas ingresadas`}
+            tone="positive"
+            value={data.metrics.activated}
+          />
+        ) : data.workforce ? (
+          <Kpi
+            label="Asesores con ventas"
+            supporting={`${data.workforce.sellersWithoutSales} sin producción · ${data.workforce.averageEnteredPerSeller?.toFixed(1) ?? "—"} promedio`}
+            tone={
+              data.workforce.sellersWithoutSales > 0 ? "attention" : "positive"
+            }
+            value={`${data.workforce.sellersWithSales}/${data.workforce.activeSellers}`}
+          />
+        ) : null}
       </section>
 
-      <div className="performance-layout">
-        <section className="performance-panel">
-          <header className="performance-panel__header">
-            <div>
-              <p className="performance-panel__eyebrow">Conversión</p>
-              <h2>Del ingreso a la activación</h2>
-            </div>
-            <span className="performance-panel__note">Cohorte mensual</span>
-          </header>
-          <Funnel data={data} />
-        </section>
-
+      <div className="performance-decision-grid">
+        {data.view === "SELF" ? (
+          <PersonalMonthlyProgress data={data} />
+        ) : (
+          <SalesTrendOverview data={data} />
+        )}
         <section className="performance-panel performance-panel--attention">
           <header className="performance-panel__header">
             <div>
               <p className="performance-panel__eyebrow">Siguiente acción</p>
-              <h2>Oportunidades por recuperar</h2>
+              <h2>Pendientes de intervención</h2>
             </div>
           </header>
           <div className="performance-actions">
@@ -561,6 +794,25 @@ export function PerformanceDashboard({
           </div>
         </section>
       </div>
+
+      <TeamDailyMatrix data={data} />
+
+      <div className="performance-insight-grid">
+        <section className="performance-panel">
+          <header className="performance-panel__header">
+            <div>
+              <p className="performance-panel__eyebrow">Conversión</p>
+              <h2>Avance de las ventas ingresadas</h2>
+            </div>
+            <span className="performance-panel__note">Todas las ventas</span>
+          </header>
+          <Funnel data={data} />
+        </section>
+
+        <SalesOperationMix data={data} />
+      </div>
+
+      {data.view === "SELF" ? <DailyPerformancePulse data={data} /> : null}
 
       {data.showCommission ? (
         <section className="performance-panel performance-commission">
@@ -590,9 +842,11 @@ export function PerformanceDashboard({
           </header>
           <div className="performance-commission__details">
             <div>
-              <span>Comisión base</span>
-              <strong>{money(data.metrics.baseCommissionCents)}</strong>
-              <small>{data.metrics.payable} portabilidades pagables</small>
+              <span>Portabilidades pagables</span>
+              <strong>{data.metrics.payable}</strong>
+              <small>
+                {money(data.metrics.baseCommissionCents)} de comisión base
+              </small>
             </div>
             <div>
               <span>Acelerador 1–15</span>
@@ -620,40 +874,55 @@ export function PerformanceDashboard({
       ) : null}
 
       {data.breakdown.length > 0 ? (
-        <section className="performance-panel">
-          <header className="performance-panel__header">
+        <details className="performance-panel performance-breakdown">
+          <summary className="performance-breakdown__summary">
             <div>
-              <p className="performance-panel__eyebrow">Lectura del equipo</p>
-              <h2>Resultados por asesor</h2>
-              <p>
-                El tamaño de la cartera acompaña la tasa para evitar
-                comparaciones engañosas.
-              </p>
+              <p className="performance-panel__eyebrow">Análisis detallado</p>
+              <h2>Indicadores por asesor</h2>
+              <p>Tasas de entrega, pagables y carga pendiente por vendedor.</p>
             </div>
-          </header>
+            <span>
+              <b data-collapsed>Ver detalle</b>
+              <b data-expanded>Ocultar detalle</b>
+            </span>
+          </summary>
           <div className="performance-table-wrap">
             <table className="performance-table">
               <thead>
                 <tr>
                   <th>Asesor</th>
                   <th>Ingresadas</th>
-                  <th>Entregadas</th>
+                  <th>Vs. anterior</th>
+                  <th>Tasa de entrega</th>
                   <th>Pagables</th>
-                  <th>Conversión</th>
+                  <th>Recuperar</th>
+                  <th>Por activar</th>
                   {data.role === "ADMIN" ? <th>Estimado</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {data.breakdown.map((item) => (
-                  <tr key={item.id}>
+                  <tr
+                    data-no-sales={
+                      item.isActiveSeller && item.metrics.entered === 0
+                        ? "true"
+                        : undefined
+                    }
+                    key={item.id}
+                  >
                     <td>
                       <strong>{item.name}</strong>
-                      <small>{item.teamName ?? "Sin equipo"}</small>
+                      <small>
+                        {item.teamName ?? "Sin equipo"}
+                        {!item.isActiveSeller ? " · histórico" : ""}
+                      </small>
                     </td>
                     <td>{item.metrics.entered}</td>
-                    <td>{item.metrics.delivered}</td>
+                    <td>{shortDelta(item.enteredDelta)}</td>
+                    <td>{percentage(item.metrics.deliveryRate)}</td>
                     <td>{item.metrics.payable}</td>
-                    <td>{percentage(item.metrics.payableRate)}</td>
+                    <td>{item.metrics.recovery}</td>
+                    <td>{item.metrics.deliveredPendingActivation}</td>
                     {data.role === "ADMIN" ? (
                       <td>{money(item.metrics.estimatedCommissionCents)}</td>
                     ) : null}
@@ -662,7 +931,7 @@ export function PerformanceDashboard({
               </tbody>
             </table>
           </div>
-        </section>
+        </details>
       ) : null}
     </div>
   );
