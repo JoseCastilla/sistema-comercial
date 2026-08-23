@@ -1,6 +1,6 @@
 # SPEC-028 — Verificación
 
-**Estado:** `LOCAL_VERIFIED`
+**Estado:** `VERIFIED`
 
 ## Evidencia local
 
@@ -14,4 +14,9 @@
 
 ## Evidencia productiva
 
-Pendiente de publicación y comprobación de salud.
+- Commit funcional desplegado: `bdc04c0`.
+- La nueva ruta `/api/order-escalations/notifications` quedó activa y protegida por autenticación.
+- Web respondió `ok` en `/api/health`.
+- API respondió `ok` en `/api/v1/health/ready` y PostgreSQL reportó `up`.
+- El API inició correctamente después del paso obligatorio `prisma migrate deploy`; por lo tanto, las 27 migraciones quedaron disponibles para la versión publicada.
+- GitHub `main` quedó sincronizado con el commit desplegado.

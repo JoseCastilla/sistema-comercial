@@ -12,4 +12,4 @@
 - [x] Registro auditable del escalamiento a TDP y opción para copiar la plantilla.
 - [x] Actualización en tiempo real mediante el flujo existente.
 - [x] Verificación local completa.
-- [ ] Despliegue y verificación productiva.
+- [x] Despliegue y verificación productiva.
