@@ -24,6 +24,7 @@ export type OrderSentSubstatusValue =
 export type OrderFilter =
   | "ACTIVE"
   | "ESCALATIONS"
+  | "LOGISTICS"
   | "INCIDENTS"
   | "RECOVERY"
   | "AWAITING_ACTIVATION"
@@ -94,6 +95,25 @@ export interface OrderInboxItem {
   noStatusIncident: boolean;
 
   deliveryObservation: string | null;
+  agrStatus: {
+    status: string;
+    fetchedAtLabel: string;
+    isOpportunity: boolean;
+  } | null;
+  agrDelivery: {
+    status: string;
+    actionKind:
+      "RESCHEDULE" | "CONTACT" | "REVIEW_CANCELLATION" | "NOT_RECOVERABLE";
+    actionLabel: string;
+    actionShortLabel: string;
+    reason: string | null;
+    managementStatus: string | null;
+    result: string | null;
+    nextAction: string | null;
+    promisedDelivery: string | null;
+    commitmentDate: string | null;
+    fetchedAtLabel: string;
+  } | null;
 
   registeredAtLabel: string;
   approvedAtLabel: string;
@@ -174,10 +194,19 @@ export interface OrderInboxData {
 
   pendingBeforeMonth: number;
 
+  logisticsSummary: {
+    total: number;
+    reschedule: number;
+    contact: number;
+    review: number;
+    lastFetchedAtLabel: string | null;
+  };
+
   totals: {
     visible: number;
     incidents: number;
     escalations: number;
+    logistics: number;
     notDelivered: number;
     recovery: number;
     delivered: number;

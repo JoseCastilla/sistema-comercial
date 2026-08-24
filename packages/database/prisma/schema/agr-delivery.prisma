@@ -1,0 +1,125 @@
+enum AgrDeliveryCredentialStatus {
+  ACTIVE
+  EXPIRED
+  ERROR
+}
+
+enum AgrDeliverySyncTrigger {
+  SCHEDULED
+  MANUAL
+}
+
+enum AgrDeliverySyncStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+model AgrDeliveryIntegration {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @unique @map("organization_id") @db.Uuid
+
+  encryptedSessionCookie String                      @map("encrypted_session_cookie") @db.Text
+  credentialHint         String                      @map("credential_hint") @db.VarChar(8)
+  credentialStatus       AgrDeliveryCredentialStatus @default(ACTIVE) @map("credential_status")
+  credentialUpdatedById  String                      @map("credential_updated_by_id") @db.Uuid
+  credentialUpdatedAt    DateTime                    @default(now()) @map("credential_updated_at") @db.Timestamptz(3)
+
+  lastValidatedAt DateTime? @map("last_validated_at") @db.Timestamptz(3)
+  lastAttemptAt   DateTime? @map("last_attempt_at") @db.Timestamptz(3)
+  lastSuccessAt   DateTime? @map("last_success_at") @db.Timestamptz(3)
+  lastError       String?   @map("last_error") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  credentialUpdatedBy User                 @relation("AgrDeliveryCredentialUpdatedBy", fields: [credentialUpdatedById], references: [id], onDelete: Restrict)
+  syncRuns            AgrDeliverySyncRun[]
+
+  @@map("agr_delivery_integrations")
+}
+
+model AgrDeliverySyncRun {
+  id                       String                 @id @default(uuid()) @db.Uuid
+  organizationId           String                 @map("organization_id") @db.Uuid
+  agrDeliveryIntegrationId String                 @map("agr_delivery_integration_id") @db.Uuid
+  scheduleKey              String                 @map("schedule_key") @db.VarChar(50)
+  trigger                  AgrDeliverySyncTrigger
+  status                   AgrDeliverySyncStatus  @default(RUNNING)
+  candidateOrders          Int                    @default(0) @map("candidate_orders")
+  consultedOrders          Int                    @default(0) @map("consulted_orders")
+  foundOrders              Int                    @default(0) @map("found_orders")
+  changedOrders            Int                    @default(0) @map("changed_orders")
+  opportunityOrders        Int                    @default(0) @map("opportunity_orders")
+  errorOrders              Int                    @default(0) @map("error_orders")
+  errorMessage             String?                @map("error_message") @db.Text
+  startedAt                DateTime               @default(now()) @map("started_at") @db.Timestamptz(3)
+  completedAt              DateTime?              @map("completed_at") @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration  AgrDeliveryIntegration @relation(fields: [agrDeliveryIntegrationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, scheduleKey], map: "agr_delivery_sync_runs_org_schedule_key")
+  @@index([organizationId, startedAt], map: "agr_delivery_sync_runs_org_started_idx")
+  @@map("agr_delivery_sync_runs")
+}
+
+model AgrDeliveryOrderSnapshot {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  ditoOrderId    String @unique @map("dito_order_id") @db.Uuid
+
+  externalOrderId        String   @map("external_order_id") @db.VarChar(100)
+  pedido                 String?  @db.VarChar(100)
+  envio                  String?  @db.VarChar(100)
+  estadoPedido           String   @map("estado_pedido") @db.VarChar(100)
+  motivoRechazo          String?  @map("motivo_rechazo") @db.VarChar(500)
+  submotivoRechazo       String?  @map("submotivo_rechazo") @db.VarChar(500)
+  fechaEntregaPactadaRaw String?  @map("fecha_entrega_pactada_raw") @db.VarChar(100)
+  fechaEntregaRealRaw    String?  @map("fecha_entrega_real_raw") @db.VarChar(100)
+  fechaTomaPedidoRaw     String?  @map("fecha_toma_pedido_raw") @db.VarChar(100)
+  tipoDelivery           String?  @map("tipo_delivery") @db.VarChar(100)
+  vendedor               String?  @db.VarChar(100)
+  nombreVendedor         String?  @map("nombre_vendedor") @db.VarChar(200)
+  gestionStatus          String?  @map("gestion_status") @db.VarChar(100)
+  resultado              String?  @db.VarChar(500)
+  proximaAccion          String?  @map("proxima_accion") @db.VarChar(500)
+  fechaCompromisoRaw     String?  @map("fecha_compromiso_raw") @db.VarChar(100)
+  gestionUpdatedAtRaw    String?  @map("gestion_updated_at_raw") @db.VarChar(100)
+  updatedByName          String?  @map("updated_by_name") @db.VarChar(200)
+  isRecoveryOpportunity  Boolean  @default(false) @map("is_recovery_opportunity")
+  sourceFingerprint      String   @map("source_fingerprint") @db.Char(64)
+  rawPayload             Json     @map("raw_payload") @db.JsonB
+  firstSeenAt            DateTime @default(now()) @map("first_seen_at") @db.Timestamptz(3)
+  fetchedAt              DateTime @map("fetched_at") @db.Timestamptz(3)
+  changedAt              DateTime @map("changed_at") @db.Timestamptz(3)
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ditoOrder    DitoOrder                 @relation(fields: [ditoOrderId], references: [id], onDelete: Cascade)
+  history      AgrDeliveryOrderHistory[]
+
+  @@index([organizationId, isRecoveryOpportunity, fetchedAt], map: "agr_delivery_snapshots_org_opportunity_fetched_idx")
+  @@index([organizationId, estadoPedido], map: "agr_delivery_snapshots_org_status_idx")
+  @@map("agr_delivery_order_snapshots")
+}
+
+model AgrDeliveryOrderHistory {
+  id                         String   @id @default(uuid()) @db.Uuid
+  organizationId             String   @map("organization_id") @db.Uuid
+  agrDeliveryOrderSnapshotId String   @map("agr_delivery_order_snapshot_id") @db.Uuid
+  estadoPedido               String   @map("estado_pedido") @db.VarChar(100)
+  motivoRechazo              String?  @map("motivo_rechazo") @db.VarChar(500)
+  submotivoRechazo           String?  @map("submotivo_rechazo") @db.VarChar(500)
+  gestionStatus              String?  @map("gestion_status") @db.VarChar(100)
+  sourceFingerprint          String   @map("source_fingerprint") @db.Char(64)
+  rawPayload                 Json     @map("raw_payload") @db.JsonB
+  observedAt                 DateTime @default(now()) @map("observed_at") @db.Timestamptz(3)
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  snapshot     AgrDeliveryOrderSnapshot @relation(fields: [agrDeliveryOrderSnapshotId], references: [id], onDelete: Cascade)
+
+  @@index([agrDeliveryOrderSnapshotId, observedAt], map: "agr_delivery_history_snapshot_observed_idx")
+  @@map("agr_delivery_order_history")
+}

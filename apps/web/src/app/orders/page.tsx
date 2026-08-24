@@ -1,10 +1,12 @@
 import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
+import { after } from "next/server";
 
 import { parseOrderPeriod, parseOrderRange } from "@repo/validation";
 
 import { OrderInbox } from "@/features/orders/components/order-inbox";
 
 import { getOrderInbox } from "@/features/orders/server/get-order-inbox";
+import { maybeRunScheduledAgrDeliverySync } from "@/features/agr-delivery/server/agr-delivery-sync";
 
 import { requireCommercialAccess } from "@/server/auth/access";
 
@@ -20,10 +22,14 @@ function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function parseOrderFilter(value: string | undefined): OrderFilter {
+function parseOrderFilter(
+  value: string | undefined,
+  fallback: OrderFilter,
+): OrderFilter {
   return [
     "ACTIVE",
     "ESCALATIONS",
+    "LOGISTICS",
     "INCIDENTS",
     "RECOVERY",
     "AWAITING_ACTIVATION",
@@ -32,7 +38,7 @@ function parseOrderFilter(value: string | undefined): OrderFilter {
     "ALL",
   ].includes(value ?? "")
     ? (value as OrderFilter)
-    : "ALL";
+    : fallback;
 }
 
 export default async function OrdersPage({ searchParams }: OrdersPageProps) {
@@ -46,9 +52,18 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const period =
     requestedPeriod === "RANGE" && !requestedRange ? "MONTH" : requestedPeriod;
   const rawPage = Number(firstValue(parameters.page));
-  const filter = parseOrderFilter(firstValue(parameters.status));
+  const filter = parseOrderFilter(
+    firstValue(parameters.status),
+    membership.role === "AGENT" ? "ACTIVE" : "ALL",
+  );
   const search = firstValue(parameters.q)?.trim().slice(0, 100) ?? "";
   const team = firstValue(parameters.team)?.trim().slice(0, 50);
+
+  after(async () => {
+    await maybeRunScheduledAgrDeliverySync(membership.organization.id).catch(
+      () => undefined,
+    );
+  });
 
   const inbox = await getOrderInbox(
     membership.organization.id,

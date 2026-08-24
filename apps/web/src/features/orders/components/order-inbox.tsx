@@ -35,6 +35,10 @@ const filterOptions: Array<{
     label: "Escaladas",
   },
   {
+    value: "LOGISTICS",
+    label: "Oportunidades logísticas",
+  },
+  {
     value: "INCIDENTS",
     label: "Incidencias",
   },
@@ -115,18 +119,22 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
   const [rangeFrom, setRangeFrom] = useState(data.from ?? "");
   const [rangeTo, setRangeTo] = useState(data.to ?? "");
 
-  if (data.filter === "ESCALATIONS") {
+  if (data.filter === "ESCALATIONS" || data.filter === "LOGISTICS") {
+    const logistics = data.filter === "LOGISTICS";
     return (
       <Surface className="ui-period-bar" raised>
         <div>
           <p className="ui-period-bar__eyebrow">Bandeja operativa</p>
           <p className="ui-period-bar__label">
-            Escalaciones de todas las fechas
+            {logistics
+              ? "Oportunidades logísticas desde el 10/08"
+              : "Escalaciones de todas las fechas"}
           </p>
         </div>
         <p className="max-w-xl text-sm text-ui-muted">
-          Las incidencias permanecen aquí hasta que un supervisor las resuelva,
-          aunque la venta pertenezca a un período anterior.
+          {logistics
+            ? `Solo aparecen pedidos con una acción pendiente según AGR. Última consulta: ${data.logisticsSummary.lastFetchedAtLabel ?? "aún no disponible"}.`
+            : "Las incidencias permanecen aquí hasta que un supervisor las resuelva, aunque la venta pertenezca a un período anterior."}
         </p>
       </Surface>
     );
@@ -269,7 +277,15 @@ function getSlaClasses(state: OrderSlaState): string {
   }
 }
 
-function StatusBadge({ order }: { order: OrderInboxItem }) {
+function StatusBadge({
+  order,
+  showAgr = true,
+  showEscalationAction = true,
+}: {
+  order: OrderInboxItem;
+  showAgr?: boolean;
+  showEscalationAction?: boolean;
+}) {
   return (
     <div className="flex flex-wrap gap-1.5">
       <span
@@ -293,16 +309,60 @@ function StatusBadge({ order }: { order: OrderInboxItem }) {
         </span>
       ) : null}
 
+      {showAgr && order.agrDelivery ? (
+        <span className="rounded-full border border-ui-warning-border bg-ui-warning-soft px-2.5 py-1 text-xs font-medium text-ui-warning">
+          AGR · {order.agrDelivery.actionShortLabel}
+        </span>
+      ) : null}
+
       {order.pendingCancellationRequest ? (
         <span className="rounded-full border border-ui-warning-border bg-ui-warning-soft px-2.5 py-1 text-xs font-medium text-ui-warning">
           Cancelación pendiente
         </span>
       ) : null}
 
-      {order.incidentEscalation || order.canEscalate ? (
+      {showEscalationAction &&
+      (order.incidentEscalation || order.canEscalate) ? (
         <OrderEscalationPanel order={order} />
       ) : null}
+
+      {!showEscalationAction && order.incidentEscalation ? (
+        <span className="rounded-full border border-ui-danger-border bg-ui-danger-soft px-2.5 py-1 text-xs font-medium text-ui-danger">
+          Escalada
+        </span>
+      ) : null}
     </div>
+  );
+}
+
+function AgrColumnStatus({ order }: { order: OrderInboxItem }) {
+  if (!order.agrStatus) {
+    return <span className="text-xs text-ui-soft">Sin consulta</span>;
+  }
+
+  const terminal = ["ENTREGADO", "CERRADO"].includes(
+    order.agrStatus.status.toUpperCase(),
+  );
+
+  return (
+    <span
+      className={[
+        "inline-flex max-w-full flex-col items-start rounded-lg border px-2 py-1",
+        order.agrStatus.isOpportunity
+          ? "border-ui-warning-border bg-ui-warning-soft text-ui-warning"
+          : terminal
+            ? "border-ui-success bg-ui-success-soft text-ui-success"
+            : "border-ui-border bg-ui-subtle text-ui-muted",
+      ].join(" ")}
+      title={`Consultado ${order.agrStatus.fetchedAtLabel}`}
+    >
+      <strong className="max-w-full truncate text-[0.68rem] font-semibold">
+        {order.agrStatus.status}
+      </strong>
+      <small className="max-w-full truncate text-[0.62rem] opacity-80">
+        {order.agrDelivery?.actionShortLabel ?? "Sin acción pendiente"}
+      </small>
+    </span>
   );
 }
 
@@ -338,6 +398,51 @@ function DetailItem({ label, value }: { label: string; value: string }) {
         {value || "No registrado"}
       </dd>
     </div>
+  );
+}
+
+function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
+  const agr = order.agrDelivery;
+  if (!agr) return null;
+
+  return (
+    <section className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ui-warning">
+            Acción recomendada
+          </p>
+          <h4 className="mt-1 text-base font-semibold text-ui-text">
+            {agr.actionLabel}
+          </h4>
+        </div>
+        <span className="rounded-full border border-ui-warning-border bg-ui-surface px-2.5 py-1 text-xs font-semibold text-ui-warning">
+          AGR · {agr.status}
+        </span>
+      </div>
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+        {agr.reason ? <DetailItem label="Motivo" value={agr.reason} /> : null}
+        {agr.promisedDelivery ? (
+          <DetailItem label="Entrega pactada" value={agr.promisedDelivery} />
+        ) : null}
+        {agr.managementStatus ? (
+          <DetailItem label="Gestión logística" value={agr.managementStatus} />
+        ) : null}
+        {agr.result ? (
+          <DetailItem label="Resultado" value={agr.result} />
+        ) : null}
+        {agr.nextAction ? (
+          <DetailItem label="Próxima acción AGR" value={agr.nextAction} />
+        ) : null}
+        {agr.commitmentDate ? (
+          <DetailItem label="Fecha de compromiso" value={agr.commitmentDate} />
+        ) : null}
+      </dl>
+      <p className="mt-3 text-xs text-ui-muted">
+        Consultado {agr.fetchedAtLabel}. AGR se actualiza manualmente tres veces
+        al día; confirma el caso antes de cambiar el seguimiento comercial.
+      </p>
+    </section>
   );
 }
 
@@ -474,7 +579,7 @@ function OrderDetails({
         </div>
 
         <div className="mt-3">
-          <StatusBadge order={order} />
+          <StatusBadge order={order} showEscalationAction={false} />
         </div>
 
         {order.parseStatus !== "PARSED" ? (
@@ -512,6 +617,8 @@ function OrderDetails({
         />
       ) : null}
 
+      <AgrDeliveryPanel order={order} />
+
       {order.canUpdate || showAdvisor ? (
         <section
           className="ui-order-management"
@@ -533,6 +640,10 @@ function OrderDetails({
             orderId={order.id}
           />
         </section>
+      ) : null}
+
+      {order.incidentEscalation || order.canEscalate ? (
+        <OrderEscalationPanel order={order} />
       ) : null}
 
       <details
@@ -727,7 +838,7 @@ function MobileOrderCard({
         </div>
 
         <div className="mt-3">
-          <StatusBadge order={order} />
+          <StatusBadge order={order} showEscalationAction={false} />
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-3">
@@ -874,6 +985,7 @@ function DesktopOrderList({
           {showAdvisorColumn ? <span>Asesor</span> : null}
           <span>SLA</span>
           <span>Estado</span>
+          <span>Estado AGR</span>
           <span aria-hidden="true" />
         </div>
 
@@ -920,7 +1032,15 @@ function DesktopOrderList({
                 </span>
 
                 <span className="ui-order-grid__status">
-                  <StatusBadge order={order} />
+                  <StatusBadge
+                    order={order}
+                    showAgr={false}
+                    showEscalationAction={false}
+                  />
+                </span>
+
+                <span className="ui-order-grid__agr-status">
+                  <AgrColumnStatus order={order} />
                 </span>
 
                 <button
@@ -967,7 +1087,11 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
   return (
     <div className="ui-page-stack">
       <PageHeader
-        description="Revisa incidencias, recupera pedidos y actualiza el avance informado por Integratel."
+        description={
+          data.filter === "LOGISTICS"
+            ? "Contacta, reagenda o revisa cancelaciones usando el último estado informado por AGR."
+            : "Revisa incidencias, recupera pedidos y actualiza el avance comercial."
+        }
         eyebrow="Operación comercial"
         meta={
           <span className="flex flex-wrap items-center justify-end gap-2">
@@ -980,32 +1104,59 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
       <PeriodNavigation data={data} />
 
-      <MetricGroup>
-        <Metric
-          label={`Ventas · ${data.periodLabel}`}
-          value={data.totals.visible}
-        />
-        <Metric
-          label="Incidencias"
-          tone={data.totals.incidents > 0 ? "danger" : "neutral"}
-          value={data.totals.incidents}
-        />
-        <Metric
-          label="Escaladas al supervisor"
-          tone={data.totals.escalations > 0 ? "danger" : "neutral"}
-          value={data.totals.escalations}
-        />
-        <Metric
-          label={`No entregados · ${data.periodLabel}`}
-          value={data.totals.notDelivered}
-        />
-        <Metric label="Entregados" value={data.totals.delivered} />
-        <Metric
-          label="Fuera de plazo"
-          tone={data.totals.overdue > 0 ? "danger" : "neutral"}
-          value={data.totals.overdue}
-        />
-      </MetricGroup>
+      {data.filter === "LOGISTICS" ? (
+        <MetricGroup>
+          <Metric
+            label="Casos por revisar"
+            tone={data.logisticsSummary.total > 0 ? "warning" : "neutral"}
+            value={data.logisticsSummary.total}
+          />
+          <Metric
+            label="Para reagendar"
+            value={data.logisticsSummary.reschedule}
+          />
+          <Metric
+            label="Contactar y validar"
+            value={data.logisticsSummary.contact}
+          />
+          <Metric
+            label="Revisar o cerrar"
+            value={data.logisticsSummary.review}
+          />
+        </MetricGroup>
+      ) : (
+        <MetricGroup>
+          <Metric
+            label={`Ventas · ${data.periodLabel}`}
+            value={data.totals.visible}
+          />
+          <Metric
+            label="Incidencias"
+            tone={data.totals.incidents > 0 ? "danger" : "neutral"}
+            value={data.totals.incidents}
+          />
+          <Metric
+            label="Escaladas al supervisor"
+            tone={data.totals.escalations > 0 ? "danger" : "neutral"}
+            value={data.totals.escalations}
+          />
+          <Metric
+            label="Oportunidades AGR"
+            tone={data.totals.logistics > 0 ? "warning" : "neutral"}
+            value={data.totals.logistics}
+          />
+          <Metric
+            label={`No entregados internos · ${data.periodLabel}`}
+            value={data.totals.notDelivered}
+          />
+          <Metric label="Entregados internos" value={data.totals.delivered} />
+          <Metric
+            label="Fuera de plazo"
+            tone={data.totals.overdue > 0 ? "danger" : "neutral"}
+            value={data.totals.overdue}
+          />
+        </MetricGroup>
+      )}
 
       {(data.role === "ADMIN" || data.role === "SUPERVISOR") &&
       data.totals.escalations > 0 ? (
@@ -1026,7 +1177,31 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         </a>
       ) : null}
 
-      {recoveryQueueCount > 0 || data.filter === "RECOVERY" ? (
+      {data.totals.logistics > 0 && data.filter !== "LOGISTICS" ? (
+        <a
+          className="flex items-center justify-between gap-4 rounded-xl border border-ui-warning-border bg-ui-warning-soft px-4 py-3 text-sm text-ui-warning"
+          href={ordersHref(data, {
+            filter: "LOGISTICS",
+            search: "",
+          })}
+          role="status"
+        >
+          <span>
+            <strong>
+              {data.totals.logistics === 1
+                ? "1 caso requiere revisión logística"
+                : `${data.totals.logistics} casos requieren revisión logística`}
+            </strong>
+            <span className="ml-2">
+              Hay pedidos para contactar, reagendar o revisar su cancelación.
+            </span>
+          </span>
+          <span className="shrink-0 font-semibold">Revisar →</span>
+        </a>
+      ) : null}
+
+      {data.filter !== "LOGISTICS" &&
+      (recoveryQueueCount > 0 || data.filter === "RECOVERY") ? (
         <div className="ui-recovery-queue" role="status">
           <div className="ui-recovery-queue__count" aria-hidden="true">
             {recoveryQueueCount}
@@ -1061,7 +1236,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         </div>
       ) : null}
 
-      {data.pendingBeforeMonth > 0 && data.period !== "HISTORY" ? (
+      {data.filter !== "LOGISTICS" &&
+      data.pendingBeforeMonth > 0 &&
+      data.period !== "HISTORY" ? (
         <div className="ui-prior-pending">
           <div>
             <p className="ui-prior-pending__title">
@@ -1220,34 +1397,38 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           description={
             data.filter === "RECOVERY"
               ? "No tienes pedidos no entregados o cancelados pendientes de recuperación este mes."
-              : data.filter === "ESCALATIONS"
-                ? "No hay incidencias escaladas pendientes de atención."
-                : data.totals.visible > 0
-                  ? "No hay ventas que coincidan con este estado o búsqueda."
-                  : data.teamFilter === "UNASSIGNED"
-                    ? "No hay ventas pendientes de asignación en este período."
-                    : data.period === "TODAY"
-                      ? "No se registraron ventas hoy."
-                      : data.period === "YESTERDAY"
-                        ? "No se registraron ventas ayer."
-                        : data.period === "WEEK"
-                          ? "No se registraron ventas esta semana."
-                          : data.period === "MONTH"
-                            ? "No se registraron ventas en el mes actual."
-                            : data.period === "RANGE"
-                              ? "No se registraron ventas en el rango seleccionado."
-                              : "No se encontraron ventas en el histórico."
+              : data.filter === "LOGISTICS"
+                ? "AGR no reporta pedidos con oportunidades de reagendamiento o motivos pendientes."
+                : data.filter === "ESCALATIONS"
+                  ? "No hay incidencias escaladas pendientes de atención."
+                  : data.totals.visible > 0
+                    ? "No hay ventas que coincidan con este estado o búsqueda."
+                    : data.teamFilter === "UNASSIGNED"
+                      ? "No hay ventas pendientes de asignación en este período."
+                      : data.period === "TODAY"
+                        ? "No se registraron ventas hoy."
+                        : data.period === "YESTERDAY"
+                          ? "No se registraron ventas ayer."
+                          : data.period === "WEEK"
+                            ? "No se registraron ventas esta semana."
+                            : data.period === "MONTH"
+                              ? "No se registraron ventas en el mes actual."
+                              : data.period === "RANGE"
+                                ? "No se registraron ventas en el rango seleccionado."
+                                : "No se encontraron ventas en el histórico."
           }
           title={
             data.filter === "RECOVERY"
               ? "Recuperación al día"
-              : data.filter === "ESCALATIONS"
-                ? "Escalaciones al día"
-                : data.totals.visible > 0
-                  ? "No hay coincidencias"
-                  : data.teamFilter === "UNASSIGNED"
-                    ? "Todo está asignado"
-                    : "Aún no hay ventas en este período"
+              : data.filter === "LOGISTICS"
+                ? "Gestión logística al día"
+                : data.filter === "ESCALATIONS"
+                  ? "Escalaciones al día"
+                  : data.totals.visible > 0
+                    ? "No hay coincidencias"
+                    : data.teamFilter === "UNASSIGNED"
+                      ? "Todo está asignado"
+                      : "Aún no hay ventas en este período"
           }
         />
       ) : (

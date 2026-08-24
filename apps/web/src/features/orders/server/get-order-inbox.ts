@@ -160,6 +160,20 @@ const orderSelect = {
       tdpEscalatedBy: { select: { name: true } },
     },
   },
+  agrDeliverySnapshot: {
+    select: {
+      estadoPedido: true,
+      motivoRechazo: true,
+      submotivoRechazo: true,
+      gestionStatus: true,
+      resultado: true,
+      proximaAccion: true,
+      fechaEntregaPactadaRaw: true,
+      fechaCompromisoRaw: true,
+      isRecoveryOpportunity: true,
+      fetchedAt: true,
+    },
+  },
 } as const;
 
 function formatDateTime(value: Date | null): string {
@@ -365,6 +379,18 @@ function getPriority(item: OrderInboxItem): number {
     return 2;
   }
 
+  if (item.agrDelivery?.actionKind === "RESCHEDULE") {
+    return 1;
+  }
+
+  if (item.agrDelivery?.actionKind === "CONTACT") {
+    return 2;
+  }
+
+  if (item.agrDelivery) {
+    return 3;
+  }
+
   if (item.slaState === "OVERDUE") {
     return 3;
   }
@@ -407,6 +433,12 @@ function getStatusFilter(
     case "ESCALATIONS":
       return {
         escalations: { some: { status: { in: ["OPEN", "ACKNOWLEDGED"] } } },
+      };
+    case "LOGISTICS":
+      return {
+        status: { not: "CLOSED" },
+        deliveryStatus: { not: "DELIVERED" },
+        agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } },
       };
     case "INCIDENTS":
       return {
@@ -512,6 +544,57 @@ function getSupervisorSearchFilter(
 function maskIdentifier(value: string): string {
   const visible = value.slice(-4);
   return visible ? `••••${visible}` : "Protegido";
+}
+
+type AgrActionKind = NonNullable<OrderInboxItem["agrDelivery"]>["actionKind"];
+
+function getAgrAction(input: {
+  estadoPedido: string;
+  motivoRechazo: string | null;
+  submotivoRechazo: string | null;
+}): {
+  kind: AgrActionKind;
+  label: string;
+  shortLabel: string;
+} {
+  const description = [
+    input.estadoPedido,
+    input.motivoRechazo,
+    input.submotivoRechazo,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toUpperCase();
+
+  if (/NO RECUPERABLE/.test(description)) {
+    return {
+      kind: "NOT_RECOVERABLE",
+      label: "Confirmar cierre como no recuperable",
+      shortLabel: "No recuperable",
+    };
+  }
+
+  if (/CANCEL|PORTABILIDAD RECHAZADA|ANULAD/.test(description)) {
+    return {
+      kind: "REVIEW_CANCELLATION",
+      label: "Revisar el motivo de cancelación",
+      shortLabel: "Revisar cancelación",
+    };
+  }
+
+  if (/AUSENTE|NO VISIT|EXCEDE.*VISITA|NO TOMA/.test(description)) {
+    return {
+      kind: "RESCHEDULE",
+      label: "Contactar al cliente para reagendar",
+      shortLabel: "Reagendar",
+    };
+  }
+
+  return {
+    kind: "CONTACT",
+    label: "Contactar al cliente y validar el caso",
+    shortLabel: "Contactar",
+  };
 }
 
 export async function getOrderInbox(
@@ -662,7 +745,9 @@ export async function getOrderInbox(
         : { assignedTeamId: teamFilter };
 
   const periodFilter: Prisma.DitoOrderWhereInput =
-    query.filter !== "ESCALATIONS" && range.start && range.end
+    !["ESCALATIONS", "LOGISTICS"].includes(query.filter) &&
+    range.start &&
+    range.end
       ? {
           registeredAt: {
             gte: range.start,
@@ -695,12 +780,14 @@ export async function getOrderInbox(
     totalOrders,
     filteredTotal,
     escalationCount,
+    logisticsCount,
     incidentCount,
     notDeliveredCount,
     recoveryCount,
     deliveredCount,
     overdueCount,
     pendingBeforeMonth,
+    logisticsRecords,
   ] = await database.$transaction([
     database.ditoOrder.count({ where: baseWhere }),
     database.ditoOrder.count({ where: filteredWhere }),
@@ -711,6 +798,15 @@ export async function getOrderInbox(
         escalations: {
           some: { status: { in: ["OPEN", "ACKNOWLEDGED"] } },
         },
+      },
+    }),
+    database.ditoOrder.count({
+      where: {
+        organizationId,
+        AND: [accessFilter, teamFilterWhere],
+        status: { not: "CLOSED" },
+        deliveryStatus: { not: "DELIVERED" },
+        agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } },
       },
     }),
     database.ditoOrder.count({
@@ -772,7 +868,39 @@ export async function getOrderInbox(
         status: { in: ["OPEN", "SENT", "UNKNOWN"] },
       },
     }),
+    database.ditoOrder.findMany({
+      where: {
+        organizationId,
+        AND: [accessFilter, teamFilterWhere],
+        status: { not: "CLOSED" },
+        deliveryStatus: { not: "DELIVERED" },
+        agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } },
+      },
+      select: {
+        agrDeliverySnapshot: {
+          select: {
+            estadoPedido: true,
+            motivoRechazo: true,
+            submotivoRechazo: true,
+            fetchedAt: true,
+          },
+        },
+      },
+    }),
   ]);
+
+  const logisticsActions = logisticsRecords.flatMap((record) =>
+    record.agrDeliverySnapshot
+      ? [getAgrAction(record.agrDeliverySnapshot)]
+      : [],
+  );
+  const logisticsLastFetchedAt = logisticsRecords.reduce<Date | null>(
+    (latest, record) => {
+      const fetchedAt = record.agrDeliverySnapshot?.fetchedAt;
+      return fetchedAt && (!latest || fetchedAt > latest) ? fetchedAt : latest;
+    },
+    null,
+  );
 
   const totalPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
   const page = Math.min(requestedPage, totalPages);
@@ -901,6 +1029,42 @@ export async function getOrderInbox(
 
       noStatusIncident,
       deliveryObservation: order.deliveryObservation,
+      agrStatus: order.agrDeliverySnapshot
+        ? {
+            status: order.agrDeliverySnapshot.estadoPedido,
+            fetchedAtLabel: formatDateTime(order.agrDeliverySnapshot.fetchedAt),
+            isOpportunity:
+              order.agrDeliverySnapshot.isRecoveryOpportunity === true,
+          }
+        : null,
+      agrDelivery:
+        order.agrDeliverySnapshot?.isRecoveryOpportunity === true
+          ? (() => {
+              const action = getAgrAction(order.agrDeliverySnapshot);
+              return {
+                status: order.agrDeliverySnapshot.estadoPedido,
+                actionKind: action.kind,
+                actionLabel: action.label,
+                actionShortLabel: action.shortLabel,
+                reason:
+                  [
+                    order.agrDeliverySnapshot.motivoRechazo,
+                    order.agrDeliverySnapshot.submotivoRechazo,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || null,
+                managementStatus: order.agrDeliverySnapshot.gestionStatus,
+                result: order.agrDeliverySnapshot.resultado,
+                nextAction: order.agrDeliverySnapshot.proximaAccion,
+                promisedDelivery:
+                  order.agrDeliverySnapshot.fechaEntregaPactadaRaw,
+                commitmentDate: order.agrDeliverySnapshot.fechaCompromisoRaw,
+                fetchedAtLabel: formatDateTime(
+                  order.agrDeliverySnapshot.fetchedAt,
+                ),
+              };
+            })()
+          : null,
 
       registeredAtLabel: formatDateTime(order.registeredAt),
 
@@ -1064,10 +1228,26 @@ export async function getOrderInbox(
 
     pendingBeforeMonth,
 
+    logisticsSummary: {
+      total: logisticsActions.length,
+      reschedule: logisticsActions.filter(
+        (action) => action.kind === "RESCHEDULE",
+      ).length,
+      contact: logisticsActions.filter((action) => action.kind === "CONTACT")
+        .length,
+      review: logisticsActions.filter((action) =>
+        ["REVIEW_CANCELLATION", "NOT_RECOVERABLE"].includes(action.kind),
+      ).length,
+      lastFetchedAtLabel: logisticsLastFetchedAt
+        ? formatDateTime(logisticsLastFetchedAt)
+        : null,
+    },
+
     totals: {
       visible: totalOrders,
       incidents: incidentCount,
       escalations: escalationCount,
+      logistics: logisticsCount,
       notDelivered: notDeliveredCount,
       recovery: recoveryCount,
       delivered: deliveredCount,
