@@ -311,7 +311,7 @@ function StatusBadge({
 
       {showAgr && order.agrDelivery ? (
         <span className="rounded-full border border-ui-warning-border bg-ui-warning-soft px-2.5 py-1 text-xs font-medium text-ui-warning">
-          AGR · {order.agrDelivery.actionShortLabel}
+          {order.agrDelivery.actionShortLabel}
         </span>
       ) : null}
 
@@ -538,7 +538,11 @@ function OrderDetails({
         </div>
 
         <div className="mt-3">
-          <StatusBadge order={order} showEscalationAction={false} />
+          <StatusBadge
+            order={order}
+            showAgr={false}
+            showEscalationAction={false}
+          />
         </div>
 
         {order.parseStatus !== "PARSED" ? (
@@ -620,23 +624,25 @@ function OrderDetails({
         </summary>
 
         <div className="ui-order-disclosure__content">
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <DetailItem label="Operación" value={order.operation} />
-
+          <dl className="grid gap-4">
             <DetailItem label="Estado desde" value={order.statusAgeLabel} />
 
             {showAdvisor ? (
               <DetailItem label="Asesor" value={order.agentName} />
             ) : null}
 
-            <DetailItem label="Ubicación" value={order.locationLabel} />
-
             <DetailItem
               label="Tipo de entrega"
               value={order.deliveryMethodLabel}
             />
 
-            <DetailItem label="Ventana" value={order.deliveryWindowLabel} />
+            {/*
+             * Sin turno asignado, la ventana repite literalmente lo que ya
+             * declara la etiqueta de SLA en la cabecera de la tarjeta.
+             */}
+            {order.slaState === "PENDING_SHIFT" ? null : (
+              <DetailItem label="Ventana" value={order.deliveryWindowLabel} />
+            )}
 
             <DetailItem
               label="Hora límite"
@@ -662,12 +668,10 @@ function OrderDetails({
             ) : null}
 
             {!order.canUpdate && order.deliveryObservation ? (
-              <div className="sm:col-span-2">
-                <DetailItem
-                  label="Última observación"
-                  value={order.deliveryObservation}
-                />
-              </div>
+              <DetailItem
+                label="Última observación"
+                value={order.deliveryObservation}
+              />
             ) : null}
           </dl>
         </div>
@@ -683,7 +687,7 @@ function OrderDetails({
           </summary>
 
           <div className="ui-order-disclosure__content">
-            <dl className="grid gap-4 sm:grid-cols-2">
+            <dl className="grid gap-4">
               {order.salesCode ? (
                 <DetailItem label="Código de venta" value={order.salesCode} />
               ) : null}
