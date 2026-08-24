@@ -20,7 +20,7 @@ export function OrderCorrectionForm({ order }: { order: OrderInboxItem }) {
   );
 
   return (
-    <details className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4">
+    <details className="ui-order-notice">
       <summary className="cursor-pointer text-sm font-semibold text-ui-warning">
         Corregir datos recibidos de DITO
       </summary>

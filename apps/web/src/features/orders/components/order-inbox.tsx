@@ -365,13 +365,13 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
   if (!agr) return null;
 
   return (
-    <section className="ui-order-action-panel">
-      <h4 className="ui-order-action-panel__headline">
-        <span className="ui-order-action-panel__source">{agr.status}</span>
+    <section className="ui-order-notice">
+      <h4 className="ui-order-notice__headline">
+        <span className="ui-order-notice__source">{agr.status}</span>
         {" · "}
         {agr.actionLabel}
       </h4>
-      <dl className="ui-order-action-panel__details">
+      <dl className="ui-order-notice__details">
         {agr.reason ? <DetailItem label="Motivo" value={agr.reason} /> : null}
         {agr.result ? (
           <DetailItem label="Resultado" value={agr.result} />

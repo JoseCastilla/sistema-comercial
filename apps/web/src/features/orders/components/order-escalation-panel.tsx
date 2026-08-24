@@ -83,7 +83,7 @@ export function OrderEscalationPanel({ order }: { order: OrderInboxItem }) {
   return (
     <section
       aria-label="Incidencia escalada al supervisor"
-      className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4"
+      className="ui-order-notice"
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>

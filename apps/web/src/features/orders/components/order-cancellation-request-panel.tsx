@@ -27,7 +27,7 @@ export function OrderCancellationRequestPanel({
   const rejecting = decision === "REJECT";
 
   return (
-    <section className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4">
+    <section className="ui-order-notice">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h4 className="text-sm font-semibold text-ui-warning">

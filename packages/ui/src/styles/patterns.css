@@ -2256,25 +2256,29 @@
     font-weight: 600;
   }
 
-  /* Accion recomendada por la fuente logistica, dentro de la tarjeta. */
-  .ui-order-action-panel {
+  /*
+   * Aviso destacado dentro de la tarjeta de gestion: asignacion pendiente,
+   * cancelacion solicitada, correccion de datos, incidencia escalada y accion
+   * recomendada por la fuente logistica.
+   */
+  .ui-order-notice {
     padding: 1rem;
     border: 1px solid var(--ui-warning-border);
     border-radius: var(--ui-radius-md);
     background: var(--ui-warning-soft);
   }
 
-  .ui-order-action-panel__headline {
+  .ui-order-notice__headline {
     color: var(--ui-text);
     font-size: 1rem;
     font-weight: 600;
   }
 
-  .ui-order-action-panel__source {
+  .ui-order-notice__source {
     color: var(--ui-warning);
   }
 
-  .ui-order-action-panel__details {
+  .ui-order-notice__details {
     display: grid;
     gap: 0.75rem;
     margin-top: 1rem;
