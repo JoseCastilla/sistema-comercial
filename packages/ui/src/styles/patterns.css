@@ -2049,10 +2049,15 @@
     gap: 1rem;
   }
 
+  /*
+   * Superficie de gestion persistente. Su altura es la del marco, no la del
+   * contenido: las secciones de una venta son condicionales y dimensionarla
+   * por contenido la haria cambiar de tamano cada vez que cambia la seleccion.
+   */
   .ui-order-detail-card {
     position: sticky;
     top: 1.25rem;
-    max-height: calc(100vh - 2.5rem);
+    height: calc(100vh - 2.5rem);
     padding: 1.15rem;
     overflow-y: auto;
     border: 1px solid var(--ui-border);
@@ -2276,6 +2281,34 @@
 
   .ui-order-notice__source {
     color: var(--ui-warning);
+  }
+
+  .ui-order-notice__body {
+    margin-top: 0.5rem;
+    color: var(--ui-text-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  .ui-order-notice__action {
+    margin-top: 0.85rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--ui-warning-border);
+    border-radius: var(--ui-radius-sm);
+    color: var(--ui-warning);
+    background: var(--ui-surface);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .ui-order-notice__action:hover {
+    border-color: var(--ui-warning);
+  }
+
+  .ui-order-notice__action:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--ui-warning) 45%, transparent);
+    outline-offset: 2px;
   }
 
   .ui-order-notice__details {

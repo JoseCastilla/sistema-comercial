@@ -994,9 +994,15 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
   const selectedOrder =
     data.items.find((order) => {
       return order.id === selectedOrderId;
-    }) ??
-    data.items[0] ??
-    null;
+    }) ?? null;
+
+  /*
+   * El canal en tiempo real refresca los datos del servidor sin desmontar este
+   * componente, asi que la venta seleccionada puede dejar de pertenecer al
+   * filtro mientras se la esta gestionando. Antes se sustituia en silencio por
+   * la primera de la lista, con el riesgo de actuar sobre la venta equivocada.
+   */
+  const selectionLeftView = selectedOrderId !== null && selectedOrder === null;
   const recoveryQueueCount =
     data.filter === "RECOVERY" ? data.filteredTotal : data.totals.recovery;
 
@@ -1386,6 +1392,24 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                   order={selectedOrder}
                   showAdvisor={data.showAdvisorColumn}
                 />
+              ) : selectionLeftView ? (
+                <div className="ui-order-notice" role="status">
+                  <h4 className="ui-order-notice__headline">
+                    Esta venta salió de la bandeja
+                  </h4>
+                  <p className="ui-order-notice__body">
+                    Cambió de estado o de responsable mientras la revisabas, así
+                    que ya no pertenece a este filtro. No se reemplazó por otra
+                    para que no gestiones la equivocada.
+                  </p>
+                  <button
+                    className="ui-order-notice__action"
+                    onClick={() => setSelectedOrderId(data.items[0]?.id ?? null)}
+                    type="button"
+                  >
+                    Ver la primera venta de la lista
+                  </button>
+                </div>
               ) : null}
             </aside>
           </section>
