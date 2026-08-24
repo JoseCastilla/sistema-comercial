@@ -244,6 +244,20 @@ permanece en `READY_FOR_VALIDATION`:
 - **Credencial de sesión de usuario, no de servicio.** Vencerá con regularidad.
   El sistema degrada a solo lectura de la última información y avisa al
   administrador; no falla la bandeja.
+- **El recorrido puede dejar sin consultar las ventas más recientes.** Las
+  candidatas se toman con `orderBy: registeredAt asc` y `take: 250`, es decir,
+  las más antiguas primero. Con el volumen actual —10 candidatas— el tope no
+  se alcanza nunca. Cuando las elegibles superen 250, las ventas recientes
+  quedarían detrás de una cola de pedidos antiguos que, por no llegar a un
+  estado externo terminal, se vuelven a consultar en cada corrida sin
+  resolverse. El selector de alcance manual da una salida al administrador,
+  pero no corrige la corrida programada.
+
+  Dos caminos posibles: invertir el orden a más recientes primero, o priorizar
+  por tiempo sin consultar en lugar de por fecha de registro. El segundo es más
+  justo y exige indexar `fetchedAt`. **Pendiente de abordar en los próximos
+  días**; merece su propio incremento.
+
 - **La sincronización la dispara cualquier rol.** El primer acceso a Pedidos
   después de un tramo horario inicia la corrida de toda la organización, aunque
   quien entre sea un asesor. Es intencional —maximiza la frescura sin un proceso

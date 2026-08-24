@@ -71,5 +71,9 @@
 
 ## Seguimiento posterior
 
+- [ ] Corregir el orden del recorrido para que las ventas recientes no queden
+      detrás de la cola de antiguas cuando las elegibles superen 250.
 - [ ] Mover `isAgrRecoveryOpportunity` y `getAgrAction` a `@repo/validation` con
       cobertura automatizada.
+- [ ] Incorporar el cargo fijo a los campos esenciales de SPEC-006, para que una
+      captura sin monto se marque `PARTIAL` en lugar de pasar como completa.
