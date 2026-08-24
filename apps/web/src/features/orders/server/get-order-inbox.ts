@@ -567,7 +567,7 @@ function getAgrAction(input: {
     return {
       kind: "NOT_RECOVERABLE",
       label: "Confirmar cierre como no recuperable",
-      shortLabel: "No recuperable",
+      shortLabel: "Descartar",
     };
   }
 
@@ -575,7 +575,7 @@ function getAgrAction(input: {
     return {
       kind: "REVIEW_CANCELLATION",
       label: "Revisar el motivo de cancelación",
-      shortLabel: "Revisar cancelación",
+      shortLabel: "Revisar",
     };
   }
 
