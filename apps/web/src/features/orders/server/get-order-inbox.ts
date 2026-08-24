@@ -165,13 +165,10 @@ const orderSelect = {
       estadoPedido: true,
       motivoRechazo: true,
       submotivoRechazo: true,
-      gestionStatus: true,
       resultado: true,
       proximaAccion: true,
-      fechaEntregaPactadaRaw: true,
       fechaCompromisoRaw: true,
       isRecoveryOpportunity: true,
-      fetchedAt: true,
     },
   },
 } as const;
@@ -1029,14 +1026,6 @@ export async function getOrderInbox(
 
       noStatusIncident,
       deliveryObservation: order.deliveryObservation,
-      agrStatus: order.agrDeliverySnapshot
-        ? {
-            status: order.agrDeliverySnapshot.estadoPedido,
-            fetchedAtLabel: formatDateTime(order.agrDeliverySnapshot.fetchedAt),
-            isOpportunity:
-              order.agrDeliverySnapshot.isRecoveryOpportunity === true,
-          }
-        : null,
       agrDelivery:
         order.agrDeliverySnapshot?.isRecoveryOpportunity === true
           ? (() => {
@@ -1053,15 +1042,9 @@ export async function getOrderInbox(
                   ]
                     .filter(Boolean)
                     .join(" · ") || null,
-                managementStatus: order.agrDeliverySnapshot.gestionStatus,
                 result: order.agrDeliverySnapshot.resultado,
                 nextAction: order.agrDeliverySnapshot.proximaAccion,
-                promisedDelivery:
-                  order.agrDeliverySnapshot.fechaEntregaPactadaRaw,
                 commitmentDate: order.agrDeliverySnapshot.fechaCompromisoRaw,
-                fetchedAtLabel: formatDateTime(
-                  order.agrDeliverySnapshot.fetchedAt,
-                ),
               };
             })()
           : null,

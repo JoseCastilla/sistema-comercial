@@ -127,7 +127,40 @@ Servidor local en `http://localhost:3100`:
 Ambas rutas protegidas redirigen sin sesión, confirmando `requireCommercialAccess`
 y `requireAdminAccess` (**BR-005**).
 
-## 6. Pendientes antes de marcar `VERIFIED`
+## 6. Recorrido visual con sesión `ADMIN` (local)
+
+Realizado el 23/08/2026 sobre `localhost:3100`, tema oscuro, viewport 1439 px.
+
+| Criterio | Observado |
+|---|---|
+| AC-001 | Credencial `Activa`, pista `••••ASPo`, "actualizada por Jose Castilla el 23/08/26, 5:35 p. m." |
+| AC-003 | Última corrida: `Completada`, "10 de 10" consultadas, 9 oportunidades |
+| AC-006 | Cabecera "Oportunidades logísticas desde el 10/08" y "Última consulta: 23/08/2026, 18:15" |
+| AC-007 | Panel con acción recomendada, `AGR · RECHAZADO` y motivo "CLIENTE AUSENTE EXCEDE 3 VISITAS" |
+| AC-008 | Etiqueta `AGR · Reagendar` junto a `Abierto` en la columna `Estado` |
+| AC-009 | 9 casos = 5 reagendar + 1 contactar + 3 revisar o cerrar |
+| AC-010 | Alerta "9 casos requieren revisión logística → Revisar" |
+
+Los conteos de la interfaz coinciden exactamente con los recalculados en la
+sección 2. El reparto por asesor observado en el filtro —Alexandra H. 4,
+Francesco G. 2, Jimena C. 2, Angieska D. 1— reproduce el de la base.
+
+### Ajustes derivados del recorrido
+
+1. **Panel de acción reducido.** Se retiraron `Entrega pactada`,
+   `Gestión logística` y la leyenda de frescura por pedido, por no aportar a la
+   decisión. El panel queda en acción recomendada, estado externo y motivo.
+   Sobre las 9 oportunidades reales, `motivo/submotivo` está presente en las 9,
+   mientras que `resultado`, `próxima acción` y `fecha de compromiso` están
+   vacíos en las 9, coherente con que las 9 tengan gestión `Sin gestión`. Esos
+   tres campos permanecen en el panel de forma condicional: se poblarán cuando
+   el equipo logístico gestione el caso.
+2. **Columna `Estado AGR` retirada.** Ver la sección 8 de `spec.md`. La medición
+   mostró que solo 4 de 9 columnas quedaban visibles y que la columna nueva
+   exigía 604 px de desplazamiento. El ancho de tabla vuelve de 1253 px a
+   1108 px, su valor previo a este incremento.
+
+## 7. Pendientes antes de marcar `VERIFIED`
 
 Estos puntos quedan abiertos y son la razón por la que la especificación
 permanece en `READY_FOR_VALIDATION`:

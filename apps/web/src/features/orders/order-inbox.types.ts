@@ -95,11 +95,6 @@ export interface OrderInboxItem {
   noStatusIncident: boolean;
 
   deliveryObservation: string | null;
-  agrStatus: {
-    status: string;
-    fetchedAtLabel: string;
-    isOpportunity: boolean;
-  } | null;
   agrDelivery: {
     status: string;
     actionKind:
@@ -107,12 +102,9 @@ export interface OrderInboxItem {
     actionLabel: string;
     actionShortLabel: string;
     reason: string | null;
-    managementStatus: string | null;
     result: string | null;
     nextAction: string | null;
-    promisedDelivery: string | null;
     commitmentDate: string | null;
-    fetchedAtLabel: string;
   } | null;
 
   registeredAtLabel: string;

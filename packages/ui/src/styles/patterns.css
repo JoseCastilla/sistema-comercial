@@ -1916,19 +1916,18 @@
     display: grid;
     grid-template-columns:
       7.75rem minmax(11rem, 1.45fr) 5.75rem 6.5rem 5.75rem
-      7.25rem minmax(10.5rem, 1.05fr) minmax(8.5rem, 0.85fr) 2.25rem;
+      7.25rem minmax(10.5rem, 1.05fr);
     align-items: center;
     gap: 0.6rem;
-    min-width: 69rem;
+    min-width: 57.15rem;
   }
 
   .ui-order-grid__header[data-show-advisor="true"],
   .ui-order-grid__row[data-show-advisor="true"] {
     grid-template-columns:
       7.75rem minmax(11rem, 1.45fr) 5.75rem 6.5rem 5.75rem
-      minmax(7rem, 0.8fr) 7.25rem minmax(10.5rem, 1.05fr)
-      minmax(8.5rem, 0.85fr) 2.25rem;
-    min-width: 76.5rem;
+      minmax(7rem, 0.8fr) 7.25rem minmax(10.5rem, 1.05fr);
+    min-width: 64.65rem;
   }
 
   .ui-order-grid__header {
@@ -2032,48 +2031,16 @@
     min-width: 0;
   }
 
-  .ui-order-grid__agr-status {
-    min-width: 0;
-  }
-
   .ui-order-grid__order-code {
     font-family: inherit;
     font-size: inherit;
     font-weight: 650;
   }
 
-  .ui-order-grid__row > button:not(.ui-order-grid__select),
+  .ui-order-grid__row > button,
   .ui-order-grid__row > span,
   .ui-order-grid__row > span > button {
     font-size: inherit;
-  }
-
-  .ui-order-grid__select {
-    display: grid;
-    width: 2rem;
-    height: 2rem;
-    place-items: center;
-    border-radius: var(--ui-radius-md);
-    color: var(--ui-text-muted);
-    transition:
-      color var(--ui-duration-fast),
-      background-color var(--ui-duration-fast);
-  }
-
-  .ui-order-grid__select:hover,
-  .ui-order-grid__select[aria-pressed="true"] {
-    color: var(--ui-accent);
-    background: var(--ui-accent-soft);
-  }
-
-  .ui-order-grid__select:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
-    outline-offset: 2px;
-  }
-
-  .ui-order-grid__select svg {
-    width: 1rem;
-    height: 1rem;
   }
 
   .ui-order-workspace {

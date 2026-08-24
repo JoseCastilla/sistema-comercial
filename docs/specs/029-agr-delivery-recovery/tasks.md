@@ -31,8 +31,10 @@
 ## Bandeja
 
 - [x] Filtro `LOGISTICS` con alcance por rol y equipo.
-- [x] Columna `Estado AGR` en la tabla de escritorio.
-- [x] Panel de acción recomendada en la tarjeta de gestión.
+- [x] Etiqueta `AGR · <acción>` dentro de la columna `Estado`, sin agregar
+      columnas ni ampliar el ancho mínimo de la tabla.
+- [x] Panel de acción recomendada en la tarjeta de gestión, reducido a acción,
+      estado y motivo.
 - [x] Indicadores por reagendar, contactar y revisar o cerrar.
 - [x] Alerta enlazada desde la bandeja general.
 - [x] Prioridad de ordenamiento para casos logísticos.
@@ -48,7 +50,9 @@
 - [x] Recálculo de las reglas contra las instantáneas almacenadas.
 - [x] Confirmación de que la sincronización no altera el estado comercial.
 - [x] Redirección de rutas protegidas sin sesión.
-- [ ] Recorrido visual del filtro, la columna y el panel con sesión iniciada.
+- [x] Recorrido visual con sesión `ADMIN`: filtro, indicadores, etiqueta,
+      panel, alerta y `/admin/logistics`.
+- [x] Medición del ancho de tabla y decisión sobre la columna AGR.
 - [ ] Verificación con roles `AGENT` y `SUPERVISOR`.
 
 ## Producción — primer tiempo (integración inerte)

@@ -335,37 +335,6 @@ function StatusBadge({
   );
 }
 
-function AgrColumnStatus({ order }: { order: OrderInboxItem }) {
-  if (!order.agrStatus) {
-    return <span className="text-xs text-ui-soft">Sin consulta</span>;
-  }
-
-  const terminal = ["ENTREGADO", "CERRADO"].includes(
-    order.agrStatus.status.toUpperCase(),
-  );
-
-  return (
-    <span
-      className={[
-        "inline-flex max-w-full flex-col items-start rounded-lg border px-2 py-1",
-        order.agrStatus.isOpportunity
-          ? "border-ui-warning-border bg-ui-warning-soft text-ui-warning"
-          : terminal
-            ? "border-ui-success bg-ui-success-soft text-ui-success"
-            : "border-ui-border bg-ui-subtle text-ui-muted",
-      ].join(" ")}
-      title={`Consultado ${order.agrStatus.fetchedAtLabel}`}
-    >
-      <strong className="max-w-full truncate text-[0.68rem] font-semibold">
-        {order.agrStatus.status}
-      </strong>
-      <small className="max-w-full truncate text-[0.62rem] opacity-80">
-        {order.agrDelivery?.actionShortLabel ?? "Sin acción pendiente"}
-      </small>
-    </span>
-  );
-}
-
 function SlaBadge({ order }: { order: OrderInboxItem }) {
   return (
     <span
@@ -420,14 +389,8 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
           AGR · {agr.status}
         </span>
       </div>
-      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+      <dl className="mt-4 grid gap-3">
         {agr.reason ? <DetailItem label="Motivo" value={agr.reason} /> : null}
-        {agr.promisedDelivery ? (
-          <DetailItem label="Entrega pactada" value={agr.promisedDelivery} />
-        ) : null}
-        {agr.managementStatus ? (
-          <DetailItem label="Gestión logística" value={agr.managementStatus} />
-        ) : null}
         {agr.result ? (
           <DetailItem label="Resultado" value={agr.result} />
         ) : null}
@@ -438,10 +401,6 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
           <DetailItem label="Fecha de compromiso" value={agr.commitmentDate} />
         ) : null}
       </dl>
-      <p className="mt-3 text-xs text-ui-muted">
-        Consultado {agr.fetchedAtLabel}. AGR se actualiza manualmente tres veces
-        al día; confirma el caso antes de cambiar el seguimiento comercial.
-      </p>
     </section>
   );
 }
@@ -985,8 +944,6 @@ function DesktopOrderList({
           {showAdvisorColumn ? <span>Asesor</span> : null}
           <span>SLA</span>
           <span>Estado</span>
-          <span>Estado AGR</span>
-          <span aria-hidden="true" />
         </div>
 
         <div className="ui-order-grid__body">
@@ -1032,35 +989,8 @@ function DesktopOrderList({
                 </span>
 
                 <span className="ui-order-grid__status">
-                  <StatusBadge
-                    order={order}
-                    showAgr={false}
-                    showEscalationAction={false}
-                  />
+                  <StatusBadge order={order} showEscalationAction={false} />
                 </span>
-
-                <span className="ui-order-grid__agr-status">
-                  <AgrColumnStatus order={order} />
-                </span>
-
-                <button
-                  aria-label={`Ver y gestionar orden ${order.orderCode}`}
-                  aria-pressed={selected}
-                  className="ui-order-grid__select"
-                  onClick={() => onSelect(order.id)}
-                  title="Ver y gestionar venta"
-                  type="button"
-                >
-                  <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
-                    <path
-                      d="m8 6 4 4-4 4"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="1.6"
-                    />
-                  </svg>
-                </button>
               </div>
             );
           })}

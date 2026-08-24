@@ -33,8 +33,8 @@ segunda fuente de verdad del estado comercial.
 - Consulta dirigida por `order_id`, pedido por pedido, sobre las ventas propias
   del sistema que siguen siendo accionables.
 - Instantánea del último estado externo por orden, más historial de cambios.
-- Filtro `Oportunidades logísticas` en Pedidos y columna `Estado AGR` en la
-  tabla.
+- Filtro `Oportunidades logísticas` en Pedidos, etiqueta AGR en la columna
+  `Estado` y panel de acción recomendada en la tarjeta de gestión.
 - Módulo `/admin/logistics` para administrar la credencial y sincronizar.
 
 ### Fuera de alcance
@@ -118,7 +118,12 @@ segunda fuente de verdad del estado comercial.
 - **BR-021:** el filtro ignora el período seleccionado, porque una entrega
   fallida sigue siendo recuperable aunque la venta pertenezca a un mes anterior.
 - **BR-022:** la interfaz comunica que AGR es una fuente estática actualizada
-  tres veces al día, indicando la hora de la última consulta.
+  tres veces al día, indicando la hora de la última consulta en la cabecera del
+  filtro. No se repite esa leyenda en cada pedido.
+- **BR-023:** la señal AGR no agrega columnas a la tabla de pedidos. Se expresa
+  como etiqueta dentro de la columna `Estado` y como panel en la tarjeta de
+  gestión. La tabla ya no cabe sin desplazamiento horizontal en el espacio que
+  le deja la tarjeta lateral, y este incremento no debe agravarlo.
 
 ## 5. Criterios de aceptación
 
@@ -136,10 +141,10 @@ segunda fuente de verdad del estado comercial.
   consultar y conserva la información previa visible.
 - **AC-006:** el filtro `Oportunidades logísticas` lista únicamente pedidos con
   acción pendiente y muestra la hora de la última consulta.
-- **AC-007:** cada pedido del filtro presenta estado, motivo, próxima acción y
-  hora de consulta en la tarjeta de gestión.
-- **AC-008:** la columna `Estado AGR` distingue oportunidad, estado terminal y
-  ausencia de consulta.
+- **AC-007:** cada pedido del filtro presenta en la tarjeta de gestión la acción
+  recomendada, el estado externo y el motivo del rechazo.
+- **AC-008:** la fila del pedido muestra una etiqueta `AGR · <acción>` junto a su
+  estado comercial, sin agregar columnas a la tabla.
 - **AC-009:** los indicadores del filtro separan por reagendar, contactar y
   revisar o cerrar.
 - **AC-010:** una alerta en la bandeja general enlaza al filtro cuando existen
@@ -162,8 +167,8 @@ los hacían necesarios:
   propia de la tarjeta de gestión; en la tabla queda una etiqueta `Escalada` de
   solo lectura.
 - `Metric` admite los tonos `warning` y `success`.
-- La tabla de pedidos incorpora la columna `Estado AGR` y amplía su ancho
-  mínimo.
+- La tabla de pedidos **conserva sus columnas y su ancho mínimo** (`60rem`, o
+  `67.5rem` con columna de asesor). Ver la sección 8.
 - `/admin/logistics` se agrega a la navegación de escritorio y móvil, visible
   solo para `ADMIN`.
 
@@ -173,3 +178,36 @@ los hacían necesarios:
 - El estado comercial solo cambia por acción humana autorizada.
 - La evidencia original recibida de la fuente externa permanece inmutable.
 - PostgreSQL guarda instantes en UTC; la operación se resuelve en `America/Lima`.
+
+## 8. Decisión sobre el ancho de la tabla
+
+Una primera implementación agregó una columna `Estado AGR` a la tabla de
+pedidos. La medición sobre la interfaz real la descartó.
+
+`.ui-order-workspace` reparte el ancho como `minmax(0, 1fr)` para la tabla y
+`minmax(22rem, 25rem)` para la tarjeta de gestión. En un viewport de 1439 px con
+la barra lateral expandida, la tabla dispone de unos 600 px. Con la columna nueva
+necesitaba 1253 px: **solo 4 de 9 columnas quedaban visibles** y `Estado AGR`,
+la última, exigía 604 px de desplazamiento horizontal para alcanzarse.
+
+Tres hechos definieron la decisión:
+
+1. **El problema es anterior a este incremento.** Con el diseño de dos zonas de
+   SPEC-024, la columna `Estado` ya quedaba fuera de vista. La columna nueva
+   agravaba una tensión existente, no la creaba.
+2. **SPEC-024 fija las columnas.** Exige mostrar orden, cliente, DNI, teléfono,
+   operador y estado, más SLA como columna independiente. Retirar columnas para
+   hacer sitio contradiría una especificación aprobada.
+3. **La información ya estaba en otro lado.** La tarjeta de gestión muestra la
+   acción AGR completa, y la columna `Estado` ya alberga etiquetas de estado.
+
+Por eso la señal AGR se expresa como etiqueta dentro de `Estado` y la tabla
+recupera exactamente sus dimensiones previas. El desbordamiento horizontal baja
+de 1253 px a 1108 px de ancho de tabla.
+
+**Queda pendiente y excede este incremento:** la tabla de pedidos no cabe en el
+espacio que le deja la tarjeta lateral, en ningún viewport realista. Nueve
+columnas requieren 1080 px y el panel dispone de 600 a 850 px según la barra
+lateral. Resolverlo exige revisar el contrato de SPEC-024 —columnas por
+prioridad, divulgación progresiva o un reparto distinto entre tabla y tarjeta— y
+merece su propia especificación.
