@@ -33,8 +33,9 @@ segunda fuente de verdad del estado comercial.
 - Consulta dirigida por `order_id`, pedido por pedido, sobre las ventas propias
   del sistema que siguen siendo accionables.
 - Instantánea del último estado externo por orden, más historial de cambios.
-- Filtro `Oportunidades logísticas` en Pedidos, etiqueta AGR en la columna
-  `Estado` y panel de acción recomendada en la tarjeta de gestión.
+- Filtro `Oportunidades logísticas` en Pedidos, columna `Máximo` con el reporte
+  del operador, etiqueta de acción en la columna `Estado` y panel de acción
+  recomendada en la tarjeta de gestión.
 - Módulo `/admin/logistics` para administrar la credencial y sincronizar.
 
 ### Fuera de alcance
@@ -97,33 +98,56 @@ segunda fuente de verdad del estado comercial.
 
 ### Acción recomendada
 
-- **BR-018:** cada oportunidad se traduce a una única acción recomendada,
-  resuelta sobre estado, motivo y submotivo:
+- **BR-018:** los estados de Máximo describen el intento de entrega del operador
+  logístico, no lo que la venta todavía permite. El ciclo es
+  `AGENDADO` → `NO ENTREGADO` → `RECHAZADO` / `CANCELADO`. `NO ENTREGADO` es un
+  intento fallido y sigue siendo reintentable; `RECHAZADO` y `CANCELADO` son
+  terminales y cancelan la orden automáticamente. La acción se resuelve por
+  **estado y motivo a la vez**, evaluando el estado primero.
 
-  | Señal | Acción | Etiqueta |
+- **BR-019:** cada oportunidad se traduce a una de seis acciones:
+
+  | Acción | Cuándo | Etiqueta |
   |---|---|---|
-  | `NO RECUPERABLE` | `NOT_RECOVERABLE` | Confirmar cierre como no recuperable |
-  | `CANCEL`, `PORTABILIDAD RECHAZADA`, `ANULAD` | `REVIEW_CANCELLATION` | Revisar el motivo de cancelación |
-  | `AUSENTE`, `NO VISIT`, `EXCEDE … VISITA`, `NO TOMA` | `RESCHEDULE` | Contactar al cliente para reagendar |
-  | cualquier otra | `CONTACT` | Contactar al cliente y validar el caso |
+  | `RESCHEDULE` | `NO ENTREGADO` por ausencia del cliente o visita en fecha no acordada | Reagendar |
+  | `MEETING_POINT` | dirección fuera de cobertura o zona peligrosa | Otro punto |
+  | `CONTACT` | hace falta hablar con el cliente para decidir | Contactar |
+  | `VERIFY_TENURE` | portabilidad rechazada por teléfono no en servicio | Verificar |
+  | `WAIT_PORTABILITY` | la línea no cumple los 30 días para portar | Esperar |
+  | `REENTER` | la orden murió pero la venta sigue siendo viable | Reingresar |
 
-- **BR-019:** la acción es una recomendación. Ejecutarla sigue exigiendo los
+- **BR-020:** una negativa del cliente siempre se conversa antes de darla por
+  perdida, incluso cuando el operador la reportó como no recuperable. Ninguna
+  acción automática declara una venta perdida.
+
+- **BR-021:** dos submotivos de portabilidad describen la misma antigüedad
+  insuficiente pero se resuelven distinto. `NO TRANSCURRIO EL TIEMPO MINIMO DE
+  PORTA` corresponde a una línea que ya portó antes, cuya fecha se valida en
+  `consulta.portabilidad.pe`. `TELEFONO NO ESTUVO EN SERVICIO` corresponde a un
+  cliente de planta, cuya línea nació en el operador cedente y cuya antigüedad
+  no es consultable.
+
+- **BR-022:** solo la deuda vencida impide portar. Un rechazo por deuda suele
+  originarse en una verificación incompleta del asesor, pero también ocurre
+  cuando la entrega se demora y la deuda vence en el intervalo.
+
+- **BR-023:** la acción es una recomendación. Ejecutarla sigue exigiendo los
   permisos comerciales vigentes: el asesor no cierra ni cancela su propia venta.
 
 ### Visibilidad
 
-- **BR-020:** el filtro `Oportunidades logísticas` respeta el alcance vigente:
+- **BR-024:** el filtro `Oportunidades logísticas` respeta el alcance vigente:
   `AGENT` sus ventas, `SUPERVISOR` sus equipos y el pool permitido, `ADMIN` y
   `BACKOFFICE` la organización completa.
-- **BR-021:** el filtro ignora el período seleccionado, porque una entrega
+- **BR-025:** el filtro ignora el período seleccionado, porque una entrega
   fallida sigue siendo recuperable aunque la venta pertenezca a un mes anterior.
-- **BR-022:** la interfaz comunica que AGR es una fuente estática actualizada
+- **BR-026:** la interfaz comunica que AGR es una fuente estática actualizada
   tres veces al día, indicando la hora de la última consulta en la cabecera del
   filtro. No se repite esa leyenda en cada pedido.
-- **BR-023:** la señal AGR no agrega columnas a la tabla de pedidos. Se expresa
-  como etiqueta dentro de la columna `Estado` y como panel en la tarjeta de
-  gestión. La tabla ya no cabe sin desplazamiento horizontal en el espacio que
-  le deja la tarjeta lateral, y este incremento no debe agravarlo.
+- **BR-027:** el reporte crudo del operador y la decisión comercial se presentan
+  por separado. La columna `Máximo` muestra el estado tal como lo emite el
+  operador logístico; la acción comercial derivada aparece como etiqueta dentro
+  de la columna `Estado` y como panel en la tarjeta de gestión.
 
 ## 5. Criterios de aceptación
 
@@ -143,8 +167,11 @@ segunda fuente de verdad del estado comercial.
   acción pendiente y muestra la hora de la última consulta.
 - **AC-007:** cada pedido del filtro presenta en la tarjeta de gestión la acción
   recomendada, el estado externo y el motivo del rechazo.
-- **AC-008:** la fila del pedido muestra una etiqueta `AGR · <acción>` junto a su
-  estado comercial, sin agregar columnas a la tabla.
+- **AC-008:** la fila muestra el estado de Máximo en su propia columna y la
+  acción comercial como etiqueta junto al estado comercial.
+- **AC-014:** una orden `RECHAZADO` o `CANCELADO` nunca propone reagendar.
+- **AC-015:** el mismo motivo `CLIENTE AUSENTE` produce `Reagendar` en
+  `NO ENTREGADO` y `Reingresar` en `RECHAZADO`.
 - **AC-009:** los indicadores del filtro separan por reagendar, contactar y
   revisar o cerrar.
 - **AC-010:** una alerta en la bandeja general enlaza al filtro cuando existen

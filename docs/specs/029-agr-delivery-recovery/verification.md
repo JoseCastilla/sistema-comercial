@@ -155,10 +155,24 @@ Francesco G. 2, Jimena C. 2, Angieska D. 1— reproduce el de la base.
    vacíos en las 9, coherente con que las 9 tengan gestión `Sin gestión`. Esos
    tres campos permanecen en el panel de forma condicional: se poblarán cuando
    el equipo logístico gestione el caso.
-2. **Columna `Estado AGR` retirada.** Ver la sección 8 de `spec.md`. La medición
-   mostró que solo 4 de 9 columnas quedaban visibles y que la columna nueva
-   exigía 604 px de desplazamiento. El ancho de tabla vuelve de 1253 px a
-   1108 px, su valor previo a este incremento.
+2. **Columna `Estado AGR` retirada y reemplazada por `Máximo`.** La medición
+   mostró que solo 4 de 9 columnas quedaban visibles y que la columna original
+   exigía 604 px de desplazamiento. Se retiró junto con el botón chevron de
+   selección, redundante con el clic en la fila. Después se reintrodujo como
+   columna `Máximo`, ya con la semántica correcta: el reporte crudo del operador,
+   separado de la decisión comercial.
+
+3. **Regla de acción corregida.** La primera implementación derivaba la acción
+   del motivo del rechazo e ignoraba el estado, de modo que proponía reagendar
+   ventas ya canceladas: **5 de 9 oportunidades estaban mal etiquetadas**. La
+   regla nueva evalúa estado y motivo a la vez y se validó contra las 22
+   combinaciones observadas en dos días de operación real. Ninguna orden en
+   estado terminal propone reagendar.
+
+4. **Alturas de fila uniformes.** Las etiquetas de acción se acotaron al
+   presupuesto real de la columna `Estado`, 98 px. Verificado en las vistas
+   Oportunidades logísticas, Mes actual, Entregados y Finalizados: 50 de 50
+   filas a una sola altura de 64 px.
 
 ## 7. Pendientes antes de marcar `VERIFIED`
 
