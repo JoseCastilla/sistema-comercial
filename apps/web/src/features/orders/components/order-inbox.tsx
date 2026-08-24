@@ -346,6 +346,24 @@ function getOperatorLabel(order: OrderInboxItem): string {
   return `${normalized.charAt(0).toLocaleUpperCase("es-PE")}${normalized.slice(1)}`;
 }
 
+function getOperationSummary(order: OrderInboxItem): string {
+  if (order.commercialOperation === "NEW_LINE") {
+    return "Alta nueva";
+  }
+
+  // Vocabulario del equipo: porta post, porta pre, alta nueva.
+  const operation =
+    order.commercialOperation === "PORT_POSTPAID"
+      ? "Porta post"
+      : order.commercialOperation === "PORT_PREPAID"
+        ? "Porta pre"
+        : "Sin clasificar";
+
+  const carrier = getOperatorLabel(order);
+
+  return carrier === "Sin definir" ? operation : `${operation} · ${carrier}`;
+}
+
 function DetailItem({
   label,
   value,
@@ -491,17 +509,12 @@ function OrderDetails({
     order.deliveryObservation ?? "none",
   ].join(":");
 
-  const hasDitoDetails = Boolean(
-    order.salesCode ||
-    order.billingCycleDay ||
-    order.paymentDueDay ||
-    order.deliveryContactPhone !== order.serviceNumber ||
-    order.deliveryTimeRange ||
-    order.deliveryAddress ||
-    order.deliveryReference ||
-    order.deliveryLatitude ||
-    order.deliveryLongitude,
-  );
+  /*
+   * SPEC-003 BR-002 los mantiene separados como dato, pero DITO viene enviando
+   * el mismo numero en ambos. Solo se muestra cuando aporta algo distinto de
+   * lo que ya declara la cabecera.
+   */
+  const showContactPhone = order.deliveryContactPhone !== order.serviceNumber;
 
   const coordinates =
     order.deliveryLatitude && order.deliveryLongitude
@@ -555,6 +568,32 @@ function OrderDetails({
             value={order.serviceNumber}
           />
         </p>
+
+        <dl className="ui-order-identity">
+          <div>
+            <dt>Operación</dt>
+            <dd>{getOperationSummary(order)}</dd>
+          </div>
+
+          <div>
+            <dt>Cargo fijo</dt>
+            <dd>
+              {order.fixedCharge
+                ? `S/ ${Number(order.fixedCharge).toFixed(2)}`
+                : "No registrado"}
+            </dd>
+          </div>
+
+          <div>
+            <dt>Entrega</dt>
+            <dd>{order.deliveryMethodLabel}</dd>
+          </div>
+
+          <div>
+            <dt>Distrito</dt>
+            <dd>{order.district || order.province}</dd>
+          </div>
+        </dl>
       </div>
 
       {order.canResolveAssignment || order.canClaimAssignment ? (
@@ -567,6 +606,8 @@ function OrderDetails({
           request={order.pendingCancellationRequest}
         />
       ) : null}
+
+      {order.incidentEscalation ? <OrderEscalationPanel order={order} /> : null}
 
       <AgrDeliveryPanel order={order} />
 
@@ -590,11 +631,18 @@ function OrderDetails({
             initialStatus={order.status}
             orderId={order.id}
           />
-        </section>
-      ) : null}
 
-      {order.incidentEscalation || order.canEscalate ? (
-        <OrderEscalationPanel order={order} />
+          {/*
+           * Escalar es gestionar la venta, no un aviso paralelo: va dentro de
+           * esta zona como accion secundaria. Una incidencia ya escalada si es
+           * situacion y se muestra arriba, junto al diagnostico.
+           */}
+          {!order.incidentEscalation && order.canEscalate ? (
+            <div className="ui-order-secondary-action">
+              <OrderEscalationPanel order={order} />
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       <details
@@ -605,9 +653,9 @@ function OrderDetails({
         open={operationDetailsOpen}
       >
         <summary>
-          <span>Detalle de la operación</span>
+          <span>Datos de la venta</span>
           <span className="ui-order-disclosure__hint">
-            {order.operation} · {order.locationLabel}
+            {order.locationLabel}
           </span>
         </summary>
 
@@ -657,74 +705,61 @@ function OrderDetails({
                 value={order.deliveryObservation}
               />
             ) : null}
-          </dl>
-        </div>
-      </details>
 
-      {hasDitoDetails ? (
-        <details className="ui-order-disclosure ui-order-disclosure--info">
-          <summary>
-            <span>Venta y entrega DITO</span>
-            <span className="ui-order-disclosure__hint">
-              Código, dirección y facturación
-            </span>
-          </summary>
+            {order.salesCode ? (
+              <DetailItem label="Código de venta" value={order.salesCode} />
+            ) : null}
 
-          <div className="ui-order-disclosure__content">
-            <dl className="ui-order-detail-grid">
-              {order.salesCode ? (
-                <DetailItem label="Código de venta" value={order.salesCode} />
-              ) : null}
+            {order.deliveryTimeRange ? (
+              <DetailItem
+                label="Horario de entrega"
+                value={order.deliveryTimeRange}
+              />
+            ) : null}
 
-              {order.deliveryTimeRange ? (
-                <DetailItem
-                  label="Horario de entrega"
-                  value={order.deliveryTimeRange}
-                />
-              ) : null}
+            {order.billingCycleDay ? (
+              <DetailItem
+                label="Ciclo de facturación"
+                value={`Día ${order.billingCycleDay} de cada mes`}
+              />
+            ) : null}
 
-              {order.billingCycleDay ? (
-                <DetailItem
-                  label="Ciclo de facturación"
-                  value={`Día ${order.billingCycleDay} de cada mes`}
-                />
-              ) : null}
+            {order.paymentDueDay ? (
+              <DetailItem
+                label="Último día de pago"
+                value={`Día ${order.paymentDueDay} de cada mes`}
+              />
+            ) : null}
 
-              {order.paymentDueDay ? (
-                <DetailItem
-                  label="Último día de pago"
-                  value={`Día ${order.paymentDueDay} de cada mes`}
-                />
-              ) : null}
-
+            {showContactPhone ? (
               <DetailItem
                 label="Teléfono de contacto"
                 value={order.deliveryContactPhone}
               />
+            ) : null}
 
-              {order.deliveryAddress ? (
-                <DetailItem
-                  label="Dirección de entrega"
-                  wide
-                  value={order.deliveryAddress}
-                />
-              ) : null}
+            {order.deliveryAddress ? (
+              <DetailItem
+                label="Dirección de entrega"
+                wide
+                value={order.deliveryAddress}
+              />
+            ) : null}
 
-              {order.deliveryReference ? (
-                <DetailItem
-                  label="Referencia"
-                  wide
-                  value={order.deliveryReference}
-                />
-              ) : null}
+            {order.deliveryReference ? (
+              <DetailItem
+                label="Referencia"
+                wide
+                value={order.deliveryReference}
+              />
+            ) : null}
 
-              {coordinates ? (
-                <DetailItem label="Coordenadas" value={coordinates} wide />
-              ) : null}
-            </dl>
-          </div>
-        </details>
-      ) : null}
+            {coordinates ? (
+              <DetailItem label="Coordenadas" value={coordinates} wide />
+            ) : null}
+          </dl>
+        </div>
+      </details>
 
       {order.canCorrect ? <OrderCorrectionForm order={order} /> : null}
     </div>

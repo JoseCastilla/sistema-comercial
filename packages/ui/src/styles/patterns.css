@@ -2066,6 +2066,43 @@
     box-shadow: var(--ui-shadow-raised);
   }
 
+  /*
+   * Ficha comercial de la venta: que se vendio, por cuanto y como se entrega.
+   * Va en la zona de identidad porque responde "que venta es", no es dato de
+   * consulta.
+   */
+  .ui-order-identity {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--ui-border);
+  }
+
+  .ui-order-identity dt {
+    color: var(--ui-text-soft);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .ui-order-identity dd {
+    margin-top: 0.15rem;
+    color: var(--ui-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  /* Accion disponible dentro de la zona de gestion, sin peso de aviso. */
+  .ui-order-secondary-action {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--ui-border);
+  }
+
   .ui-order-management {
     padding: 1rem;
     border: 1px solid var(--ui-border-strong);

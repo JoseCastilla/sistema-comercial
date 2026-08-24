@@ -199,6 +199,7 @@ los hacían necesarios:
   `67.5rem` con columna de asesor). Ver la sección 8.
 - `/admin/logistics` se agrega a la navegación de escritorio y móvil, visible
   solo para `ADMIN`.
+- La tarjeta de gestión se reorganiza en cuatro zonas. Ver la sección 9.
 
 ## 7. Invariantes preservados
 
@@ -239,3 +240,32 @@ columnas requieren 1080 px y el panel dispone de 600 a 850 px según la barra
 lateral. Resolverlo exige revisar el contrato de SPEC-024 —columnas por
 prioridad, divulgación progresiva o un reparto distinto entre tabla y tarjeta— y
 merece su propia especificación.
+
+## 9. Reorganización de la tarjeta de gestión
+
+Los avisos que este incremento agregó dejaron a la vista un problema anterior:
+la tarjeta había crecido como una pila de secciones independientes, cada una
+con su propio desplegable. Siete bloques y tres desplegables en un marco de
+798 px, con dos paneles de idéntica apariencia que significaban cosas distintas
+—uno describía qué pasó, el otro ofrecía hacer algo—.
+
+SPEC-024 la define como la zona de **Gestionar**. Se reorganiza para que
+responda tres preguntas en orden, y deje los datos de consulta fuera del camino:
+
+1. **Qué venta es.** Cabecera, cliente y ficha comercial: operación con su
+   operador cedente, cargo fijo del plan, tipo de entrega y distrito. Estos
+   cuatro datos estaban antes en el texto crudo de DITO —`PORTA CLARO POST
+   39.9`— dentro de un desplegable cerrado. Ahora se presentan normalizados; el
+   crudo permanece como evidencia según SPEC-006 BR-007.
+2. **Qué pasó.** Diagnóstico logístico, incidencia escalada viva, cancelación
+   solicitada y asignación pendiente.
+3. **Qué hago.** Una sola zona de acción. Escalar al supervisor deja de ser un
+   panel paralelo y pasa a ser acción secundaria dentro de ella, porque escalar
+   es gestionar la venta.
+4. **Datos de la venta.** Un solo cajón. La separación anterior entre "Detalle
+   de la operación" y "Venta y entrega DITO" era interna nuestra —campos
+   propios frente a campos DITO— y no significaba nada para el asesor.
+
+El vocabulario sigue al del equipo: `Porta post`, `Porta pre`, `Alta nueva`.
+
+Resultado: de siete bloques y tres desplegables, a cinco y dos.
