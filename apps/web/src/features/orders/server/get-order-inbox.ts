@@ -376,16 +376,24 @@ function getPriority(item: OrderInboxItem): number {
     return 2;
   }
 
-  if (item.agrDelivery?.actionKind === "RESCHEDULE") {
+  /*
+   * Una visita que todavia puede ocurrir vence antes que una gestion sin
+   * fecha, y una espera de portabilidad no compite por atencion hasta que
+   * llega su plazo.
+   */
+  if (
+    item.agrDelivery?.actionKind === "RESCHEDULE" ||
+    item.agrDelivery?.actionKind === "MEETING_POINT"
+  ) {
     return 1;
   }
 
-  if (item.agrDelivery?.actionKind === "CONTACT") {
-    return 2;
+  if (item.agrDelivery?.actionKind === "WAIT_PORTABILITY") {
+    return 5;
   }
 
   if (item.agrDelivery) {
-    return 3;
+    return 2;
   }
 
   if (item.slaState === "OVERDUE") {
@@ -545,6 +553,18 @@ function maskIdentifier(value: string): string {
 
 type AgrActionKind = NonNullable<OrderInboxItem["agrDelivery"]>["actionKind"];
 
+/*
+ * Maximo describe lo que le paso al courier, no lo que la venta todavia
+ * permite. La accion comercial depende del estado y del motivo a la vez:
+ *
+ *   AGENDADO -> NO ENTREGADO -> RECHAZADO / CANCELADO
+ *               (reintentable)  (terminal, la orden se cancela sola)
+ *
+ * El mismo "CLIENTE AUSENTE" se reagenda mientras la orden vive y se reingresa
+ * cuando ya excedio las visitas. Por eso el estado se evalua siempre primero.
+ */
+const TERMINAL_EXTERNAL_STATES = ["RECHAZADO", "CANCELADO"];
+
 function getAgrAction(input: {
   estadoPedido: string;
   motivoRechazo: string | null;
@@ -554,36 +574,145 @@ function getAgrAction(input: {
   label: string;
   shortLabel: string;
 } {
-  const description = [
-    input.estadoPedido,
-    input.motivoRechazo,
-    input.submotivoRechazo,
-  ]
+  const estado = input.estadoPedido.trim().toUpperCase();
+
+  const motivo = [input.motivoRechazo, input.submotivoRechazo]
     .filter(Boolean)
     .join(" ")
     .toUpperCase();
 
-  if (/NO RECUPERABLE/.test(description)) {
+  const terminal = TERMINAL_EXTERNAL_STATES.includes(estado);
+
+  // El problema es el lugar de entrega, no el cliente ni la portabilidad.
+  if (/FUERA DE COBERTURA|ZONA PELIGROSA|DIRECCION NO RECUPERABLE/.test(motivo)) {
     return {
-      kind: "NOT_RECOVERABLE",
-      label: "Confirmar cierre como no recuperable",
-      shortLabel: "Descartar",
+      kind: "MEETING_POINT",
+      label: "Acordar otro punto de entrega con el cliente, trabajo o casa",
+      shortLabel: "Otro punto",
     };
   }
 
-  if (/CANCEL|PORTABILIDAD RECHAZADA|ANULAD/.test(description)) {
+  /*
+   * La linea ya porto antes, asi que la fecha se valida en
+   * consulta.portabilidad.pe y el reingreso tiene fecha calculable.
+   */
+  if (/TIEMPO MINIMO DE PORTA/.test(motivo)) {
     return {
-      kind: "REVIEW_CANCELLATION",
-      label: "Revisar el motivo de cancelación",
-      shortLabel: "Revisar",
+      kind: "WAIT_PORTABILITY",
+      label: "Reingresar cuando la linea cumpla los 30 dias para portar",
+      shortLabel: "Esperar",
     };
   }
 
-  if (/AUSENTE|NO VISIT|EXCEDE.*VISITA|NO TOMA/.test(description)) {
+  /*
+   * Cliente de planta: la linea nacio en el cedente y su antiguedad no es
+   * consultable, hay que averiguarla con otra agencia.
+   */
+  if (/NO ESTUVO EN SERVICIO/.test(motivo)) {
+    return {
+      kind: "VERIFY_TENURE",
+      label: "Verificar la antiguedad de la linea con otra agencia",
+      shortLabel: "Verificar",
+    };
+  }
+
+  // Solo la deuda vencida impide portar; la emitida no.
+  if (/DEUDA EXIGIBLE/.test(motivo)) {
+    return terminal
+      ? {
+          kind: "REENTER",
+          label: "Reingresar cuando el cliente regularice la deuda vencida",
+          shortLabel: "Reingresar",
+        }
+      : {
+          kind: "CONTACT",
+          label: "Contactar al cliente para que regularice la deuda vencida",
+          shortLabel: "Contactar",
+        };
+  }
+
+  if (/SERVICIO SUSPENDIDO/.test(motivo)) {
+    return {
+      kind: "CONTACT",
+      label: "Contactar al cliente y validar por que su servicio esta suspendido",
+      shortLabel: "Contactar",
+    };
+  }
+
+  // A veces es un error del sistema de portabilidad, no del cliente.
+  if (/OTRA PORTA EN CURSO/.test(motivo)) {
+    return {
+      kind: "CONTACT",
+      label: "Contactar al cliente y validar si hay otra portabilidad real en curso",
+      shortLabel: "Contactar",
+    };
+  }
+
+  /*
+   * Huella desgastada o datos que no cuadran. El OL lo reporta tanto como
+   * cliente no identificado como telefono que no corresponde al DNI.
+   */
+  if (/HUELLA NO CORRESPONDE|NO CORRESPONDE AL DNI|CLIENTE NO IDENTIFICADO/.test(motivo)) {
+    return terminal
+      ? {
+          kind: "REENTER",
+          label: "Reingresar la venta despues de resolver la validacion biometrica",
+          shortLabel: "Reingresar",
+        }
+      : {
+          kind: "CONTACT",
+          label: "Contactar al cliente por un problema de validacion biometrica",
+          shortLabel: "Contactar",
+        };
+  }
+
+  if (/NO CUENTA CON PIN/.test(motivo)) {
+    return {
+      kind: "CONTACT",
+      label: "Contactar al cliente para obtener el PIN y reingresar la venta",
+      shortLabel: "Contactar",
+    };
+  }
+
+  if (/CLIENTE AUSENTE/.test(motivo)) {
+    return terminal
+      ? {
+          kind: "REENTER",
+          label: "Reingresar la venta: el cliente excedio las visitas permitidas",
+          shortLabel: "Reingresar",
+        }
+      : {
+          kind: "RESCHEDULE",
+          label: "Contactar al cliente y reagendar la visita en un horario que pueda atender",
+          shortLabel: "Reagendar",
+        };
+  }
+
+  if (/VISITA EN FECHA NO ACORDADA/.test(motivo)) {
     return {
       kind: "RESCHEDULE",
-      label: "Contactar al cliente para reagendar",
+      label: "Reagendar la visita en la fecha que el cliente acordo",
       shortLabel: "Reagendar",
+    };
+  }
+
+  /*
+   * Una negativa del cliente siempre se conversa antes de darla por perdida,
+   * incluso cuando el operador la reporto como no recuperable.
+   */
+  if (/CLIENTE NO DESEA/.test(motivo)) {
+    return {
+      kind: "CONTACT",
+      label: "Contactar al cliente y confirmar si la venta se puede recuperar",
+      shortLabel: "Contactar",
+    };
+  }
+
+  if (terminal) {
+    return {
+      kind: "REENTER",
+      label: "Contactar al cliente y reingresar la venta si sigue interesado",
+      shortLabel: "Reingresar",
     };
   }
 
@@ -1220,13 +1349,14 @@ export async function getOrderInbox(
 
     logisticsSummary: {
       total: logisticsActions.length,
-      reschedule: logisticsActions.filter(
-        (action) => action.kind === "RESCHEDULE",
+      reschedule: logisticsActions.filter((action) =>
+        ["RESCHEDULE", "MEETING_POINT"].includes(action.kind),
       ).length,
-      contact: logisticsActions.filter((action) => action.kind === "CONTACT")
-        .length,
+      contact: logisticsActions.filter((action) =>
+        ["CONTACT", "VERIFY_TENURE"].includes(action.kind),
+      ).length,
       review: logisticsActions.filter((action) =>
-        ["REVIEW_CANCELLATION", "NOT_RECOVERABLE"].includes(action.kind),
+        ["REENTER", "WAIT_PORTABILITY"].includes(action.kind),
       ).length,
       lastFetchedAtLabel: logisticsLastFetchedAt
         ? formatDateTime(logisticsLastFetchedAt)

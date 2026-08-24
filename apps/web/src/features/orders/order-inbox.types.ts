@@ -106,7 +106,12 @@ export interface OrderInboxItem {
   agrDelivery: {
     status: string;
     actionKind:
-      "RESCHEDULE" | "CONTACT" | "REVIEW_CANCELLATION" | "NOT_RECOVERABLE";
+      | "RESCHEDULE"
+      | "CONTACT"
+      | "REENTER"
+      | "MEETING_POINT"
+      | "VERIFY_TENURE"
+      | "WAIT_PORTABILITY";
     actionLabel: string;
     actionShortLabel: string;
     reason: string | null;

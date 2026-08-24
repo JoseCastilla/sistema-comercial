@@ -1076,7 +1076,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             value={data.logisticsSummary.total}
           />
           <Metric
-            label="Para reagendar"
+            label="Visita por coordinar"
             value={data.logisticsSummary.reschedule}
           />
           <Metric
@@ -1084,7 +1084,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             value={data.logisticsSummary.contact}
           />
           <Metric
-            label="Revisar o cerrar"
+            label="Por reingresar"
             value={data.logisticsSummary.review}
           />
         </MetricGroup>
