@@ -176,25 +176,58 @@ Francesco G. 2, Jimena C. 2, Angieska D. 1— reproduce el de la base.
    Oportunidades logísticas, Mes actual, Entregados y Finalizados: 50 de 50
    filas a una sola altura de 64 px.
 
-## 7. Pendientes antes de marcar `VERIFIED`
+## 7. Recorrido con sesión `AGENT` (local)
+
+Sesión de Alexandra Nora Huaranca Gutiérrez, asesora, el 23/08/2026.
+
+| Comprobación | ADMIN | AGENT | Resultado |
+|---|---|---|---|
+| Oportunidades logísticas | 9 | **4** | **BR-024** el alcance aísla correctamente |
+| Ventas del mes | 177 | 24 | solo las propias |
+| Columna `Asesor` | visible | **oculta** | SPEC-024, no repite su propio nombre |
+| Filtro de equipo | visible | **oculto** | SPEC-010 |
+| Filtro inicial | Todos | **Activos** | apertura por rol |
+
+Las 4 órdenes visibles —`1945300837A`, `1945260683A`, `1945172092A` y
+`1945082667A`— son exactamente las cuatro que la consulta a la base atribuía a
+esta asesora. Ninguna de las otras cinco aparece.
+
+Sus acciones: 2 `Reingresar`, 1 `Contactar`, 1 `Verificar`, y los indicadores
+reportan 4 = 0 + 2 + 2.
+
+`1945082667A` ilustra la corrección del dominio: con la regla anterior aparecía
+como `Revisar cancelación`; ahora, siendo `CANCELADO · TELEFONO NO ESTUVO EN
+SERVICIO`, se resuelve como `Verificar`, que es cliente de planta cuya
+antigüedad de línea hay que averiguar.
+
+### Invariantes antifraude
+
+El formulario de seguimiento de la asesora ofrece `Abierto`, `Enviado` y
+`Solicitar cancelación`. **No ofrece `Cerrado` ni cancelación directa**, de
+acuerdo con SPEC-012 BR-003 y SPEC-013 BR-001. Conserva `Notificar al
+supervisor` de SPEC-028.
+
+### Marco de la tarjeta
+
+798 px con sesión `AGENT`, el mismo valor medido con `ADMIN` y en todos los
+filtros. Las filas conservan una sola altura de 64 px.
+
+## 8. Pendientes antes de marcar `VERIFIED`
 
 Estos puntos quedan abiertos y son la razón por la que la especificación
 permanece en `READY_FOR_VALIDATION`:
 
-1. **Verificación visual con sesión iniciada.** El filtro `Oportunidades
-   logísticas`, la columna `Estado AGR`, el panel de acción recomendada y los
-   indicadores no se recorrieron visualmente en esta sesión. Requiere una sesión
-   autenticada. Los criterios AC-006 a AC-010 están respaldados por la evidencia
-   de datos, no por inspección de pantalla.
-2. **Verificación con roles `AGENT` y `SUPERVISOR`.** El reparto de las 9
-   oportunidades entre 4 asesores permite comprobar el aislamiento por alcance.
-3. **Despliegue de la integración inerte y verificación productiva.**
-4. **Activación en producción**, diferida: registro de
+2. **Verificación con rol `SUPERVISOR`.** El alcance por equipos supervisados y
+   el pool permitido no se recorrieron; `AGENT` y `ADMIN` sí.
+3. **Aviso de venta fuera de la bandeja.** La ruta está implementada pero no se
+   reprodujo: exige que una venta cambie de estado mientras está seleccionada.
+4. **Despliegue de la integración inerte y verificación productiva.**
+5. **Activación en producción**, diferida: registro de
    `AGR_DELIVERY_ENCRYPTION_KEY` y carga de la primera credencial. Hasta
    entonces la especificación no puede pasar a `VERIFIED`, porque los criterios
    AC-001 a AC-005 no son observables en producción.
 
-## 7. Riesgos y deuda aceptada
+## 9. Riesgos y deuda aceptada
 
 - **Sin cobertura automatizada de las reglas nuevas.** `isAgrRecoveryOpportunity`
   y `getAgrAction` son funciones puras y deterministas, exactamente el tipo de
@@ -230,7 +263,7 @@ permanece en `READY_FOR_VALIDATION`:
   persistirá. Comprobado replicando `encryptionKey()` con `NODE_ENV=production`
   y sin la variable.
 
-## 8. Decisión
+## 10. Decisión
 
 El incremento está listo para validación funcional con sesión iniciada y, tras
 ella, para despliegue. La integración es aditiva, no altera el estado comercial y

@@ -53,7 +53,9 @@
 - [x] Recorrido visual con sesión `ADMIN`: filtro, indicadores, etiqueta,
       panel, alerta y `/admin/logistics`.
 - [x] Medición del ancho de tabla y decisión sobre la columna AGR.
-- [ ] Verificación con roles `AGENT` y `SUPERVISOR`.
+- [x] Verificación con rol `AGENT`: 4 de 9 oportunidades, sin columna de
+      asesor, sin filtro de equipo y sin poder cerrar.
+- [ ] Verificación con rol `SUPERVISOR`.
 
 ## Producción — primer tiempo (integración inerte)
 
