@@ -346,22 +346,31 @@ function getOperatorLabel(order: OrderInboxItem): string {
   return `${normalized.charAt(0).toLocaleUpperCase("es-PE")}${normalized.slice(1)}`;
 }
 
+/*
+ * Nomenclatura del equipo: operacion, operador cedente y modalidad, en ese
+ * orden. "Porta Claro Post", "Porta Bitel Pre", "Alta Nueva".
+ */
 function getOperationSummary(order: OrderInboxItem): string {
   if (order.commercialOperation === "NEW_LINE") {
-    return "Alta nueva";
+    return "Alta Nueva";
   }
 
-  // Vocabulario del equipo: porta post, porta pre, alta nueva.
-  const operation =
+  const modality =
     order.commercialOperation === "PORT_POSTPAID"
-      ? "Porta post"
+      ? "Post"
       : order.commercialOperation === "PORT_PREPAID"
-        ? "Porta pre"
-        : "Sin clasificar";
+        ? "Pre"
+        : null;
+
+  if (!modality) {
+    return "Sin clasificar";
+  }
 
   const carrier = getOperatorLabel(order);
 
-  return carrier === "Sin definir" ? operation : `${operation} · ${carrier}`;
+  return ["Porta", carrier === "Sin definir" ? null : carrier, modality]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function DetailItem({

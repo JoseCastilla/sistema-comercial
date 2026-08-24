@@ -266,6 +266,9 @@ responda tres preguntas en orden, y deje los datos de consulta fuera del camino:
    de la operación" y "Venta y entrega DITO" era interna nuestra —campos
    propios frente a campos DITO— y no significaba nada para el asesor.
 
-El vocabulario sigue al del equipo: `Porta post`, `Porta pre`, `Alta nueva`.
+La nomenclatura es la del equipo, en su orden: **operación, operador cedente y
+modalidad**. `Porta Claro Post`, `Porta Bitel Pre`, `Alta Nueva`. Las siete
+formas resultantes cubren las 177 órdenes locales sin dejar ninguna sin
+clasificar.
 
 Resultado: de siete bloques y tres desplegables, a cinco y dos.
