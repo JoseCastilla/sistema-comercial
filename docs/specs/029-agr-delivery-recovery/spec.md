@@ -33,9 +33,8 @@ segunda fuente de verdad del estado comercial.
 - Consulta dirigida por `order_id`, pedido por pedido, sobre las ventas propias
   del sistema que siguen siendo accionables.
 - Instantánea del último estado externo por orden, más historial de cambios.
-- Filtro `Oportunidades logísticas` en Pedidos, columna `Máximo` con el reporte
-  del operador, etiqueta de acción en la columna `Estado` y panel de acción
-  recomendada en la tarjeta de gestión.
+- Filtro `Oportunidades logísticas` en Pedidos, etiqueta de acción en la columna
+  `Estado` y panel de acción recomendada en la tarjeta de gestión.
 - Módulo `/admin/logistics` para administrar la credencial y sincronizar.
 
 ### Fuera de alcance
@@ -144,10 +143,11 @@ segunda fuente de verdad del estado comercial.
 - **BR-026:** la interfaz comunica que AGR es una fuente estática actualizada
   tres veces al día, indicando la hora de la última consulta en la cabecera del
   filtro. No se repite esa leyenda en cada pedido.
-- **BR-027:** el reporte crudo del operador y la decisión comercial se presentan
-  por separado. La columna `Máximo` muestra el estado tal como lo emite el
-  operador logístico; la acción comercial derivada aparece como etiqueta dentro
-  de la columna `Estado` y como panel en la tarjeta de gestión.
+- **BR-027:** la señal de Máximo no agrega columnas a la tabla. La fila muestra
+  la acción comercial derivada como etiqueta dentro de la columna `Estado`, y la
+  tarjeta de gestión encabeza el caso con el estado del operador junto a esa
+  acción. El estado crudo por sí solo no guía ninguna decisión, así que no
+  justifica ocupar ancho en una tabla que ya desborda.
 
 ## 5. Criterios de aceptación
 
@@ -168,8 +168,8 @@ segunda fuente de verdad del estado comercial.
 - **AC-007:** la tarjeta de gestión encabeza el caso con una sola línea
   `<estado de Máximo> · <acción recomendada>`, seguida del motivo del rechazo.
   No repite rótulos ni el nombre de la fuente en una etiqueta aparte.
-- **AC-008:** la fila muestra el estado de Máximo en su propia columna y la
-  acción comercial como etiqueta junto al estado comercial.
+- **AC-008:** la fila muestra la acción comercial como etiqueta junto al estado
+  comercial, sin columnas adicionales.
 - **AC-014:** una orden `RECHAZADO` o `CANCELADO` nunca propone reagendar.
 - **AC-015:** el mismo motivo `CLIENTE AUSENTE` produce `Reagendar` en
   `NO ENTREGADO` y `Reingresar` en `RECHAZADO`.

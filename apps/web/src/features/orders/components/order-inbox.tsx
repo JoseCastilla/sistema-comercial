@@ -335,31 +335,6 @@ function StatusBadge({
   );
 }
 
-function MaximoColumn({ order }: { order: OrderInboxItem }) {
-  if (!order.maximoStatus) {
-    return <span className="text-xs text-ui-soft">Sin consulta</span>;
-  }
-
-  const terminal = ["ENTREGADO", "CERRADO"].includes(
-    order.maximoStatus.status.toUpperCase(),
-  );
-
-  return (
-    <span
-      className={[
-        "inline-block max-w-full truncate rounded-lg border px-2 py-1 text-[0.68rem] font-semibold",
-        order.maximoStatus.isOpportunity
-          ? "border-ui-warning-border bg-ui-warning-soft text-ui-warning"
-          : terminal
-            ? "border-ui-success bg-ui-success-soft text-ui-success"
-            : "border-ui-border bg-ui-subtle text-ui-muted",
-      ].join(" ")}
-    >
-      {order.maximoStatus.status}
-    </span>
-  );
-}
-
 function SlaBadge({ order }: { order: OrderInboxItem }) {
   return (
     <span
@@ -965,7 +940,6 @@ function DesktopOrderList({
           {showAdvisorColumn ? <span>Asesor</span> : null}
           <span>SLA</span>
           <span>Estado</span>
-          <span>Máximo</span>
         </div>
 
         <div className="ui-order-grid__body">
@@ -1012,10 +986,6 @@ function DesktopOrderList({
 
                 <span className="ui-order-grid__status">
                   <StatusBadge order={order} showEscalationAction={false} />
-                </span>
-
-                <span className="ui-order-grid__maximo">
-                  <MaximoColumn order={order} />
                 </span>
               </div>
             );

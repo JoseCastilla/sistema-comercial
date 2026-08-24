@@ -1155,13 +1155,6 @@ export async function getOrderInbox(
 
       noStatusIncident,
       deliveryObservation: order.deliveryObservation,
-      maximoStatus: order.agrDeliverySnapshot
-        ? {
-            status: order.agrDeliverySnapshot.estadoPedido,
-            isOpportunity:
-              order.agrDeliverySnapshot.isRecoveryOpportunity === true,
-          }
-        : null,
       agrDelivery:
         order.agrDeliverySnapshot?.isRecoveryOpportunity === true
           ? (() => {
