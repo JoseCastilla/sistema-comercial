@@ -346,16 +346,19 @@ function getOperatorLabel(order: OrderInboxItem): string {
   return `${normalized.charAt(0).toLocaleUpperCase("es-PE")}${normalized.slice(1)}`;
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function DetailItem({
+  label,
+  value,
+  wide = false,
+}: {
+  label: string;
+  value: string;
+  wide?: boolean;
+}) {
   return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-ui-soft">
-        {label}
-      </dt>
-
-      <dd className="mt-1 text-sm font-medium text-ui-text">
-        {value || "No registrado"}
-      </dd>
+    <div className={wide ? "ui-order-detail-grid__item--wide" : undefined}>
+      <dt>{label}</dt>
+      <dd>{value || "No registrado"}</dd>
     </div>
   );
 }
@@ -377,7 +380,10 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
           <DetailItem label="Resultado" value={agr.result} />
         ) : null}
         {agr.nextAction ? (
-          <DetailItem label="Próxima acción del operador" value={agr.nextAction} />
+          <DetailItem
+            label="Próxima acción del operador"
+            value={agr.nextAction}
+          />
         ) : null}
         {agr.commitmentDate ? (
           <DetailItem label="Fecha de compromiso" value={agr.commitmentDate} />
@@ -606,7 +612,7 @@ function OrderDetails({
         </summary>
 
         <div className="ui-order-disclosure__content">
-          <dl className="grid gap-4">
+          <dl className="ui-order-detail-grid">
             <DetailItem label="Estado desde" value={order.statusAgeLabel} />
 
             {showAdvisor ? (
@@ -647,6 +653,7 @@ function OrderDetails({
             {!order.canUpdate && order.deliveryObservation ? (
               <DetailItem
                 label="Última observación"
+                wide
                 value={order.deliveryObservation}
               />
             ) : null}
@@ -664,7 +671,7 @@ function OrderDetails({
           </summary>
 
           <div className="ui-order-disclosure__content">
-            <dl className="grid gap-4">
+            <dl className="ui-order-detail-grid">
               {order.salesCode ? (
                 <DetailItem label="Código de venta" value={order.salesCode} />
               ) : null}
@@ -698,6 +705,7 @@ function OrderDetails({
               {order.deliveryAddress ? (
                 <DetailItem
                   label="Dirección de entrega"
+                  wide
                   value={order.deliveryAddress}
                 />
               ) : null}
@@ -705,12 +713,13 @@ function OrderDetails({
               {order.deliveryReference ? (
                 <DetailItem
                   label="Referencia"
+                  wide
                   value={order.deliveryReference}
                 />
               ) : null}
 
               {coordinates ? (
-                <DetailItem label="Coordenadas" value={coordinates} />
+                <DetailItem label="Coordenadas" value={coordinates} wide />
               ) : null}
             </dl>
           </div>
@@ -1036,10 +1045,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             label="Contactar y validar"
             value={data.logisticsSummary.contact}
           />
-          <Metric
-            label="Por reingresar"
-            value={data.logisticsSummary.review}
-          />
+          <Metric label="Por reingresar" value={data.logisticsSummary.review} />
         </MetricGroup>
       ) : (
         <MetricGroup>
@@ -1399,7 +1405,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                   </p>
                   <button
                     className="ui-order-notice__action"
-                    onClick={() => setSelectedOrderId(data.items[0]?.id ?? null)}
+                    onClick={() =>
+                      setSelectedOrderId(data.items[0]?.id ?? null)
+                    }
                     type="button"
                   >
                     Ver la primera venta de la lista
