@@ -2185,6 +2185,101 @@
     line-height: 1.5;
   }
 
+  /*
+   * Pildora de estado de la bandeja. La comparten estado comercial, subestado,
+   * SLA, incidencias y la accion logistica derivada. El tono expresa intencion,
+   * nunca un color concreto.
+   */
+  .ui-order-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    color: var(--ui-text-muted);
+    background: var(--ui-surface-subtle);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .ui-order-badge[data-tone="info"] {
+    color: var(--ui-info);
+    border-color: var(--ui-info-border);
+    background: var(--ui-info-soft);
+  }
+
+  .ui-order-badge[data-tone="warning"] {
+    color: var(--ui-warning);
+    border-color: var(--ui-warning-border);
+    background: var(--ui-warning-soft);
+  }
+
+  .ui-order-badge[data-tone="danger"] {
+    color: var(--ui-danger);
+    border-color: var(--ui-danger-border);
+    background: var(--ui-danger-soft);
+  }
+
+  /* El sistema de tokens no define --ui-success-border; ver verification.md. */
+  .ui-order-badge[data-tone="success"] {
+    color: var(--ui-success);
+    border-color: var(--ui-success);
+    background: var(--ui-success-soft);
+  }
+
+  /* Banda que anuncia una cola de trabajo y enlaza hacia ella. */
+  .ui-inbox-alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    font-size: 0.875rem;
+  }
+
+  .ui-inbox-alert[data-tone="warning"] {
+    color: var(--ui-warning);
+    border-color: var(--ui-warning-border);
+    background: var(--ui-warning-soft);
+  }
+
+  .ui-inbox-alert[data-tone="danger"] {
+    color: var(--ui-danger);
+    border-color: var(--ui-danger-border);
+    background: var(--ui-danger-soft);
+  }
+
+  .ui-inbox-alert__action {
+    flex-shrink: 0;
+    font-weight: 600;
+  }
+
+  /* Accion recomendada por la fuente logistica, dentro de la tarjeta. */
+  .ui-order-action-panel {
+    padding: 1rem;
+    border: 1px solid var(--ui-warning-border);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-warning-soft);
+  }
+
+  .ui-order-action-panel__headline {
+    color: var(--ui-text);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .ui-order-action-panel__source {
+    color: var(--ui-warning);
+  }
+
+  .ui-order-action-panel__details {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
   .ui-status-badge {
     display: inline-flex;
     align-items: center;

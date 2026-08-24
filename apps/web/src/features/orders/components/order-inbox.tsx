@@ -236,44 +236,46 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
   );
 }
 
-function getStatusClasses(status: string): string {
+type BadgeTone = "neutral" | "info" | "warning" | "danger" | "success";
+
+function getStatusTone(status: string): BadgeTone {
   switch (status) {
     case "OPEN":
-      return "border-ui-info-border bg-ui-info-soft text-ui-info";
+      return "info";
 
     case "SENT":
-      return "border-ui-warning-border bg-ui-warning-soft text-ui-warning";
+      return "warning";
 
     case "CLOSED":
-      return "border-ui-success bg-ui-success-soft text-ui-success";
+      return "success";
 
     case "CANCELLED":
-      return "border-ui-danger-border bg-ui-danger-soft text-ui-danger";
+      return "danger";
 
     default:
-      return "border-ui-border bg-ui-subtle text-ui-muted";
+      return "neutral";
   }
 }
 
-function getSlaClasses(state: OrderSlaState): string {
+function getSlaTone(state: OrderSlaState): BadgeTone {
   switch (state) {
     case "OVERDUE":
-      return "border-ui-danger-border bg-ui-danger-soft text-ui-danger";
+      return "danger";
 
     case "DUE_SOON":
-      return "border-ui-warning-border bg-ui-warning-soft text-ui-warning";
+      return "warning";
 
     case "ON_TIME":
-      return "border-ui-success bg-ui-success-soft text-ui-success";
+      return "success";
 
     case "PENDING_SHIFT":
-      return "border-ui-info-border bg-ui-info-soft text-ui-info";
+      return "info";
 
     case "CLOSED":
-      return "border-ui-border bg-ui-subtle text-ui-muted";
+      return "neutral";
 
     default:
-      return "border-ui-info-border bg-ui-info-soft text-ui-info";
+      return "info";
   }
 }
 
@@ -288,35 +290,28 @@ function StatusBadge({
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
-      <span
-        className={[
-          "rounded-full border px-2.5 py-1 text-xs font-medium",
-          getStatusClasses(order.status),
-        ].join(" ")}
-      >
+      <span className="ui-order-badge" data-tone={getStatusTone(order.status)}>
         {order.statusLabel}
       </span>
 
       {order.sentSubstatusLabel ? (
-        <span className="rounded-full border border-ui-border bg-ui-subtle px-2.5 py-1 text-xs font-medium text-ui-muted">
-          {order.sentSubstatusLabel}
-        </span>
+        <span className="ui-order-badge">{order.sentSubstatusLabel}</span>
       ) : null}
 
       {order.noStatusIncident ? (
-        <span className="rounded-full border border-ui-danger-border bg-ui-danger-soft px-2.5 py-1 text-xs font-medium text-ui-danger">
+        <span className="ui-order-badge" data-tone="danger">
           Incidencia +10 min
         </span>
       ) : null}
 
       {showAgr && order.agrDelivery ? (
-        <span className="rounded-full border border-ui-warning-border bg-ui-warning-soft px-2.5 py-1 text-xs font-medium text-ui-warning">
+        <span className="ui-order-badge" data-tone="warning">
           {order.agrDelivery.actionShortLabel}
         </span>
       ) : null}
 
       {order.pendingCancellationRequest ? (
-        <span className="rounded-full border border-ui-warning-border bg-ui-warning-soft px-2.5 py-1 text-xs font-medium text-ui-warning">
+        <span className="ui-order-badge" data-tone="warning">
           Cancelación pendiente
         </span>
       ) : null}
@@ -327,7 +322,7 @@ function StatusBadge({
       ) : null}
 
       {!showEscalationAction && order.incidentEscalation ? (
-        <span className="rounded-full border border-ui-danger-border bg-ui-danger-soft px-2.5 py-1 text-xs font-medium text-ui-danger">
+        <span className="ui-order-badge" data-tone="danger">
           Escalada
         </span>
       ) : null}
@@ -337,12 +332,7 @@ function StatusBadge({
 
 function SlaBadge({ order }: { order: OrderInboxItem }) {
   return (
-    <span
-      className={[
-        "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-        getSlaClasses(order.slaState),
-      ].join(" ")}
-    >
+    <span className="ui-order-badge" data-tone={getSlaTone(order.slaState)}>
       {order.slaLabel}
     </span>
   );
@@ -375,13 +365,13 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
   if (!agr) return null;
 
   return (
-    <section className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4">
-      <h4 className="text-base font-semibold text-ui-text">
-        <span className="text-ui-warning">{agr.status}</span>
+    <section className="ui-order-action-panel">
+      <h4 className="ui-order-action-panel__headline">
+        <span className="ui-order-action-panel__source">{agr.status}</span>
         {" · "}
         {agr.actionLabel}
       </h4>
-      <dl className="mt-4 grid gap-3">
+      <dl className="ui-order-action-panel__details">
         {agr.reason ? <DetailItem label="Motivo" value={agr.reason} /> : null}
         {agr.result ? (
           <DetailItem label="Resultado" value={agr.result} />
@@ -1087,7 +1077,8 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       {(data.role === "ADMIN" || data.role === "SUPERVISOR") &&
       data.totals.escalations > 0 ? (
         <a
-          className="flex items-center justify-between gap-4 rounded-xl border border-ui-danger-border bg-ui-danger-soft px-4 py-3 text-sm text-ui-danger"
+          className="ui-inbox-alert"
+          data-tone="danger"
           href={ordersHref(data, { filter: "ESCALATIONS" })}
           role="status"
         >
@@ -1099,13 +1090,14 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               Los asesores esperan respuesta del supervisor.
             </span>
           </span>
-          <span className="shrink-0 font-semibold">Ver bandeja →</span>
+          <span className="ui-inbox-alert__action">Ver bandeja →</span>
         </a>
       ) : null}
 
       {data.totals.logistics > 0 && data.filter !== "LOGISTICS" ? (
         <a
-          className="flex items-center justify-between gap-4 rounded-xl border border-ui-warning-border bg-ui-warning-soft px-4 py-3 text-sm text-ui-warning"
+          className="ui-inbox-alert"
+          data-tone="warning"
           href={ordersHref(data, {
             filter: "LOGISTICS",
             search: "",
@@ -1122,7 +1114,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               Hay pedidos para contactar, reagendar o revisar su cancelación.
             </span>
           </span>
-          <span className="shrink-0 font-semibold">Revisar →</span>
+          <span className="ui-inbox-alert__action">Revisar →</span>
         </a>
       ) : null}
 
