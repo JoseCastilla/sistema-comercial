@@ -51,10 +51,15 @@
 - [ ] Recorrido visual del filtro, la columna y el panel con sesión iniciada.
 - [ ] Verificación con roles `AGENT` y `SUPERVISOR`.
 
-## Pendientes de producción
+## Producción — primer tiempo (integración inerte)
+
+- [ ] Desplegar por `main` y confirmar salud de Web y API.
+- [ ] Confirmar que `/orders` opera sin cambios.
+- [ ] Confirmar que `/admin/logistics` muestra la credencial `Sin configurar`.
+
+## Producción — segundo tiempo (activación, diferido)
 
 - [ ] Registrar `AGR_DELIVERY_ENCRYPTION_KEY` en EasyPanel.
-- [ ] Desplegar por `main` y confirmar salud de Web y API.
 - [ ] Cargar credencial propia de producción y sincronizar por primera vez.
 - [ ] Verificación productiva y paso a `VERIFIED`.
 

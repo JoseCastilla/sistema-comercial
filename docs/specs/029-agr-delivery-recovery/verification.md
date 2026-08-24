@@ -139,7 +139,11 @@ permanece en `READY_FOR_VALIDATION`:
    de datos, no por inspección de pantalla.
 2. **Verificación con roles `AGENT` y `SUPERVISOR`.** El reparto de las 9
    oportunidades entre 4 asesores permite comprobar el aislamiento por alcance.
-3. **Despliegue y verificación productiva.**
+3. **Despliegue de la integración inerte y verificación productiva.**
+4. **Activación en producción**, diferida: registro de
+   `AGR_DELIVERY_ENCRYPTION_KEY` y carga de la primera credencial. Hasta
+   entonces la especificación no puede pasar a `VERIFIED`, porque los criterios
+   AC-001 a AC-005 no son observables en producción.
 
 ## 7. Riesgos y deuda aceptada
 
@@ -163,9 +167,19 @@ permanece en `READY_FOR_VALIDATION`:
   quien entre sea un asesor. Es intencional —maximiza la frescura sin un proceso
   programado— pero significa que el costo de la consulta externa lo paga la
   primera visita del tramo.
-- **Variable obligatoria en producción.** Sin `AGR_DELIVERY_ENCRYPTION_KEY` el
-  guardado de credencial falla con mensaje explícito. Debe registrarse en
-  EasyPanel **antes** de publicar.
+- **Activación diferida por decisión de producto.** `AGR_DELIVERY_ENCRYPTION_KEY`
+  no se registrará en EasyPanel durante este despliegue. La integración se
+  publica **inerte** y eso es seguro: sin fila en `agr_delivery_integrations`,
+  `runAgrDeliverySync` retorna en su primera comprobación y nunca alcanza el
+  descifrado; el cifrado solo se ejecuta al enviar el formulario de credencial.
+  La bandeja, las métricas y el rendimiento no se ven afectados.
+
+  La consecuencia a recordar es que **el módulo no podrá activarse** hasta que la
+  variable exista: al pegar una cookie válida en producción, la validación contra
+  AGR tendrá éxito pero el guardado fallará con
+  `AGR_DELIVERY_ENCRYPTION_KEY no está configurada.` y la credencial no se
+  persistirá. Comprobado replicando `encryptionKey()` con `NODE_ENV=production`
+  y sin la variable.
 
 ## 8. Decisión
 

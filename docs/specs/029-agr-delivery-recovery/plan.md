@@ -116,20 +116,38 @@ primera sincronización.
 
 ## 7. Despliegue
 
-1. Registrar `AGR_DELIVERY_ENCRYPTION_KEY` en EasyPanel para el servicio Web
-   **antes** de publicar. Sin esa variable, guardar o usar la credencial falla
-   en producción.
-2. Confirmar que la variable está declarada en `globalEnv` de `turbo.json` para
-   que la caché no invalide el build de forma silenciosa.
-3. Enviar a `main` y dejar que el despliegue automático ejecute
+El despliegue se hace en dos tiempos por decisión de producto: primero se publica
+la integración **inerte**, y la activación queda para después.
+
+### Primer tiempo — publicar inerte
+
+1. Enviar a `main` y dejar que el despliegue automático ejecute
    `prisma migrate deploy` antes de iniciar el proceso nuevo.
-4. Verificar salud de Web y API.
-5. Cargar en `/admin/logistics` de **producción** una credencial obtenida
+2. Verificar salud de Web y API.
+3. Confirmar que `/orders` opera sin cambios y que `/admin/logistics` muestra la
+   credencial como `Sin configurar`.
+
+Sin fila en `agr_delivery_integrations`, `runAgrDeliverySync` retorna en su
+primera comprobación y nunca alcanza el descifrado. El cifrado solo se ejecuta
+al enviar el formulario de credencial. Por lo tanto la ausencia de
+`AGR_DELIVERY_ENCRYPTION_KEY` no afecta la bandeja, las métricas ni el
+rendimiento: la integración queda dormida, con sus cuatro tablas vacías y el
+filtro en cero.
+
+### Segundo tiempo — activar
+
+4. Registrar `AGR_DELIVERY_ENCRYPTION_KEY` en EasyPanel para el servicio Web.
+   Hasta que exista, guardar una credencial en producción falla con el mensaje
+   `AGR_DELIVERY_ENCRYPTION_KEY no está configurada.` y el módulo permanece
+   inutilizable, aunque la cookie sea válida.
+5. Confirmar que la variable está declarada en `globalEnv` de `turbo.json` para
+   que la caché no invalide el build de forma silenciosa.
+6. Cargar en `/admin/logistics` de **producción** una credencial obtenida
    iniciando sesión en AGR. No se reutiliza la credencial local: está cifrada con
    otra llave y no es transferible.
-6. Ejecutar una sincronización manual y confirmar que las tablas se pueblan desde
+7. Ejecutar una sincronización manual y confirmar que las tablas se pueblan desde
    cero con las órdenes productivas.
-7. Revisar el filtro `Oportunidades logísticas` con un usuario no administrador.
+8. Revisar el filtro `Oportunidades logísticas` con un usuario no administrador.
 
 ## 8. Pruebas
 
