@@ -1187,10 +1187,6 @@ export async function getOrderInbox(
         order.deliveryWindowEnd,
       ),
 
-      deliveryDueAtLabel: order.deliveryDueAt
-        ? formatDateTime(order.deliveryDueAt)
-        : null,
-
       slaState: sla.state,
       slaLabel: sla.label,
 

@@ -115,7 +115,6 @@ export interface OrderInboxItem {
   registeredAtLabel: string;
   approvedAtLabel: string;
   deliveryWindowLabel: string;
-  deliveryDueAtLabel: string | null;
 
   slaState: OrderSlaState;
   slaLabel: string;

@@ -626,11 +626,6 @@ function OrderDetails({
               <DetailItem label="Ventana" value={order.deliveryWindowLabel} />
             )}
 
-            <DetailItem
-              label="Hora límite"
-              value={order.deliveryDueAtLabel ?? "Sin plazo calculado"}
-            />
-
             {showAdvisor ? (
               <DetailItem
                 label="Asignación"
