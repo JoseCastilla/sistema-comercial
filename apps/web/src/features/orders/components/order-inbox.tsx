@@ -598,9 +598,9 @@ function OrderDetails({
             <dd>{order.deliveryMethodLabel}</dd>
           </div>
 
-          <div>
-            <dt>Distrito</dt>
-            <dd>{order.district || order.province}</dd>
+          <div className="ui-order-identity__item--wide">
+            <dt>Ubicación</dt>
+            <dd>{order.locationLabel}</dd>
           </div>
         </dl>
       </div>
@@ -664,7 +664,7 @@ function OrderDetails({
         <summary>
           <span>Datos de la venta</span>
           <span className="ui-order-disclosure__hint">
-            {order.locationLabel}
+            Seguimiento, dirección y facturación
           </span>
         </summary>
 
@@ -675,11 +675,6 @@ function OrderDetails({
             {showAdvisor ? (
               <DetailItem label="Asesor" value={order.agentName} />
             ) : null}
-
-            <DetailItem
-              label="Tipo de entrega"
-              value={order.deliveryMethodLabel}
-            />
 
             {/*
              * Sin turno asignado, la ventana repite literalmente lo que ya

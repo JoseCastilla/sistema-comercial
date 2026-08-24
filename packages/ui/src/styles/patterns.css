@@ -2080,6 +2080,10 @@
     border-top: 1px solid var(--ui-border);
   }
 
+  .ui-order-identity__item--wide {
+    grid-column: 1 / -1;
+  }
+
   .ui-order-identity dt {
     color: var(--ui-text-soft);
     font-size: 0.68rem;
