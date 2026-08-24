@@ -35,6 +35,10 @@ const filterOptions: Array<{
     label: "Escaladas",
   },
   {
+    value: "LOGISTICS",
+    label: "Oportunidades logísticas",
+  },
+  {
     value: "INCIDENTS",
     label: "Incidencias",
   },
@@ -115,18 +119,22 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
   const [rangeFrom, setRangeFrom] = useState(data.from ?? "");
   const [rangeTo, setRangeTo] = useState(data.to ?? "");
 
-  if (data.filter === "ESCALATIONS") {
+  if (data.filter === "ESCALATIONS" || data.filter === "LOGISTICS") {
+    const logistics = data.filter === "LOGISTICS";
     return (
       <Surface className="ui-period-bar" raised>
         <div>
           <p className="ui-period-bar__eyebrow">Bandeja operativa</p>
           <p className="ui-period-bar__label">
-            Escalaciones de todas las fechas
+            {logistics
+              ? "Oportunidades logísticas desde el 10/08"
+              : "Escalaciones de todas las fechas"}
           </p>
         </div>
         <p className="max-w-xl text-sm text-ui-muted">
-          Las incidencias permanecen aquí hasta que un supervisor las resuelva,
-          aunque la venta pertenezca a un período anterior.
+          {logistics
+            ? `Solo aparecen pedidos con una acción pendiente según Máximo. Última consulta: ${data.logisticsSummary.lastFetchedAtLabel ?? "aún no disponible"}.`
+            : "Las incidencias permanecen aquí hasta que un supervisor las resuelva, aunque la venta pertenezca a un período anterior."}
         </p>
       </Surface>
     );
@@ -228,79 +236,95 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
   );
 }
 
-function getStatusClasses(status: string): string {
+type BadgeTone = "neutral" | "info" | "warning" | "danger" | "success";
+
+function getStatusTone(status: string): BadgeTone {
   switch (status) {
     case "OPEN":
-      return "border-ui-info-border bg-ui-info-soft text-ui-info";
+      return "info";
 
     case "SENT":
-      return "border-ui-warning-border bg-ui-warning-soft text-ui-warning";
+      return "warning";
 
     case "CLOSED":
-      return "border-ui-success bg-ui-success-soft text-ui-success";
+      return "success";
 
     case "CANCELLED":
-      return "border-ui-danger-border bg-ui-danger-soft text-ui-danger";
+      return "danger";
 
     default:
-      return "border-ui-border bg-ui-subtle text-ui-muted";
+      return "neutral";
   }
 }
 
-function getSlaClasses(state: OrderSlaState): string {
+function getSlaTone(state: OrderSlaState): BadgeTone {
   switch (state) {
     case "OVERDUE":
-      return "border-ui-danger-border bg-ui-danger-soft text-ui-danger";
+      return "danger";
 
     case "DUE_SOON":
-      return "border-ui-warning-border bg-ui-warning-soft text-ui-warning";
+      return "warning";
 
     case "ON_TIME":
-      return "border-ui-success bg-ui-success-soft text-ui-success";
+      return "success";
 
     case "PENDING_SHIFT":
-      return "border-ui-info-border bg-ui-info-soft text-ui-info";
+      return "info";
 
     case "CLOSED":
-      return "border-ui-border bg-ui-subtle text-ui-muted";
+      return "neutral";
 
     default:
-      return "border-ui-info-border bg-ui-info-soft text-ui-info";
+      return "info";
   }
 }
 
-function StatusBadge({ order }: { order: OrderInboxItem }) {
+function StatusBadge({
+  order,
+  showAgr = true,
+  showEscalationAction = true,
+}: {
+  order: OrderInboxItem;
+  showAgr?: boolean;
+  showEscalationAction?: boolean;
+}) {
   return (
     <div className="flex flex-wrap gap-1.5">
-      <span
-        className={[
-          "rounded-full border px-2.5 py-1 text-xs font-medium",
-          getStatusClasses(order.status),
-        ].join(" ")}
-      >
+      <span className="ui-order-badge" data-tone={getStatusTone(order.status)}>
         {order.statusLabel}
       </span>
 
       {order.sentSubstatusLabel ? (
-        <span className="rounded-full border border-ui-border bg-ui-subtle px-2.5 py-1 text-xs font-medium text-ui-muted">
-          {order.sentSubstatusLabel}
-        </span>
+        <span className="ui-order-badge">{order.sentSubstatusLabel}</span>
       ) : null}
 
       {order.noStatusIncident ? (
-        <span className="rounded-full border border-ui-danger-border bg-ui-danger-soft px-2.5 py-1 text-xs font-medium text-ui-danger">
+        <span className="ui-order-badge" data-tone="danger">
           Incidencia +10 min
         </span>
       ) : null}
 
+      {showAgr && order.agrDelivery ? (
+        <span className="ui-order-badge" data-tone="warning">
+          {order.agrDelivery.actionShortLabel}
+        </span>
+      ) : null}
+
       {order.pendingCancellationRequest ? (
-        <span className="rounded-full border border-ui-warning-border bg-ui-warning-soft px-2.5 py-1 text-xs font-medium text-ui-warning">
+        <span className="ui-order-badge" data-tone="warning">
           Cancelación pendiente
         </span>
       ) : null}
 
-      {order.incidentEscalation || order.canEscalate ? (
+      {showEscalationAction &&
+      (order.incidentEscalation || order.canEscalate) ? (
         <OrderEscalationPanel order={order} />
+      ) : null}
+
+      {!showEscalationAction && order.incidentEscalation ? (
+        <span className="ui-order-badge" data-tone="danger">
+          Escalada
+        </span>
       ) : null}
     </div>
   );
@@ -308,12 +332,7 @@ function StatusBadge({ order }: { order: OrderInboxItem }) {
 
 function SlaBadge({ order }: { order: OrderInboxItem }) {
   return (
-    <span
-      className={[
-        "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-        getSlaClasses(order.slaState),
-      ].join(" ")}
-    >
+    <span className="ui-order-badge" data-tone={getSlaTone(order.slaState)}>
       {order.slaLabel}
     </span>
   );
@@ -327,17 +346,77 @@ function getOperatorLabel(order: OrderInboxItem): string {
   return `${normalized.charAt(0).toLocaleUpperCase("es-PE")}${normalized.slice(1)}`;
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-ui-soft">
-        {label}
-      </dt>
+/*
+ * Nomenclatura del equipo: operacion, operador cedente y modalidad, en ese
+ * orden. "Porta Claro Post", "Porta Bitel Pre", "Alta Nueva".
+ */
+function getOperationSummary(order: OrderInboxItem): string {
+  if (order.commercialOperation === "NEW_LINE") {
+    return "Alta Nueva";
+  }
 
-      <dd className="mt-1 text-sm font-medium text-ui-text">
-        {value || "No registrado"}
-      </dd>
+  const modality =
+    order.commercialOperation === "PORT_POSTPAID"
+      ? "Post"
+      : order.commercialOperation === "PORT_PREPAID"
+        ? "Pre"
+        : null;
+
+  if (!modality) {
+    return "Sin clasificar";
+  }
+
+  const carrier = getOperatorLabel(order);
+
+  return ["Porta", carrier === "Sin definir" ? null : carrier, modality]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function DetailItem({
+  label,
+  value,
+  wide = false,
+}: {
+  label: string;
+  value: string;
+  wide?: boolean;
+}) {
+  return (
+    <div className={wide ? "ui-order-detail-grid__item--wide" : undefined}>
+      <dt>{label}</dt>
+      <dd>{value || "No registrado"}</dd>
     </div>
+  );
+}
+
+function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
+  const agr = order.agrDelivery;
+  if (!agr) return null;
+
+  return (
+    <section className="ui-order-notice">
+      <h4 className="ui-order-notice__headline">
+        <span className="ui-order-notice__source">{agr.status}</span>
+        {" · "}
+        {agr.actionLabel}
+      </h4>
+      <dl className="ui-order-notice__details">
+        {agr.reason ? <DetailItem label="Motivo" value={agr.reason} /> : null}
+        {agr.result ? (
+          <DetailItem label="Resultado" value={agr.result} />
+        ) : null}
+        {agr.nextAction ? (
+          <DetailItem
+            label="Próxima acción del operador"
+            value={agr.nextAction}
+          />
+        ) : null}
+        {agr.commitmentDate ? (
+          <DetailItem label="Fecha de compromiso" value={agr.commitmentDate} />
+        ) : null}
+      </dl>
+    </section>
   );
 }
 
@@ -439,17 +518,12 @@ function OrderDetails({
     order.deliveryObservation ?? "none",
   ].join(":");
 
-  const hasDitoDetails = Boolean(
-    order.salesCode ||
-    order.billingCycleDay ||
-    order.paymentDueDay ||
-    order.deliveryContactPhone !== order.serviceNumber ||
-    order.deliveryTimeRange ||
-    order.deliveryAddress ||
-    order.deliveryReference ||
-    order.deliveryLatitude ||
-    order.deliveryLongitude,
-  );
+  /*
+   * SPEC-003 BR-002 los mantiene separados como dato, pero DITO viene enviando
+   * el mismo numero en ambos. Solo se muestra cuando aporta algo distinto de
+   * lo que ya declara la cabecera.
+   */
+  const showContactPhone = order.deliveryContactPhone !== order.serviceNumber;
 
   const coordinates =
     order.deliveryLatitude && order.deliveryLongitude
@@ -474,7 +548,11 @@ function OrderDetails({
         </div>
 
         <div className="mt-3">
-          <StatusBadge order={order} />
+          <StatusBadge
+            order={order}
+            showAgr={false}
+            showEscalationAction={false}
+          />
         </div>
 
         {order.parseStatus !== "PARSED" ? (
@@ -499,6 +577,32 @@ function OrderDetails({
             value={order.serviceNumber}
           />
         </p>
+
+        <dl className="ui-order-identity">
+          <div>
+            <dt>Operación</dt>
+            <dd>{getOperationSummary(order)}</dd>
+          </div>
+
+          <div>
+            <dt>Cargo fijo</dt>
+            <dd>
+              {order.fixedCharge
+                ? `S/ ${Number(order.fixedCharge).toFixed(2)}`
+                : "No registrado"}
+            </dd>
+          </div>
+
+          <div>
+            <dt>Entrega</dt>
+            <dd>{order.deliveryMethodLabel}</dd>
+          </div>
+
+          <div>
+            <dt>Distrito</dt>
+            <dd>{order.district || order.province}</dd>
+          </div>
+        </dl>
       </div>
 
       {order.canResolveAssignment || order.canClaimAssignment ? (
@@ -511,6 +615,10 @@ function OrderDetails({
           request={order.pendingCancellationRequest}
         />
       ) : null}
+
+      {order.incidentEscalation ? <OrderEscalationPanel order={order} /> : null}
+
+      <AgrDeliveryPanel order={order} />
 
       {order.canUpdate || showAdvisor ? (
         <section
@@ -532,6 +640,17 @@ function OrderDetails({
             initialStatus={order.status}
             orderId={order.id}
           />
+
+          {/*
+           * Escalar es gestionar la venta, no un aviso paralelo: va dentro de
+           * esta zona como accion secundaria. Una incidencia ya escalada si es
+           * situacion y se muestra arriba, junto al diagnostico.
+           */}
+          {!order.incidentEscalation && order.canEscalate ? (
+            <div className="ui-order-secondary-action">
+              <OrderEscalationPanel order={order} />
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -543,35 +662,32 @@ function OrderDetails({
         open={operationDetailsOpen}
       >
         <summary>
-          <span>Detalle de la operación</span>
+          <span>Datos de la venta</span>
           <span className="ui-order-disclosure__hint">
-            {order.operation} · {order.locationLabel}
+            {order.locationLabel}
           </span>
         </summary>
 
         <div className="ui-order-disclosure__content">
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <DetailItem label="Operación" value={order.operation} />
-
+          <dl className="ui-order-detail-grid">
             <DetailItem label="Estado desde" value={order.statusAgeLabel} />
 
             {showAdvisor ? (
               <DetailItem label="Asesor" value={order.agentName} />
             ) : null}
 
-            <DetailItem label="Ubicación" value={order.locationLabel} />
-
             <DetailItem
               label="Tipo de entrega"
               value={order.deliveryMethodLabel}
             />
 
-            <DetailItem label="Ventana" value={order.deliveryWindowLabel} />
-
-            <DetailItem
-              label="Hora límite"
-              value={order.deliveryDueAtLabel ?? "Sin plazo calculado"}
-            />
+            {/*
+             * Sin turno asignado, la ventana repite literalmente lo que ya
+             * declara la etiqueta de SLA en la cabecera de la tarjeta.
+             */}
+            {order.slaState === "PENDING_SHIFT" ? null : (
+              <DetailItem label="Ventana" value={order.deliveryWindowLabel} />
+            )}
 
             {showAdvisor ? (
               <DetailItem
@@ -592,79 +708,67 @@ function OrderDetails({
             ) : null}
 
             {!order.canUpdate && order.deliveryObservation ? (
-              <div className="sm:col-span-2">
-                <DetailItem
-                  label="Última observación"
-                  value={order.deliveryObservation}
-                />
-              </div>
+              <DetailItem
+                label="Última observación"
+                wide
+                value={order.deliveryObservation}
+              />
             ) : null}
-          </dl>
-        </div>
-      </details>
 
-      {hasDitoDetails ? (
-        <details className="ui-order-disclosure ui-order-disclosure--info">
-          <summary>
-            <span>Venta y entrega DITO</span>
-            <span className="ui-order-disclosure__hint">
-              Código, dirección y facturación
-            </span>
-          </summary>
+            {order.salesCode ? (
+              <DetailItem label="Código de venta" value={order.salesCode} />
+            ) : null}
 
-          <div className="ui-order-disclosure__content">
-            <dl className="grid gap-4 sm:grid-cols-2">
-              {order.salesCode ? (
-                <DetailItem label="Código de venta" value={order.salesCode} />
-              ) : null}
+            {order.deliveryTimeRange ? (
+              <DetailItem
+                label="Horario de entrega"
+                value={order.deliveryTimeRange}
+              />
+            ) : null}
 
-              {order.deliveryTimeRange ? (
-                <DetailItem
-                  label="Horario de entrega"
-                  value={order.deliveryTimeRange}
-                />
-              ) : null}
+            {order.billingCycleDay ? (
+              <DetailItem
+                label="Ciclo de facturación"
+                value={`Día ${order.billingCycleDay} de cada mes`}
+              />
+            ) : null}
 
-              {order.billingCycleDay ? (
-                <DetailItem
-                  label="Ciclo de facturación"
-                  value={`Día ${order.billingCycleDay} de cada mes`}
-                />
-              ) : null}
+            {order.paymentDueDay ? (
+              <DetailItem
+                label="Último día de pago"
+                value={`Día ${order.paymentDueDay} de cada mes`}
+              />
+            ) : null}
 
-              {order.paymentDueDay ? (
-                <DetailItem
-                  label="Último día de pago"
-                  value={`Día ${order.paymentDueDay} de cada mes`}
-                />
-              ) : null}
-
+            {showContactPhone ? (
               <DetailItem
                 label="Teléfono de contacto"
                 value={order.deliveryContactPhone}
               />
+            ) : null}
 
-              {order.deliveryAddress ? (
-                <DetailItem
-                  label="Dirección de entrega"
-                  value={order.deliveryAddress}
-                />
-              ) : null}
+            {order.deliveryAddress ? (
+              <DetailItem
+                label="Dirección de entrega"
+                wide
+                value={order.deliveryAddress}
+              />
+            ) : null}
 
-              {order.deliveryReference ? (
-                <DetailItem
-                  label="Referencia"
-                  value={order.deliveryReference}
-                />
-              ) : null}
+            {order.deliveryReference ? (
+              <DetailItem
+                label="Referencia"
+                wide
+                value={order.deliveryReference}
+              />
+            ) : null}
 
-              {coordinates ? (
-                <DetailItem label="Coordenadas" value={coordinates} />
-              ) : null}
-            </dl>
-          </div>
-        </details>
-      ) : null}
+            {coordinates ? (
+              <DetailItem label="Coordenadas" value={coordinates} wide />
+            ) : null}
+          </dl>
+        </div>
+      </details>
 
       {order.canCorrect ? <OrderCorrectionForm order={order} /> : null}
     </div>
@@ -727,7 +831,7 @@ function MobileOrderCard({
         </div>
 
         <div className="mt-3">
-          <StatusBadge order={order} />
+          <StatusBadge order={order} showEscalationAction={false} />
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-3">
@@ -874,7 +978,6 @@ function DesktopOrderList({
           {showAdvisorColumn ? <span>Asesor</span> : null}
           <span>SLA</span>
           <span>Estado</span>
-          <span aria-hidden="true" />
         </div>
 
         <div className="ui-order-grid__body">
@@ -920,27 +1023,8 @@ function DesktopOrderList({
                 </span>
 
                 <span className="ui-order-grid__status">
-                  <StatusBadge order={order} />
+                  <StatusBadge order={order} showEscalationAction={false} />
                 </span>
-
-                <button
-                  aria-label={`Ver y gestionar orden ${order.orderCode}`}
-                  aria-pressed={selected}
-                  className="ui-order-grid__select"
-                  onClick={() => onSelect(order.id)}
-                  title="Ver y gestionar venta"
-                  type="button"
-                >
-                  <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
-                    <path
-                      d="m8 6 4 4-4 4"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="1.6"
-                    />
-                  </svg>
-                </button>
               </div>
             );
           })}
@@ -958,16 +1042,26 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
   const selectedOrder =
     data.items.find((order) => {
       return order.id === selectedOrderId;
-    }) ??
-    data.items[0] ??
-    null;
+    }) ?? null;
+
+  /*
+   * El canal en tiempo real refresca los datos del servidor sin desmontar este
+   * componente, asi que la venta seleccionada puede dejar de pertenecer al
+   * filtro mientras se la esta gestionando. Antes se sustituia en silencio por
+   * la primera de la lista, con el riesgo de actuar sobre la venta equivocada.
+   */
+  const selectionLeftView = selectedOrderId !== null && selectedOrder === null;
   const recoveryQueueCount =
     data.filter === "RECOVERY" ? data.filteredTotal : data.totals.recovery;
 
   return (
     <div className="ui-page-stack">
       <PageHeader
-        description="Revisa incidencias, recupera pedidos y actualiza el avance informado por Integratel."
+        description={
+          data.filter === "LOGISTICS"
+            ? "Decide sobre las ventas que el operador logístico no pudo entregar."
+            : "Revisa incidencias, recupera pedidos y actualiza el avance comercial."
+        }
         eyebrow="Operación comercial"
         meta={
           <span className="flex flex-wrap items-center justify-end gap-2">
@@ -980,37 +1074,62 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
       <PeriodNavigation data={data} />
 
-      <MetricGroup>
-        <Metric
-          label={`Ventas · ${data.periodLabel}`}
-          value={data.totals.visible}
-        />
-        <Metric
-          label="Incidencias"
-          tone={data.totals.incidents > 0 ? "danger" : "neutral"}
-          value={data.totals.incidents}
-        />
-        <Metric
-          label="Escaladas al supervisor"
-          tone={data.totals.escalations > 0 ? "danger" : "neutral"}
-          value={data.totals.escalations}
-        />
-        <Metric
-          label={`No entregados · ${data.periodLabel}`}
-          value={data.totals.notDelivered}
-        />
-        <Metric label="Entregados" value={data.totals.delivered} />
-        <Metric
-          label="Fuera de plazo"
-          tone={data.totals.overdue > 0 ? "danger" : "neutral"}
-          value={data.totals.overdue}
-        />
-      </MetricGroup>
+      {data.filter === "LOGISTICS" ? (
+        <MetricGroup>
+          <Metric
+            label="Casos por revisar"
+            tone={data.logisticsSummary.total > 0 ? "warning" : "neutral"}
+            value={data.logisticsSummary.total}
+          />
+          <Metric
+            label="Visita por coordinar"
+            value={data.logisticsSummary.reschedule}
+          />
+          <Metric
+            label="Contactar y validar"
+            value={data.logisticsSummary.contact}
+          />
+          <Metric label="Por reingresar" value={data.logisticsSummary.review} />
+        </MetricGroup>
+      ) : (
+        <MetricGroup>
+          <Metric
+            label={`Ventas · ${data.periodLabel}`}
+            value={data.totals.visible}
+          />
+          <Metric
+            label="Incidencias"
+            tone={data.totals.incidents > 0 ? "danger" : "neutral"}
+            value={data.totals.incidents}
+          />
+          <Metric
+            label="Escaladas al supervisor"
+            tone={data.totals.escalations > 0 ? "danger" : "neutral"}
+            value={data.totals.escalations}
+          />
+          <Metric
+            label="Oportunidades logísticas"
+            tone={data.totals.logistics > 0 ? "warning" : "neutral"}
+            value={data.totals.logistics}
+          />
+          <Metric
+            label={`No entregados internos · ${data.periodLabel}`}
+            value={data.totals.notDelivered}
+          />
+          <Metric label="Entregados internos" value={data.totals.delivered} />
+          <Metric
+            label="Fuera de plazo"
+            tone={data.totals.overdue > 0 ? "danger" : "neutral"}
+            value={data.totals.overdue}
+          />
+        </MetricGroup>
+      )}
 
       {(data.role === "ADMIN" || data.role === "SUPERVISOR") &&
       data.totals.escalations > 0 ? (
         <a
-          className="flex items-center justify-between gap-4 rounded-xl border border-ui-danger-border bg-ui-danger-soft px-4 py-3 text-sm text-ui-danger"
+          className="ui-inbox-alert"
+          data-tone="danger"
           href={ordersHref(data, { filter: "ESCALATIONS" })}
           role="status"
         >
@@ -1022,11 +1141,36 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               Los asesores esperan respuesta del supervisor.
             </span>
           </span>
-          <span className="shrink-0 font-semibold">Ver bandeja →</span>
+          <span className="ui-inbox-alert__action">Ver bandeja →</span>
         </a>
       ) : null}
 
-      {recoveryQueueCount > 0 || data.filter === "RECOVERY" ? (
+      {data.totals.logistics > 0 && data.filter !== "LOGISTICS" ? (
+        <a
+          className="ui-inbox-alert"
+          data-tone="warning"
+          href={ordersHref(data, {
+            filter: "LOGISTICS",
+            search: "",
+          })}
+          role="status"
+        >
+          <span>
+            <strong>
+              {data.totals.logistics === 1
+                ? "1 caso requiere revisión logística"
+                : `${data.totals.logistics} casos requieren revisión logística`}
+            </strong>
+            <span className="ml-2">
+              Hay pedidos para contactar, reagendar o revisar su cancelación.
+            </span>
+          </span>
+          <span className="ui-inbox-alert__action">Revisar →</span>
+        </a>
+      ) : null}
+
+      {data.filter !== "LOGISTICS" &&
+      (recoveryQueueCount > 0 || data.filter === "RECOVERY") ? (
         <div className="ui-recovery-queue" role="status">
           <div className="ui-recovery-queue__count" aria-hidden="true">
             {recoveryQueueCount}
@@ -1061,7 +1205,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         </div>
       ) : null}
 
-      {data.pendingBeforeMonth > 0 && data.period !== "HISTORY" ? (
+      {data.filter !== "LOGISTICS" &&
+      data.pendingBeforeMonth > 0 &&
+      data.period !== "HISTORY" ? (
         <div className="ui-prior-pending">
           <div>
             <p className="ui-prior-pending__title">
@@ -1220,34 +1366,38 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           description={
             data.filter === "RECOVERY"
               ? "No tienes pedidos no entregados o cancelados pendientes de recuperación este mes."
-              : data.filter === "ESCALATIONS"
-                ? "No hay incidencias escaladas pendientes de atención."
-                : data.totals.visible > 0
-                  ? "No hay ventas que coincidan con este estado o búsqueda."
-                  : data.teamFilter === "UNASSIGNED"
-                    ? "No hay ventas pendientes de asignación en este período."
-                    : data.period === "TODAY"
-                      ? "No se registraron ventas hoy."
-                      : data.period === "YESTERDAY"
-                        ? "No se registraron ventas ayer."
-                        : data.period === "WEEK"
-                          ? "No se registraron ventas esta semana."
-                          : data.period === "MONTH"
-                            ? "No se registraron ventas en el mes actual."
-                            : data.period === "RANGE"
-                              ? "No se registraron ventas en el rango seleccionado."
-                              : "No se encontraron ventas en el histórico."
+              : data.filter === "LOGISTICS"
+                ? "Máximo no reporta pedidos con una acción comercial pendiente."
+                : data.filter === "ESCALATIONS"
+                  ? "No hay incidencias escaladas pendientes de atención."
+                  : data.totals.visible > 0
+                    ? "No hay ventas que coincidan con este estado o búsqueda."
+                    : data.teamFilter === "UNASSIGNED"
+                      ? "No hay ventas pendientes de asignación en este período."
+                      : data.period === "TODAY"
+                        ? "No se registraron ventas hoy."
+                        : data.period === "YESTERDAY"
+                          ? "No se registraron ventas ayer."
+                          : data.period === "WEEK"
+                            ? "No se registraron ventas esta semana."
+                            : data.period === "MONTH"
+                              ? "No se registraron ventas en el mes actual."
+                              : data.period === "RANGE"
+                                ? "No se registraron ventas en el rango seleccionado."
+                                : "No se encontraron ventas en el histórico."
           }
           title={
             data.filter === "RECOVERY"
               ? "Recuperación al día"
-              : data.filter === "ESCALATIONS"
-                ? "Escalaciones al día"
-                : data.totals.visible > 0
-                  ? "No hay coincidencias"
-                  : data.teamFilter === "UNASSIGNED"
-                    ? "Todo está asignado"
-                    : "Aún no hay ventas en este período"
+              : data.filter === "LOGISTICS"
+                ? "Gestión logística al día"
+                : data.filter === "ESCALATIONS"
+                  ? "Escalaciones al día"
+                  : data.totals.visible > 0
+                    ? "No hay coincidencias"
+                    : data.teamFilter === "UNASSIGNED"
+                      ? "Todo está asignado"
+                      : "Aún no hay ventas en este período"
           }
         />
       ) : (
@@ -1287,6 +1437,26 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                   order={selectedOrder}
                   showAdvisor={data.showAdvisorColumn}
                 />
+              ) : selectionLeftView ? (
+                <div className="ui-order-notice" role="status">
+                  <h4 className="ui-order-notice__headline">
+                    Esta venta salió de la bandeja
+                  </h4>
+                  <p className="ui-order-notice__body">
+                    Cambió de estado o de responsable mientras la revisabas, así
+                    que ya no pertenece a este filtro. No se reemplazó por otra
+                    para que no gestiones la equivocada.
+                  </p>
+                  <button
+                    className="ui-order-notice__action"
+                    onClick={() =>
+                      setSelectedOrderId(data.items[0]?.id ?? null)
+                    }
+                    type="button"
+                  >
+                    Ver la primera venta de la lista
+                  </button>
+                </div>
               ) : null}
             </aside>
           </section>

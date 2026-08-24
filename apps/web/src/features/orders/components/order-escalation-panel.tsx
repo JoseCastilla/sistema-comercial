@@ -81,9 +81,13 @@ export function OrderEscalationPanel({ order }: { order: OrderInboxItem }) {
     : "";
 
   return (
+    /*
+     * Una incidencia viva es situacion y se destaca; la sola posibilidad de
+     * escalar es una accion mas y no compite con el diagnostico.
+     */
     <section
       aria-label="Incidencia escalada al supervisor"
-      className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4"
+      className={escalation ? "ui-order-notice" : undefined}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>

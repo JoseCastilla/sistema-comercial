@@ -7,8 +7,9 @@ import { ThemeControl } from "@repo/ui/theme-control";
 
 import { EscalationNotification } from "./escalation-notification";
 
-type ActiveSection = "performance" | "orders" | "imports" | "people" | "teams";
-type IconName = "home" | "orders" | "sales" | "people" | "teams";
+type ActiveSection =
+  "performance" | "orders" | "imports" | "logistics" | "people" | "teams";
+type IconName = "home" | "orders" | "sales" | "logistics" | "people" | "teams";
 
 const roleLabels: Record<string, string> = {
   ADMIN: "Administrador",
@@ -34,6 +35,13 @@ function NavigationIcon({ name }: { name: IconName }) {
     sales: (
       <>
         <path d="M4 16V9m6 7V4m6 12v-6" />
+      </>
+    ),
+    logistics: (
+      <>
+        <path d="M3 6h9v8H3zM12 9h3l2 2v3h-5z" />
+        <circle cx="6" cy="15.5" r="1.5" />
+        <circle cx="14.5" cy="15.5" r="1.5" />
       </>
     ),
     people: (
@@ -227,6 +235,13 @@ export function CommercialAppShell({
                 label="Ventas"
               />
               <NavigationItem
+                active={activeSection === "logistics"}
+                description="Estados Máximo y recuperación"
+                href="/admin/logistics"
+                icon="logistics"
+                label="Logística"
+              />
+              <NavigationItem
                 active={activeSection === "people"}
                 description="Usuarios, roles y vínculos DITO"
                 href="/admin/users"
@@ -278,7 +293,7 @@ export function CommercialAppShell({
       <nav
         aria-label="Navegación móvil"
         className="app-shell__mobile-nav"
-        data-items={isAdmin ? "5" : "2"}
+        data-items={isAdmin ? "6" : "2"}
       >
         <MobileNavigationItem
           active={activeSection === "performance"}
@@ -299,6 +314,12 @@ export function CommercialAppShell({
               href="/admin/dito-imports"
               icon="sales"
               label="Ventas"
+            />
+            <MobileNavigationItem
+              active={activeSection === "logistics"}
+              href="/admin/logistics"
+              icon="logistics"
+              label="Logística"
             />
             <MobileNavigationItem
               active={activeSection === "people"}

@@ -62,7 +62,7 @@ export function OrderAssignmentResolution({
   }
 
   return (
-    <section className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4">
+    <section className="ui-order-notice">
       <h4 className="text-sm font-semibold text-ui-warning">
         Asignación pendiente
       </h4>

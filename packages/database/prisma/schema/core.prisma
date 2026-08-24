@@ -82,6 +82,10 @@ model Organization {
   ditoAgentIdentities          DitoAgentIdentity[]
   ditoImportBatches            DitoImportBatch[]
   ditoImportRows               DitoImportRow[]
+  agrDeliveryIntegrations      AgrDeliveryIntegration[]
+  agrDeliverySyncRuns          AgrDeliverySyncRun[]
+  agrDeliveryOrderSnapshots    AgrDeliveryOrderSnapshot[]
+  agrDeliveryOrderHistory      AgrDeliveryOrderHistory[]
 
   @@map("organizations")
 }
@@ -140,6 +144,7 @@ model User {
   ditoImportBatchesConfirmed           DitoImportBatch[]            @relation("DitoImportBatchConfirmedBy")
   ditoImportRowsAsManualAgent          DitoImportRow[]              @relation("DitoImportRowManualAgent")
   ditoImportRowAssignmentsPerformed    DitoImportRow[]              @relation("DitoImportRowManualAssignedBy")
+  agrDeliveryCredentialsUpdated        AgrDeliveryIntegration[]     @relation("AgrDeliveryCredentialUpdatedBy")
 
   @@map("users")
 }

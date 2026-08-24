@@ -34,6 +34,8 @@ yarn-debug.log*
 yarn-error.log*
 .web-dev.*.log
 .web-realtime.*.log
+.web-local.*.log
+.api-local.*.log
 
 # Misc
 .DS_Store

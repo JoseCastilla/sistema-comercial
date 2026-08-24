@@ -1443,6 +1443,14 @@
     background: var(--ui-danger-soft);
   }
 
+  .ui-metric[data-tone="warning"] {
+    background: var(--ui-warning-soft);
+  }
+
+  .ui-metric[data-tone="success"] {
+    background: var(--ui-success-soft);
+  }
+
   .ui-filter-bar {
     display: flex;
     flex-direction: column;
@@ -1826,9 +1834,11 @@
     color: var(--ui-text);
   }
 
-  .ui-segmented__item[aria-pressed="true"] {
+  .ui-segmented__item[aria-pressed="true"],
+  .ui-segmented__item[aria-current="page"] {
     color: var(--ui-on-strong);
     background: var(--ui-surface-strong);
+    box-shadow: var(--ui-shadow-soft);
   }
 
   .ui-search-input {
@@ -1906,18 +1916,18 @@
     display: grid;
     grid-template-columns:
       7.75rem minmax(11rem, 1.45fr) 5.75rem 6.5rem 5.75rem
-      7.25rem minmax(10.5rem, 1.05fr) 2.25rem;
+      7.25rem minmax(10.5rem, 1.05fr);
     align-items: center;
     gap: 0.6rem;
-    min-width: 60rem;
+    min-width: 57.15rem;
   }
 
   .ui-order-grid__header[data-show-advisor="true"],
   .ui-order-grid__row[data-show-advisor="true"] {
     grid-template-columns:
       7.75rem minmax(11rem, 1.45fr) 5.75rem 6.5rem 5.75rem
-      minmax(7rem, 0.8fr) 7.25rem minmax(10.5rem, 1.05fr) 2.25rem;
-    min-width: 67.5rem;
+      minmax(7rem, 0.8fr) 7.25rem minmax(10.5rem, 1.05fr);
+    min-width: 64.65rem;
   }
 
   .ui-order-grid__header {
@@ -2027,38 +2037,10 @@
     font-weight: 650;
   }
 
-  .ui-order-grid__row > button:not(.ui-order-grid__select),
+  .ui-order-grid__row > button,
   .ui-order-grid__row > span,
   .ui-order-grid__row > span > button {
     font-size: inherit;
-  }
-
-  .ui-order-grid__select {
-    display: grid;
-    width: 2rem;
-    height: 2rem;
-    place-items: center;
-    border-radius: var(--ui-radius-md);
-    color: var(--ui-text-muted);
-    transition:
-      color var(--ui-duration-fast),
-      background-color var(--ui-duration-fast);
-  }
-
-  .ui-order-grid__select:hover,
-  .ui-order-grid__select[aria-pressed="true"] {
-    color: var(--ui-accent);
-    background: var(--ui-accent-soft);
-  }
-
-  .ui-order-grid__select:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
-    outline-offset: 2px;
-  }
-
-  .ui-order-grid__select svg {
-    width: 1rem;
-    height: 1rem;
   }
 
   .ui-order-workspace {
@@ -2067,16 +2049,58 @@
     gap: 1rem;
   }
 
+  /*
+   * Superficie de gestion persistente. Su altura es la del marco, no la del
+   * contenido: las secciones de una venta son condicionales y dimensionarla
+   * por contenido la haria cambiar de tamano cada vez que cambia la seleccion.
+   */
   .ui-order-detail-card {
     position: sticky;
     top: 1.25rem;
-    max-height: calc(100vh - 2.5rem);
+    height: calc(100vh - 2.5rem);
     padding: 1.15rem;
     overflow-y: auto;
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-lg);
     background: var(--ui-surface);
     box-shadow: var(--ui-shadow-raised);
+  }
+
+  /*
+   * Ficha comercial de la venta: que se vendio, por cuanto y como se entrega.
+   * Va en la zona de identidad porque responde "que venta es", no es dato de
+   * consulta.
+   */
+  .ui-order-identity {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--ui-border);
+  }
+
+  .ui-order-identity dt {
+    color: var(--ui-text-soft);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .ui-order-identity dd {
+    margin-top: 0.15rem;
+    color: var(--ui-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  /* Accion disponible dentro de la zona de gestion, sin peso de aviso. */
+  .ui-order-secondary-action {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--ui-border);
   }
 
   .ui-order-management {
@@ -2201,6 +2225,165 @@
     margin-top: 0.45rem;
     font-size: 0.875rem;
     line-height: 1.5;
+  }
+
+  /*
+   * Pildora de estado de la bandeja. La comparten estado comercial, subestado,
+   * SLA, incidencias y la accion logistica derivada. El tono expresa intencion,
+   * nunca un color concreto.
+   */
+  .ui-order-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    color: var(--ui-text-muted);
+    background: var(--ui-surface-subtle);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .ui-order-badge[data-tone="info"] {
+    color: var(--ui-info);
+    border-color: var(--ui-info-border);
+    background: var(--ui-info-soft);
+  }
+
+  .ui-order-badge[data-tone="warning"] {
+    color: var(--ui-warning);
+    border-color: var(--ui-warning-border);
+    background: var(--ui-warning-soft);
+  }
+
+  .ui-order-badge[data-tone="danger"] {
+    color: var(--ui-danger);
+    border-color: var(--ui-danger-border);
+    background: var(--ui-danger-soft);
+  }
+
+  /* El sistema de tokens no define --ui-success-border; ver verification.md. */
+  .ui-order-badge[data-tone="success"] {
+    color: var(--ui-success);
+    border-color: var(--ui-success);
+    background: var(--ui-success-soft);
+  }
+
+  /* Banda que anuncia una cola de trabajo y enlaza hacia ella. */
+  .ui-inbox-alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    font-size: 0.875rem;
+  }
+
+  .ui-inbox-alert[data-tone="warning"] {
+    color: var(--ui-warning);
+    border-color: var(--ui-warning-border);
+    background: var(--ui-warning-soft);
+  }
+
+  .ui-inbox-alert[data-tone="danger"] {
+    color: var(--ui-danger);
+    border-color: var(--ui-danger-border);
+    background: var(--ui-danger-soft);
+  }
+
+  .ui-inbox-alert__action {
+    flex-shrink: 0;
+    font-weight: 600;
+  }
+
+  /*
+   * Aviso destacado dentro de la tarjeta de gestion: asignacion pendiente,
+   * cancelacion solicitada, correccion de datos, incidencia escalada y accion
+   * recomendada por la fuente logistica.
+   */
+  .ui-order-notice {
+    padding: 1rem;
+    border: 1px solid var(--ui-warning-border);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-warning-soft);
+  }
+
+  .ui-order-notice__headline {
+    color: var(--ui-text);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .ui-order-notice__source {
+    color: var(--ui-warning);
+  }
+
+  /*
+   * Ficha de datos de la tarjeta de gestion. Dos columnas fijas, sin consultas
+   * de viewport: la tarjeta mide 400px en cualquier pantalla y solo existe en
+   * escritorio, asi que un breakpoint de pantalla aqui decidiria sobre un
+   * contenedor de ancho constante. Los valores largos ocupan la fila entera.
+   */
+  .ui-order-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .ui-order-detail-grid__item--wide {
+    grid-column: 1 / -1;
+  }
+
+  .ui-order-detail-grid dt {
+    color: var(--ui-text-soft);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .ui-order-detail-grid dd {
+    margin-top: 0.25rem;
+    color: var(--ui-text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  .ui-order-notice__body {
+    margin-top: 0.5rem;
+    color: var(--ui-text-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  .ui-order-notice__action {
+    margin-top: 0.85rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--ui-warning-border);
+    border-radius: var(--ui-radius-sm);
+    color: var(--ui-warning);
+    background: var(--ui-surface);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .ui-order-notice__action:hover {
+    border-color: var(--ui-warning);
+  }
+
+  .ui-order-notice__action:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--ui-warning) 45%, transparent);
+    outline-offset: 2px;
+  }
+
+  .ui-order-notice__details {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
   }
 
   .ui-status-badge {
