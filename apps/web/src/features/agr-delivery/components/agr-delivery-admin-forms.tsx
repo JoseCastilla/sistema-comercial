@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { AGR_SYNC_WINDOWS } from "../agr-delivery.types";
 import {
   runAgrDeliverySyncAction,
   saveAgrDeliveryCredentialAction,
@@ -67,6 +68,26 @@ export function AgrDeliverySyncForm() {
   );
   return (
     <form action={action} className="space-y-3">
+      <label className="block text-sm font-medium text-ui-text">
+        Alcance
+        <select
+          className="mt-1 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2 text-sm"
+          defaultValue="LAST_24H"
+          name="window"
+        >
+          {Object.entries(AGR_SYNC_WINDOWS).map(([value, option]) => (
+            <option key={value} value={value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <p className="text-xs text-ui-muted">
+        Acota por fecha de registro de la venta. El corte del 10/08 se respeta
+        siempre.
+      </p>
+
       <Feedback state={state} />
       <button
         className="rounded-lg border border-ui-border bg-ui-surface px-4 py-2 text-sm font-semibold text-ui-text disabled:opacity-60"

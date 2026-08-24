@@ -10,6 +10,10 @@ import {
 
 import { database } from "@/server/database";
 
+import { AGR_SYNC_WINDOWS } from "../agr-delivery.types";
+
+import type { AgrSyncWindow } from "../agr-delivery.types";
+
 import type { Prisma } from "@repo/database";
 
 const endpoint = "https://agr-delivery.afreddyp.workers.dev/api/records";
@@ -220,6 +224,7 @@ export async function runAgrDeliverySync(input: {
   organizationId: string;
   trigger: "SCHEDULED" | "MANUAL";
   scheduleKey?: string;
+  window?: AgrSyncWindow;
 }) {
   const integration = await database.agrDeliveryIntegration.findUnique({
     where: { organizationId: input.organizationId },
@@ -239,10 +244,26 @@ export async function runAgrDeliverySync(input: {
     .catch(() => null);
   if (!run) return null;
 
+  /*
+   * La ventana nunca amplia el alcance: el corte del 10/08 sigue siendo el
+   * limite inferior absoluto.
+   */
+  const windowHours = AGR_SYNC_WINDOWS[input.window ?? "ALL"].hours;
+
+  const registeredSince =
+    windowHours === null
+      ? eligibleSince
+      : new Date(
+          Math.max(
+            eligibleSince.getTime(),
+            Date.now() - windowHours * 60 * 60 * 1000,
+          ),
+        );
+
   const candidates = await database.ditoOrder.findMany({
     where: {
       organizationId: input.organizationId,
-      registeredAt: { gte: eligibleSince },
+      registeredAt: { gte: registeredSince },
       status: { not: "CLOSED" },
       deliveryStatus: { not: "DELIVERED" },
       AND: [

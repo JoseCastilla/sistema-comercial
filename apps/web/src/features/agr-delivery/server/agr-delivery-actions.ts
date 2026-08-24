@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
+import { AGR_SYNC_WINDOWS, parseAgrSyncWindow } from "../agr-delivery.types";
 import {
   encryptAgrSessionCookie,
   fetchAgrDeliveryRecord,
@@ -95,12 +96,15 @@ export async function saveAgrDeliveryCredentialAction(
 
 export async function runAgrDeliverySyncAction(
   previousState: AgrDeliveryActionState,
+  formData: FormData,
 ): Promise<AgrDeliveryActionState> {
   void previousState;
   const { membership } = await requireAdminAccess();
+  const window = parseAgrSyncWindow(formData.get("window"));
   const result = await runAgrDeliverySync({
     organizationId: membership.organization.id,
     trigger: "MANUAL",
+    window,
   });
   revalidatePath("/admin/logistics");
   revalidatePath("/orders");
@@ -115,8 +119,17 @@ export async function runAgrDeliverySyncAction(
       message: result.error ?? "No se pudo completar la sincronización.",
     };
   }
+  const alcance = AGR_SYNC_WINDOWS[window].label.toLocaleLowerCase("es-PE");
+
+  if (result.candidates === 0) {
+    return {
+      type: "success",
+      message: `No hay ventas por consultar en el alcance "${alcance}".`,
+    };
+  }
+
   return {
     type: "success",
-    message: `Sincronización completa: ${result.consulted} consultadas, ${result.opportunities} oportunidades.`,
+    message: `${alcance}: ${result.consulted} consultadas, ${result.opportunities} oportunidades.`,
   };
 }

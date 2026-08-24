@@ -75,6 +75,10 @@ segunda fuente de verdad del estado comercial.
   de rechazo; una vez obtenido, deja de consultarse.
 - **BR-011:** cada corrida consulta como máximo 250 candidatos, en lotes de 10
   solicitudes concurrentes, priorizando las ventas más antiguas.
+- **BR-011b:** una sincronización manual admite acotar por fecha de registro de
+  la venta: últimas 24 horas, 3 días, 7 días o todas las elegibles. La ventana
+  nunca amplía el alcance; el corte del 10/08/2026 sigue siendo el límite
+  inferior absoluto. Las corridas programadas usan siempre el alcance completo.
 - **BR-012:** el primer acceso a Pedidos después de las 08:15, 13:15 y 18:15
   (hora de Lima) inicia una sincronización en segundo plano. La llave de horario
   `AAAA-MM-DD-HHMM` es única por organización e impide ejecuciones duplicadas.
