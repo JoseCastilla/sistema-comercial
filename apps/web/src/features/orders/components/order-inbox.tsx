@@ -401,19 +401,11 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
 
   return (
     <section className="rounded-xl border border-ui-warning-border bg-ui-warning-soft p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-ui-warning">
-            Acción recomendada
-          </p>
-          <h4 className="mt-1 text-base font-semibold text-ui-text">
-            {agr.actionLabel}
-          </h4>
-        </div>
-        <span className="rounded-full border border-ui-warning-border bg-ui-surface px-2.5 py-1 text-xs font-semibold text-ui-warning">
-          Máximo · {agr.status}
-        </span>
-      </div>
+      <h4 className="text-base font-semibold text-ui-text">
+        <span className="text-ui-warning">{agr.status}</span>
+        {" · "}
+        {agr.actionLabel}
+      </h4>
       <dl className="mt-4 grid gap-3">
         {agr.reason ? <DetailItem label="Motivo" value={agr.reason} /> : null}
         {agr.result ? (

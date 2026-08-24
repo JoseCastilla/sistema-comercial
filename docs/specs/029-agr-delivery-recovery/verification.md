@@ -137,7 +137,7 @@ Realizado el 23/08/2026 sobre `localhost:3100`, tema oscuro, viewport 1439 px.
 | AC-001 | Credencial `Activa`, pista `••••ASPo`, "actualizada por Jose Castilla el 23/08/26, 5:35 p. m." |
 | AC-003 | Última corrida: `Completada`, "10 de 10" consultadas, 9 oportunidades |
 | AC-006 | Cabecera "Oportunidades logísticas desde el 10/08" y "Última consulta: 23/08/2026, 18:15" |
-| AC-007 | Panel con "Reingresar la venta: el cliente excedió las visitas permitidas", `Máximo · RECHAZADO` y su motivo |
+| AC-007 | Panel encabezado por "RECHAZADO · Reingresar la venta: el cliente excedió las visitas permitidas", más el motivo |
 | AC-008 | Columna `Máximo` con `RECHAZADO` y etiqueta `Reingresar` junto a `Abierto` |
 | AC-009 | 9 casos = 0 visita por coordinar + 4 contactar y validar + 5 por reingresar |
 | AC-010 | Alerta "9 casos requieren revisión logística → Revisar" |

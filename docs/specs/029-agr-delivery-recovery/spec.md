@@ -165,8 +165,9 @@ segunda fuente de verdad del estado comercial.
   consultar y conserva la información previa visible.
 - **AC-006:** el filtro `Oportunidades logísticas` lista únicamente pedidos con
   acción pendiente y muestra la hora de la última consulta.
-- **AC-007:** cada pedido del filtro presenta en la tarjeta de gestión la acción
-  recomendada, el estado externo y el motivo del rechazo.
+- **AC-007:** la tarjeta de gestión encabeza el caso con una sola línea
+  `<estado de Máximo> · <acción recomendada>`, seguida del motivo del rechazo.
+  No repite rótulos ni el nombre de la fuente en una etiqueta aparte.
 - **AC-008:** la fila muestra el estado de Máximo en su propia columna y la
   acción comercial como etiqueta junto al estado comercial.
 - **AC-014:** una orden `RECHAZADO` o `CANCELADO` nunca propone reagendar.
