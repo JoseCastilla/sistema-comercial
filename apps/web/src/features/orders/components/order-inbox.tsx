@@ -133,7 +133,7 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
         </div>
         <p className="max-w-xl text-sm text-ui-muted">
           {logistics
-            ? `Solo aparecen pedidos con una acción pendiente según AGR. Última consulta: ${data.logisticsSummary.lastFetchedAtLabel ?? "aún no disponible"}.`
+            ? `Solo aparecen pedidos con una acción pendiente según Máximo. Última consulta: ${data.logisticsSummary.lastFetchedAtLabel ?? "aún no disponible"}.`
             : "Las incidencias permanecen aquí hasta que un supervisor las resuelva, aunque la venta pertenezca a un período anterior."}
         </p>
       </Surface>
@@ -335,6 +335,31 @@ function StatusBadge({
   );
 }
 
+function MaximoColumn({ order }: { order: OrderInboxItem }) {
+  if (!order.maximoStatus) {
+    return <span className="text-xs text-ui-soft">Sin consulta</span>;
+  }
+
+  const terminal = ["ENTREGADO", "CERRADO"].includes(
+    order.maximoStatus.status.toUpperCase(),
+  );
+
+  return (
+    <span
+      className={[
+        "inline-block max-w-full truncate rounded-lg border px-2 py-1 text-[0.68rem] font-semibold",
+        order.maximoStatus.isOpportunity
+          ? "border-ui-warning-border bg-ui-warning-soft text-ui-warning"
+          : terminal
+            ? "border-ui-success bg-ui-success-soft text-ui-success"
+            : "border-ui-border bg-ui-subtle text-ui-muted",
+      ].join(" ")}
+    >
+      {order.maximoStatus.status}
+    </span>
+  );
+}
+
 function SlaBadge({ order }: { order: OrderInboxItem }) {
   return (
     <span
@@ -386,7 +411,7 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
           </h4>
         </div>
         <span className="rounded-full border border-ui-warning-border bg-ui-surface px-2.5 py-1 text-xs font-semibold text-ui-warning">
-          AGR · {agr.status}
+          Máximo · {agr.status}
         </span>
       </div>
       <dl className="mt-4 grid gap-3">
@@ -395,7 +420,7 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
           <DetailItem label="Resultado" value={agr.result} />
         ) : null}
         {agr.nextAction ? (
-          <DetailItem label="Próxima acción AGR" value={agr.nextAction} />
+          <DetailItem label="Próxima acción del operador" value={agr.nextAction} />
         ) : null}
         {agr.commitmentDate ? (
           <DetailItem label="Fecha de compromiso" value={agr.commitmentDate} />
@@ -948,6 +973,7 @@ function DesktopOrderList({
           {showAdvisorColumn ? <span>Asesor</span> : null}
           <span>SLA</span>
           <span>Estado</span>
+          <span>Máximo</span>
         </div>
 
         <div className="ui-order-grid__body">
@@ -995,6 +1021,10 @@ function DesktopOrderList({
                 <span className="ui-order-grid__status">
                   <StatusBadge order={order} showEscalationAction={false} />
                 </span>
+
+                <span className="ui-order-grid__maximo">
+                  <MaximoColumn order={order} />
+                </span>
               </div>
             );
           })}
@@ -1023,7 +1053,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       <PageHeader
         description={
           data.filter === "LOGISTICS"
-            ? "Contacta, reagenda o revisa cancelaciones usando el último estado informado por AGR."
+            ? "Decide sobre las ventas que el operador logístico no pudo entregar."
             : "Revisa incidencias, recupera pedidos y actualiza el avance comercial."
         }
         eyebrow="Operación comercial"
@@ -1075,7 +1105,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             value={data.totals.escalations}
           />
           <Metric
-            label="Oportunidades AGR"
+            label="Oportunidades logísticas"
             tone={data.totals.logistics > 0 ? "warning" : "neutral"}
             value={data.totals.logistics}
           />
@@ -1332,7 +1362,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             data.filter === "RECOVERY"
               ? "No tienes pedidos no entregados o cancelados pendientes de recuperación este mes."
               : data.filter === "LOGISTICS"
-                ? "AGR no reporta pedidos con oportunidades de reagendamiento o motivos pendientes."
+                ? "Máximo no reporta pedidos con una acción comercial pendiente."
                 : data.filter === "ESCALATIONS"
                   ? "No hay incidencias escaladas pendientes de atención."
                   : data.totals.visible > 0

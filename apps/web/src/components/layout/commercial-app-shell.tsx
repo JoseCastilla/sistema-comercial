@@ -236,7 +236,7 @@ export function CommercialAppShell({
               />
               <NavigationItem
                 active={activeSection === "logistics"}
-                description="Estados AGR y recuperación"
+                description="Estados Máximo y recuperación"
                 href="/admin/logistics"
                 icon="logistics"
                 label="Logística"

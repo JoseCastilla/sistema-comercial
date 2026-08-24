@@ -95,6 +95,14 @@ export interface OrderInboxItem {
   noStatusIncident: boolean;
 
   deliveryObservation: string | null;
+  /**
+   * Reporte crudo del operador logístico, tal como lo emite Máximo. Es el
+   * hecho logístico, no la decisión comercial.
+   */
+  maximoStatus: {
+    status: string;
+    isOpportunity: boolean;
+  } | null;
   agrDelivery: {
     status: string;
     actionKind:

@@ -1916,18 +1916,19 @@
     display: grid;
     grid-template-columns:
       7.75rem minmax(11rem, 1.45fr) 5.75rem 6.5rem 5.75rem
-      7.25rem minmax(10.5rem, 1.05fr);
+      7.25rem minmax(10.5rem, 1.05fr) minmax(6.75rem, 0.7fr);
     align-items: center;
     gap: 0.6rem;
-    min-width: 57.15rem;
+    min-width: 64.5rem;
   }
 
   .ui-order-grid__header[data-show-advisor="true"],
   .ui-order-grid__row[data-show-advisor="true"] {
     grid-template-columns:
       7.75rem minmax(11rem, 1.45fr) 5.75rem 6.5rem 5.75rem
-      minmax(7rem, 0.8fr) 7.25rem minmax(10.5rem, 1.05fr);
-    min-width: 64.65rem;
+      minmax(7rem, 0.8fr) 7.25rem minmax(10.5rem, 1.05fr)
+      minmax(6.75rem, 0.7fr);
+    min-width: 72rem;
   }
 
   .ui-order-grid__header {
@@ -2024,6 +2025,10 @@
   }
 
   .ui-order-grid__sla {
+    min-width: 0;
+  }
+
+  .ui-order-grid__maximo {
     min-width: 0;
   }
 

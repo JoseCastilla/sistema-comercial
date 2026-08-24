@@ -77,7 +77,7 @@ export default async function LogisticsAdminPage() {
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Integraciones"
-          title="Estado logístico AGR"
+          title="Estado logístico Máximo"
           description="Consulta únicamente ventas recuperables desde el 10/08. Las entregadas o cerradas dejan de recorrerse."
         />
         <MetricGroup>
@@ -115,7 +115,7 @@ export default async function LogisticsAdminPage() {
             description={
               integration
                 ? `Actual: ••••${integration.credentialHint} · actualizada por ${integration.credentialUpdatedBy.name} el ${format(integration.credentialUpdatedAt)}`
-                : "Configura la cookie obtenida al iniciar sesión en AGR."
+                : "Configura la cookie obtenida al iniciar sesión en la plataforma logística."
             }
           >
             <AgrDeliveryCredentialForm />
