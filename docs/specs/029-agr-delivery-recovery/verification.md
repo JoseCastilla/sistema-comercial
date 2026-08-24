@@ -56,14 +56,15 @@ reglas sobre el `rawPayload` original y comparándolas con lo persistido.
 - **BR-017 / AC-012:** 41 instantáneas evaluadas, **0 desajustes** entre el valor
   guardado de `isRecoveryOpportunity` y su recálculo.
 - **Estados externos observados:** `ENTREGADO` 32, `RECHAZADO` 8, `CANCELADO` 1.
-- **BR-018 · distribución de acciones sobre las 9 oportunidades:**
+- **BR-019 · distribución de acciones sobre las 9 oportunidades**, con la regla
+  corregida. Las 9 están en estado terminal, así que ninguna admite reagendar:
 
-  | Acción | Casos |
-  |---|---|
-  | `RESCHEDULE` | 5 |
-  | `NOT_RECOVERABLE` | 2 |
-  | `REVIEW_CANCELLATION` | 1 |
-  | `CONTACT` | 1 |
+  | Acción | Casos | Origen |
+  |---|---|---|
+  | `REENTER` | 5 | `RECHAZADO · CLIENTE AUSENTE EXCEDE 3 VISITAS` |
+  | `CONTACT` | 3 | `RECHAZADO · CLIENTE NO DESEA` en sus tres variantes |
+  | `VERIFY_TENURE` | 1 | `CANCELADO · TELEFONO NO ESTUVO EN SERVICIO` |
+  | `RESCHEDULE` | 0 | ninguna orden viva en `NO ENTREGADO` |
 
 - **BR-007:** 0 instantáneas de ventas anteriores al 10/08/2026.
 - **BR-008:** 9 oportunidades accionables, 0 con orden cerrada o entregada
@@ -136,10 +137,11 @@ Realizado el 23/08/2026 sobre `localhost:3100`, tema oscuro, viewport 1439 px.
 | AC-001 | Credencial `Activa`, pista `••••ASPo`, "actualizada por Jose Castilla el 23/08/26, 5:35 p. m." |
 | AC-003 | Última corrida: `Completada`, "10 de 10" consultadas, 9 oportunidades |
 | AC-006 | Cabecera "Oportunidades logísticas desde el 10/08" y "Última consulta: 23/08/2026, 18:15" |
-| AC-007 | Panel con acción recomendada, `AGR · RECHAZADO` y motivo "CLIENTE AUSENTE EXCEDE 3 VISITAS" |
-| AC-008 | Etiqueta `AGR · Reagendar` junto a `Abierto` en la columna `Estado` |
-| AC-009 | 9 casos = 5 reagendar + 1 contactar + 3 revisar o cerrar |
+| AC-007 | Panel con "Reingresar la venta: el cliente excedió las visitas permitidas", `Máximo · RECHAZADO` y su motivo |
+| AC-008 | Columna `Máximo` con `RECHAZADO` y etiqueta `Reingresar` junto a `Abierto` |
+| AC-009 | 9 casos = 0 visita por coordinar + 4 contactar y validar + 5 por reingresar |
 | AC-010 | Alerta "9 casos requieren revisión logística → Revisar" |
+| AC-014 | Ninguna orden terminal propone reagendar: el indicador queda en 0 |
 
 Los conteos de la interfaz coinciden exactamente con los recalculados en la
 sección 2. El reparto por asesor observado en el filtro —Alexandra H. 4,
