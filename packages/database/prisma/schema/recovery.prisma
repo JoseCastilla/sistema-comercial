@@ -1,0 +1,437 @@
+enum RecoveryCaseSource {
+  NATIONAL_BASE
+  INTERNAL_ORDER_STATE
+  MANUAL
+}
+
+enum RecoveryCaseStatus {
+  TRIAGE
+  WAITING
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  SCHEDULED
+  RECOVERED
+  LOST
+  DISCARDED
+}
+
+enum RecoveryLossReason {
+  YA_MIGRO_OTRA_AGENCIA
+  RECHAZO_DEFINITIVO
+  INUBICABLE
+  DEUDA
+  DATOS_INVALIDOS
+  NO_PORTABLE
+  OTRO
+}
+
+enum RecoveryDiscardReason {
+  YA_ACTIVO
+  FUERA_DE_FILTRO
+  DUPLICADO
+  ADMIN
+}
+
+enum RecoveryBaseBatchStatus {
+  PREVIEW
+  CONFIRMING
+  CONFIRMED
+  FAILED
+}
+
+enum RecoveryBaseRecordClassification {
+  ELIGIBLE
+  EXCLUDED
+  INVALID
+}
+
+enum RecoveryBaseRecordApplication {
+  PENDING
+  APPLIED
+  SKIPPED
+  FAILED
+}
+
+enum RecoveryCaseEventType {
+  CASE_CREATED
+  SIGHTING_RECORDED
+  TRIAGE_WAITING
+  TRIAGE_RELEASED
+  MANUAL_INCLUSION
+  CASE_DISCARDED
+  CASE_REOPENED
+  PORTABILITY_CROSSED
+  PORTABILITY_WAITING
+  PORTABILITY_SCHEDULED
+  PORTABILITY_DISCARD_REVERTED
+  ASSIGNED_TO_TEAM
+}
+
+enum RecoveryPortabilityReportKind {
+  FULL
+  QUICK
+}
+
+enum RecoveryPortabilityBatchStatus {
+  APPLIED
+  FAILED
+}
+
+enum RecoveryPortabilityState {
+  PORTADO
+  NO_PORTADO
+  PROGRAMADO
+  DESCONOCIDO
+}
+
+enum RecoveryPhoneKind {
+  SERVICE
+  CONTACT
+}
+
+model RecoveryEligibilityConfig {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  modalities     String[] @default([])
+  planNames      String[] @default([]) @map("plan_names")
+  equipmentNames String[] @default([]) @map("equipment_names")
+  carrierNames   String[] @default([]) @map("carrier_names")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy    User         @relation("RecoveryConfigCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  batches RecoveryBaseBatch[]
+
+  @@index([organizationId, isActive, createdAt], map: "recovery_eligibility_configs_org_active_created_idx")
+  @@map("recovery_eligibility_configs")
+}
+
+model RecoveryBaseBatch {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  fileName   String @map("file_name") @db.VarChar(255)
+  fileSha256 String @map("file_sha256") @db.Char(64)
+  fileSize   Int    @map("file_size")
+
+  parserVersion String                  @map("parser_version") @db.VarChar(30)
+  status        RecoveryBaseBatchStatus @default(PREVIEW)
+
+  sourceRows    Int @map("source_rows")
+  eligibleRows  Int @map("eligible_rows")
+  excludedRows  Int @map("excluded_rows")
+  invalidRows   Int @map("invalid_rows")
+  newCases      Int @default(0) @map("new_cases")
+  sightingCases Int @default(0) @map("sighting_cases")
+
+  registeredFrom DateTime? @map("registered_from") @db.Timestamptz(3)
+  registeredTo   DateTime? @map("registered_to") @db.Timestamptz(3)
+
+  eligibilityConfigId String @map("eligibility_config_id") @db.Uuid
+
+  uploadedByUserId  String    @map("uploaded_by_user_id") @db.Uuid
+  uploadedAt        DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(3)
+  confirmedByUserId String?   @map("confirmed_by_user_id") @db.Uuid
+  confirmedAt       DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  failureReason     String?   @map("failure_reason") @db.Text
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  eligibilityConfig RecoveryEligibilityConfig @relation(fields: [eligibilityConfigId], references: [id], onDelete: Restrict)
+  uploadedBy        User                      @relation("RecoveryBatchUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  confirmedBy       User?                     @relation("RecoveryBatchConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+
+  records   RecoveryBaseRecord[]
+  sightings RecoveryCaseSighting[]
+
+  @@unique([organizationId, fileSha256], map: "recovery_base_batches_org_file_hash_key")
+  @@index([organizationId, status, uploadedAt], map: "recovery_base_batches_org_status_uploaded_idx")
+  @@index([uploadedByUserId, uploadedAt], map: "recovery_base_batches_uploader_uploaded_idx")
+  @@map("recovery_base_batches")
+}
+
+model RecoveryBaseRecord {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  batchId        String @map("batch_id") @db.Uuid
+  sourceRow      Int    @map("source_row")
+
+  classification    RecoveryBaseRecordClassification
+  applicationStatus RecoveryBaseRecordApplication    @default(PENDING) @map("application_status")
+  issueCodes        String[]                         @default([]) @map("issue_codes")
+
+  documentNumber String? @map("document_number") @db.VarChar(20)
+  serviceNumber  String? @map("service_number") @db.VarChar(15)
+  contactPhone   String? @map("contact_phone") @db.VarChar(15)
+
+  holderName   String?   @map("holder_name") @db.VarChar(200)
+  registeredAt DateTime? @map("registered_at") @db.Timestamptz(3)
+  modalityRaw  String?   @map("modality_raw") @db.VarChar(20)
+  planRaw      String?   @map("plan_raw") @db.VarChar(150)
+  equipmentRaw String?   @map("equipment_raw") @db.VarChar(150)
+  carrierRaw   String?   @map("carrier_raw") @db.VarChar(100)
+
+  requiresIdentityValidation Boolean @default(false) @map("requires_identity_validation")
+
+  rawData Json @map("raw_data") @db.JsonB
+
+  caseId        String?   @map("case_id") @db.Uuid
+  appliedAt     DateTime? @map("applied_at") @db.Timestamptz(3)
+  failureReason String?   @map("failure_reason") @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  batch        RecoveryBaseBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  case         RecoveryCase?     @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  @@unique([batchId, sourceRow], map: "recovery_base_records_batch_source_row_key")
+  @@index([organizationId, classification, createdAt], map: "recovery_base_records_org_classification_created_idx")
+  @@index([organizationId, documentNumber], map: "recovery_base_records_org_document_idx")
+  @@index([organizationId, serviceNumber], map: "recovery_base_records_org_service_idx")
+  @@map("recovery_base_records")
+}
+
+model RecoveryCase {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  source RecoveryCaseSource @default(NATIONAL_BASE)
+  status RecoveryCaseStatus @default(TRIAGE)
+
+  documentNumber String  @map("document_number") @db.VarChar(20)
+  holderName     String  @map("holder_name") @db.VarChar(200)
+  department     String? @db.VarChar(100)
+  province       String? @db.VarChar(100)
+  district       String? @db.VarChar(100)
+
+  contactSummary Json? @map("contact_summary") @db.JsonB
+
+  requiresIdentityValidation Boolean @default(false) @map("requires_identity_validation")
+
+  fatherName String? @map("father_name") @db.VarChar(150)
+  motherName String? @map("mother_name") @db.VarChar(150)
+  birthPlace String? @map("birth_place") @db.VarChar(150)
+
+  sensitiveRevealedAt       DateTime? @map("sensitive_revealed_at") @db.Timestamptz(3)
+  sensitiveRevealedByUserId String?   @map("sensitive_revealed_by_user_id") @db.Uuid
+
+  firstRegisteredAt DateTime @map("first_registered_at") @db.Timestamptz(3)
+  lastSightingAt    DateTime @map("last_sighting_at") @db.Timestamptz(3)
+
+  assignedTeamId String?   @map("assigned_team_id") @db.Uuid
+  assignedUserId String?   @map("assigned_user_id") @db.Uuid
+  claimedAt      DateTime? @map("claimed_at") @db.Timestamptz(3)
+
+  nextActionAt           DateTime? @map("next_action_at") @db.Timestamptz(3)
+  firstContactAt         DateTime? @map("first_contact_at") @db.Timestamptz(3)
+  portabilityEligibleAt  DateTime? @map("portability_eligible_at") @db.Timestamptz(3)
+
+  previousCaseId String? @map("previous_case_id") @db.Uuid
+
+  resolvedAt           DateTime?              @map("resolved_at") @db.Timestamptz(3)
+  resolvedByUserId     String?                @map("resolved_by_user_id") @db.Uuid
+  lossReason           RecoveryLossReason?    @map("loss_reason")
+  discardReason        RecoveryDiscardReason? @map("discard_reason")
+  recoveredDitoOrderId String?                @map("recovered_dito_order_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  assignedTeam CommercialTeam? @relation("RecoveryCaseAssignedTeam", fields: [assignedTeamId], references: [id], onDelete: SetNull)
+  assignedUser User?           @relation("RecoveryCaseAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  sensitiveRevealedBy User? @relation("RecoveryCaseSensitiveRevealedBy", fields: [sensitiveRevealedByUserId], references: [id], onDelete: SetNull)
+  resolvedBy          User? @relation("RecoveryCaseResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  recoveredDitoOrder DitoOrder? @relation("RecoveryCaseRecoveredOrder", fields: [recoveredDitoOrderId], references: [id], onDelete: SetNull)
+
+  previousCase   RecoveryCase?  @relation("RecoveryCaseSuccession", fields: [previousCaseId], references: [id], onDelete: SetNull)
+  successorCases RecoveryCase[] @relation("RecoveryCaseSuccession")
+
+  services  RecoveryCaseService[]
+  phones    RecoveryCasePhone[]
+  sightings RecoveryCaseSighting[]
+  events    RecoveryCaseEvent[]
+  records   RecoveryBaseRecord[]
+
+  @@index([organizationId, status, nextActionAt], map: "recovery_cases_org_status_next_action_idx")
+  @@index([organizationId, documentNumber], map: "recovery_cases_org_document_idx")
+  @@index([organizationId, assignedTeamId, status], map: "recovery_cases_org_team_status_idx")
+  @@index([organizationId, assignedUserId, status], map: "recovery_cases_org_agent_status_idx")
+  @@index([organizationId, status, lastSightingAt], map: "recovery_cases_org_status_sighting_idx")
+  @@map("recovery_cases")
+}
+
+model RecoveryCaseService {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  caseId         String @map("case_id") @db.Uuid
+
+  serviceNumber String @map("service_number") @db.VarChar(15)
+
+  modalityRaw  String? @map("modality_raw") @db.VarChar(20)
+  planRaw      String? @map("plan_raw") @db.VarChar(150)
+  equipmentRaw String? @map("equipment_raw") @db.VarChar(150)
+  carrierRaw   String? @map("carrier_raw") @db.VarChar(100)
+
+  firstRegisteredAt DateTime @map("first_registered_at") @db.Timestamptz(3)
+  lastRegisteredAt  DateTime @map("last_registered_at") @db.Timestamptz(3)
+
+  isPlantLine           Boolean                @default(false) @map("is_plant_line")
+  portabilityEligibleAt DateTime?              @map("portability_eligible_at") @db.Timestamptz(3)
+  discardedAt           DateTime?              @map("discarded_at") @db.Timestamptz(3)
+  discardReason         RecoveryDiscardReason? @map("discard_reason")
+  includedManually      Boolean                @default(false) @map("included_manually")
+
+  portabilityState     RecoveryPortabilityState? @map("portability_state")
+  portabilityCheckedAt DateTime?                 @map("portability_checked_at") @db.Timestamptz(3)
+  portabilityWindowAt  DateTime?                 @map("portability_window_at") @db.Timestamptz(3)
+  portabilityReceiver  String?                   @map("portability_receiver") @db.VarChar(150)
+  needsRevalidation    Boolean                   @default(false) @map("needs_revalidation")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, serviceNumber], map: "recovery_case_services_case_service_key")
+  @@index([organizationId, serviceNumber], map: "recovery_case_services_org_service_idx")
+  @@index([organizationId, discardedAt, portabilityEligibleAt], map: "recovery_case_services_org_discarded_eligible_idx")
+  @@map("recovery_case_services")
+}
+
+model RecoveryPortabilityBatch {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  kind       RecoveryPortabilityReportKind
+  fileName   String                         @map("file_name") @db.VarChar(255)
+  fileSha256 String                         @map("file_sha256") @db.Char(64)
+  fileSize   Int                            @map("file_size")
+
+  status RecoveryPortabilityBatchStatus @default(APPLIED)
+
+  totalRows          Int @map("total_rows")
+  matchedServices    Int @default(0) @map("matched_services")
+  discardedServices  Int @default(0) @map("discarded_services")
+  discardedCases     Int @default(0) @map("discarded_cases")
+  waitingCases       Int @default(0) @map("waiting_cases")
+  revalidationCases  Int @default(0) @map("revalidation_cases")
+  scheduledServices  Int @default(0) @map("scheduled_services")
+  plantLineServices  Int @default(0) @map("plant_line_services")
+
+  uploadedByUserId String   @map("uploaded_by_user_id") @db.Uuid
+  uploadedAt       DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(3)
+  failureReason    String?  @map("failure_reason") @db.Text
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  uploadedBy   User         @relation("RecoveryPortabilityUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  results RecoveryPortabilityResult[]
+
+  @@unique([organizationId, fileSha256], map: "recovery_portability_batches_org_file_hash_key")
+  @@index([organizationId, uploadedAt], map: "recovery_portability_batches_org_uploaded_idx")
+  @@map("recovery_portability_batches")
+}
+
+model RecoveryPortabilityResult {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  batchId        String @map("batch_id") @db.Uuid
+
+  serviceNumber String                   @map("service_number") @db.VarChar(15)
+  state         RecoveryPortabilityState
+  receiverRaw   String?                  @map("receiver_raw") @db.VarChar(150)
+  cedentRaw     String?                  @map("cedent_raw") @db.VarChar(150)
+  windowDate    DateTime?                @map("window_date") @db.Timestamptz(3)
+
+  isMovistarReceiver Boolean @default(false) @map("is_movistar_receiver")
+  matchedCase        Boolean @default(false) @map("matched_case")
+
+  rawData   Json     @map("raw_data") @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  batch        RecoveryPortabilityBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, serviceNumber], map: "recovery_portability_results_batch_service_key")
+  @@index([organizationId, serviceNumber], map: "recovery_portability_results_org_service_idx")
+  @@map("recovery_portability_results")
+}
+
+model RecoveryCasePhone {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  caseId         String @map("case_id") @db.Uuid
+
+  phoneNumber     String            @map("phone_number") @db.VarChar(15)
+  kind            RecoveryPhoneKind
+  invalidMarkedAt DateTime?         @map("invalid_marked_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, phoneNumber], map: "recovery_case_phones_case_phone_key")
+  @@index([organizationId, phoneNumber], map: "recovery_case_phones_org_phone_idx")
+  @@map("recovery_case_phones")
+}
+
+model RecoveryCaseSighting {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  caseId         String @map("case_id") @db.Uuid
+  batchId        String @map("batch_id") @db.Uuid
+
+  serviceNumber String   @map("service_number") @db.VarChar(15)
+  registeredAt  DateTime @map("registered_at") @db.Timestamptz(3)
+  sourceRow     Int?     @map("source_row")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  case         RecoveryCase      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  batch        RecoveryBaseBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@unique([caseId, serviceNumber, registeredAt], map: "recovery_case_sightings_case_service_registered_key")
+  @@index([batchId], map: "recovery_case_sightings_batch_idx")
+  @@index([organizationId, createdAt], map: "recovery_case_sightings_org_created_idx")
+  @@map("recovery_case_sightings")
+}
+
+model RecoveryCaseEvent {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  caseId         String @map("case_id") @db.Uuid
+
+  type RecoveryCaseEventType
+
+  actorUserId    String?             @map("actor_user_id") @db.Uuid
+  previousStatus RecoveryCaseStatus? @map("previous_status")
+  newStatus      RecoveryCaseStatus? @map("new_status")
+
+  observation String? @db.Text
+  metadata    Json?   @db.JsonB
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actor        User?        @relation("RecoveryCaseEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([caseId, createdAt], map: "recovery_case_events_case_created_idx")
+  @@index([organizationId, createdAt], map: "recovery_case_events_org_created_idx")
+  @@index([actorUserId, createdAt], map: "recovery_case_events_actor_created_idx")
+  @@map("recovery_case_events")
+}

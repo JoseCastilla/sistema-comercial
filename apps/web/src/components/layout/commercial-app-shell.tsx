@@ -8,8 +8,21 @@ import { ThemeControl } from "@repo/ui/theme-control";
 import { EscalationNotification } from "./escalation-notification";
 
 type ActiveSection =
-  "performance" | "orders" | "imports" | "logistics" | "people" | "teams";
-type IconName = "home" | "orders" | "sales" | "logistics" | "people" | "teams";
+  | "performance"
+  | "orders"
+  | "recovery"
+  | "imports"
+  | "logistics"
+  | "people"
+  | "teams";
+type IconName =
+  | "home"
+  | "orders"
+  | "recovery"
+  | "sales"
+  | "logistics"
+  | "people"
+  | "teams";
 
 const roleLabels: Record<string, string> = {
   ADMIN: "Administrador",
@@ -42,6 +55,12 @@ function NavigationIcon({ name }: { name: IconName }) {
         <path d="M3 6h9v8H3zM12 9h3l2 2v3h-5z" />
         <circle cx="6" cy="15.5" r="1.5" />
         <circle cx="14.5" cy="15.5" r="1.5" />
+      </>
+    ),
+    recovery: (
+      <>
+        <path d="M15.5 8.5A6 6 0 1 0 16 11" />
+        <path d="M16 5v4h-4" />
       </>
     ),
     people: (
@@ -155,6 +174,8 @@ export function CommercialAppShell({
 }) {
   const roleLabel = roleLabels[role] ?? role;
   const isAdmin = role === "ADMIN";
+  const canTriageRecovery =
+    role === "ADMIN" || role === "BACKOFFICE" || role === "SUPERVISOR";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(role === "AGENT");
 
   useEffect(() => {
@@ -225,6 +246,15 @@ export function CommercialAppShell({
             icon="orders"
             label="Pedidos"
           />
+          {canTriageRecovery ? (
+            <NavigationItem
+              active={activeSection === "recovery"}
+              description="Base nacional y triage"
+              href={isAdmin ? "/admin/recovery-base" : "/recovery/triage"}
+              icon="recovery"
+              label="Recupero"
+            />
+          ) : null}
           {isAdmin ? (
             <>
               <NavigationItem
@@ -293,7 +323,7 @@ export function CommercialAppShell({
       <nav
         aria-label="Navegación móvil"
         className="app-shell__mobile-nav"
-        data-items={isAdmin ? "6" : "2"}
+        data-items={isAdmin ? "7" : canTriageRecovery ? "3" : "2"}
       >
         <MobileNavigationItem
           active={activeSection === "performance"}
@@ -307,6 +337,14 @@ export function CommercialAppShell({
           icon="orders"
           label="Pedidos"
         />
+        {canTriageRecovery ? (
+          <MobileNavigationItem
+            active={activeSection === "recovery"}
+            href={isAdmin ? "/admin/recovery-base" : "/recovery/triage"}
+            icon="recovery"
+            label="Recupero"
+          />
+        ) : null}
         {isAdmin ? (
           <>
             <MobileNavigationItem

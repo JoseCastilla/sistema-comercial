@@ -87,6 +87,17 @@ model Organization {
   agrDeliveryOrderSnapshots    AgrDeliveryOrderSnapshot[]
   agrDeliveryOrderHistory      AgrDeliveryOrderHistory[]
 
+  recoveryEligibilityConfigs RecoveryEligibilityConfig[]
+  recoveryBaseBatches        RecoveryBaseBatch[]
+  recoveryBaseRecords        RecoveryBaseRecord[]
+  recoveryCases              RecoveryCase[]
+  recoveryCaseServices       RecoveryCaseService[]
+  recoveryCasePhones         RecoveryCasePhone[]
+  recoveryCaseSightings      RecoveryCaseSighting[]
+  recoveryCaseEvents         RecoveryCaseEvent[]
+  recoveryPortabilityBatches RecoveryPortabilityBatch[]
+  recoveryPortabilityResults RecoveryPortabilityResult[]
+
   @@map("organizations")
 }
 
@@ -145,6 +156,15 @@ model User {
   ditoImportRowsAsManualAgent          DitoImportRow[]              @relation("DitoImportRowManualAgent")
   ditoImportRowAssignmentsPerformed    DitoImportRow[]              @relation("DitoImportRowManualAssignedBy")
   agrDeliveryCredentialsUpdated        AgrDeliveryIntegration[]     @relation("AgrDeliveryCredentialUpdatedBy")
+
+  recoveryConfigsCreated         RecoveryEligibilityConfig[] @relation("RecoveryConfigCreatedBy")
+  recoveryBatchesUploaded        RecoveryBaseBatch[]         @relation("RecoveryBatchUploadedBy")
+  recoveryBatchesConfirmed       RecoveryBaseBatch[]         @relation("RecoveryBatchConfirmedBy")
+  recoveryCasesAssigned          RecoveryCase[]              @relation("RecoveryCaseAssignedUser")
+  recoveryCasesResolved          RecoveryCase[]              @relation("RecoveryCaseResolvedBy")
+  recoveryCasesSensitiveRevealed RecoveryCase[]              @relation("RecoveryCaseSensitiveRevealedBy")
+  recoveryCaseEventsPerformed    RecoveryCaseEvent[]         @relation("RecoveryCaseEventActor")
+  recoveryPortabilityUploaded    RecoveryPortabilityBatch[]  @relation("RecoveryPortabilityUploadedBy")
 
   @@map("users")
 }
