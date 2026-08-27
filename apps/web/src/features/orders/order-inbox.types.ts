@@ -118,6 +118,7 @@ export interface OrderInboxItem {
 
   slaState: OrderSlaState;
   slaLabel: string;
+  slaDetail: string | null;
 
   canUpdate: boolean;
   canClose: boolean;

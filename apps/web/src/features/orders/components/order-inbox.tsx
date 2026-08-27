@@ -332,7 +332,7 @@ function StatusBadge({
 
 function SlaBadge({ order }: { order: OrderInboxItem }) {
   return (
-    <span className="ui-order-badge" data-tone={getSlaTone(order.slaState)}>
+    <span className="ui-order-sla" data-tone={getSlaTone(order.slaState)}>
       {order.slaLabel}
     </span>
   );
@@ -440,7 +440,15 @@ async function copyTextToClipboard(value: string): Promise<void> {
   if (!copied) throw new Error("Clipboard unavailable");
 }
 
-function InlineCopyValue({ label, value }: { label: string; value: string }) {
+function InlineCopyValue({
+  label,
+  value,
+  variant = "table",
+}: {
+  label: string;
+  value: string;
+  variant?: "table" | "heading";
+}) {
   const [copyState, setCopyState] = useState<"COPIED" | "ERROR" | null>(null);
 
   useEffect(() => {
@@ -475,12 +483,17 @@ function InlineCopyValue({ label, value }: { label: string; value: string }) {
     <button
       aria-label={`${feedback}: ${value}`}
       className={[
-        "rounded px-0.5 font-medium underline decoration-dotted underline-offset-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2",
+        "rounded px-0.5 underline decoration-dotted underline-offset-4 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2",
+        variant === "heading"
+          ? "font-mono text-sm font-semibold"
+          : "font-medium",
         copyState === "COPIED"
           ? "bg-ui-success-soft text-ui-success decoration-ui-success"
           : copyState === "ERROR"
             ? "bg-ui-danger-soft text-ui-danger decoration-ui-danger"
-            : "text-ui-muted decoration-ui-soft hover:bg-ui-subtle hover:text-ui-text",
+            : variant === "heading"
+              ? "text-ui-text decoration-ui-soft hover:bg-ui-subtle"
+              : "text-ui-muted decoration-ui-soft hover:bg-ui-subtle hover:text-ui-text",
       ].join(" ")}
       onClick={copyValue}
       title={`${feedback}: ${value}`}
@@ -535,13 +548,18 @@ function OrderDetails({
       <div>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-sm font-semibold text-ui-text">
-              {order.orderCode}
+            <p>
+              <InlineCopyValue
+                label="orden"
+                value={order.orderCode}
+                variant="heading"
+              />
             </p>
 
             <p className="mt-1 text-xs text-ui-muted">
               Registrado {order.registeredAtLabel}
             </p>
+
           </div>
 
           <SlaBadge order={order} />
@@ -581,27 +599,58 @@ function OrderDetails({
         <dl className="ui-order-identity">
           <div>
             <dt>Operación</dt>
-            <dd>{getOperationSummary(order)}</dd>
-          </div>
-
-          <div>
-            <dt>Cargo fijo</dt>
             <dd>
+              {getOperationSummary(order)}
               {order.fixedCharge
-                ? `S/ ${Number(order.fixedCharge).toFixed(2)}`
-                : "No registrado"}
+                ? ` ${Number(order.fixedCharge).toFixed(2)}`
+                : ""}
             </dd>
           </div>
 
           <div>
-            <dt>Entrega</dt>
+            <dt>Estado desde</dt>
+            <dd>{order.statusAgeLabel}</dd>
+          </div>
+
+          {showAdvisor ? (
+            <>
+              <div>
+                <dt>Agente</dt>
+                <dd>{order.agentName || "Sin asesor asignado"}</dd>
+              </div>
+
+              <div>
+                <dt>Ubicación</dt>
+                <dd>{order.locationLabel}</dd>
+              </div>
+            </>
+          ) : null}
+
+          <div>
+            <dt>Tipo de entrega</dt>
             <dd>{order.deliveryMethodLabel}</dd>
           </div>
 
-          <div className="ui-order-identity__item--wide">
-            <dt>Ubicación</dt>
-            <dd>{order.locationLabel}</dd>
+          <div>
+            <dt>Ventana</dt>
+            <dd>
+              {order.slaState === "PENDING_SHIFT"
+                ? "Turno por asignar"
+                : order.deliveryWindowLabel}
+            </dd>
           </div>
+
+          {showAdvisor ? (
+            <div>
+              <dt>Asignación</dt>
+              <dd>{order.assignmentStatusLabel}</dd>
+            </div>
+          ) : (
+            <div className="ui-order-identity__item--wide">
+              <dt>Ubicación</dt>
+              <dd>{order.locationLabel}</dd>
+            </div>
+          )}
         </dl>
       </div>
 
@@ -670,26 +719,6 @@ function OrderDetails({
 
         <div className="ui-order-disclosure__content">
           <dl className="ui-order-detail-grid">
-            <DetailItem label="Estado desde" value={order.statusAgeLabel} />
-
-            {showAdvisor ? (
-              <DetailItem label="Asesor" value={order.agentName} />
-            ) : null}
-
-            {/*
-             * Sin turno asignado, la ventana repite literalmente lo que ya
-             * declara la etiqueta de SLA en la cabecera de la tarjeta.
-             */}
-            {order.slaState === "PENDING_SHIFT" ? null : (
-              <DetailItem label="Ventana" value={order.deliveryWindowLabel} />
-            )}
-
-            {showAdvisor ? (
-              <DetailItem
-                label="Asignación"
-                value={order.assignmentStatusLabel}
-              />
-            ) : null}
 
             {order.status === "CLOSED" ? (
               <DetailItem
@@ -816,8 +845,16 @@ function MobileOrderCard({
 
             <p className="mt-1 text-xs text-ui-soft">
               {getOperatorLabel(order)}
-              {showAdvisor ? ` · ${order.agentName}` : ""}
             </p>
+
+            {showAdvisor ? (
+              <p className="mt-1 text-sm font-medium text-ui-text">
+                <span className="text-xs font-normal text-ui-soft">
+                  Asesor{" "}
+                </span>
+                {order.agentName || "Sin asesor asignado"}
+              </p>
+            ) : null}
           </div>
 
           <span className="shrink-0 text-xl text-ui-soft">
@@ -971,8 +1008,9 @@ function DesktopOrderList({
           <span>Teléfono</span>
           <span>Operador</span>
           {showAdvisorColumn ? <span>Asesor</span> : null}
-          <span>SLA</span>
           <span>Estado</span>
+          <span>Acción</span>
+          <span>SLA</span>
         </div>
 
         <div className="ui-order-grid__body">
@@ -996,7 +1034,6 @@ function DesktopOrderList({
 
                 <span className="ui-order-grid__client">
                   <strong>{order.holderName}</strong>
-                  <small>{order.district || order.province}</small>
                 </span>
 
                 <InlineCopyValue label="DNI" value={order.documentNumber} />
@@ -1013,12 +1050,28 @@ function DesktopOrderList({
                   </span>
                 ) : null}
 
-                <span className="ui-order-grid__sla">
-                  <SlaBadge order={order} />
+                <span className="ui-order-grid__status">
+                  <StatusBadge
+                    order={order}
+                    showAgr={false}
+                    showEscalationAction={false}
+                  />
                 </span>
 
-                <span className="ui-order-grid__status">
-                  <StatusBadge order={order} showEscalationAction={false} />
+                <span className="ui-order-grid__action">
+                  {order.agrDelivery ? (
+                    <span className="ui-order-badge" data-tone="warning">
+                      {order.agrDelivery.actionShortLabel}
+                    </span>
+                  ) : (
+                    <span aria-hidden="true" className="text-ui-soft">
+                      —
+                    </span>
+                  )}
+                </span>
+
+                <span className="ui-order-grid__sla">
+                  <SlaBadge order={order} />
                 </span>
               </div>
             );
@@ -1087,37 +1140,44 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           <Metric label="Por reingresar" value={data.logisticsSummary.review} />
         </MetricGroup>
       ) : (
-        <MetricGroup>
-          <Metric
-            label={`Ventas · ${data.periodLabel}`}
-            value={data.totals.visible}
-          />
-          <Metric
-            label="Incidencias"
-            tone={data.totals.incidents > 0 ? "danger" : "neutral"}
-            value={data.totals.incidents}
-          />
-          <Metric
-            label="Escaladas al supervisor"
-            tone={data.totals.escalations > 0 ? "danger" : "neutral"}
-            value={data.totals.escalations}
-          />
-          <Metric
-            label="Oportunidades logísticas"
-            tone={data.totals.logistics > 0 ? "warning" : "neutral"}
-            value={data.totals.logistics}
-          />
-          <Metric
-            label={`No entregados internos · ${data.periodLabel}`}
-            value={data.totals.notDelivered}
-          />
-          <Metric label="Entregados internos" value={data.totals.delivered} />
-          <Metric
-            label="Fuera de plazo"
-            tone={data.totals.overdue > 0 ? "danger" : "neutral"}
-            value={data.totals.overdue}
-          />
-        </MetricGroup>
+        <>
+          {/* Resultado comercial del período: cuánto entró y cómo termina. */}
+          <MetricGroup>
+            <Metric
+              label={`Ventas · ${data.periodLabel}`}
+              value={data.totals.visible}
+            />
+            <Metric label="Entregados internos" value={data.totals.delivered} />
+            <Metric
+              label={`No entregados internos · ${data.periodLabel}`}
+              value={data.totals.notDelivered}
+            />
+            <Metric
+              label="Fuera de plazo"
+              tone={data.totals.overdue > 0 ? "danger" : "neutral"}
+              value={data.totals.overdue}
+            />
+          </MetricGroup>
+
+          {/* Atención pendiente: lo que exige acción hoy. */}
+          <MetricGroup>
+            <Metric
+              label="Incidencias"
+              tone={data.totals.incidents > 0 ? "danger" : "neutral"}
+              value={data.totals.incidents}
+            />
+            <Metric
+              label="Escaladas al supervisor"
+              tone={data.totals.escalations > 0 ? "danger" : "neutral"}
+              value={data.totals.escalations}
+            />
+            <Metric
+              label="Oportunidades logísticas"
+              tone={data.totals.logistics > 0 ? "warning" : "neutral"}
+              value={data.totals.logistics}
+            />
+          </MetricGroup>
+        </>
       )}
 
       {(data.role === "ADMIN" || data.role === "SUPERVISOR") &&

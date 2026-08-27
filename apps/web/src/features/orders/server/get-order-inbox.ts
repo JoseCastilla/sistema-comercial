@@ -68,6 +68,16 @@ const timeFormatter = new Intl.DateTimeFormat("es-PE", {
   hour12: false,
 });
 
+/*
+ * La ventana de entrega siempre es de dias cercanos: el año no aporta y el
+ * espacio en la tarjeta si.
+ */
+const shortDateFormatter = new Intl.DateTimeFormat("es-PE", {
+  timeZone: businessTimeZone,
+  day: "2-digit",
+  month: "2-digit",
+});
+
 const orderSelect = {
   id: true,
   orderCodeRaw: true,
@@ -218,16 +228,16 @@ function createWindowLabel(start: Date | null, end: Date | null): string {
 
   if (sameBusinessDate) {
     return [
-      dateFormatter.format(start),
+      shortDateFormatter.format(start),
       "·",
       `${timeFormatter.format(start)}–${timeFormatter.format(end)}`,
     ].join(" ");
   }
 
   return [
-    dateTimeFormatter.format(start),
+    `${shortDateFormatter.format(start)} ${timeFormatter.format(start)}`,
     "–",
-    dateTimeFormatter.format(end),
+    `${shortDateFormatter.format(end)} ${timeFormatter.format(end)}`,
   ].join(" ");
 }
 
@@ -306,6 +316,7 @@ function getSlaState(
 ): {
   state: OrderSlaState;
   label: string;
+  detail: string | null;
 } {
   if (
     status === "CLOSED" ||
@@ -316,6 +327,7 @@ function getSlaState(
     return {
       state: "CLOSED",
       label: "Finalizado",
+      detail: null,
     };
   }
 
@@ -328,21 +340,29 @@ function getSlaState(
       return {
         state: "PENDING_SHIFT",
         label: "Turno pendiente",
+        detail: null,
       };
     }
 
     return {
       state: "NO_DEADLINE",
       label: "Sin plazo calculado",
+      detail: null,
     };
   }
 
   const remainingMilliseconds = deliveryDueAt.getTime() - now.getTime();
 
+  const sameDay = dateFormatter.format(deliveryDueAt) === dateFormatter.format(now);
+  const dueLabel = sameDay
+    ? timeFormatter.format(deliveryDueAt)
+    : `${shortDateFormatter.format(deliveryDueAt)} ${timeFormatter.format(deliveryDueAt)}`;
+
   if (remainingMilliseconds < 0) {
     return {
       state: "OVERDUE",
       label: "Fuera de plazo",
+      detail: `hace ${formatElapsed(deliveryDueAt, now)}`,
     };
   }
 
@@ -350,30 +370,65 @@ function getSlaState(
     return {
       state: "DUE_SOON",
       label: "Vence pronto",
+      detail: dueLabel,
     };
   }
 
   return {
     state: "ON_TIME",
     label: "Dentro del plazo",
+    detail: `hasta ${dueLabel}`,
   };
 }
 
-function getPriority(item: OrderInboxItem): number {
-  if (item.pendingCancellationRequest) {
+/*
+ * La bandeja separa tres preguntas, en este orden:
+ *
+ * 1. ¿Sigue vivo? Entregados (80) y cancelados (90) al fondo, siempre.
+ * 2. ¿Tiene incidencia? Una venta rota se atiende antes que cualquier venta
+ *    sana, sin importar su metodo de entrega: la urgencia de recuperarla no
+ *    depende de cuando iba a entregarse (0-5; a igual severidad, Express
+ *    primero porque su reloj de reintento es mas corto).
+ * 3. ¿Que urgencia logistica tiene? Solo entre ventas sanas manda el metodo:
+ *    Express en curso (10+) compromete la entrega hoy; Regular (40+) tiene
+ *    ventana de 24 a 72 horas y aun no exige gestion.
+ */
+interface OrderPriorityInput {
+  status: string;
+  sentSubstatus: string | null;
+  deliveryMethod: string;
+  pendingCancellationRequest: boolean;
+  noStatusIncident: boolean;
+  slaState: string;
+  agrActionKind: string | null;
+}
+
+function getPriority(input: OrderPriorityInput): number {
+  if (input.status === "CANCELLED") {
+    return 90;
+  }
+
+  if (
+    input.status === "CLOSED" ||
+    (input.status === "SENT" && input.sentSubstatus === "DELIVERED")
+  ) {
+    return 80;
+  }
+
+  const incident = getIncidentRank(input);
+
+  if (incident !== null) {
+    return incident * 2 + (input.deliveryMethod === "EXPRESS" ? 0 : 1);
+  }
+
+  const deliveryBlock = input.deliveryMethod === "EXPRESS" ? 10 : 40;
+
+  return deliveryBlock + getFlowRank(input);
+}
+
+function getIncidentRank(input: OrderPriorityInput): number | null {
+  if (input.pendingCancellationRequest || input.noStatusIncident) {
     return 0;
-  }
-
-  if (item.noStatusIncident) {
-    return 0;
-  }
-
-  if (item.sentSubstatus === "REJECTED") {
-    return 1;
-  }
-
-  if (item.sentSubstatus === "NOT_DELIVERED") {
-    return 2;
   }
 
   /*
@@ -382,49 +437,62 @@ function getPriority(item: OrderInboxItem): number {
    * llega su plazo.
    */
   if (
-    item.agrDelivery?.actionKind === "RESCHEDULE" ||
-    item.agrDelivery?.actionKind === "MEETING_POINT"
+    input.sentSubstatus === "REJECTED" ||
+    input.agrActionKind === "RESCHEDULE" ||
+    input.agrActionKind === "MEETING_POINT"
   ) {
     return 1;
   }
 
-  if (item.agrDelivery?.actionKind === "WAIT_PORTABILITY") {
-    return 5;
-  }
-
-  if (item.agrDelivery) {
+  if (input.sentSubstatus === "NOT_DELIVERED") {
     return 2;
   }
 
-  if (item.slaState === "OVERDUE") {
-    return 3;
+  if (input.agrActionKind !== null && input.agrActionKind !== "WAIT_PORTABILITY") {
+    return 2;
   }
 
-  if (item.slaState === "DUE_SOON") {
+  return null;
+}
+
+function getFlowRank(input: OrderPriorityInput): number {
+  /*
+   * Un regular que el operador logistico ya tiene asignado sigue su curso
+   * solo: baja al final de su bloque para dejar la vista a lo accionable.
+   */
+  if (
+    input.deliveryMethod !== "EXPRESS" &&
+    input.status === "SENT" &&
+    input.sentSubstatus === "ASSIGNED"
+  ) {
+    return 20;
+  }
+
+  if (input.slaState === "OVERDUE") {
+    return 0;
+  }
+
+  if (input.slaState === "DUE_SOON") {
+    return 1;
+  }
+
+  if (input.status === "OPEN") {
+    return 2;
+  }
+
+  if (input.agrActionKind === "WAIT_PORTABILITY") {
     return 4;
   }
 
-  if (item.status === "OPEN") {
-    return 5;
+  if (input.status === "SENT") {
+    return 3;
   }
 
-  if (item.status === "SENT" && item.sentSubstatus === "DELIVERED") {
+  if (input.status === "UNKNOWN") {
     return 7;
   }
 
-  if (item.status === "SENT") {
-    return 6;
-  }
-
-  if (item.status === "UNKNOWN") {
-    return 8;
-  }
-
-  if (item.status === "CLOSED") {
-    return 9;
-  }
-
-  return 10;
+  return 8;
 }
 
 function getStatusFilter(
@@ -1030,11 +1098,80 @@ export async function getOrderInbox(
 
   const totalPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
   const page = Math.min(requestedPage, totalPages);
-  const orders = await database.ditoOrder.findMany({
+
+  /*
+   * El ranking manda sobre la paginacion: una consulta ligera ordena el
+   * periodo completo y recien despues se cargan las filas de la pagina.
+   * Paginar por fecha y ordenar en memoria escondia pedidos prioritarios
+   * antiguos detras de ventas recientes ya cerradas.
+   */
+  const priorityRows = await database.ditoOrder.findMany({
     where: filteredWhere,
     orderBy: [{ registeredAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * pageSize,
-    take: pageSize,
+    select: {
+      id: true,
+      status: true,
+      sentSubstatus: true,
+      deliveryMethod: true,
+      deliveryStatus: true,
+      deliveryDueAt: true,
+      noStatusDetectedAt: true,
+      agrDeliverySnapshot: {
+        select: {
+          isRecoveryOpportunity: true,
+          estadoPedido: true,
+          motivoRechazo: true,
+          submotivoRechazo: true,
+        },
+      },
+      cancellationRequests: {
+        where: { status: "PENDING" },
+        take: 1,
+        select: { id: true },
+      },
+    },
+  });
+
+  const rankedIds = priorityRows
+    .map((row) => {
+      const rowStatus = String(row.status) as OrderStatusValue;
+      const rowSubstatus = row.sentSubstatus ? String(row.sentSubstatus) : null;
+      const rowMethod = String(row.deliveryMethod);
+
+      return {
+        id: row.id,
+        priority: getPriority({
+          status: rowStatus,
+          sentSubstatus: rowSubstatus,
+          deliveryMethod: rowMethod,
+          pendingCancellationRequest: row.cancellationRequests.length > 0,
+          noStatusIncident:
+            rowStatus === "SENT" &&
+            rowSubstatus === "NO_STATUS" &&
+            row.noStatusDetectedAt !== null &&
+            now.getTime() - row.noStatusDetectedAt.getTime() >=
+              10 * 60 * 1000,
+          slaState: getSlaState(
+            rowStatus,
+            rowMethod,
+            String(row.deliveryStatus),
+            row.deliveryDueAt,
+            now,
+          ).state,
+          agrActionKind:
+            row.agrDeliverySnapshot?.isRecoveryOpportunity === true
+              ? getAgrAction(row.agrDeliverySnapshot).kind
+              : null,
+        }),
+      };
+    })
+    .sort((left, right) => left.priority - right.priority)
+    .map((row) => row.id);
+
+  const pageIds = rankedIds.slice((page - 1) * pageSize, page * pageSize);
+
+  const orders = await database.ditoOrder.findMany({
+    where: { AND: [filteredWhere], id: { in: pageIds } },
     select: orderSelect,
   });
 
@@ -1188,6 +1325,7 @@ export async function getOrderInbox(
       ),
 
       slaState: sla.state,
+      slaDetail: sla.detail,
       slaLabel: sla.label,
 
       canUpdate: canTransitionDitoOrderStatus({
@@ -1287,9 +1425,16 @@ export async function getOrderInbox(
     };
   });
 
-  items.sort((left, right) => {
-    return getPriority(left) - getPriority(right);
-  });
+  /*
+   * El orden ya quedo decidido por el ranking del periodo completo; aqui solo
+   * se restaura, porque `id IN (...)` no garantiza orden de retorno.
+   */
+  const pagePosition = new Map(pageIds.map((id, index) => [id, index]));
+
+  items.sort(
+    (left, right) =>
+      (pagePosition.get(left.id) ?? 0) - (pagePosition.get(right.id) ?? 0),
+  );
 
   return {
     generatedAt: dateTimeFormatter.format(now),

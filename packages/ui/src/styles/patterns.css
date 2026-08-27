@@ -1911,23 +1911,40 @@
     scrollbar-gutter: stable;
   }
 
+  /**
+   * Tabla plana tipo hoja de cálculo: una fila por venta, una columna por
+   * dato, sin apilar información de semánticas distintas. DNI y teléfono son
+   * llaves de búsqueda en los sistemas externos y viven en primera línea. Las
+   * filas de una sola línea, más compactas, muestran más ventas por pantalla.
+   */
   .ui-order-grid__header,
   .ui-order-grid__row {
     display: grid;
     grid-template-columns:
-      7.75rem minmax(11rem, 1.45fr) 5.75rem 6.5rem 5.75rem
-      7.25rem minmax(10.5rem, 1.05fr);
+      6rem minmax(6.5rem, 1.7fr) 4.6rem 5.2rem 4rem
+      minmax(6rem, 0.9fr) 5.3rem 5.9rem;
     align-items: center;
-    gap: 0.6rem;
-    min-width: 57.15rem;
+    gap: 0.3rem;
+    min-width: 45.2rem;
   }
 
   .ui-order-grid__header[data-show-advisor="true"],
   .ui-order-grid__row[data-show-advisor="true"] {
     grid-template-columns:
-      7.75rem minmax(11rem, 1.45fr) 5.75rem 6.5rem 5.75rem
-      minmax(7rem, 0.8fr) 7.25rem minmax(10.5rem, 1.05fr);
-    min-width: 64.65rem;
+      6rem minmax(6.5rem, 1.5fr) 4.6rem 5.2rem 4rem
+      minmax(4.5rem, 1fr) minmax(6rem, 0.8fr) 5.3rem 5.9rem;
+    min-width: 49.8rem;
+  }
+
+  .ui-order-grid__action {
+    min-width: 0;
+  }
+
+  .ui-order-grid__status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    min-width: 0;
   }
 
   .ui-order-grid__header {
@@ -1954,7 +1971,7 @@
   }
 
   .ui-order-grid__row {
-    min-height: 4rem;
+    min-height: 2.75rem;
     padding: 0.65rem 1rem 0.65rem 0.75rem;
     border-left: 3px solid transparent;
     cursor: pointer;
@@ -2047,6 +2064,14 @@
     grid-template-columns: minmax(0, 1fr) minmax(22rem, 25rem);
     align-items: start;
     gap: 1rem;
+  }
+
+  /* En laptops medianas la tabla completa tiene prioridad sobre el ancho de
+     la tarjeta: ceder parte del panel evita el desplazamiento horizontal. */
+  @media (max-width: 96rem) {
+    .ui-order-workspace {
+      grid-template-columns: minmax(0, 1fr) minmax(17.75rem, 19.5rem);
+    }
   }
 
   /*
@@ -2246,6 +2271,33 @@
     background: var(--ui-surface-subtle);
     font-size: 0.75rem;
     font-weight: 500;
+  }
+
+  /**
+   * El SLA se comunica con color, no con geometria: repetir una pildora en
+   * cada fila no aporta y el texto plano alinea mejor en la tabla.
+   */
+  .ui-order-sla {
+    color: var(--ui-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .ui-order-sla[data-tone="info"] {
+    color: var(--ui-info, var(--ui-accent));
+  }
+
+  .ui-order-sla[data-tone="warning"] {
+    color: var(--ui-warning);
+  }
+
+  .ui-order-sla[data-tone="danger"] {
+    color: var(--ui-danger);
+  }
+
+  .ui-order-sla[data-tone="success"] {
+    color: var(--ui-success);
   }
 
   .ui-order-badge[data-tone="info"] {
