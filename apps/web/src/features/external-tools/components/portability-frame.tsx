@@ -1,45 +1,40 @@
 const portalUrl = "https://consulta.portabilidad.pe/";
-const embeddedPortalUrl = "/tools/portability/embed";
 
 export function PortabilityFrame() {
   return (
-    <section className="overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ui-border bg-ui-subtle px-4 py-3 sm:px-5">
-        <div>
-          <h2 className="text-sm font-bold text-ui-text">
-            Estado de numeración
-          </h2>
-          <p className="mt-1 text-xs leading-5 text-ui-muted">
-            El asesor ingresa el número directamente en el portal autorizado.
-          </p>
+    <section className="rounded-2xl border border-ui-border bg-ui-surface p-6 shadow-sm sm:p-8">
+      <div className="mx-auto max-w-2xl text-center">
+        <div
+          aria-hidden="true"
+          className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-ui-subtle text-xl text-ui-accent"
+        >
+          ↗
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="ui-status-badge" data-tone="info">
-            Portal autorizado
+        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.12em] text-ui-muted">
+          Portal externo
+        </p>
+        <h2 className="mt-2 text-xl font-bold text-ui-text">
+          Consulta estado de numeración
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-ui-muted">
+          Mientras coordinamos la integración con el regulador, la consulta se
+          realizará directamente en el portal oficial. El asesor deberá
+          completar allí el número y regresar al sistema comercial al terminar.
+        </p>
+        <a
+          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-ui-strong px-5 text-sm font-semibold text-ui-on-strong transition hover:bg-ui-strong"
+          href={portalUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Abrir consulta portabilidad
+          <span aria-hidden="true" className="ml-2">
+            ↗
           </span>
-          <a
-            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-ui-border-strong bg-ui-surface px-4 text-sm font-semibold text-ui-text transition hover:bg-ui-subtle"
-            href={portalUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Abrir fuera del sistema
-            <span aria-hidden="true" className="ml-2">
-              ↗
-            </span>
-          </a>
-        </div>
-      </div>
-
-      <div className="bg-white p-2 sm:p-3">
-        <iframe
-          className="h-[72vh] min-h-[36rem] w-full rounded-xl border border-ui-border bg-white"
-          id="portability-frame"
-          loading="eager"
-          referrerPolicy="strict-origin-when-cross-origin"
-          src={embeddedPortalUrl}
-          title="Consulta portabilidad"
-        />
+        </a>
+        <p className="mt-4 text-xs leading-5 text-ui-muted">
+          El enlace abrirá una pestaña nueva en consulta.portabilidad.pe.
+        </p>
       </div>
     </section>
   );

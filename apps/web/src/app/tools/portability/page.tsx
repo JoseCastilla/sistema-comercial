@@ -9,7 +9,7 @@ export default function PortabilityPage() {
       <PageHeader
         eyebrow="Consultas externas"
         title="Consulta portabilidad"
-        description="El asesor ingresa el número y realiza la consulta en el portal autorizado desde el sistema comercial."
+        description="Accede al portal oficial para consultar el estado y operador de un número."
       />
       <ExternalToolsNavigation activeTool="portability" />
       <PortabilityFrame />
