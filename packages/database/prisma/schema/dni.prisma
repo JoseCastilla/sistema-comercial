@@ -1,0 +1,77 @@
+enum DniLookupSource {
+  API
+  CACHE
+}
+
+/// Instantanea inmutable para las consultas ordinarias. Una vez obtenida de
+/// RENIEC, las consultas siguientes de la misma organizacion reutilizan esta
+/// fila y no consumen creditos de la API.
+model DniPersonSnapshot {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  dni            String @db.VarChar(8)
+
+  verificationDigit String? @map("verification_digit") @db.VarChar(8)
+  givenNames         String? @map("given_names") @db.VarChar(200)
+  paternalSurname    String? @map("paternal_surname") @db.VarChar(120)
+  maternalSurname    String? @map("maternal_surname") @db.VarChar(120)
+  sex                String? @db.VarChar(30)
+
+  birthDateRaw     String? @map("birth_date_raw") @db.VarChar(30)
+  birthDepartment String? @map("birth_department") @db.VarChar(120)
+  birthProvince   String? @map("birth_province") @db.VarChar(120)
+  birthDistrict   String? @map("birth_district") @db.VarChar(120)
+
+  educationLevel      String? @map("education_level") @db.VarChar(150)
+  maritalStatus       String? @map("marital_status") @db.VarChar(80)
+  heightCm            Int?    @map("height_cm")
+  registrationDateRaw String? @map("registration_date_raw") @db.VarChar(30)
+  issueDateRaw        String? @map("issue_date_raw") @db.VarChar(30)
+  expiryDateRaw       String? @map("expiry_date_raw") @db.VarChar(30)
+  fatherName          String? @map("father_name") @db.VarChar(200)
+  motherName          String? @map("mother_name") @db.VarChar(200)
+  restriction         String? @db.VarChar(255)
+
+  addressDescription String? @map("address_description") @db.Text
+  addressDepartment  String? @map("address_department") @db.VarChar(120)
+  addressProvince    String? @map("address_province") @db.VarChar(120)
+  addressDistrict    String? @map("address_district") @db.VarChar(120)
+
+  reniecUbigeo   String? @map("reniec_ubigeo") @db.VarChar(20)
+  ineiUbigeo     String? @map("inei_ubigeo") @db.VarChar(20)
+  sunatUbigeo    String? @map("sunat_ubigeo") @db.VarChar(20)
+  postalCode     String? @map("postal_code") @db.VarChar(20)
+  creditsAtFetch String? @map("credits_at_fetch") @db.VarChar(100)
+
+  rawPayload Json @map("raw_payload") @db.JsonB
+  fetchedAt  DateTime @default(now()) @map("fetched_at") @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lookupEvents DniLookupEvent[]
+
+  @@unique([organizationId, dni], map: "dni_person_snapshots_org_dni_key")
+  @@index([organizationId, fetchedAt], map: "dni_person_snapshots_org_fetched_idx")
+  @@map("dni_person_snapshots")
+}
+
+/// Auditoria de cada acceso exitoso a datos personales, incluyendo si la
+/// respuesta se resolvio sin credito desde la cache local.
+model DniLookupEvent {
+  id                  String          @id @default(uuid()) @db.Uuid
+  organizationId      String          @map("organization_id") @db.Uuid
+  dniPersonSnapshotId String          @map("dni_person_snapshot_id") @db.Uuid
+  actorUserId         String          @map("actor_user_id") @db.Uuid
+  source              DniLookupSource
+  queriedAt           DateTime        @default(now()) @map("queried_at") @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  snapshot     DniPersonSnapshot @relation(fields: [dniPersonSnapshotId], references: [id], onDelete: Restrict)
+  actor        User              @relation("DniLookupActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, queriedAt], map: "dni_lookup_events_org_queried_idx")
+  @@index([dniPersonSnapshotId, queriedAt], map: "dni_lookup_events_snapshot_queried_idx")
+  @@index([actorUserId, queriedAt], map: "dni_lookup_events_actor_queried_idx")
+  @@map("dni_lookup_events")
+}

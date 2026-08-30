@@ -10,6 +10,7 @@ import { EscalationNotification } from "./escalation-notification";
 type ActiveSection =
   | "performance"
   | "orders"
+  | "dni"
   | "recovery"
   | "imports"
   | "logistics"
@@ -18,6 +19,7 @@ type ActiveSection =
 type IconName =
   | "home"
   | "orders"
+  | "identity"
   | "recovery"
   | "sales"
   | "logistics"
@@ -43,6 +45,13 @@ function NavigationIcon({ name }: { name: IconName }) {
       <>
         <path d="M5 3h10v14H5z" />
         <path d="M8 7h4M8 11h5M8 14h3" />
+      </>
+    ),
+    identity: (
+      <>
+        <rect height="13" rx="1.5" width="16" x="2" y="3.5" />
+        <circle cx="7" cy="9" r="2" />
+        <path d="M4.5 14c.4-1.8 1.2-2.7 2.5-2.7s2.1.9 2.5 2.7M12 8h3M12 11h3" />
       </>
     ),
     sales: (
@@ -246,6 +255,13 @@ export function CommercialAppShell({
             icon="orders"
             label="Pedidos"
           />
+          <NavigationItem
+            active={activeSection === "dni"}
+            description="Identidad y dirección RENIEC"
+            href="/dni"
+            icon="identity"
+            label="Consulta DNI"
+          />
           {canTriageRecovery ? (
             <NavigationItem
               active={activeSection === "recovery"}
@@ -336,6 +352,12 @@ export function CommercialAppShell({
           href="/orders"
           icon="orders"
           label="Pedidos"
+        />
+        <MobileNavigationItem
+          active={activeSection === "dni"}
+          href="/dni"
+          icon="identity"
+          label="DNI"
         />
         {canTriageRecovery ? (
           <MobileNavigationItem

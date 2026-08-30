@@ -98,6 +98,9 @@ model Organization {
   recoveryPortabilityBatches RecoveryPortabilityBatch[]
   recoveryPortabilityResults RecoveryPortabilityResult[]
 
+  dniPersonSnapshots DniPersonSnapshot[]
+  dniLookupEvents    DniLookupEvent[]
+
   @@map("organizations")
 }
 
@@ -165,6 +168,8 @@ model User {
   recoveryCasesSensitiveRevealed RecoveryCase[]              @relation("RecoveryCaseSensitiveRevealedBy")
   recoveryCaseEventsPerformed    RecoveryCaseEvent[]         @relation("RecoveryCaseEventActor")
   recoveryPortabilityUploaded    RecoveryPortabilityBatch[]  @relation("RecoveryPortabilityUploadedBy")
+
+  dniLookupEventsPerformed DniLookupEvent[] @relation("DniLookupActor")
 
   @@map("users")
 }

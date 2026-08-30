@@ -33,6 +33,8 @@ regreso a GHL.
 - SPEC-019 separa la autoridad de supervisión de la capacidad de venta para
   permitir supervisores vendedores sin perder identidad, métricas ni controles
   antifraude sobre sus propias órdenes.
+- SPEC-031 incorpora consulta RENIEC por DNI desde el servidor, con ficha
+  completa, caché por organización y auditoría para evitar créditos duplicados.
 
 El contexto funcional consolidado se mantiene fuera del repositorio en
 `PLATAFORMA_COMERCIAL_CONTEXTO_MAESTRO_V20.md`. Las decisiones ejecutables y su

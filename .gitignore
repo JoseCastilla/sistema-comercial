@@ -35,6 +35,7 @@ yarn-error.log*
 .web-dev.*.log
 .web-realtime.*.log
 .web-local.*.log
+.web-dni-local.*.log
 .api-local.*.log
 
 # Misc
