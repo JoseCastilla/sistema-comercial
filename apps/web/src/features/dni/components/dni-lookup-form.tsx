@@ -67,16 +67,16 @@ export function DniLookupForm({
       </section>
 
       <section className="rounded-xl border border-ui-border bg-ui-surface p-4 shadow-sm sm:p-5">
-        <form
-          action={formAction}
-          className="grid gap-3 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end"
-        >
-          <label className="ui-field">
-            <span className="ui-field__label">DNI del cliente</span>
+        <form action={formAction} className="grid gap-2">
+          <label className="ui-field__label" htmlFor="dni-lookup-input">
+            DNI del cliente
+          </label>
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-stretch">
             <input
               autoComplete="off"
               autoFocus
               className="ui-control font-mono tracking-[0.12em]"
+              id="dni-lookup-input"
               inputMode="numeric"
               maxLength={12}
               name="dni"
@@ -84,13 +84,17 @@ export function DniLookupForm({
               placeholder="12345678"
               required
             />
-            <span className="ui-field__hint">
-              Escribe los 8 dígitos. La consulta queda auditada.
-            </span>
-          </label>
-          <Button disabled={pending} type="submit">
-            {pending ? "Consultando..." : "Consultar DNI"}
-          </Button>
+            <Button
+              className="min-h-[2.625rem]"
+              disabled={pending}
+              type="submit"
+            >
+              {pending ? "Consultando..." : "Consultar DNI"}
+            </Button>
+          </div>
+          <p className="ui-field__hint">
+            Escribe los 8 dígitos. La consulta queda auditada.
+          </p>
         </form>
 
         {state.message ? (
