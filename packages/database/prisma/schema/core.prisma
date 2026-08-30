@@ -101,6 +101,9 @@ model Organization {
   dniPersonSnapshots DniPersonSnapshot[]
   dniLookupEvents    DniLookupEvent[]
 
+  mobileDebtIntegration  MobileDebtIntegration?
+  mobileDebtLookupEvents MobileDebtLookupEvent[]
+
   @@map("organizations")
 }
 
@@ -170,6 +173,9 @@ model User {
   recoveryPortabilityUploaded    RecoveryPortabilityBatch[]  @relation("RecoveryPortabilityUploadedBy")
 
   dniLookupEventsPerformed DniLookupEvent[] @relation("DniLookupActor")
+
+  mobileDebtCredentialsUpdated MobileDebtIntegration[] @relation("MobileDebtCredentialUpdatedBy")
+  mobileDebtLookupsPerformed   MobileDebtLookupEvent[] @relation("MobileDebtLookupActor")
 
   @@map("users")
 }

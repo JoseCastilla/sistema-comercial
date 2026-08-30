@@ -22,3 +22,4 @@ export * from "./recovery-selection.js";
 export * from "./performance-metrics.js";
 export * from "./performance-period.js";
 export * from "./dni-lookup.js";
+export * from "./mobile-debt.js";

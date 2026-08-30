@@ -3,12 +3,12 @@ import Link from "next/link";
 export function ExternalToolsNavigation({
   activeTool,
 }: {
-  activeTool: "lines" | "portability";
+  activeTool: "lines" | "portability" | "debt";
 }) {
   return (
     <nav
       aria-label="Herramientas de consulta"
-      className="grid gap-2 rounded-2xl border border-ui-border bg-ui-surface p-2 shadow-sm sm:grid-cols-2"
+      className="grid gap-2 rounded-2xl border border-ui-border bg-ui-surface p-2 shadow-sm sm:grid-cols-3"
     >
       <ToolLink
         active={activeTool === "lines"}
@@ -21,6 +21,12 @@ export function ExternalToolsNavigation({
         description="Estado y operador de un número"
         href="/tools/portability"
         label="Consulta portabilidad"
+      />
+      <ToolLink
+        active={activeTool === "debt"}
+        description="Monto y vencimiento por línea"
+        href="/tools/debt"
+        label="Consulta de deuda"
       />
     </nav>
   );

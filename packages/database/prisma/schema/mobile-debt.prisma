@@ -1,0 +1,71 @@
+enum MobileDebtCredentialStatus {
+  ACTIVE
+  EXPIRED
+  ERROR
+}
+
+enum MobileDebtOperator {
+  CLARO
+  ENTEL
+  BITEL
+}
+
+enum MobileDebtLookupStatus {
+  SUCCESS
+  FAILED
+}
+
+/// Credenciales de sesion cifradas de Red Digital. El contenido nunca se
+/// expone al navegador; la interfaz administrativa solo muestra metadatos.
+model MobileDebtIntegration {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @unique @map("organization_id") @db.Uuid
+
+  encryptedCredentials  String                     @map("encrypted_credentials") @db.Text
+  credentialHint        String                     @map("credential_hint") @db.VarChar(8)
+  credentialStatus      MobileDebtCredentialStatus @default(ACTIVE) @map("credential_status")
+  credentialUpdatedById String                     @map("credential_updated_by_id") @db.Uuid
+  credentialUpdatedAt   DateTime                   @default(now()) @map("credential_updated_at") @db.Timestamptz(3)
+
+  lastValidatedAt DateTime? @map("last_validated_at") @db.Timestamptz(3)
+  lastAttemptAt   DateTime? @map("last_attempt_at") @db.Timestamptz(3)
+  lastSuccessAt   DateTime? @map("last_success_at") @db.Timestamptz(3)
+  lastError       String?   @map("last_error") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization        Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  credentialUpdatedBy User                    @relation("MobileDebtCredentialUpdatedBy", fields: [credentialUpdatedById], references: [id], onDelete: Restrict)
+  lookupEvents        MobileDebtLookupEvent[]
+
+  @@map("mobile_debt_integrations")
+}
+
+/// Auditoria de cada intento. No conserva la respuesta cruda; en consultas
+/// exitosas guarda el nombre reportado para formar la base comercial.
+model MobileDebtLookupEvent {
+  id                      String  @id @default(uuid()) @db.Uuid
+  organizationId          String  @map("organization_id") @db.Uuid
+  mobileDebtIntegrationId String? @map("mobile_debt_integration_id") @db.Uuid
+  actorUserId             String  @map("actor_user_id") @db.Uuid
+
+  operator MobileDebtOperator
+  phone    String                 @db.VarChar(9)
+  status   MobileDebtLookupStatus
+
+  customerName String?  @map("customer_name") @db.VarChar(200)
+  debtAmount   Decimal? @map("debt_amount") @db.Decimal(12, 2)
+  dueDateRaw   String?  @map("due_date_raw") @db.VarChar(30)
+  errorCode    String?  @map("error_code") @db.VarChar(50)
+  queriedAt    DateTime @default(now()) @map("queried_at") @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  integration  MobileDebtIntegration? @relation(fields: [mobileDebtIntegrationId], references: [id], onDelete: SetNull)
+  actor        User                   @relation("MobileDebtLookupActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, queriedAt], map: "mobile_debt_lookup_events_org_queried_idx")
+  @@index([actorUserId, queriedAt], map: "mobile_debt_lookup_events_actor_queried_idx")
+  @@index([phone, queriedAt], map: "mobile_debt_lookup_events_phone_queried_idx")
+  @@map("mobile_debt_lookup_events")
+}

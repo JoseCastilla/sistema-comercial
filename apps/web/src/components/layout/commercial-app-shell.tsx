@@ -273,7 +273,7 @@ export function CommercialAppShell({
           />
           <NavigationItem
             active={activeSection === "tools"}
-            description="Líneas y portabilidad"
+            description="Líneas, deuda y portabilidad"
             href="/tools/lines"
             icon="tools"
             label="Consultas externas"
