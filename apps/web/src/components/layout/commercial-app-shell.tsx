@@ -11,6 +11,7 @@ type ActiveSection =
   | "performance"
   | "orders"
   | "dni"
+  | "tools"
   | "recovery"
   | "imports"
   | "logistics"
@@ -20,6 +21,7 @@ type IconName =
   | "home"
   | "orders"
   | "identity"
+  | "tools"
   | "recovery"
   | "sales"
   | "logistics"
@@ -52,6 +54,13 @@ function NavigationIcon({ name }: { name: IconName }) {
         <rect height="13" rx="1.5" width="16" x="2" y="3.5" />
         <circle cx="7" cy="9" r="2" />
         <path d="M4.5 14c.4-1.8 1.2-2.7 2.5-2.7s2.1.9 2.5 2.7M12 8h3M12 11h3" />
+      </>
+    ),
+    tools: (
+      <>
+        <circle cx="6" cy="7" r="2.5" />
+        <circle cx="14" cy="13" r="2.5" />
+        <path d="M8.5 7h6M5.5 9.5V14h6" />
       </>
     ),
     sales: (
@@ -262,6 +271,13 @@ export function CommercialAppShell({
             icon="identity"
             label="Consulta DNI"
           />
+          <NavigationItem
+            active={activeSection === "tools"}
+            description="Líneas y portabilidad"
+            href="/tools/lines"
+            icon="tools"
+            label="Consultas externas"
+          />
           {canTriageRecovery ? (
             <NavigationItem
               active={activeSection === "recovery"}
@@ -339,7 +355,7 @@ export function CommercialAppShell({
       <nav
         aria-label="Navegación móvil"
         className="app-shell__mobile-nav"
-        data-items={isAdmin ? "7" : canTriageRecovery ? "3" : "2"}
+        data-items={isAdmin ? "9" : canTriageRecovery ? "5" : "4"}
       >
         <MobileNavigationItem
           active={activeSection === "performance"}
@@ -358,6 +374,12 @@ export function CommercialAppShell({
           href="/dni"
           icon="identity"
           label="DNI"
+        />
+        <MobileNavigationItem
+          active={activeSection === "tools"}
+          href="/tools/lines"
+          icon="tools"
+          label="Consultas"
         />
         {canTriageRecovery ? (
           <MobileNavigationItem
