@@ -3,15 +3,21 @@ import "server-only";
 import {
   calculatePerformanceMetrics,
   evaluatePerformanceOrderPayment,
+  filterOrdersRegisteredThroughLimaDay,
+  getLimaDayOfMonth,
   getOrderPeriodRange,
   getPotentialBaseCommissionCents,
   getPerformanceMonthRange,
   parsePerformanceMonth,
-  resolveDitoOrderScope,
   shiftPerformanceMonth,
 } from "@repo/validation";
 
 import { database } from "@/server/database";
+
+import {
+  getPerformanceAccessWhere,
+  resolveRequestedAdvisor,
+} from "./performance-access";
 
 import type { Prisma } from "@repo/database";
 import type {
@@ -35,6 +41,7 @@ interface PerformanceAccess {
 interface PerformanceQuery {
   month: string;
   team?: string;
+  agent?: string;
   view?: "SELF" | "TEAM";
 }
 
@@ -108,26 +115,6 @@ function pointsDelta(
   previous: number | null,
 ): number | null {
   return current === null || previous === null ? null : current - previous;
-}
-
-function getAccessWhere(
-  role: PerformanceRole,
-  userId: string,
-  supervisedTeamIds: readonly string[],
-): Prisma.DitoOrderWhereInput {
-  const scope = resolveDitoOrderScope({ role, userId, supervisedTeamIds });
-
-  if (scope.kind === "AGENT") return { agentUserId: scope.userId };
-  if (scope.kind === "SUPERVISED_TEAMS_WITH_ORPHANS") {
-    return {
-      OR: [
-        { assignedTeamId: { in: [...scope.teamIds] } },
-        { agentUserId: null, assignedTeamId: null },
-      ],
-    };
-  }
-  if (scope.kind === "NONE") return { assignedTeamId: { in: [] } };
-  return {};
 }
 
 function groupByAgent(
@@ -515,9 +502,22 @@ export async function getPerformanceDashboard(
     !isIndividualScope && teamOptions.some((team) => team.id === requestedTeam)
       ? requestedTeam
       : "ALL";
-  const accessWhere = isIndividualScope
+  const selectedAdvisor = isIndividualScope
+    ? null
+    : await resolveRequestedAdvisor(organizationId, access, query.agent);
+  const scopeWhere = isIndividualScope
     ? { agentUserId: access.userId }
-    : getAccessWhere(access.role, access.userId, supervisedTeamIds);
+    : getPerformanceAccessWhere(
+        access.role,
+        access.userId,
+        supervisedTeamIds,
+        canSwitchView,
+      );
+  // El filtro por asesor se interseca con el alcance del actor: aunque el
+  // identificador fuera indebido, nunca amplía lo que el actor puede ver.
+  const accessWhere: Prisma.DitoOrderWhereInput = selectedAdvisor
+    ? { AND: [scopeWhere, { agentUserId: selectedAdvisor.id }] }
+    : scopeWhere;
   const teamWhere: Prisma.DitoOrderWhereInput =
     teamFilter === "ALL" ? {} : { assignedTeamId: teamFilter };
   const showDailyPulse = currentRange.key === currentMonth;
@@ -601,7 +601,12 @@ export async function getPerformanceDashboard(
           isActive: true,
           isPrimary: true,
           ...(access.role === "SUPERVISOR"
-            ? { teamId: { in: supervisedTeamIds } }
+            ? {
+                OR: [
+                  { teamId: { in: supervisedTeamIds } },
+                  { userId: access.userId },
+                ],
+              }
             : {}),
           team: {
             organizationId,
@@ -635,7 +640,7 @@ export async function getPerformanceDashboard(
       .filter(([, teams]) => teams.length === 1)
       .map(([userId, teams]) => [userId, teams[0] ?? ""]),
   );
-  const activeSellers = new Map(
+  const allActiveSellers = new Map(
     primaryTeamMemberships.map((membership) => [
       membership.userId,
       {
@@ -644,10 +649,52 @@ export async function getPerformanceDashboard(
       },
     ]),
   );
+  // Al aislar a un asesor, la cobertura y el detalle hablan solo de él: el
+  // resto del equipo no debe aparecer como filas sin producción.
+  const activeSellers = selectedAdvisor
+    ? new Map(
+        [...allActiveSellers.entries()].filter(
+          ([userId]) => userId === selectedAdvisor.id,
+        ),
+      )
+    : allActiveSellers;
+
+  const comparedThroughDay =
+    currentRange.key === currentMonth ? getLimaDayOfMonth(now) : null;
+  const comparablePreviousOrders =
+    comparedThroughDay === null
+      ? previousOrders
+      : filterOrdersRegisteredThroughLimaDay(
+          previousOrders,
+          comparedThroughDay,
+        );
+  const unattributedOrders = orders.filter(
+    (order) => order.agentUserId === null,
+  );
+  const unattributedPreviousEntered = comparablePreviousOrders.filter(
+    (order) => order.agentUserId === null,
+  ).length;
+
+  const advisorOptions = [
+    ...new Map<string, { id: string; name: string }>([
+      ...[...allActiveSellers.entries()].map(
+        ([id, seller]) =>
+          [id, { id, name: seller.name }] as [
+            string,
+            { id: string; name: string },
+          ],
+      ),
+      ...(selectedAdvisor
+        ? ([[selectedAdvisor.id, selectedAdvisor]] as Array<
+            [string, { id: string; name: string }]
+          >)
+        : []),
+    ]).values(),
+  ].sort((left, right) => left.name.localeCompare(right.name, "es"));
 
   const scopedMetrics = calculateScopedMetrics(orders, isIndividualScope);
   const scopedPreviousMetrics = calculateScopedMetrics(
-    previousOrders,
+    comparablePreviousOrders,
     isIndividualScope,
   );
   const metrics =
@@ -682,13 +729,17 @@ export async function getPerformanceDashboard(
     to: currentRange.to,
     scopeLabel: isIndividualScope
       ? "Mi desempeño"
-      : (selectedTeam?.name ??
+      : (selectedAdvisor?.name ??
+        selectedTeam?.name ??
         (access.role === "SUPERVISOR" ? "Mis equipos" : "Organización")),
     view,
     canSwitchView,
     teamFilter,
     teamOptions,
+    agentFilter: selectedAdvisor?.id ?? "ALL",
+    advisorOptions,
     showTeamFilter: !isIndividualScope && teamOptions.length > 0,
+    showAdvisorFilter: !isIndividualScope && advisorOptions.length > 0,
     showCommission: access.role !== "BACKOFFICE",
     salesMix,
     monthProgress,
@@ -704,6 +755,7 @@ export async function getPerformanceDashboard(
     previousMetrics,
     comparison: {
       hasBase,
+      comparedThroughDay,
       enteredDelta: hasBase
         ? percentDelta(metrics.entered, previousMetrics.entered)
         : null,
@@ -714,9 +766,23 @@ export async function getPerformanceDashboard(
         ? pointsDelta(metrics.payableRate, previousMetrics.payableRate)
         : null,
     },
-    workforce: isIndividualScope
-      ? null
-      : {
+    unattributed:
+      !isIndividualScope &&
+      (unattributedOrders.length > 0 || unattributedPreviousEntered > 0)
+        ? {
+            metrics: calculatePerformanceMetrics(
+              unattributedOrders.map(toMetricInput),
+            ),
+            enteredDelta: percentDelta(
+              unattributedOrders.length,
+              unattributedPreviousEntered,
+            ),
+          }
+        : null,
+    workforce:
+      isIndividualScope || selectedAdvisor
+        ? null
+        : {
           activeSellers: activeSellers.size,
           sellersWithSales: [...activeSellers.keys()].filter((userId) =>
             orders.some((order) => order.agentUserId === userId),
@@ -737,7 +803,7 @@ export async function getPerformanceDashboard(
       ? []
       : groupByAgent(
           orders,
-          previousOrders,
+          comparablePreviousOrders,
           access.role,
           primaryTeamNames,
           activeSellers,

@@ -4,7 +4,7 @@ import { SignOutButton } from "@/app/orders/sign-out-button";
 import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { PerformanceReconciliation } from "@/features/performance/components/performance-reconciliation";
 import { getPerformanceReconciliation } from "@/features/performance/server/get-performance-reconciliation";
-import { requireAdminAccess } from "@/server/auth/access";
+import { requireCommercialAccess } from "@/server/auth/access";
 
 import type { ReconciliationFilter } from "@/features/performance/reconciliation.types";
 
@@ -35,15 +35,20 @@ function parseReason(value: string | undefined): ReconciliationFilter {
 export default async function ReconciliationPage({
   searchParams,
 }: ReconciliationPageProps) {
-  const { session, membership } = await requireAdminAccess();
+  const { session, membership } = await requireCommercialAccess();
   const parameters = await searchParams;
   const rawPage = Number(firstValue(parameters.page));
-  const data = await getPerformanceReconciliation(membership.organization.id, {
-    month: parsePerformanceMonth(firstValue(parameters.month)),
-    team: firstValue(parameters.team)?.trim().slice(0, 50),
-    reason: parseReason(firstValue(parameters.reason)),
-    page: Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1,
-  });
+  const data = await getPerformanceReconciliation(
+    membership.organization.id,
+    { userId: session.user.id, role: membership.role },
+    {
+      month: parsePerformanceMonth(firstValue(parameters.month)),
+      team: firstValue(parameters.team)?.trim().slice(0, 50),
+      agent: firstValue(parameters.agent)?.trim().slice(0, 50),
+      reason: parseReason(firstValue(parameters.reason)),
+      page: Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1,
+    },
+  );
 
   return (
     <CommercialAppShell

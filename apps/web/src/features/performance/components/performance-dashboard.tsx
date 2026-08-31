@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { getPotentialBaseCommissionCents } from "@repo/validation";
+
 import { PageHeader } from "@repo/ui/page-header";
 
 import { OrderRealtimeStatus } from "@/features/orders/components/order-realtime-status";
@@ -25,12 +27,20 @@ function percentage(value: number | null): string {
       }).format(value);
 }
 
-function delta(value: number | null, points = false): string {
+function delta(
+  value: number | null,
+  comparedThroughDay: number | null,
+  points = false,
+): string {
   if (value === null) return "Sin base comparable";
   const sign = value > 0 ? "+" : "";
+  const baseline =
+    comparedThroughDay === null
+      ? "vs. mes anterior"
+      : `vs. días 1–${comparedThroughDay} del mes anterior`;
   return points
-    ? `${sign}${(value * 100).toFixed(1)} pp vs. mes anterior`
-    : `${sign}${percentage(value)} vs. mes anterior`;
+    ? `${sign}${(value * 100).toFixed(1)} pp ${baseline}`
+    : `${sign}${percentage(value)} ${baseline}`;
 }
 
 function shortDelta(value: number | null): string {
@@ -46,7 +56,26 @@ function performanceHref(
   const parameters = new URLSearchParams({ month });
   if (data.canSwitchView) parameters.set("view", data.view);
   if (data.teamFilter !== "ALL") parameters.set("team", data.teamFilter);
+  if (data.agentFilter !== "ALL") parameters.set("agent", data.agentFilter);
   return `/performance?${parameters.toString()}`;
+}
+
+function advisorHref(data: PerformanceDashboardData, agentId: string): string {
+  const parameters = new URLSearchParams({ month: data.month });
+  if (data.canSwitchView) parameters.set("view", data.view);
+  if (data.teamFilter !== "ALL") parameters.set("team", data.teamFilter);
+  if (data.agentFilter !== agentId) parameters.set("agent", agentId);
+  return `/performance?${parameters.toString()}`;
+}
+
+function reconciliationHref(
+  data: PerformanceDashboardData,
+  reason: string,
+): string {
+  const parameters = new URLSearchParams({ month: data.month, reason });
+  if (data.teamFilter !== "ALL") parameters.set("team", data.teamFilter);
+  if (data.agentFilter !== "ALL") parameters.set("agent", data.agentFilter);
+  return `/performance/reconciliation?${parameters.toString()}`;
 }
 
 function ordersHref(
@@ -508,7 +537,9 @@ function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
             {advisors.map((advisor) => (
               <tr key={advisor.id}>
                 <th scope="row">
-                  <strong>{advisor.name}</strong>
+                  <Link href={advisorHref(data, advisor.id)}>
+                    <strong>{advisor.name}</strong>
+                  </Link>
                   <small>{advisor.teamName ?? "Sin equipo"}</small>
                 </th>
                 {advisor.dailyEntered.map((value, index) => {
@@ -554,6 +585,8 @@ function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
   const mix = data.salesMix;
   if (!data.isCurrentMonth && mix.total === 0) return null;
 
+  const prepaidRateCents = getPotentialBaseCommissionCents("PORT_PREPAID");
+  const postpaidRateCents = getPotentialBaseCommissionCents("PORT_POSTPAID");
   const rows = [
     {
       key: "new-line",
@@ -565,13 +598,13 @@ function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
       key: "port-prepaid",
       label: "Porta origen prepago",
       value: mix.portPrepaid,
-      commission: `${mix.payablePortPrepaid} pagables × ${money(1_250)} = ${money(mix.payablePortPrepaid * 1_250)}`,
+      commission: `${mix.payablePortPrepaid} pagables × ${money(prepaidRateCents)} = ${money(mix.payablePortPrepaid * prepaidRateCents)}`,
     },
     {
       key: "port-postpaid",
       label: "Porta origen postpago",
       value: mix.portPostpaid,
-      commission: `${mix.payablePortPostpaid} pagables × ${money(2_500)} = ${money(mix.payablePortPostpaid * 2_500)}`,
+      commission: `${mix.payablePortPostpaid} pagables × ${money(postpaidRateCents)} = ${money(mix.payablePortPostpaid * postpaidRateCents)}`,
     },
     ...(mix.unclassified > 0
       ? [
@@ -718,6 +751,19 @@ export function PerformanceDashboard({
               </select>
             </label>
           ) : null}
+          {data.showAdvisorFilter ? (
+            <label>
+              <span>Asesor</span>
+              <select defaultValue={data.agentFilter} name="agent">
+                <option value="ALL">Todos los asesores</option>
+                {data.advisorOptions.map((advisor) => (
+                  <option key={advisor.id} value={advisor.id}>
+                    {advisor.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <button type="submit">Aplicar</button>
         </form>
       </section>
@@ -728,7 +774,10 @@ export function PerformanceDashboard({
       >
         <Kpi
           label="Ventas ingresadas"
-          supporting={delta(data.comparison.enteredDelta)}
+          supporting={delta(
+            data.comparison.enteredDelta,
+            data.comparison.comparedThroughDay,
+          )}
           tone="primary"
           value={data.metrics.entered}
         />
@@ -739,8 +788,9 @@ export function PerformanceDashboard({
           value={data.metrics.delivered}
         />
         <Kpi
+          href={reconciliationHref(data, "PAYABLE")}
           label="Portabilidades pagables"
-          supporting={`${percentage(data.metrics.payableRate)} de ${data.metrics.portability} portabilidades · entregadas y cerradas`}
+          supporting={`${percentage(data.metrics.payableRate)} de ${data.metrics.portability} portabilidades · ver evidencia`}
           tone="positive"
           value={data.metrics.payable}
         />
@@ -837,14 +887,12 @@ export function PerformanceDashboard({
               <strong className="performance-commission__total">
                 {money(data.metrics.estimatedCommissionCents)}
               </strong>
-              {data.role === "ADMIN" ? (
-                <Link
-                  className="performance-commission__review"
-                  href={`/performance/reconciliation?month=${data.month}${data.teamFilter === "ALL" ? "" : `&team=${data.teamFilter}`}`}
-                >
-                  Revisar cálculo
-                </Link>
-              ) : null}
+              <Link
+                className="performance-commission__review"
+                href={reconciliationHref(data, "ALL")}
+              >
+                Revisar cálculo
+              </Link>
             </div>
           </header>
           <div className="performance-commission__details">
@@ -880,7 +928,7 @@ export function PerformanceDashboard({
         </section>
       ) : null}
 
-      {data.breakdown.length > 0 ? (
+      {data.breakdown.length > 0 || data.unattributed ? (
         <details className="performance-panel performance-breakdown">
           <summary className="performance-breakdown__summary">
             <div>
@@ -899,7 +947,15 @@ export function PerformanceDashboard({
                 <tr>
                   <th>Asesor</th>
                   <th>Ingresadas</th>
-                  <th>Vs. anterior</th>
+                  <th
+                    title={
+                      data.comparison.comparedThroughDay === null
+                        ? "Comparado contra el mes anterior completo"
+                        : `Comparado contra los días 1–${data.comparison.comparedThroughDay} del mes anterior`
+                    }
+                  >
+                    Vs. anterior
+                  </th>
                   <th>Tasa de entrega</th>
                   <th>Pagables</th>
                   <th>Recuperar</th>
@@ -918,7 +974,9 @@ export function PerformanceDashboard({
                     key={item.id}
                   >
                     <td>
-                      <strong>{item.name}</strong>
+                      <Link href={advisorHref(data, item.id)}>
+                        <strong>{item.name}</strong>
+                      </Link>
                       <small>
                         {item.teamName ?? "Sin equipo"}
                         {!item.isActiveSeller ? " · histórico" : ""}
@@ -935,6 +993,25 @@ export function PerformanceDashboard({
                     ) : null}
                   </tr>
                 ))}
+                {data.unattributed ? (
+                  <tr data-unattributed="true">
+                    <td>
+                      <strong>Sin asesor</strong>
+                      <small>Asignar antes de medir desempeño</small>
+                    </td>
+                    <td>{data.unattributed.metrics.entered}</td>
+                    <td>{shortDelta(data.unattributed.enteredDelta)}</td>
+                    <td>
+                      {percentage(data.unattributed.metrics.deliveryRate)}
+                    </td>
+                    <td>{data.unattributed.metrics.payable}</td>
+                    <td>{data.unattributed.metrics.recovery}</td>
+                    <td>
+                      {data.unattributed.metrics.deliveredPendingActivation}
+                    </td>
+                    {data.role === "ADMIN" ? <td>—</td> : null}
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>

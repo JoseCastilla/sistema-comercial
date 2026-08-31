@@ -33,6 +33,7 @@ function reconciliationHref(
     reason: input.reason ?? data.filter,
   });
   if (data.teamFilter !== "ALL") parameters.set("team", data.teamFilter);
+  if (data.agentFilter !== "ALL") parameters.set("agent", data.agentFilter);
   if ((input.page ?? 1) > 1) parameters.set("page", String(input.page));
   return `/performance/reconciliation?${parameters.toString()}`;
 }
@@ -61,13 +62,21 @@ export function PerformanceReconciliation({
     <div className="ui-page-stack">
       <PageHeader
         description="Explica qué órdenes generan comisión base y cuáles requieren una corrección o todavía deben madurar."
-        eyebrow="Control administrativo"
+        eyebrow={data.scopeLabel}
         meta={<span>Actualizado: {data.generatedAt}</span>}
-        title="Conciliación de comisiones"
+        title={
+          data.role === "AGENT"
+            ? "Evidencia de mis pagables"
+            : "Conciliación de comisiones"
+        }
       />
 
       <div className="reconciliation-return">
-        <Link href={`/performance?month=${data.month}`}>← Volver a rendimiento</Link>
+        <Link
+          href={`/performance?month=${data.month}${data.agentFilter === "ALL" ? "" : `&agent=${data.agentFilter}`}`}
+        >
+          ← Volver a rendimiento
+        </Link>
         <span>Los aceleradores se concilian por asesor, no por orden individual.</span>
       </div>
 
@@ -81,15 +90,24 @@ export function PerformanceReconciliation({
             <span>Mes</span>
             <input defaultValue={data.month} max={data.currentMonth} name="month" type="month" />
           </label>
-          <label>
-            <span>Equipo</span>
-            <select defaultValue={data.teamFilter} name="team">
-              <option value="ALL">Toda la organización</option>
-              {data.teamOptions.map((team) => (
-                <option key={team.id} value={team.id}>{team.name}</option>
-              ))}
-            </select>
-          </label>
+          {data.teamOptions.length > 0 ? (
+            <label>
+              <span>Equipo</span>
+              <select defaultValue={data.teamFilter} name="team">
+                <option value="ALL">
+                  {data.role === "SUPERVISOR"
+                    ? "Mis equipos"
+                    : "Toda la organización"}
+                </option>
+                {data.teamOptions.map((team) => (
+                  <option key={team.id} value={team.id}>{team.name}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {data.agentFilter === "ALL" ? null : (
+            <input name="agent" type="hidden" value={data.agentFilter} />
+          )}
           <label>
             <span>Resultado</span>
             <select defaultValue={data.filter} name="reason">
@@ -118,11 +136,13 @@ export function PerformanceReconciliation({
           <strong>{data.totals.payable}</strong>
           <small>Entregadas, cerradas y con asesor</small>
         </article>
-        <article>
-          <span>Comisión base provisional</span>
-          <strong>{money(data.totals.baseCommissionCents)}</strong>
-          <small>No incluye aceleradores</small>
-        </article>
+        {data.showTotals ? (
+          <article>
+            <span>Comisión base provisional</span>
+            <strong>{money(data.totals.baseCommissionCents)}</strong>
+            <small>No incluye aceleradores</small>
+          </article>
+        ) : null}
       </section>
 
       <section className="performance-panel">
@@ -142,7 +162,7 @@ export function PerformanceReconciliation({
                 <th>Asesor</th>
                 <th>Operación</th>
                 <th>Resultado</th>
-                <th>Base</th>
+                {data.showLineAmounts ? <th>Base</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -156,11 +176,20 @@ export function PerformanceReconciliation({
                   <td><strong>{line.agentName}</strong><small>{line.teamName ?? "Sin equipo"}</small></td>
                   <td>{operationLabels[line.operation] ?? line.operation}</td>
                   <td><span className="reconciliation-reason" data-reason={line.reason}>{line.reasonLabel}</span></td>
-                  <td><strong>{money(line.baseCommissionCents)}</strong></td>
+                  {data.showLineAmounts ? (
+                    <td><strong>{money(line.baseCommissionCents)}</strong></td>
+                  ) : null}
                 </tr>
               ))}
               {data.lines.length === 0 ? (
-                <tr><td className="reconciliation-empty" colSpan={6}>No hay órdenes para este resultado.</td></tr>
+                <tr>
+                  <td
+                    className="reconciliation-empty"
+                    colSpan={data.showLineAmounts ? 6 : 5}
+                  >
+                    No hay órdenes para este resultado.
+                  </td>
+                </tr>
               ) : null}
             </tbody>
           </table>

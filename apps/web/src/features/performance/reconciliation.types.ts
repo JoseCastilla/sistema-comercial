@@ -1,5 +1,7 @@
 import type { PerformancePaymentReason } from "@repo/validation";
 
+import type { PerformanceRole } from "./performance.types";
+
 export type ReconciliationFilter = PerformancePaymentReason | "ALL";
 
 export interface ReconciliationLine {
@@ -22,8 +24,13 @@ export interface PerformanceReconciliationData {
   monthLabel: string;
   from: string;
   to: string;
+  role: PerformanceRole;
+  scopeLabel: string;
   teamFilter: string;
   teamOptions: Array<{ id: string; name: string }>;
+  agentFilter: string;
+  showTotals: boolean;
+  showLineAmounts: boolean;
   filter: ReconciliationFilter;
   counts: Record<PerformancePaymentReason, number>;
   totals: {

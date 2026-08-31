@@ -5,6 +5,9 @@ import {
   calculateAcceleratorOne,
   calculatePerformanceMetrics,
   evaluatePerformanceOrderPayment,
+  filterOrdersRegisteredThroughLimaDay,
+  getLimaDayOfMonth,
+  getPerformanceCommissionPolicy,
   getPotentialBaseCommissionCents,
 } from "../dist/performance-metrics.js";
 
@@ -126,6 +129,80 @@ test("calcula el potencial comercial sin presentarlo como comisión confirmada",
   assert.equal(getPotentialBaseCommissionCents("PORT_PREPAID"), 1_250);
   assert.equal(getPotentialBaseCommissionCents("NEW_LINE"), 0);
   assert.equal(getPotentialBaseCommissionCents("UNKNOWN"), 0);
+});
+
+test("la política de comisiones es la única fuente de tarifas y tramos", () => {
+  const policy = getPerformanceCommissionPolicy();
+
+  assert.equal(policy.currency, "PEN");
+  for (const operation of [
+    "PORT_POSTPAID",
+    "PORT_PREPAID",
+    "NEW_LINE",
+    "UNKNOWN",
+  ]) {
+    assert.equal(
+      policy.baseRateCents[operation],
+      getPotentialBaseCommissionCents(operation),
+    );
+  }
+  assert.deepEqual(policy.acceleratorOne, {
+    windowStartDay: 1,
+    windowEndDay: 15,
+    firstTierTarget: 30,
+    firstTierAmountCents: 20_000,
+    secondTierTarget: 40,
+    secondTierAmountCents: 30_000,
+    perExtraConfirmedCents: 1_000,
+  });
+});
+
+test("una portabilidad entregada y cerrada sin asesor no suma pagable ni comisión", () => {
+  const result = calculatePerformanceMetrics([
+    order({ agentUserId: null, assignedTeamId: null }),
+    order(),
+  ]);
+
+  assert.equal(result.entered, 2);
+  assert.equal(result.delivered, 2);
+  assert.equal(result.activated, 2);
+  assert.equal(result.payable, 1);
+  assert.equal(result.baseCommissionCents, 2_500);
+  assert.equal(result.payableRate, 1 / 2);
+  assert.equal(result.unassigned, 1);
+});
+
+test("el dashboard y la conciliación comparten la misma razón para huérfanas", () => {
+  const evaluation = evaluatePerformanceOrderPayment(
+    order({ agentUserId: null }),
+  );
+  const metrics = calculatePerformanceMetrics([order({ agentUserId: null })]);
+
+  assert.equal(evaluation.reason, "UNASSIGNED");
+  assert.equal(evaluation.payable, false);
+  assert.equal(metrics.payable, 0);
+  assert.equal(metrics.baseCommissionCents, 0);
+});
+
+test("resuelve el día del mes en Lima, no en UTC", () => {
+  assert.equal(getLimaDayOfMonth(new Date("2026-09-01T04:59:00.000Z")), 31);
+  assert.equal(getLimaDayOfMonth(new Date("2026-09-01T05:00:00.000Z")), 1);
+});
+
+test("recorta la cohorte del mes anterior hasta el día transcurrido", () => {
+  const cohort = [
+    order({ registeredAt: new Date("2026-07-01T15:00:00.000Z") }),
+    order({ registeredAt: new Date("2026-07-15T15:00:00.000Z") }),
+    order({ registeredAt: new Date("2026-07-16T04:59:00.000Z") }),
+    order({ registeredAt: new Date("2026-07-20T15:00:00.000Z") }),
+  ];
+
+  const filtered = filterOrdersRegisteredThroughLimaDay(cohort, 15);
+
+  assert.equal(filtered.length, 3);
+  assert.ok(
+    filtered.every((item) => getLimaDayOfMonth(item.registeredAt) <= 15),
+  );
 });
 
 test("considera recuperables las no entregadas y canceladas, no las rechazadas", () => {

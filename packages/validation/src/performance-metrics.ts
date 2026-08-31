@@ -84,16 +84,62 @@ function isPortability(operation: PerformanceCommercialOperation): boolean {
   return operation === "PORT_PREPAID" || operation === "PORT_POSTPAID";
 }
 
+export interface PerformanceCommissionPolicy {
+  currency: "PEN";
+  baseRateCents: Record<PerformanceCommercialOperation, number>;
+  acceleratorOne: {
+    windowStartDay: number;
+    windowEndDay: number;
+    firstTierTarget: number;
+    firstTierAmountCents: number;
+    secondTierTarget: number;
+    secondTierAmountCents: number;
+    perExtraConfirmedCents: number;
+  };
+}
+
+const commissionPolicy: PerformanceCommissionPolicy = {
+  currency: "PEN",
+  baseRateCents: {
+    PORT_POSTPAID: 2_500,
+    PORT_PREPAID: 1_250,
+    NEW_LINE: 0,
+    UNKNOWN: 0,
+  },
+  acceleratorOne: {
+    windowStartDay: 1,
+    windowEndDay: 15,
+    firstTierTarget: 30,
+    firstTierAmountCents: 20_000,
+    secondTierTarget: 40,
+    secondTierAmountCents: 30_000,
+    perExtraConfirmedCents: 1_000,
+  },
+};
+
+// Única fuente de las tarifas (SPEC-033). El parámetro de mes permitirá
+// versionar por vigencia sin cambiar a los consumidores.
+export function getPerformanceCommissionPolicy(
+  monthKey?: string,
+): PerformanceCommissionPolicy {
+  void monthKey;
+  return commissionPolicy;
+}
+
 export function getPotentialBaseCommissionCents(
   operation: PerformanceCommercialOperation,
 ): number {
-  if (operation === "PORT_POSTPAID") return 2_500;
-  if (operation === "PORT_PREPAID") return 1_250;
-  return 0;
+  return commissionPolicy.baseRateCents[operation];
 }
 
-function limaDay(value: Date): number {
+export function getLimaDayOfMonth(value: Date): number {
   return Number(limaDayFormatter.format(value));
+}
+
+export function filterOrdersRegisteredThroughLimaDay<
+  T extends { registeredAt: Date },
+>(orders: readonly T[], day: number): T[] {
+  return orders.filter((order) => getLimaDayOfMonth(order.registeredAt) <= day);
 }
 
 export function evaluatePerformanceOrderPayment(
@@ -138,9 +184,14 @@ export function evaluatePerformanceOrderPayment(
 export function calculateAcceleratorOne(
   orders: readonly PerformanceOrderInput[],
 ): PerformanceAccelerator {
+  const policy = commissionPolicy.acceleratorOne;
   const eligibleOrders = orders.filter((order) => {
-    const day = limaDay(order.registeredAt);
-    return isPortability(order.commercialOperation) && day >= 1 && day <= 15;
+    const day = getLimaDayOfMonth(order.registeredAt);
+    return (
+      isPortability(order.commercialOperation) &&
+      day >= policy.windowStartDay &&
+      day <= policy.windowEndDay
+    );
   });
   const confirmed = eligibleOrders.filter(
     (order) =>
@@ -151,14 +202,16 @@ export function calculateAcceleratorOne(
   ).length;
 
   let amountCents = 0;
-  let nextTarget: number | null = 30;
+  let nextTarget: number | null = policy.firstTierTarget;
 
-  if (confirmed >= 40) {
-    amountCents = 30_000 + (confirmed - 40) * 1_000;
+  if (confirmed >= policy.secondTierTarget) {
+    amountCents =
+      policy.secondTierAmountCents +
+      (confirmed - policy.secondTierTarget) * policy.perExtraConfirmedCents;
     nextTarget = confirmed + 1;
-  } else if (confirmed >= 30) {
-    amountCents = 20_000;
-    nextTarget = 40;
+  } else if (confirmed >= policy.firstTierTarget) {
+    amountCents = policy.firstTierAmountCents;
+    nextTarget = policy.secondTierTarget;
   }
 
   return {
@@ -203,16 +256,13 @@ export function calculatePerformanceMetrics(
     const isDelivered =
       order.deliveryStatus === "DELIVERED" && order.deliveredAt !== null;
     const isActivated = order.status === "CLOSED" && order.closedAt !== null;
-    const isPayable =
-      isPortability(order.commercialOperation) && isDelivered && isActivated;
+    const payment = evaluatePerformanceOrderPayment(order);
 
     if (isDelivered) delivered += 1;
     if (isActivated) activated += 1;
-    if (isPayable) {
+    if (payment.payable) {
       payable += 1;
-      baseCommissionCents += getPotentialBaseCommissionCents(
-        order.commercialOperation,
-      );
+      baseCommissionCents += payment.baseCommissionCents;
     }
     if (isDelivered && !isActivated) deliveredPendingActivation += 1;
     if (order.status === "CANCELLED") cancelled += 1;

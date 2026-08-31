@@ -80,7 +80,10 @@ export interface PerformanceDashboardData {
   canSwitchView: boolean;
   teamFilter: string;
   teamOptions: Array<{ id: string; name: string }>;
+  agentFilter: string;
+  advisorOptions: Array<{ id: string; name: string }>;
   showTeamFilter: boolean;
+  showAdvisorFilter: boolean;
   showCommission: boolean;
   salesMix: SalesOperationMixItem;
   dailyPulse: DailyPerformance | null;
@@ -89,10 +92,15 @@ export interface PerformanceDashboardData {
   previousMetrics: PerformanceMetrics;
   comparison: {
     hasBase: boolean;
+    comparedThroughDay: number | null;
     enteredDelta: number | null;
     payableDelta: number | null;
     payableRateDelta: number | null;
   };
+  unattributed: {
+    metrics: PerformanceMetrics;
+    enteredDelta: number | null;
+  } | null;
   workforce: {
     activeSellers: number;
     sellersWithSales: number;

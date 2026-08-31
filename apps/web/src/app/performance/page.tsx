@@ -21,11 +21,12 @@ export default async function PerformancePage({
   const parameters = await searchParams;
   const month = parsePerformanceMonth(firstValue(parameters.month));
   const team = firstValue(parameters.team)?.trim().slice(0, 50);
+  const agent = firstValue(parameters.agent)?.trim().slice(0, 50);
   const view = firstValue(parameters.view) === "SELF" ? "SELF" : "TEAM";
   const dashboard = await getPerformanceDashboard(
     membership.organization.id,
     { userId: session.user.id, role: membership.role },
-    { month, team, view },
+    { month, team, agent, view },
   );
 
   return (
