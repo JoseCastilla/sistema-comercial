@@ -274,10 +274,10 @@ export function CommercialAppShell({
           />
           <NavigationItem
             active={activeSection === "tools"}
-            description="Líneas y portabilidad"
+            description="Líneas asociadas a un documento"
             href="/tools/lines"
             icon="tools"
-            label="Consultas externas"
+            label="Checa tus líneas"
           />
           <NavigationItem
             active={activeSection === "sales-recovery"}
@@ -387,7 +387,7 @@ export function CommercialAppShell({
           active={activeSection === "tools"}
           href="/tools/lines"
           icon="tools"
-          label="Consultas"
+          label="Líneas"
         />
         <MobileNavigationItem
           active={activeSection === "sales-recovery"}
