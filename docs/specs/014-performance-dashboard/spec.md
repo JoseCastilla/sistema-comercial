@@ -129,15 +129,23 @@ permitir que el usuario modifique los resultados calculados.
   cierre ocurra después del día 15.
 - El bono 1 es S/ 200 entre 30–39 confirmadas, S/ 300 al llegar a 40 y luego
   `S/ 300 + S/ 10 × (confirmadas - 40)`. Por tanto, 41 equivalen a S/ 310.
+- **El acelerador 2 usa la cohorte del día 25 al último día del mes**
+  (confirmado el 31/08/2026). La ventana dura seis o siete días según el mes;
+  el 31 cuenta cuando existe.
+- **El bono 2 es S/ 100 al llegar a 15 confirmadas y luego
+  `S/ 100 + S/ 10 × (confirmadas - 15)`** (confirmado el 31/08/2026).
+- **Los días 16 al 24 quedan deliberadamente fuera de todo acelerador**
+  (confirmado el 31/08/2026). Esas ventas pagan comisión base y ningún bono
+  marginal: el incentivo se concentra al inicio y al cierre del mes.
+- Ambas ventanas usan el mismo criterio de confirmación: portabilidad
+  ingresada dentro de la ventana que termina entregada y cerrada, aunque el
+  cierre ocurra después de que la ventana se cierre.
 
 ## Decisiones económicas pendientes
 
-1. Si el bono 2 es S/ 100 al llegar a 15 y luego
-   `S/ 100 + S/ 10 × (pagables - 15)`.
-2. Si las ventanas 1–15 y 25–30 excluyen deliberadamente los días 16–24 y 31.
-3. Hasta qué fecha puede madurar una orden después de terminar el mes antes de
+1. Hasta qué fecha puede madurar una orden después de terminar el mes antes de
    bloquear la liquidación.
-4. Si el SUPERVISOR puede ver importes individuales o únicamente totales del
+2. Si el SUPERVISOR puede ver importes individuales o únicamente totales del
    equipo, como recomienda esta especificación.
 
 ## Experiencia de usuario

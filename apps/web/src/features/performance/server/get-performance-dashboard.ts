@@ -4,6 +4,7 @@ import {
   calculatePerformanceMetrics,
   evaluatePerformanceOrderPayment,
   filterOrdersRegisteredThroughLimaDay,
+  formatAdvisorDisplayName,
   getLimaDayOfMonth,
   getOrderPeriodRange,
   getPotentialBaseCommissionCents,
@@ -84,7 +85,7 @@ const orderSelect = {
   closedAt: true,
   agentUserId: true,
   assignedTeamId: true,
-  agent: { select: { name: true } },
+  agent: { select: { name: true, email: true } },
   assignedTeam: { select: { name: true } },
 } satisfies Prisma.DitoOrderSelect;
 
@@ -122,7 +123,10 @@ function groupByAgent(
   previousOrders: readonly PerformanceOrderRecord[],
   role: PerformanceRole,
   primaryTeamNames: ReadonlyMap<string, string>,
-  activeSellers: ReadonlyMap<string, { name: string; teamName: string }>,
+  activeSellers: ReadonlyMap<
+    string,
+    { name: string; email: string; teamName: string }
+  >,
   monthDayKeys: readonly string[],
 ) {
   const groups = new Map<string, PerformanceOrderRecord[]>();
@@ -179,13 +183,14 @@ function groupByAgent(
         dailyCounts.set(key, (dailyCounts.get(key) ?? 0) + 1);
       }
 
+      const agentRecord = agentOrders[0]?.agent ?? previousAgentOrders[0]?.agent;
+      const rawName = agentRecord?.name ?? activeSeller?.name ?? "";
+      const email = agentRecord?.email ?? activeSeller?.email ?? "";
+
       return {
         id,
-        name:
-          agentOrders[0]?.agent?.name ??
-          previousAgentOrders[0]?.agent?.name ??
-          activeSeller?.name ??
-          "Asesor sin nombre",
+        // BR-017: la presentación normaliza; el nombre registrado no cambia.
+        name: formatAdvisorDisplayName(rawName, email) || "Asesor sin nombre",
         teamName,
         metrics:
           role === "ADMIN" ? currentMetrics : redactCommission(currentMetrics),
@@ -276,16 +281,28 @@ function buildMonthlyPerformanceProgress(
   };
 }
 
+function redactAccelerator(
+  accelerator: PerformanceMetrics["accelerators"][number],
+): PerformanceMetrics["accelerators"][number] {
+  return {
+    ...accelerator,
+    amountCents: 0,
+    nextTarget: null,
+    missingForNextTarget: 0,
+    nextTargetAmountCents: 0,
+  };
+}
+
 function redactCommission(metrics: PerformanceMetrics): PerformanceMetrics {
+  const accelerators = metrics.accelerators.map(redactAccelerator);
+  const acceleratorOne = accelerators[0] ?? metrics.acceleratorOne;
+
   return {
     ...metrics,
     baseCommissionCents: 0,
-    acceleratorOne: {
-      ...metrics.acceleratorOne,
-      amountCents: 0,
-      nextTarget: null,
-      missingForNextTarget: 0,
-    },
+    acceleratorOne,
+    accelerators,
+    acceleratorTotalCents: 0,
     estimatedCommissionCents: 0,
   };
 }
@@ -312,28 +329,42 @@ function calculateScopedMetrics(
     (total, item) => total + item.baseCommissionCents,
     0,
   );
-  const acceleratorAmountCents = individualMetrics.reduce(
-    (total, item) => total + item.acceleratorOne.amountCents,
+  // El acelerador es individual y no lineal: se calcula por asesor y se suma
+  // ventana por ventana. El objetivo siguiente no aplica a un agregado.
+  const accelerators = metrics.accelerators.map((window, index) => ({
+    ...window,
+    eligible: individualMetrics.reduce(
+      (total, item) => total + (item.accelerators[index]?.eligible ?? 0),
+      0,
+    ),
+    delivered: individualMetrics.reduce(
+      (total, item) => total + (item.accelerators[index]?.delivered ?? 0),
+      0,
+    ),
+    confirmed: individualMetrics.reduce(
+      (total, item) => total + (item.accelerators[index]?.confirmed ?? 0),
+      0,
+    ),
+    amountCents: individualMetrics.reduce(
+      (total, item) => total + (item.accelerators[index]?.amountCents ?? 0),
+      0,
+    ),
+    nextTarget: null,
+    missingForNextTarget: 0,
+    nextTargetAmountCents: 0,
+  }));
+  const acceleratorTotalCents = accelerators.reduce(
+    (total, item) => total + item.amountCents,
     0,
   );
 
   return {
     ...metrics,
     baseCommissionCents,
-    acceleratorOne: {
-      eligible: individualMetrics.reduce(
-        (total, item) => total + item.acceleratorOne.eligible,
-        0,
-      ),
-      confirmed: individualMetrics.reduce(
-        (total, item) => total + item.acceleratorOne.confirmed,
-        0,
-      ),
-      amountCents: acceleratorAmountCents,
-      nextTarget: null,
-      missingForNextTarget: 0,
-    },
-    estimatedCommissionCents: baseCommissionCents + acceleratorAmountCents,
+    acceleratorOne: accelerators[0] ?? metrics.acceleratorOne,
+    accelerators,
+    acceleratorTotalCents,
+    estimatedCommissionCents: baseCommissionCents + acceleratorTotalCents,
   };
 }
 
@@ -625,7 +656,7 @@ export async function getPerformanceDashboard(
         },
         select: {
           userId: true,
-          user: { select: { name: true } },
+          user: { select: { name: true, email: true } },
           team: { select: { name: true } },
         },
       });
@@ -645,6 +676,7 @@ export async function getPerformanceDashboard(
       membership.userId,
       {
         name: membership.user.name,
+        email: membership.user.email,
         teamName: membership.team.name,
       },
     ]),

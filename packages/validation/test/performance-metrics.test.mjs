@@ -31,11 +31,15 @@ test("41 portabilidades confirmadas de la primera quincena generan S/ 310", () =
   );
 
   assert.deepEqual(result, {
+    key: "ONE",
+    label: "Acelerador 1–15",
     eligible: 41,
+    delivered: 41,
     confirmed: 41,
     amountCents: 31_000,
     nextTarget: 42,
     missingForNextTarget: 1,
+    nextTargetAmountCents: 1_000,
   });
 });
 
@@ -131,6 +135,110 @@ test("calcula el potencial comercial sin presentarlo como comisión confirmada",
   assert.equal(getPotentialBaseCommissionCents("UNKNOWN"), 0);
 });
 
+test("la segunda ventana va del 25 al ultimo dia del mes", () => {
+  // Agosto tiene 31 dias: el 31 cuenta. El dia 20 no cae en ninguna ventana.
+  const result = calculatePerformanceMetrics([
+    order({ registeredAt: new Date("2026-08-26T15:00:00.000Z") }),
+    order({ registeredAt: new Date("2026-08-31T15:00:00.000Z") }),
+    order({ registeredAt: new Date("2026-08-20T15:00:00.000Z") }),
+  ]);
+  const [ventanaUno, ventanaDos] = result.accelerators;
+
+  assert.equal(ventanaDos.eligible, 2);
+  assert.equal(ventanaUno.eligible, 0);
+});
+
+test("18 confirmadas en la segunda ventana valen S/ 130", () => {
+  const result = calculatePerformanceMetrics(
+    Array.from({ length: 18 }, () =>
+      order({ registeredAt: new Date("2026-08-26T15:00:00.000Z") }),
+    ),
+  );
+  const ventanaDos = result.accelerators[1];
+
+  assert.equal(ventanaDos.confirmed, 18);
+  assert.equal(ventanaDos.amountCents, 13_000);
+});
+
+test("los dos aceleradores se suman en la estimacion del periodo", () => {
+  const result = calculatePerformanceMetrics([
+    // 32 confirmadas en la ventana 1 => S/ 200
+    ...Array.from({ length: 32 }, () =>
+      order({ registeredAt: new Date("2026-08-05T15:00:00.000Z") }),
+    ),
+    // 18 confirmadas en la ventana 2 => S/ 130
+    ...Array.from({ length: 18 }, () =>
+      order({ registeredAt: new Date("2026-08-26T15:00:00.000Z") }),
+    ),
+  ]);
+
+  assert.equal(result.accelerators[0].amountCents, 20_000);
+  assert.equal(result.accelerators[1].amountCents, 13_000);
+  assert.equal(result.acceleratorTotalCents, 33_000);
+  assert.equal(
+    result.estimatedCommissionCents,
+    result.baseCommissionCents + 33_000,
+  );
+});
+
+test("los dias 16 al 24 no pertenecen a ninguna ventana", () => {
+  const result = calculatePerformanceMetrics(
+    [16, 20, 24].map((day) =>
+      order({
+        registeredAt: new Date(`2026-08-${day}T15:00:00.000Z`),
+      }),
+    ),
+  );
+
+  assert.equal(result.accelerators[0].eligible, 0);
+  assert.equal(result.accelerators[1].eligible, 0);
+  assert.equal(result.acceleratorTotalCents, 0);
+  // Siguen pagando comision base.
+  assert.equal(result.baseCommissionCents, 7_500);
+});
+
+test("una venta ingresada el 14 y cerrada el 22 cuenta en la primera ventana", () => {
+  const result = calculatePerformanceMetrics([
+    order({
+      registeredAt: new Date("2026-08-14T15:00:00.000Z"),
+      deliveredAt: new Date("2026-08-21T15:00:00.000Z"),
+      closedAt: new Date("2026-08-22T15:00:00.000Z"),
+    }),
+  ]);
+
+  assert.equal(result.accelerators[0].eligible, 1);
+  assert.equal(result.accelerators[0].confirmed, 1);
+});
+
+test("la cuota mide entregadas y el acelerador confirmadas", () => {
+  const result = calculatePerformanceMetrics([
+    order({ registeredAt: new Date("2026-08-05T15:00:00.000Z") }),
+    // Entregada pero sin cerrar: cuenta para la cuota, no para el acelerador.
+    order({
+      registeredAt: new Date("2026-08-05T15:00:00.000Z"),
+      status: "SENT",
+      closedAt: null,
+    }),
+  ]);
+  const ventanaUno = result.accelerators[0];
+
+  assert.equal(ventanaUno.delivered, 2);
+  assert.equal(ventanaUno.confirmed, 1);
+});
+
+test("expone cuanto vale alcanzar el siguiente objetivo", () => {
+  const result = calculatePerformanceMetrics(
+    Array.from({ length: 28 }, () =>
+      order({ registeredAt: new Date("2026-08-05T15:00:00.000Z") }),
+    ),
+  );
+  const ventanaUno = result.accelerators[0];
+
+  assert.equal(ventanaUno.nextTarget, 30);
+  assert.equal(ventanaUno.missingForNextTarget, 2);
+  assert.equal(ventanaUno.nextTargetAmountCents, 20_000);
+});
+
 test("la política de comisiones es la única fuente de tarifas y tramos", () => {
   const policy = getPerformanceCommissionPolicy();
 
@@ -146,15 +254,27 @@ test("la política de comisiones es la única fuente de tarifas y tramos", () =>
       getPotentialBaseCommissionCents(operation),
     );
   }
-  assert.deepEqual(policy.acceleratorOne, {
-    windowStartDay: 1,
-    windowEndDay: 15,
-    firstTierTarget: 30,
-    firstTierAmountCents: 20_000,
-    secondTierTarget: 40,
-    secondTierAmountCents: 30_000,
-    perExtraConfirmedCents: 1_000,
-  });
+  assert.deepEqual(policy.acceleratorWindows, [
+    {
+      key: "ONE",
+      label: "Acelerador 1–15",
+      windowStartDay: 1,
+      windowEndDay: 15,
+      tiers: [
+        { target: 30, amountCents: 20_000 },
+        { target: 40, amountCents: 30_000 },
+      ],
+      perExtraConfirmedCents: 1_000,
+    },
+    {
+      key: "TWO",
+      label: "Acelerador 25–fin",
+      windowStartDay: 25,
+      windowEndDay: null,
+      tiers: [{ target: 15, amountCents: 10_000 }],
+      perExtraConfirmedCents: 1_000,
+    },
+  ]);
 });
 
 test("una portabilidad entregada y cerrada sin asesor no suma pagable ni comisión", () => {

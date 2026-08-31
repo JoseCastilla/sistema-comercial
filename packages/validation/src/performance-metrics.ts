@@ -28,11 +28,18 @@ export interface PerformanceOrderInput {
 }
 
 export interface PerformanceAccelerator {
+  key: "ONE" | "TWO";
+  label: string;
   eligible: number;
+  /** Medida de la cuota (SPEC-038 BR-007). */
+  delivered: number;
+  /** Medida del acelerador: entregada y cerrada (BR-003). */
   confirmed: number;
   amountCents: number;
   nextTarget: number | null;
   missingForNextTarget: number;
+  /** Cuánto vale alcanzar el siguiente objetivo (BR-013). */
+  nextTargetAmountCents: number;
 }
 
 export interface PerformanceMetrics {
@@ -52,7 +59,11 @@ export interface PerformanceMetrics {
   deliveryRate: number | null;
   payableRate: number | null;
   baseCommissionCents: number;
+  /** La primera ventana, conservada para consumidores existentes. */
   acceleratorOne: PerformanceAccelerator;
+  /** Todas las ventanas vigentes (SPEC-038 BR-006). */
+  accelerators: PerformanceAccelerator[];
+  acceleratorTotalCents: number;
   estimatedCommissionCents: number;
 }
 
@@ -84,18 +95,30 @@ function isPortability(operation: PerformanceCommercialOperation): boolean {
   return operation === "PORT_PREPAID" || operation === "PORT_POSTPAID";
 }
 
+/**
+ * Un tramo del acelerador: al alcanzar `target` se paga `amountCents`, y a
+ * partir de ahí cada confirmada adicional suma `perExtraConfirmedCents`
+ * cuando el tramo es el último.
+ */
+export interface PerformanceAcceleratorTier {
+  target: number;
+  amountCents: number;
+}
+
+export interface PerformanceAcceleratorWindow {
+  key: "ONE" | "TWO";
+  label: string;
+  windowStartDay: number;
+  /** `null` significa hasta el último día del mes (SPEC-038 BR-001). */
+  windowEndDay: number | null;
+  tiers: PerformanceAcceleratorTier[];
+  perExtraConfirmedCents: number;
+}
+
 export interface PerformanceCommissionPolicy {
   currency: "PEN";
   baseRateCents: Record<PerformanceCommercialOperation, number>;
-  acceleratorOne: {
-    windowStartDay: number;
-    windowEndDay: number;
-    firstTierTarget: number;
-    firstTierAmountCents: number;
-    secondTierTarget: number;
-    secondTierAmountCents: number;
-    perExtraConfirmedCents: number;
-  };
+  acceleratorWindows: PerformanceAcceleratorWindow[];
 }
 
 const commissionPolicy: PerformanceCommissionPolicy = {
@@ -106,15 +129,28 @@ const commissionPolicy: PerformanceCommissionPolicy = {
     NEW_LINE: 0,
     UNKNOWN: 0,
   },
-  acceleratorOne: {
-    windowStartDay: 1,
-    windowEndDay: 15,
-    firstTierTarget: 30,
-    firstTierAmountCents: 20_000,
-    secondTierTarget: 40,
-    secondTierAmountCents: 30_000,
-    perExtraConfirmedCents: 1_000,
-  },
+  acceleratorWindows: [
+    {
+      key: "ONE",
+      label: "Acelerador 1–15",
+      windowStartDay: 1,
+      windowEndDay: 15,
+      tiers: [
+        { target: 30, amountCents: 20_000 },
+        { target: 40, amountCents: 30_000 },
+      ],
+      perExtraConfirmedCents: 1_000,
+    },
+    {
+      // BR-001: cierra con el mes, así que el 31 cuenta cuando existe.
+      key: "TWO",
+      label: "Acelerador 25–fin",
+      windowStartDay: 25,
+      windowEndDay: null,
+      tiers: [{ target: 15, amountCents: 10_000 }],
+      perExtraConfirmedCents: 1_000,
+    },
+  ],
 };
 
 // Única fuente de las tarifas (SPEC-033). El parámetro de mes permitirá
@@ -181,18 +217,35 @@ export function evaluatePerformanceOrderPayment(
   };
 }
 
-export function calculateAcceleratorOne(
+function isWithinAcceleratorWindow(
+  window: PerformanceAcceleratorWindow,
+  day: number,
+): boolean {
+  if (day < window.windowStartDay) return false;
+  return window.windowEndDay === null || day <= window.windowEndDay;
+}
+
+/**
+ * Calcula una ventana de acelerador (SPEC-038 BR-003 a BR-005).
+ *
+ * La cohorte la fija la fecha de ingreso; la confirmación —entregada y
+ * cerrada— solo decide si suma, aunque ocurra después de que la ventana
+ * cierre. `delivered` acompaña al resultado porque es la medida de la cuota
+ * (BR-007) y su diferencia con `confirmed` es el pendiente de activación.
+ */
+export function calculateAcceleratorWindow(
   orders: readonly PerformanceOrderInput[],
+  window: PerformanceAcceleratorWindow,
 ): PerformanceAccelerator {
-  const policy = commissionPolicy.acceleratorOne;
-  const eligibleOrders = orders.filter((order) => {
-    const day = getLimaDayOfMonth(order.registeredAt);
-    return (
+  const eligibleOrders = orders.filter(
+    (order) =>
       isPortability(order.commercialOperation) &&
-      day >= policy.windowStartDay &&
-      day <= policy.windowEndDay
-    );
-  });
+      isWithinAcceleratorWindow(window, getLimaDayOfMonth(order.registeredAt)),
+  );
+  const delivered = eligibleOrders.filter(
+    (order) =>
+      order.deliveryStatus === "DELIVERED" && order.deliveredAt !== null,
+  ).length;
   const confirmed = eligibleOrders.filter(
     (order) =>
       order.deliveryStatus === "DELIVERED" &&
@@ -201,26 +254,57 @@ export function calculateAcceleratorOne(
       order.closedAt !== null,
   ).length;
 
-  let amountCents = 0;
-  let nextTarget: number | null = policy.firstTierTarget;
+  const reached = [...window.tiers]
+    .filter((tier) => confirmed >= tier.target)
+    .sort((left, right) => right.target - left.target)[0];
+  const pending = [...window.tiers]
+    .filter((tier) => confirmed < tier.target)
+    .sort((left, right) => left.target - right.target)[0];
 
-  if (confirmed >= policy.secondTierTarget) {
-    amountCents =
-      policy.secondTierAmountCents +
-      (confirmed - policy.secondTierTarget) * policy.perExtraConfirmedCents;
-    nextTarget = confirmed + 1;
-  } else if (confirmed >= policy.firstTierTarget) {
-    amountCents = policy.firstTierAmountCents;
-    nextTarget = policy.secondTierTarget;
+  const lastTier = window.tiers[window.tiers.length - 1];
+  let amountCents = 0;
+  if (reached) {
+    amountCents = reached.amountCents;
+    // Superado el último tramo, cada confirmada adicional suma su extra.
+    if (lastTier && reached.target === lastTier.target) {
+      amountCents += (confirmed - lastTier.target) * window.perExtraConfirmedCents;
+    }
   }
 
+  // Sin tramo pendiente, el siguiente objetivo es una confirmada más, que ya
+  // vale el extra marginal.
+  const nextTarget = pending ? pending.target : reached ? confirmed + 1 : null;
+
   return {
+    key: window.key,
+    label: window.label,
     eligible: eligibleOrders.length,
+    delivered,
     confirmed,
     amountCents,
     nextTarget,
     missingForNextTarget: nextTarget === null ? 0 : nextTarget - confirmed,
+    nextTargetAmountCents: pending
+      ? pending.amountCents
+      : window.perExtraConfirmedCents,
   };
+}
+
+export function calculateAccelerators(
+  orders: readonly PerformanceOrderInput[],
+): PerformanceAccelerator[] {
+  return commissionPolicy.acceleratorWindows.map((window) =>
+    calculateAcceleratorWindow(orders, window),
+  );
+}
+
+/** Compatibilidad: la primera ventana sigue siendo consultable por nombre. */
+export function calculateAcceleratorOne(
+  orders: readonly PerformanceOrderInput[],
+): PerformanceAccelerator {
+  const window = commissionPolicy.acceleratorWindows[0];
+  if (!window) throw new Error("No hay ventanas de acelerador configuradas.");
+  return calculateAcceleratorWindow(orders, window);
 }
 
 export function calculatePerformanceMetrics(
@@ -277,7 +361,15 @@ export function calculatePerformanceMetrics(
     }
   }
 
-  const acceleratorOne = calculateAcceleratorOne(orders);
+  const accelerators = calculateAccelerators(orders);
+  const acceleratorTotalCents = accelerators.reduce(
+    (total, item) => total + item.amountCents,
+    0,
+  );
+  const acceleratorOne = accelerators[0];
+  if (!acceleratorOne) {
+    throw new Error("No hay ventanas de acelerador configuradas.");
+  }
 
   return {
     entered: orders.length,
@@ -297,6 +389,8 @@ export function calculatePerformanceMetrics(
     payableRate: ratio(payable, portability),
     baseCommissionCents,
     acceleratorOne,
-    estimatedCommissionCents: baseCommissionCents + acceleratorOne.amountCents,
+    accelerators,
+    acceleratorTotalCents,
+    estimatedCommissionCents: baseCommissionCents + acceleratorTotalCents,
   };
 }

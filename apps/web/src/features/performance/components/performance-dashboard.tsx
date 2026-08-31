@@ -903,24 +903,45 @@ export function PerformanceDashboard({
                 {money(data.metrics.baseCommissionCents)} de comisión base
               </small>
             </div>
-            <div>
-              <span>Acelerador 1–15</span>
-              <strong>{money(data.metrics.acceleratorOne.amountCents)}</strong>
-              <small>
-                {data.metrics.acceleratorOne.confirmed} confirmadas de{" "}
-                {data.metrics.acceleratorOne.eligible} ingresadas
-              </small>
-            </div>
-            {data.view === "SELF" && data.metrics.acceleratorOne.nextTarget ? (
-              <div>
-                <span>Siguiente nivel</span>
-                <strong>
-                  {data.metrics.acceleratorOne.missingForNextTarget}
-                </strong>
-                <small>activaciones pagables para el siguiente tramo</small>
+            {data.metrics.accelerators.map((accelerator) => (
+              <div key={accelerator.key}>
+                <span>{accelerator.label}</span>
+                <strong>{money(accelerator.amountCents)}</strong>
+                <small>
+                  {accelerator.confirmed} confirmadas de{" "}
+                  {accelerator.eligible} ingresadas
+                  {accelerator.delivered > accelerator.confirmed
+                    ? ` · ${accelerator.delivered - accelerator.confirmed} entregadas por activar`
+                    : ""}
+                </small>
               </div>
-            ) : null}
+            ))}
           </div>
+          {/*
+           * Lo que mueve la aguja del asesor: cuanto le falta para el
+           * siguiente tramo y cuanto vale alcanzarlo (SPEC-038 BR-013).
+           */}
+          {data.view === "SELF" ? (
+            <div className="performance-commission__details">
+              {data.metrics.accelerators
+                .filter((accelerator) => accelerator.nextTarget !== null)
+                .map((accelerator) => (
+                  <div key={`next-${accelerator.key}`}>
+                    <span>{accelerator.label}: siguiente tramo</span>
+                    <strong>
+                      {accelerator.missingForNextTarget}{" "}
+                      {accelerator.missingForNextTarget === 1
+                        ? "confirmada"
+                        : "confirmadas"}
+                    </strong>
+                    <small>
+                      para llegar a {accelerator.nextTarget} y sumar{" "}
+                      {money(accelerator.nextTargetAmountCents)}
+                    </small>
+                  </div>
+                ))}
+            </div>
+          ) : null}
           <p className="performance-commission__notice">
             No es una liquidación de nómina. Puede cambiar mientras las ventas
             de esta cohorte maduran.

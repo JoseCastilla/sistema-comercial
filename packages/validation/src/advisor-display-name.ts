@@ -71,3 +71,66 @@ export function formatAdvisorCompactName(name: string, email: string): string {
 
   return [firstName, initial ? `${initial}.` : ""].filter(Boolean).join(" ");
 }
+
+/**
+ * Presenta la identidad como “Primer nombre + primer apellido” con inicial
+ * mayúscula (SPEC-038 BR-017). El correo corporativo resuelve qué segmentos
+ * del nombre registrado son el nombre y el apellido, de modo que un apellido
+ * compuesto como “DE LOS RIOS” se reconstruye entero.
+ *
+ * Es solo presentación: el nombre registrado no se altera porque es la
+ * identidad legal que necesitará la liquidación (BR-018).
+ */
+export function formatAdvisorDisplayName(name: string, email: string): string {
+  const nameTokens = name.trim().split(/\s+/).filter(Boolean);
+  if (nameTokens.length === 0) return "";
+
+  const localParts = email
+    .split("@", 1)[0]
+    ?.split(".")
+    .map(normalizeNamePart)
+    .filter(Boolean);
+  const firstNameKey = localParts?.[0] ?? "";
+  const surnameKey = localParts?.[1] ?? "";
+  const normalizedTokens = nameTokens.map(normalizeNamePart);
+
+  const firstNameIndex = normalizedTokens.findIndex(
+    (token) => token === firstNameKey,
+  );
+  const resolvedFirstNameIndex = firstNameIndex >= 0 ? firstNameIndex : 0;
+  const firstName = titleCase(
+    nameTokens[resolvedFirstNameIndex] ?? firstNameKey,
+  );
+
+  let surname = "";
+  if (surnameKey) {
+    // El apellido del correo puede corresponder a uno o varios tokens
+    // seguidos del nombre registrado.
+    for (
+      let start = resolvedFirstNameIndex + 1;
+      start < nameTokens.length && !surname;
+      start += 1
+    ) {
+      let combined = "";
+
+      for (let end = start; end < nameTokens.length; end += 1) {
+        combined += normalizedTokens[end];
+
+        if (combined === surnameKey) {
+          surname = nameTokens
+            .slice(start, end + 1)
+            .map(titleCase)
+            .join(" ");
+          break;
+        }
+
+        if (combined.length > surnameKey.length) break;
+      }
+    }
+  }
+
+  // Sin correo aprovechable, el siguiente token es el mejor candidato.
+  surname ||= titleCase(nameTokens[resolvedFirstNameIndex + 1] ?? "");
+
+  return [firstName, surname].filter(Boolean).join(" ");
+}
