@@ -99,6 +99,7 @@ model Organization {
   recoveryPortabilityBatches RecoveryPortabilityBatch[]
   recoveryPortabilityResults RecoveryPortabilityResult[]
 
+  performanceQuotas  PerformanceQuota[]
   dniPersonSnapshots DniPersonSnapshot[]
   dniLookupEvents    DniLookupEvent[]
 
@@ -168,6 +169,8 @@ model User {
   recoveryCasesResolved          RecoveryCase[]              @relation("RecoveryCaseResolvedBy")
   recoveryCasesSensitiveRevealed RecoveryCase[]              @relation("RecoveryCaseSensitiveRevealedBy")
   recoveryCasesOriginated        RecoveryCase[]              @relation("RecoveryCaseOriginalAgent")
+  performanceQuotas              PerformanceQuota[]          @relation("PerformanceQuotaUser")
+  performanceQuotasAssigned      PerformanceQuota[]          @relation("PerformanceQuotaAssignedBy")
   recoveryCaseEventsPerformed    RecoveryCaseEvent[]         @relation("RecoveryCaseEventActor")
   recoveryCaseAttemptsPerformed  RecoveryCaseAttempt[]       @relation("RecoveryCaseAttemptActor")
   recoveryPortabilityUploaded    RecoveryPortabilityBatch[]  @relation("RecoveryPortabilityUploadedBy")

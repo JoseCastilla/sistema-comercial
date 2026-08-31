@@ -12,6 +12,13 @@ export interface PerformanceBreakdownItem {
   isActiveSeller: boolean;
   showCommission: boolean;
   dailyEntered: number[];
+  quota: {
+    target: number;
+    delivered: number;
+    confirmed: number;
+    missing: number;
+    reached: boolean;
+  } | null;
 }
 
 export interface MonthlyPerformanceDay {
@@ -100,6 +107,11 @@ export interface PerformanceDashboardData {
   unattributed: {
     metrics: PerformanceMetrics;
     enteredDelta: number | null;
+  } | null;
+  quotaWindow: {
+    key: "ONE" | "TWO";
+    label: string;
+    isActive: boolean;
   } | null;
   workforce: {
     activeSellers: number;

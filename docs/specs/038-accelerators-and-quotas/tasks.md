@@ -30,18 +30,23 @@
 - [x] Aplicado a la tabla por asesor y a la matriz diaria.
 - [x] Pruebas con los casos reales de la operación.
 
-## Cuotas — pendiente
+## Cuotas
 
-- [ ] Esquema de cuotas por período y ventana, con destinatario equipo o
-      asesor, actor y valor previo (BR-009 a BR-011).
-- [ ] Asignación por `ADMIN` a equipos y reparto por `SUPERVISOR` entre sus
-      asesores, con aviso —no bloqueo— cuando lo repartido no cubre (BR-009).
-- [ ] Cuota por defecto igual al primer tramo de cada ventana (BR-008).
-- [ ] Congelar la cuota de un período cerrado (BR-010).
-- [ ] Avance de cuota por asesor en la vista de supervisión, legible de un
-      vistazo para detectar a quien está cerca de un tramo (BR-014).
-- [ ] Resultado de la última ventana cerrada cuando no hay ventana activa
-      (BR-015).
+- [x] Tabla `performance_quotas` por período y ventana, con destinatario
+      equipo o asesor garantizado por un CHECK y dos índices únicos parciales,
+      más actor, momento y valor previo (BR-009 a BR-011).
+- [x] Helpers puros con pruebas: ventana vigente, ventana relevante entre
+      ventanas, cuota por defecto y resumen del reparto.
+- [x] `/performance/quotas`: `ADMIN` fija la del equipo, `SUPERVISOR`
+      reparte entre los suyos y ve la del equipo en solo lectura; el `AGENT`
+      es redirigido (BR-009).
+- [x] Aviso de reparto corto o excedido, sin bloquear (BR-009).
+- [x] Cuota por defecto igual al primer tramo de la ventana; la del equipo,
+      ese tramo por cada vendedor activo (BR-008).
+- [x] Período terminado congelado, validado en el servidor y reflejado en la
+      interfaz (BR-010).
+- [x] Columna de avance de cuota por asesor en el dashboard, con la ventana
+      relevante y marca de cumplida (BR-014, BR-015).
 
 ## Verificación
 

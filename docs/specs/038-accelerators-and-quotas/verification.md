@@ -32,11 +32,29 @@
       ventas después del día 25 — comportamiento correcto, no ausencia de la
       regla.
 
+## Cuotas — sesión SUPERVISOR real, 31/08/2026
+
+Sesión de Erika Lavado, supervisora de Huancayo:
+
+- [x] `/performance/quotas` abre en la ventana **25 al fin de mes**, la
+      vigente el 31 de agosto (BR-015).
+- [x] **BR-009 verificado en pantalla:** la cuota del equipo aparece en solo
+      lectura, sin botón de guardar, mientras que las de sus cuatro asesores
+      son editables. Solo ve Huancayo.
+- [x] **BR-008:** sin configurar nada, cada asesor arranca en 15 —el primer
+      tramo de la ventana— y el equipo en 60, con la etiqueta "por defecto".
+- [x] Asignar 22 a un asesor persiste, retira su etiqueta "por defecto" y
+      recalcula el reparto a "Repartido 67 de 60": **advierte el exceso sin
+      bloquear**.
+- [x] **BR-014:** el dashboard muestra la columna "Cuota" con el avance de
+      cada asesor sobre su objetivo —0/22 y 0/15— y cuántas le faltan.
+- [x] 213 pruebas de dominio en verde, incluidas las seis de resolución de
+      ventana, cuota por defecto, reparto y congelamiento del período.
+
 ## Pendiente
 
-- Las cuotas (BR-007 a BR-011, BR-014, BR-015) no están implementadas:
-  requieren esquema propio y su validación con sesiones `ADMIN` y
-  `SUPERVISOR`.
+- Validar con sesión `ADMIN` la asignación de la cuota del equipo, y que un
+  período cerrado quede congelado en la interfaz.
 - La terminología de la interfaz decía "activaciones pagables" donde el
   cálculo cuenta confirmadas; el texto nuevo habla de confirmadas y del
   pendiente de activación, alineando ambos.

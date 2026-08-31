@@ -5,11 +5,14 @@ import {
   evaluatePerformanceOrderPayment,
   filterOrdersRegisteredThroughLimaDay,
   formatAdvisorDisplayName,
+  getDefaultQuotaTarget,
   getLimaDayOfMonth,
   getOrderPeriodRange,
   getPotentialBaseCommissionCents,
   getPerformanceMonthRange,
   parsePerformanceMonth,
+  resolveCurrentAcceleratorWindow,
+  resolveRelevantAcceleratorWindow,
   shiftPerformanceMonth,
 } from "@repo/validation";
 
@@ -128,6 +131,8 @@ function groupByAgent(
     { name: string; email: string; teamName: string }
   >,
   monthDayKeys: readonly string[],
+  quotaWindowKey: "ONE" | "TWO" | null,
+  quotaTargets: ReadonlyMap<string, number>,
 ) {
   const groups = new Map<string, PerformanceOrderRecord[]>();
   const previousGroups = new Map<string, PerformanceOrderRecord[]>();
@@ -205,6 +210,26 @@ function groupByAgent(
         isActiveSeller: activeSeller !== undefined,
         showCommission: role === "ADMIN",
         dailyEntered: monthDayKeys.map((key) => dailyCounts.get(key) ?? 0),
+        // Avance de cuota de la ventana relevante: entregadas frente al
+        // objetivo, para detectar de un vistazo a quien está cerca sin
+        // llegar (SPEC-038 BR-014).
+        quota: quotaWindowKey
+          ? (() => {
+              const window = currentMetrics.accelerators.find(
+                (item) => item.key === quotaWindowKey,
+              );
+              const target =
+                quotaTargets.get(id) ?? getDefaultQuotaTarget(quotaWindowKey);
+              const delivered = window?.delivered ?? 0;
+              return {
+                target,
+                delivered,
+                confirmed: window?.confirmed ?? 0,
+                missing: Math.max(0, target - delivered),
+                reached: delivered >= target,
+              };
+            })()
+          : null,
       };
     })
     .sort(
@@ -707,6 +732,24 @@ export async function getPerformanceDashboard(
     (order) => order.agentUserId === null,
   ).length;
 
+  // Ventana sobre la que hablar hoy y las cuotas vigentes de sus asesores.
+  const currentWindow = resolveCurrentAcceleratorWindow(now);
+  const relevantWindow = resolveRelevantAcceleratorWindow(now);
+  const quotaRows = relevantWindow
+    ? await database.performanceQuota.findMany({
+        where: {
+          organizationId,
+          periodKey: currentRange.key,
+          window: relevantWindow.key,
+          userId: { not: null },
+        },
+        select: { userId: true, target: true },
+      })
+    : [];
+  const quotaTargets = new Map(
+    quotaRows.map((row) => [row.userId as string, row.target]),
+  );
+
   const advisorOptions = [
     ...new Map<string, { id: string; name: string }>([
       ...[...allActiveSellers.entries()].map(
@@ -831,6 +874,13 @@ export async function getPerformanceDashboard(
                 ).length / activeSellers.size
               : null,
         },
+    quotaWindow: relevantWindow
+      ? {
+          key: relevantWindow.key,
+          label: relevantWindow.label,
+          isActive: currentWindow !== null,
+        }
+      : null,
     breakdown: isIndividualScope
       ? []
       : groupByAgent(
@@ -840,6 +890,8 @@ export async function getPerformanceDashboard(
           primaryTeamNames,
           activeSellers,
           monthProgress.days.map((day) => day.key),
+          relevantWindow?.key ?? null,
+          quotaTargets,
         ),
   };
 }

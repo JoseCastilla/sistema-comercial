@@ -893,6 +893,14 @@ export function PerformanceDashboard({
               >
                 Revisar cálculo
               </Link>
+              {data.role !== "AGENT" ? (
+                <Link
+                  className="performance-commission__review"
+                  href={`/performance/quotas?period=${data.month}`}
+                >
+                  Asignar cuotas
+                </Link>
+              ) : null}
             </div>
           </header>
           <div className="performance-commission__details">
@@ -955,7 +963,12 @@ export function PerformanceDashboard({
             <div>
               <p className="performance-panel__eyebrow">Análisis detallado</p>
               <h2>Indicadores por asesor</h2>
-              <p>Tasas de entrega, pagables y carga pendiente por vendedor.</p>
+              <p>
+                Tasas de entrega, pagables y carga pendiente por vendedor.
+                {data.quotaWindow
+                  ? ` La cuota mide portabilidades entregadas de ${data.quotaWindow.label.toLocaleLowerCase("es-PE")}.`
+                  : ""}
+              </p>
             </div>
             <span>
               <b data-collapsed>Ver detalle</b>
@@ -978,6 +991,13 @@ export function PerformanceDashboard({
                     Vs. anterior
                   </th>
                   <th>Tasa de entrega</th>
+                  {data.quotaWindow ? (
+                    <th
+                      title={`Cuota de ${data.quotaWindow.label}: portabilidades entregadas de esa ventana`}
+                    >
+                      Cuota{data.quotaWindow.isActive ? "" : " (cerrada)"}
+                    </th>
+                  ) : null}
                   <th>Pagables</th>
                   <th>Recuperar</th>
                   <th>Por activar</th>
@@ -1006,6 +1026,18 @@ export function PerformanceDashboard({
                     <td>{item.metrics.entered}</td>
                     <td>{shortDelta(item.enteredDelta)}</td>
                     <td>{percentage(item.metrics.deliveryRate)}</td>
+                    {data.quotaWindow ? (
+                      <td data-quota-reached={item.quota?.reached ? "true" : undefined}>
+                        <strong>
+                          {item.quota?.delivered ?? 0}/{item.quota?.target ?? 0}
+                        </strong>
+                        <small>
+                          {item.quota?.reached
+                            ? "cumplida"
+                            : `faltan ${item.quota?.missing ?? 0}`}
+                        </small>
+                      </td>
+                    ) : null}
                     <td>{item.metrics.payable}</td>
                     <td>{item.metrics.recovery}</td>
                     <td>{item.metrics.deliveredPendingActivation}</td>
@@ -1025,6 +1057,7 @@ export function PerformanceDashboard({
                     <td>
                       {percentage(data.unattributed.metrics.deliveryRate)}
                     </td>
+                    {data.quotaWindow ? <td>—</td> : null}
                     <td>{data.unattributed.metrics.payable}</td>
                     <td>{data.unattributed.metrics.recovery}</td>
                     <td>

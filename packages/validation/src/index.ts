@@ -22,4 +22,5 @@ export * from "./recovery-selection.js";
 export * from "./recovery-internal-gate.js";
 export * from "./performance-metrics.js";
 export * from "./performance-period.js";
+export * from "./performance-quota.js";
 export * from "./dni-lookup.js";

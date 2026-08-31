@@ -1,0 +1,36 @@
+enum PerformanceQuotaWindow {
+  ONE
+  TWO
+}
+
+/// Cuota de portabilidades entregadas por período y ventana (SPEC-038).
+/// El destinatario es un equipo o un asesor, nunca ambos: lo garantiza un
+/// CHECK y dos índices únicos parciales en la migración.
+model PerformanceQuota {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+
+  periodKey String                 @map("period_key") @db.VarChar(7)
+  window    PerformanceQuotaWindow
+
+  teamId String? @map("team_id") @db.Uuid
+  userId String? @map("user_id") @db.Uuid
+
+  target Int
+
+  /// Valor anterior y actor de la última asignación (BR-011).
+  previousTarget   Int?     @map("previous_target")
+  assignedByUserId String   @map("assigned_by_user_id") @db.Uuid
+  assignedAt       DateTime @default(now()) @map("assigned_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  team         CommercialTeam? @relation("PerformanceQuotaTeam", fields: [teamId], references: [id], onDelete: Cascade)
+  user         User?           @relation("PerformanceQuotaUser", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy   User            @relation("PerformanceQuotaAssignedBy", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, periodKey, window], map: "performance_quotas_org_period_window_idx")
+  @@map("performance_quotas")
+}

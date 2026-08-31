@@ -75,6 +75,7 @@ model CommercialTeam {
   ditoImportRowsAsManualTeam DitoImportRow[]              @relation("DitoImportRowManualTeam")
   recoveryCasesAssigned      RecoveryCase[]               @relation("RecoveryCaseAssignedTeam")
   recoveryCasesOriginated    RecoveryCase[]               @relation("RecoveryCaseOriginalTeam")
+  performanceQuotas          PerformanceQuota[]           @relation("PerformanceQuotaTeam")
 
   @@unique([id, organizationId], map: "commercial_teams_id_organization_key")
   @@index([organizationId, status], map: "commercial_teams_org_status_idx")

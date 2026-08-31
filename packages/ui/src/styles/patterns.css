@@ -1296,6 +1296,10 @@
     background: var(--ui-warning-soft);
   }
 
+  .performance-table td[data-quota-reached="true"] strong {
+    color: var(--ui-success);
+  }
+
   .performance-table tr[data-unattributed="true"] td {
     background: var(--ui-warning-soft);
     border-top: 1px solid var(--ui-border);
