@@ -26,9 +26,10 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
         <form className="performance-filter" method="get">
           <label>
             <span>Mes</span>
+            {/* Admite meses futuros: la cuota se fija antes del período. */}
             <input
               defaultValue={data.periodKey}
-              max={data.currentPeriodKey}
+              max={data.planningLimit}
               name="period"
               type="month"
             />
@@ -54,11 +55,42 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
         </p>
       ) : null}
 
+      <section className="performance-panel">
+        <header className="performance-panel__header">
+          <div>
+            <p className="performance-panel__eyebrow">Organización</p>
+            <h2>Cuota total del período</h2>
+            <p>
+              {data.organization.distribution.covers
+                ? `Repartida entre los equipos: ${data.organization.distribution.assignedTarget} de ${data.organization.target}.`
+                : `Faltan ${data.organization.distribution.remaining} por repartir entre los equipos, de los ${data.organization.target} del período.`}
+            </p>
+          </div>
+          <div className="performance-commission__aside">
+            <span className="performance-panel__note">
+              Portabilidades entregadas
+            </span>
+            <QuotaTargetForm
+              disabled={!data.editable || !data.organization.canAssign}
+              isDefault={data.organization.isDefault}
+              period={data.periodKey}
+              scope="ORG"
+              target={data.organization.target}
+              window={data.window}
+            />
+          </div>
+        </header>
+      </section>
+
       {data.teams.map((team) => (
         <section className="performance-panel" key={team.id}>
           <header className="performance-panel__header">
             <div>
-              <p className="performance-panel__eyebrow">Equipo</p>
+              <p className="performance-panel__eyebrow">
+                {team.hasSupervisor
+                  ? "Equipo · lo reparte su supervisor"
+                  : "Equipo sin supervisor · lo reparte administración"}
+              </p>
               <h2>{team.name}</h2>
               <p>
                 {team.distribution.covers

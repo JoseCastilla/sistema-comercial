@@ -99,3 +99,41 @@ export function isQuotaPeriodEditable(
 ): boolean {
   return periodKey >= currentPeriodKey;
 }
+
+const limaMonthKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Lima",
+  year: "numeric",
+  month: "2-digit",
+});
+
+/** Cuántos meses hacia adelante se puede planificar una cuota. */
+export const quotaPlanningHorizonMonths = 12;
+
+/**
+ * Una cuota es un objetivo que se fija **antes** del período, así que su
+ * selector de mes admite el futuro. El parser del dashboard no sirve aquí:
+ * recorta al mes actual, porque un mes futuro no tiene resultados que
+ * mostrar (SPEC-038 BR-010b).
+ */
+export function parseQuotaPeriod(value: unknown, now = new Date()): string {
+  const current = limaMonthKeyFormatter.format(now);
+  if (typeof value !== "string" || !/^\d{4}-\d{2}$/.test(value)) {
+    return current;
+  }
+
+  const [year = 0, month = 0] = value.split("-").map(Number);
+  if (year < 2000 || year > 2100 || month < 1 || month > 12) return current;
+
+  // El pasado se admite para consultar cuotas ya congeladas; el futuro, hasta
+  // el horizonte de planificación.
+  return value <= getQuotaPlanningLimit(now) ? value : current;
+}
+
+export function getQuotaPlanningLimit(now = new Date()): string {
+  const current = limaMonthKeyFormatter.format(now);
+  const [year = 0, month = 0] = current.split("-").map(Number);
+  const limit = new Date(
+    Date.UTC(year, month - 1 + quotaPlanningHorizonMonths, 1),
+  );
+  return `${limit.getUTCFullYear()}-${String(limit.getUTCMonth() + 1).padStart(2, "0")}`;
+}

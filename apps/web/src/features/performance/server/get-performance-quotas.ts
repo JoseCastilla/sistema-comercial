@@ -3,7 +3,9 @@ import "server-only";
 import {
   formatAdvisorDisplayName,
   getDefaultQuotaTarget,
+  getQuotaPlanningLimit,
   isQuotaPeriodEditable,
+  parseQuotaPeriod,
   parsePerformanceMonth,
   resolveRelevantAcceleratorWindow,
   summarizeQuotaDistribution,
@@ -32,6 +34,8 @@ export interface QuotaTeamRow {
   name: string;
   target: number;
   isDefault: boolean;
+  /** Sin supervisor propio, el reparto entre sus asesores lo hace ADMIN. */
+  hasSupervisor: boolean;
   advisors: QuotaAdvisorRow[];
   distribution: QuotaDistributionSummary;
 }
@@ -40,7 +44,15 @@ export interface PerformanceQuotasData {
   periodKey: string;
   periodLabel: string;
   currentPeriodKey: string;
+  planningLimit: string;
   editable: boolean;
+  /** Cuota de toda la organización: la que el dueño fija y se reparte. */
+  organization: {
+    target: number;
+    isDefault: boolean;
+    canAssign: boolean;
+    distribution: QuotaDistributionSummary;
+  };
   window: QuotaWindowKey;
   windowLabel: string;
   windowOptions: Array<{ key: QuotaWindowKey; label: string }>;
@@ -62,7 +74,8 @@ export async function getPerformanceQuotas(
 ): Promise<PerformanceQuotasData> {
   const now = new Date();
   const currentPeriodKey = parsePerformanceMonth(undefined, now);
-  const periodKey = parsePerformanceMonth(query.period, now);
+  // Una cuota se fija antes del período, así que el selector admite el futuro.
+  const periodKey = parseQuotaPeriod(query.period, now);
   const relevantWindow = resolveRelevantAcceleratorWindow(now);
   const window: QuotaWindowKey =
     query.window === "ONE" || query.window === "TWO"
@@ -78,7 +91,7 @@ export async function getPerformanceQuotas(
       ? supervisedTeamIds
       : teamOptions.map((team) => team.id);
 
-  const [memberships, quotas] = await Promise.all([
+  const [memberships, supervisorRows, quotas] = await Promise.all([
     database.commercialTeamMember.findMany({
       where: {
         salesEnabled: true,
@@ -95,12 +108,26 @@ export async function getPerformanceQuotas(
         team: { select: { name: true } },
       },
     }),
+    database.commercialTeamMember.findMany({
+      where: {
+        memberRole: "SUPERVISOR",
+        isActive: true,
+        teamId: { in: scopedTeamIds },
+        user: { status: "ACTIVE" },
+        team: { organizationId, status: "ACTIVE" },
+      },
+      select: { teamId: true },
+    }),
     database.performanceQuota.findMany({
       where: { organizationId, periodKey, window },
       select: { teamId: true, userId: true, target: true },
     }),
   ]);
 
+  const teamsWithSupervisor = new Set(supervisorRows.map((row) => row.teamId));
+  const organizationQuota = quotas.find(
+    (quota) => quota.teamId === null && quota.userId === null,
+  );
   const teamTargets = new Map(
     quotas
       .filter((quota) => quota.teamId !== null)
@@ -144,6 +171,7 @@ export async function getPerformanceQuotas(
         name: team.name,
         target: teamTarget,
         isDefault: storedTeamTarget === undefined,
+        hasSupervisor: teamsWithSupervisor.has(team.id),
         advisors,
         distribution: summarizeQuotaDistribution({
           teamTarget,
@@ -152,13 +180,29 @@ export async function getPerformanceQuotas(
       };
     });
 
+  const organizationTarget =
+    organizationQuota?.target ??
+    teams.reduce((total, team) => total + team.target, 0);
+
   return {
     periodKey,
     periodLabel: monthLabelFormatter.format(
       new Date(`${periodKey}-01T12:00:00.000Z`),
     ),
     currentPeriodKey,
+    planningLimit: getQuotaPlanningLimit(now),
     editable: isQuotaPeriodEditable(periodKey, currentPeriodKey),
+    organization: {
+      target: organizationTarget,
+      isDefault: organizationQuota === undefined,
+      // Sin rol de dueño en el sistema, la cuota de la organización la fija
+      // administración; es el ancla de toda la cadena de reparto.
+      canAssign: access.role === "ADMIN",
+      distribution: summarizeQuotaDistribution({
+        teamTarget: organizationTarget,
+        advisorTargets: teams.map((team) => team.target),
+      }),
+    },
     window,
     windowLabel: window === "ONE" ? "Días 1 al 15" : "Día 25 al fin de mes",
     windowOptions: [

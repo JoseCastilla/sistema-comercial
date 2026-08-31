@@ -72,10 +72,23 @@ que falta.
 - **BR-008:** la cuota por defecto de cada ventana es **el primer tramo de su
   acelerador** —30 en la primera, 15 en la segunda—. El sistema funciona sin
   configurar nada y el objetivo por defecto ya significa dinero.
-- **BR-009:** `ADMIN` asigna la cuota de cada equipo por ventana.
-  `SUPERVISOR` la reparte entre los asesores de sus equipos. La interfaz
-  advierte cuando lo repartido no cubre la cuota del equipo, pero **no lo
-  impide**: repartir de menos puede ser una decisión consciente ante ausencias.
+- **BR-009:** la cuota baja por una cadena de tres niveles. La **cuota de la
+  organización** es el total del período y la fija el dueño del negocio;
+  `ADMIN` la reparte entre los equipos; cada `SUPERVISOR` reparte la de su
+  equipo entre sus asesores. En cada nivel la interfaz advierte cuando lo
+  repartido no cubre el objetivo, pero **no lo impide**: repartir de menos
+  puede ser una decisión consciente ante ausencias.
+- **BR-009b:** un equipo sin supervisor activo lo reparte `ADMIN`
+  directamente entre sus asesores. La interfaz declara en cada equipo quién
+  es responsable de su reparto, para que ninguno quede sin dueño.
+- **BR-009c:** mientras el sistema no tenga un rol de dueño distinto del
+  administrador, la cuota de la organización la fija `ADMIN`. El modelo de
+  datos ya la separa de las de equipo, así que introducir ese rol después solo
+  cambia quién puede editar esa fila.
+- **BR-010b:** una cuota se fija **antes** del período, así que su selector
+  admite meses futuros hasta un horizonte de doce meses. El parser del
+  dashboard no sirve para esto: recorta al mes actual, porque un mes futuro no
+  tiene resultados que mostrar.
 - **BR-010:** una cuota se asigna por período y ventana, y **queda congelada
   una vez que el período termina**. Cambiar la cuota de un mes cerrado
   reescribiría la historia de cumplimiento.

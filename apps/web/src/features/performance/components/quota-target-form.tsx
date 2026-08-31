@@ -10,15 +10,15 @@ const initialState: QuotaActionState = { type: "idle", message: "" };
 
 export function QuotaTargetForm({
   scope,
-  targetId,
+  targetId = "",
   window,
   period,
   target,
   isDefault,
   disabled,
 }: {
-  scope: "TEAM" | "USER";
-  targetId: string;
+  scope: "ORG" | "TEAM" | "USER";
+  targetId?: string;
   window: string;
   period: string;
   target: number;

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { isQuotaPeriodEditable, parsePerformanceMonth } from "@repo/validation";
+import { isQuotaPeriodEditable, parseQuotaPeriod } from "@repo/validation";
 
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
@@ -38,11 +38,22 @@ export async function assignPerformanceQuotaAction(
   const periodKey = String(formData.get("period") ?? "").trim();
   const rawTarget = Number(formData.get("target"));
 
-  if (scope !== "TEAM" && scope !== "USER") {
+  if (scope !== "ORG" && scope !== "TEAM" && scope !== "USER") {
     return { type: "error", message: "Destino de cuota no reconocido." };
   }
-  if (!targetId || (windowRaw !== "ONE" && windowRaw !== "TWO")) {
-    return { type: "error", message: "Falta el destinatario o la ventana." };
+  if (scope !== "ORG" && !targetId) {
+    return { type: "error", message: "Falta el destinatario." };
+  }
+  if (windowRaw !== "ONE" && windowRaw !== "TWO") {
+    return { type: "error", message: "Falta la ventana." };
+  }
+  // BR-009b: la cuota de la organización es el ancla de todo el reparto y la
+  // fija administración.
+  if (scope === "ORG" && membership.role !== "ADMIN") {
+    return {
+      type: "error",
+      message: "Solo administración fija la cuota de la organización.",
+    };
   }
   const windowKey: "ONE" | "TWO" = windowRaw;
   if (!Number.isSafeInteger(rawTarget) || rawTarget < 0 || rawTarget > 9_999) {
@@ -53,8 +64,9 @@ export async function assignPerformanceQuotaAction(
   }
 
   const now = new Date();
-  const currentPeriodKey = parsePerformanceMonth(undefined, now);
-  const period = parsePerformanceMonth(periodKey, now);
+  const currentPeriodKey = parseQuotaPeriod(undefined, now);
+  // Admite meses futuros: una cuota se planifica antes del período.
+  const period = parseQuotaPeriod(periodKey, now);
   if (!isQuotaPeriodEditable(period, currentPeriodKey)) {
     return {
       type: "error",
@@ -92,7 +104,9 @@ export async function assignPerformanceQuotaAction(
         : null;
 
     let label = "";
-    if (scope === "TEAM") {
+    if (scope === "ORG") {
+      label = "la organización";
+    } else if (scope === "TEAM") {
       const team = await transaction.commercialTeam.findFirst({
         where: {
           id: targetId,
@@ -125,20 +139,17 @@ export async function assignPerformanceQuotaAction(
       label = advisor.user.name;
     }
 
+    const base = {
+      organizationId: membership.organization.id,
+      periodKey: period,
+      window: windowKey,
+    };
     const where =
-      scope === "TEAM"
-        ? {
-            organizationId: membership.organization.id,
-            periodKey: period,
-            window: windowKey,
-            teamId: targetId,
-          }
-        : {
-            organizationId: membership.organization.id,
-            periodKey: period,
-            window: windowKey,
-            userId: targetId,
-          };
+      scope === "ORG"
+        ? { ...base, teamId: null, userId: null }
+        : scope === "TEAM"
+          ? { ...base, teamId: targetId }
+          : { ...base, userId: targetId };
 
     const existing = await transaction.performanceQuota.findFirst({
       where,
@@ -161,6 +172,7 @@ export async function assignPerformanceQuotaAction(
           organizationId: membership.organization.id,
           periodKey: period,
           window: windowKey,
+          // Sin equipo ni asesor, la fila es la cuota de la organización.
           teamId: scope === "TEAM" ? targetId : null,
           userId: scope === "USER" ? targetId : null,
           target: rawTarget,

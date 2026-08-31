@@ -4,7 +4,8 @@ enum PerformanceQuotaWindow {
 }
 
 /// Cuota de portabilidades entregadas por período y ventana (SPEC-038).
-/// El destinatario es un equipo o un asesor, nunca ambos: lo garantiza un
+/// El destinatario es un equipo, un asesor, o la organizacion entera cuando
+/// ambos son nulos. Nunca los dos a la vez: lo garantiza un
 /// CHECK y dos índices únicos parciales en la migración.
 model PerformanceQuota {
   id             String @id @default(uuid()) @db.Uuid

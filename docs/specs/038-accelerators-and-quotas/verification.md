@@ -51,10 +51,34 @@ Sesión de Erika Lavado, supervisora de Huancayo:
 - [x] 213 pruebas de dominio en verde, incluidas las seis de resolución de
       ventana, cuota por defecto, reparto y congelamiento del período.
 
+## Cadena de tres niveles y planificación futura — 31/08/2026
+
+Defecto encontrado y corregido: el selector de mes usaba el parser del
+dashboard, que **recorta silenciosamente cualquier mes futuro al actual**. El
+efecto era que no se podía planificar septiembre y, peor, pedirlo por URL
+habría editado la cuota de agosto creyendo editar la de septiembre. Las
+cuotas usan ahora su propio parser con horizonte de doce meses.
+
+- [x] `/performance/quotas?period=2026-09` abre en **setiembre de 2026** y el
+      selector admite hasta 2027-08 (BR-010b).
+- [x] Las cuotas son por período: septiembre arranca en los valores por
+      defecto aunque agosto tenga asignaciones propias.
+- [x] **BR-009 verificado en sesión SUPERVISOR:** la cuota de la organización
+      y la del equipo aparecen bloqueadas para Erika, y solo puede repartir
+      entre sus cuatro asesores.
+- [x] **BR-009b:** cada equipo declara en su encabezado quién reparte su
+      cuota — "lo reparte su supervisor" o "sin supervisor · lo reparte
+      administración".
+- [x] La cuota de la organización resume su reparto entre equipos con el
+      mismo criterio de aviso sin bloqueo.
+- [x] 215 pruebas de dominio en verde.
+
 ## Pendiente
 
-- Validar con sesión `ADMIN` la asignación de la cuota del equipo, y que un
-  período cerrado quede congelado en la interfaz.
+- Validar con sesión `ADMIN` la asignación de la cuota de organización y de
+  equipo, y que un período cerrado quede congelado en la interfaz.
+- Decidir si el sistema tendrá un rol de dueño distinto del administrador
+  (BR-009c). Hoy no es urgente porque ambos son la misma persona.
 - La terminología de la interfaz decía "activaciones pagables" donde el
   cálculo cuenta confirmadas; el texto nuevo habla de confirmadas y del
   pendiente de activación, alineando ambos.

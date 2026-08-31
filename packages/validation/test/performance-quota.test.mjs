@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   getDefaultQuotaTarget,
+  getQuotaPlanningLimit,
   isQuotaPeriodEditable,
+  parseQuotaPeriod,
   resolveCurrentAcceleratorWindow,
   resolveRelevantAcceleratorWindow,
   summarizeQuotaDistribution,
@@ -68,4 +70,21 @@ test("un periodo terminado queda congelado", () => {
   assert.equal(isQuotaPeriodEditable("2026-08", "2026-08"), true);
   assert.equal(isQuotaPeriodEditable("2026-09", "2026-08"), true);
   assert.equal(isQuotaPeriodEditable("2026-07", "2026-08"), false);
+});
+
+test("el selector de cuotas admite meses futuros, a diferencia del dashboard", () => {
+  const agosto31 = new Date("2026-08-31T15:00:00.000Z");
+
+  // El mes siguiente se puede planificar: una cuota se fija antes del periodo.
+  assert.equal(parseQuotaPeriod("2026-09", agosto31), "2026-09");
+  assert.equal(parseQuotaPeriod("2026-12", agosto31), "2026-12");
+  // El pasado se admite para consultar cuotas congeladas.
+  assert.equal(parseQuotaPeriod("2026-07", agosto31), "2026-07");
+  // Mas alla del horizonte de planificacion vuelve al mes actual.
+  assert.equal(parseQuotaPeriod("2028-01", agosto31), "2026-08");
+  assert.equal(parseQuotaPeriod("basura", agosto31), "2026-08");
+});
+
+test("el horizonte de planificacion son doce meses", () => {
+  assert.equal(getQuotaPlanningLimit(new Date("2026-08-31T15:00:00.000Z")), "2027-08");
 });
