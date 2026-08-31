@@ -10,7 +10,7 @@
     "check-types": "next typegen && tsc --noEmit",
     "auth:create-initial-admin": "pnpm --filter @repo/database run build && node scripts/create-initial-admin.mjs",
     "format": "prettier --write src scripts package.json tsconfig.json",
-    "dev": "next dev -p 3100"
+    "dev": "pnpm --filter @repo/database --filter @repo/validation run build && next dev -p 3100"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.6.25",
