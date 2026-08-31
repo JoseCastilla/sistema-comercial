@@ -13,6 +13,10 @@ import {
   type DitoSentSubstatus,
 } from "@repo/validation";
 
+import {
+  closeInternalRecoveryCaseOnDelivery,
+  openInternalRecoveryCase,
+} from "@/features/recovery/server/open-internal-recovery-case";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -176,6 +180,22 @@ export async function updateOrderStatusAction(
           deliveredAt: true,
 
           updatedAt: true,
+
+          holderFullNameRaw: true,
+
+          holderDocumentNumber: true,
+
+          registeredAt: true,
+
+          department: true,
+
+          province: true,
+
+          district: true,
+
+          agrDeliverySnapshot: {
+            select: { motivoRechazo: true, submotivoRechazo: true },
+          },
 
           cancellationRequests: {
             where: { status: "PENDING" },
@@ -428,6 +448,45 @@ export async function updateOrderStatusAction(
             reviewedAt: changedAt,
             reviewObservation: observation,
           },
+        });
+      }
+
+      // SPEC-030 BR-061: la puerta interna de recuperación se abre con la
+      // misma transacción que registra la novedad.
+      const recoveryTrigger = {
+        status: normalized.status,
+        sentSubstatus: normalized.sentSubstatus,
+        motivoRechazo: order.agrDeliverySnapshot?.motivoRechazo ?? null,
+        submotivoRechazo: order.agrDeliverySnapshot?.submotivoRechazo ?? null,
+      };
+      const recoveryOrder = {
+        id: order.id,
+        agentUserId: order.agentUserId,
+        assignedTeamId: order.assignedTeamId,
+        holderFullNameRaw: order.holderFullNameRaw,
+        holderDocumentNumber: order.holderDocumentNumber,
+        registeredAt: order.registeredAt,
+        department: order.department,
+        province: order.province,
+        district: order.district,
+      };
+
+      // BR-073: si la entrega se concretó, el caso abierto se cierra solo.
+      if (normalized.deliveryStatus === "DELIVERED") {
+        await closeInternalRecoveryCaseOnDelivery(transaction, {
+          organizationId: membership.organization.id,
+          ditoOrderId: order.id,
+          actorUserId: session.user.id,
+          deliveredAt: changedAt,
+        });
+      } else {
+        await openInternalRecoveryCase(transaction, {
+          organizationId: membership.organization.id,
+          order: recoveryOrder,
+          trigger: recoveryTrigger,
+          actorUserId: session.user.id,
+          noveltyAt: changedAt,
+          observation,
         });
       }
 

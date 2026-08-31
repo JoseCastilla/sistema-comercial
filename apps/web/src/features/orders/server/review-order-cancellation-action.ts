@@ -10,6 +10,7 @@ import {
   resolveDitoOrderVisibility,
 } from "@repo/validation";
 
+import { openInternalRecoveryCase } from "@/features/recovery/server/open-internal-recovery-case";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -104,6 +105,15 @@ export async function reviewOrderCancellationAction(
               sentSubstatusUpdatedAt: true,
               deliveredAt: true,
               updatedAt: true,
+              holderFullNameRaw: true,
+              holderDocumentNumber: true,
+              registeredAt: true,
+              department: true,
+              province: true,
+              district: true,
+              agrDeliverySnapshot: {
+                select: { motivoRechazo: true, submotivoRechazo: true },
+              },
             },
           },
         },
@@ -252,6 +262,32 @@ export async function reviewOrderCancellationAction(
           changedByUserId: session.user.id,
           changedAt: reviewedAt,
         },
+      });
+
+      // SPEC-030 BR-061: una cancelación aprobada también abre la puerta
+      // interna de recuperación, con el motivo del asesor como observación.
+      await openInternalRecoveryCase(transaction, {
+        organizationId: membership.organization.id,
+        order: {
+          id: order.id,
+          agentUserId: order.agentUserId,
+          assignedTeamId: order.assignedTeamId,
+          holderFullNameRaw: order.holderFullNameRaw,
+          holderDocumentNumber: order.holderDocumentNumber,
+          registeredAt: order.registeredAt,
+          department: order.department,
+          province: order.province,
+          district: order.district,
+        },
+        trigger: {
+          status: "CANCELLED",
+          sentSubstatus: null,
+          motivoRechazo: order.agrDeliverySnapshot?.motivoRechazo ?? null,
+          submotivoRechazo: order.agrDeliverySnapshot?.submotivoRechazo ?? null,
+        },
+        actorUserId: session.user.id,
+        noveltyAt: reviewedAt,
+        observation: request.reason,
       });
 
       return {

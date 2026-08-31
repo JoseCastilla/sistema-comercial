@@ -4,6 +4,47 @@ enum RecoveryCaseSource {
   MANUAL
 }
 
+/// Motivo comercial por el que una venta propia entra a recuperación.
+/// Solo aplica a casos de puerta interna (SPEC-030 BR-063).
+enum RecoveryEntryReason {
+  NO_ENTREGADO
+  INCIDENCIA_LOGISTICA
+  PROMESA_COMERCIAL_INCORRECTA
+  DEUDA
+  ANTIGUEDAD_PORTA
+  OTRO
+}
+
+/// Prioridad derivada del motivo de entrada (SPEC-030 BR-064).
+enum RecoveryCasePriority {
+  CRITICA
+  ALTA
+  MEDIA
+  CONDICIONADA
+}
+
+/// Canal por el que se intentó contactar al cliente (BR-035).
+enum RecoveryAttemptChannel {
+  LLAMADA
+  WHATSAPP
+  SMS
+  PRESENCIAL
+  OTRO
+}
+
+/// Resultado tipificado de un intento (BR-036).
+enum RecoveryAttemptResult {
+  SIN_RESPUESTA
+  INTERESADO
+  RECHAZA
+  AGENDA
+  NUMERO_ERRADO
+  NO_CUMPLE_30D
+  YA_ACTIVO
+  DATOS_INVALIDOS
+  VENDIDO
+}
+
 enum RecoveryCaseStatus {
   TRIAGE
   WAITING
@@ -31,6 +72,8 @@ enum RecoveryDiscardReason {
   FUERA_DE_FILTRO
   DUPLICADO
   ADMIN
+  /// La entrega se concretó en un intento posterior (SPEC-030 BR-073).
+  ENTREGA_CONCRETADA
 }
 
 enum RecoveryBaseBatchStatus {
@@ -66,6 +109,8 @@ enum RecoveryCaseEventType {
   PORTABILITY_SCHEDULED
   PORTABILITY_DISCARD_REVERTED
   ASSIGNED_TO_TEAM
+  ASSIGNED_TO_USER
+  CASE_RESOLVED
 }
 
 enum RecoveryPortabilityReportKind {
@@ -205,6 +250,17 @@ model RecoveryCase {
   source RecoveryCaseSource @default(NATIONAL_BASE)
   status RecoveryCaseStatus @default(TRIAGE)
 
+  /// Puerta interna (SPEC-030 BR-062 a BR-064). Nulos en base nacional.
+  /// La unicidad de "un caso abierto por orden origen" vive como índice
+  /// parcial en la migración `add_internal_recovery_gate`; Prisma no expresa
+  /// índices parciales, por eso aquí solo se declara el índice de consulta.
+  sourceDitoOrderId  String?               @map("source_dito_order_id") @db.Uuid
+  originalAgentUserId String?              @map("original_agent_user_id") @db.Uuid
+  originalTeamId     String?               @map("original_team_id") @db.Uuid
+  entryReason        RecoveryEntryReason?  @map("entry_reason")
+  entryObservation   String?               @map("entry_observation") @db.Text
+  priority           RecoveryCasePriority? @map("priority")
+
   documentNumber String  @map("document_number") @db.VarChar(20)
   holderName     String  @map("holder_name") @db.VarChar(200)
   department     String? @db.VarChar(100)
@@ -253,6 +309,10 @@ model RecoveryCase {
   resolvedBy          User? @relation("RecoveryCaseResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
 
   recoveredDitoOrder DitoOrder? @relation("RecoveryCaseRecoveredOrder", fields: [recoveredDitoOrderId], references: [id], onDelete: SetNull)
+  sourceDitoOrder    DitoOrder? @relation("RecoveryCaseSourceOrder", fields: [sourceDitoOrderId], references: [id], onDelete: SetNull)
+
+  originalAgent User?           @relation("RecoveryCaseOriginalAgent", fields: [originalAgentUserId], references: [id], onDelete: SetNull)
+  originalTeam  CommercialTeam? @relation("RecoveryCaseOriginalTeam", fields: [originalTeamId], references: [id], onDelete: SetNull)
 
   previousCase   RecoveryCase?  @relation("RecoveryCaseSuccession", fields: [previousCaseId], references: [id], onDelete: SetNull)
   successorCases RecoveryCase[] @relation("RecoveryCaseSuccession")
@@ -262,12 +322,15 @@ model RecoveryCase {
   sightings RecoveryCaseSighting[]
   events    RecoveryCaseEvent[]
   records   RecoveryBaseRecord[]
+  attempts  RecoveryCaseAttempt[]
 
   @@index([organizationId, status, nextActionAt], map: "recovery_cases_org_status_next_action_idx")
   @@index([organizationId, documentNumber], map: "recovery_cases_org_document_idx")
   @@index([organizationId, assignedTeamId, status], map: "recovery_cases_org_team_status_idx")
   @@index([organizationId, assignedUserId, status], map: "recovery_cases_org_agent_status_idx")
   @@index([organizationId, status, lastSightingAt], map: "recovery_cases_org_status_sighting_idx")
+  @@index([sourceDitoOrderId, status], map: "recovery_cases_source_order_status_idx")
+  @@index([organizationId, priority, status], map: "recovery_cases_org_priority_status_idx")
   @@map("recovery_cases")
 }
 
@@ -434,4 +497,31 @@ model RecoveryCaseEvent {
   @@index([organizationId, createdAt], map: "recovery_case_events_org_created_idx")
   @@index([actorUserId, createdAt], map: "recovery_case_events_actor_created_idx")
   @@map("recovery_case_events")
+}
+
+/// Intento de contacto sobre un caso. Inmutable: no existe camino de
+/// actualización ni borrado (BR-035).
+model RecoveryCaseAttempt {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  caseId         String @map("case_id") @db.Uuid
+  actorUserId    String @map("actor_user_id") @db.Uuid
+
+  channel RecoveryAttemptChannel
+  result  RecoveryAttemptResult
+
+  phoneUsed    String?   @map("phone_used") @db.VarChar(15)
+  observation  String?   @db.Text
+  nextActionAt DateTime? @map("next_action_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actor        User         @relation("RecoveryCaseAttemptActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, createdAt], map: "recovery_case_attempts_case_created_idx")
+  @@index([organizationId, createdAt], map: "recovery_case_attempts_org_created_idx")
+  @@index([actorUserId, createdAt], map: "recovery_case_attempts_actor_created_idx")
+  @@map("recovery_case_attempts")
 }

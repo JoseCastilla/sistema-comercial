@@ -12,3 +12,8 @@ export interface RecoveryTriageActionState {
   type: "idle" | "success" | "error";
   message: string;
 }
+
+export interface SendOrderToRecoveryActionState {
+  type: "idle" | "success" | "error";
+  message: string;
+}

@@ -30,16 +30,36 @@ export async function GET() {
           ).map((item) => item.teamId)
         : [];
 
-    const count = await database.deliveryEscalation.count({
-      where: {
-        organizationId: membership.organization.id,
-        status: { in: ["OPEN", "ACKNOWLEDGED"] },
-        ...(membership.role === "SUPERVISOR"
-          ? { teamIdSnapshot: { in: supervisedTeamIds } }
-          : {}),
-      },
-    });
-    return NextResponse.json({ count });
+    const [count, recoveryOverdue] = await Promise.all([
+      database.deliveryEscalation.count({
+        where: {
+          organizationId: membership.organization.id,
+          status: { in: ["OPEN", "ACKNOWLEDGED"] },
+          ...(membership.role === "SUPERVISOR"
+            ? { teamIdSnapshot: { in: supervisedTeamIds } }
+            : {}),
+        },
+      }),
+      // SPEC-030 BR-066/BR-058: un caso interno con la próxima acción
+      // vencida escala a la vista del supervisor.
+      database.recoveryCase.count({
+        where: {
+          organizationId: membership.organization.id,
+          source: { in: ["INTERNAL_ORDER_STATE", "MANUAL"] },
+          status: { in: ["OPEN", "ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
+          nextActionAt: { lt: new Date() },
+          ...(membership.role === "SUPERVISOR"
+            ? {
+                OR: [
+                  { assignedTeamId: { in: supervisedTeamIds } },
+                  { originalTeamId: { in: supervisedTeamIds } },
+                ],
+              }
+            : {}),
+        },
+      }),
+    ]);
+    return NextResponse.json({ count, recoveryOverdue });
   } catch {
     return NextResponse.json({ count: 0 }, { status: 401 });
   }

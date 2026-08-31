@@ -78,6 +78,10 @@ const shortDateFormatter = new Intl.DateTimeFormat("es-PE", {
   month: "2-digit",
 });
 
+const openRecoveryCaseWhere = {
+  status: { notIn: ["RECOVERED", "LOST", "DISCARDED"] },
+} satisfies Prisma.RecoveryCaseWhereInput;
+
 const orderSelect = {
   id: true,
   orderCodeRaw: true,
@@ -179,6 +183,17 @@ const orderSelect = {
       proximaAccion: true,
       fechaCompromisoRaw: true,
       isRecoveryOpportunity: true,
+    },
+  },
+  recoveryCasesOriginated: {
+    where: openRecoveryCaseWhere,
+    take: 1,
+    select: {
+      id: true,
+      status: true,
+      priority: true,
+      entryReason: true,
+      assignedUser: { select: { name: true } },
     },
   },
 } as const;
@@ -1411,6 +1426,31 @@ export async function getOrderInbox(
       closedByName: order.closedBy?.name ?? null,
       closedAtLabel: order.closedAt ? formatDateTime(order.closedAt) : null,
       canCorrect: visibility === "FULL" && access.role === "ADMIN",
+      // SPEC-030 BR-061: la puerta manual es de supervisión, nunca del asesor
+      // ni sobre la venta propia; cerrados y entregados quedan fuera.
+      canSendToRecovery:
+        visibility === "FULL" &&
+        (access.role === "ADMIN" ||
+          access.role === "BACKOFFICE" ||
+          access.role === "SUPERVISOR") &&
+        !isOwnOrder &&
+        order.recoveryCasesOriginated.length === 0 &&
+        status !== "CLOSED" &&
+        String(order.deliveryStatus) !== "DELIVERED",
+      recoveryCase: order.recoveryCasesOriginated[0]
+        ? {
+            id: order.recoveryCasesOriginated[0].id,
+            status: String(order.recoveryCasesOriginated[0].status),
+            priority: order.recoveryCasesOriginated[0].priority
+              ? String(order.recoveryCasesOriginated[0].priority)
+              : null,
+            entryReason: order.recoveryCasesOriginated[0].entryReason
+              ? String(order.recoveryCasesOriginated[0].entryReason)
+              : null,
+            assignedToName:
+              order.recoveryCasesOriginated[0].assignedUser?.name ?? null,
+          }
+        : null,
       canResolveAssignment:
         access.role === "ADMIN" &&
         Boolean(order.submitterEmailNormalized) &&

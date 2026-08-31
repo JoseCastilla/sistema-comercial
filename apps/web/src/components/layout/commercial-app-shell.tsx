@@ -12,6 +12,7 @@ type ActiveSection =
   | "orders"
   | "dni"
   | "tools"
+  | "sales-recovery"
   | "recovery"
   | "imports"
   | "logistics"
@@ -278,13 +279,20 @@ export function CommercialAppShell({
             icon="tools"
             label="Consultas externas"
           />
+          <NavigationItem
+            active={activeSection === "sales-recovery"}
+            description="Ventas caídas por salvar"
+            href="/recovery/sales"
+            icon="recovery"
+            label="Recupero de ventas"
+          />
           {canTriageRecovery ? (
             <NavigationItem
               active={activeSection === "recovery"}
-              description="Base nacional y triage"
+              description="Campañas sobre base fría"
               href={isAdmin ? "/admin/recovery-base" : "/recovery/triage"}
               icon="recovery"
-              label="Recupero"
+              label="Base nacional"
             />
           ) : null}
           {isAdmin ? (
@@ -381,12 +389,18 @@ export function CommercialAppShell({
           icon="tools"
           label="Consultas"
         />
+        <MobileNavigationItem
+          active={activeSection === "sales-recovery"}
+          href="/recovery/sales"
+          icon="recovery"
+          label="Recupero"
+        />
         {canTriageRecovery ? (
           <MobileNavigationItem
             active={activeSection === "recovery"}
             href={isAdmin ? "/admin/recovery-base" : "/recovery/triage"}
             icon="recovery"
-            label="Recupero"
+            label="Base"
           />
         ) : null}
         {isAdmin ? (

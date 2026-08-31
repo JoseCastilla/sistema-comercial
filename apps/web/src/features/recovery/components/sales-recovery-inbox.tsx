@@ -1,0 +1,185 @@
+import Link from "next/link";
+
+import { PageHeader } from "@repo/ui/page-header";
+
+import { AssignSalesRecoveryForm } from "./assign-sales-recovery-form";
+
+import type { SalesRecoveryInboxData } from "../server/get-sales-recovery-inbox";
+
+const reasonLabels: Record<string, string> = {
+  NO_ENTREGADO: "No recibió",
+  INCIDENCIA_LOGISTICA: "Incidencia logística",
+  PROMESA_COMERCIAL_INCORRECTA: "Promesa incorrecta",
+  DEUDA: "Deuda",
+  ANTIGUEDAD_PORTA: "Antigüedad de porta",
+  OTRO: "Otro",
+};
+
+const statusLabels: Record<string, string> = {
+  OPEN: "Sin responsable",
+  ASSIGNED: "Asignado",
+  IN_PROGRESS: "En gestión",
+  SCHEDULED: "Agendado",
+  WAITING: "En espera",
+};
+
+const priorityLabels: Record<string, string> = {
+  CRITICA: "Crítica",
+  ALTA: "Alta",
+  MEDIA: "Media",
+  CONDICIONADA: "Condicionada",
+};
+
+function orderHref(orderCode: string): string {
+  const parameters = new URLSearchParams({ status: "ALL", q: orderCode });
+  return `/orders?${parameters.toString()}`;
+}
+
+export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
+  return (
+    <div className="ui-page-stack">
+      <PageHeader
+        description="Ventas propias caídas o no entregadas que todavía pueden salvarse. El primer contacto vence a las dos horas de la novedad."
+        eyebrow={data.scopeLabel}
+        meta={<span>Actualizado: {data.generatedAt}</span>}
+        title="Recupero de ventas"
+      />
+
+      <section
+        aria-label="Resumen del recupero de ventas"
+        className="reconciliation-summary"
+      >
+        <article>
+          <span>Casos abiertos</span>
+          <strong>{data.totals.open}</strong>
+          <small>Del carril de ventas propias</small>
+        </article>
+        <article data-tone={data.totals.overdue > 0 ? "attention" : undefined}>
+          <span>Primer contacto vencido</span>
+          <strong>{data.totals.overdue}</strong>
+          <small>Pasaron las 2 horas sin gestión</small>
+        </article>
+        <article
+          data-tone={
+            data.totals.criticalUnassigned > 0 ? "attention" : undefined
+          }
+        >
+          <span>Críticas sin responsable</span>
+          <strong>{data.totals.criticalUnassigned}</strong>
+          <small>Requieren reasignación de supervisión</small>
+        </article>
+        <article data-tone="positive">
+          <span>Recuperadas este mes</span>
+          <strong>{data.totals.recoveredThisMonth}</strong>
+          <small>Con orden nueva vinculada</small>
+        </article>
+      </section>
+
+      <section className="performance-panel">
+        <header className="performance-panel__header">
+          <div>
+            <p className="performance-panel__eyebrow">Cola de trabajo</p>
+            <h2>Casos por prioridad</h2>
+            <p>
+              Crítica nunca vuelve a quien originó la venta; el resto conserva
+              a su asesor durante el Día 0.
+            </p>
+          </div>
+        </header>
+        <div className="performance-table-wrap">
+          <table className="performance-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Venta</th>
+                <th>Motivo</th>
+                <th>Prioridad</th>
+                <th>Estado</th>
+                <th>Responsable</th>
+                <th>Próxima acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.cases.map((item) => (
+                <tr
+                  data-no-sales={item.nextActionOverdue ? "true" : undefined}
+                  key={item.id}
+                >
+                  <td>
+                    <Link href={`/recovery/sales/${item.id}`}>
+                      <strong>{item.holderName}</strong>
+                    </Link>
+                    <small>DNI {item.documentNumber}</small>
+                  </td>
+                  <td>
+                    {item.orderCode ? (
+                      <Link href={orderHref(item.orderCode)}>
+                        {item.orderCode}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                    <small>Novedad {item.noveltyAtLabel}</small>
+                  </td>
+                  <td>
+                    {item.entryReason
+                      ? (reasonLabels[item.entryReason] ?? item.entryReason)
+                      : "—"}
+                    {item.entryObservation ? (
+                      <small title={item.entryObservation}>
+                        {item.entryObservation.length > 60
+                          ? `${item.entryObservation.slice(0, 60)}…`
+                          : item.entryObservation}
+                      </small>
+                    ) : null}
+                  </td>
+                  <td>
+                    {item.priority
+                      ? (priorityLabels[item.priority] ?? item.priority)
+                      : "—"}
+                  </td>
+                  <td>{statusLabels[item.status] ?? item.status}</td>
+                  <td>
+                    {item.assignedToName ?? (
+                      <strong>Sin responsable</strong>
+                    )}
+                    {item.originalAgentName ? (
+                      <small>
+                        Venta de {item.originalAgentName}
+                        {item.originalTeamName
+                          ? ` · ${item.originalTeamName}`
+                          : ""}
+                      </small>
+                    ) : null}
+                    {data.canAssign ? (
+                      <AssignSalesRecoveryForm
+                        advisors={data.advisorOptions}
+                        blockedAdvisorId={
+                          item.isCritical ? item.originalAgentUserId : null
+                        }
+                        caseId={item.id}
+                        hasAssignee={item.assignedToName !== null}
+                      />
+                    ) : null}
+                  </td>
+                  <td>
+                    {item.nextActionAtLabel ?? "—"}
+                    {item.nextActionOverdue ? <small>Vencida</small> : null}
+                  </td>
+                </tr>
+              ))}
+              {data.cases.length === 0 ? (
+                <tr>
+                  <td className="reconciliation-empty" colSpan={7}>
+                    No hay ventas en recuperación. Las nuevas caídas aparecerán
+                    aquí solas.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}

@@ -240,6 +240,7 @@ model DitoOrder {
   importRows                   DitoImportRow[]
   agrDeliverySnapshot          AgrDeliveryOrderSnapshot?
   recoveryCasesRecovered       RecoveryCase[]            @relation("RecoveryCaseRecoveredOrder")
+  recoveryCasesOriginated      RecoveryCase[]            @relation("RecoveryCaseSourceOrder")
 
   @@unique([organizationId, eventId], map: "dito_orders_org_event_key")
   @@unique([organizationId, orderCodeNormalized], map: "dito_orders_org_order_code_key")

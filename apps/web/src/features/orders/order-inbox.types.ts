@@ -156,6 +156,14 @@ export interface OrderInboxItem {
   closedByName: string | null;
   closedAtLabel: string | null;
   canCorrect: boolean;
+  canSendToRecovery: boolean;
+  recoveryCase: {
+    id: string;
+    status: string;
+    priority: string | null;
+    entryReason: string | null;
+    assignedToName: string | null;
+  } | null;
   canResolveAssignment: boolean;
   canClaimAssignment: boolean;
   parseStatus: string;

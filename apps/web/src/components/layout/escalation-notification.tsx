@@ -16,6 +16,7 @@ const fallbackPollMs = 60_000;
 
 export function EscalationNotification({ role }: { role: string }) {
   const [count, setCount] = useState(0);
+  const [recoveryOverdue, setRecoveryOverdue] = useState(0);
   const streamBrokenRef = useRef(false);
   const enabled = role === "ADMIN" || role === "SUPERVISOR";
 
@@ -26,8 +27,12 @@ export function EscalationNotification({ role }: { role: string }) {
         cache: "no-store",
       });
       if (!response.ok) return;
-      const data = (await response.json()) as { count?: number };
+      const data = (await response.json()) as {
+        count?: number;
+        recoveryOverdue?: number;
+      };
       setCount(Math.max(0, data.count ?? 0));
+      setRecoveryOverdue(Math.max(0, data.recoveryOverdue ?? 0));
     } catch {
       // El sondeo siguiente volverá a intentarlo.
     }
@@ -72,17 +77,33 @@ export function EscalationNotification({ role }: { role: string }) {
     };
   }, [enabled, refresh]);
 
-  if (!enabled || count === 0) return null;
+  if (!enabled || (count === 0 && recoveryOverdue === 0)) return null;
   return (
-    <Link
-      aria-label={`${count} incidencias escaladas requieren atención`}
-      className="fixed right-4 top-4 z-50 flex items-center gap-2 rounded-full border border-ui-danger-border bg-ui-danger-soft px-3 py-2 text-sm font-semibold text-ui-danger shadow-lg"
-      href="/orders?period=MONTH&status=ESCALATIONS"
-      role="status"
-    >
-      <span aria-hidden="true">🔔</span>
-      <span>{count}</span>
-      <span className="hidden sm:inline">ticket(s) por atender</span>
-    </Link>
+    <div className="fixed right-4 top-4 z-50 flex flex-col items-end gap-2">
+      {count > 0 ? (
+        <Link
+          aria-label={`${count} incidencias escaladas requieren atención`}
+          className="flex items-center gap-2 rounded-full border border-ui-danger-border bg-ui-danger-soft px-3 py-2 text-sm font-semibold text-ui-danger shadow-lg"
+          href="/orders?period=MONTH&status=ESCALATIONS"
+          role="status"
+        >
+          <span aria-hidden="true">🔔</span>
+          <span>{count}</span>
+          <span className="hidden sm:inline">ticket(s) por atender</span>
+        </Link>
+      ) : null}
+      {recoveryOverdue > 0 ? (
+        <Link
+          aria-label={`${recoveryOverdue} recuperos con la próxima acción vencida`}
+          className="flex items-center gap-2 rounded-full border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning shadow-lg"
+          href="/recovery/sales"
+          role="status"
+        >
+          <span aria-hidden="true">⏰</span>
+          <span>{recoveryOverdue}</span>
+          <span className="hidden sm:inline">recupero(s) vencido(s)</span>
+        </Link>
+      ) : null}
+    </div>
   );
 }

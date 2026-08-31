@@ -13,6 +13,7 @@ import { OrderAssignmentResolution } from "./order-assignment-resolution";
 import { OrderCorrectionForm } from "./order-correction-form";
 import { OrderRealtimeStatus } from "./order-realtime-status";
 import { OrderEscalationPanel } from "./order-escalation-panel";
+import { SendOrderToRecoveryPanel } from "./send-order-to-recovery-panel";
 
 import type {
   OrderAssignmentTeamOption,
@@ -698,6 +699,12 @@ function OrderDetails({
           {!order.incidentEscalation && order.canEscalate ? (
             <div className="ui-order-secondary-action">
               <OrderEscalationPanel order={order} />
+            </div>
+          ) : null}
+
+          {order.canSendToRecovery || order.recoveryCase ? (
+            <div className="ui-order-secondary-action">
+              <SendOrderToRecoveryPanel order={order} />
             </div>
           ) : null}
         </section>

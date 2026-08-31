@@ -270,9 +270,178 @@ descarte por `ADMIN` (no construidas).
   consulta de portabilidad (`consulta_multiple.py`) siguen fuera del sistema y
   sin trazabilidad. Ambas están registradas como trabajo futuro en el plan.
 
-## 7. Decisión
+## 7. Fase 5 — Puerta interna, evidencia del 30/08/2026
 
-Pendiente. Los tres supuestos quedaron resueltos el 26/08/2026: SA-002 y
-SA-003 con la muestra del reporte de portabilidad, y SA-001 con la definición
-de la cadencia de carga. La spec no avanza a `READY_FOR_VALIDATION` hasta
-completar la fase 1.
+### Automatizada
+
+- [x] `pnpm run test` en `packages/validation`: **195 pruebas en verde**, con
+      8 nuevas sobre `recovery-internal-gate` que cubren elegibilidad, los
+      motivos reales del operador (promesa incorrecta, cliente ausente, deuda
+      exigible, tiempo mínimo de porta, teléfono no en servicio, fuera de
+      cobertura), la prioridad de cada uno, la fusión por prioridad máxima y
+      el vencimiento de dos horas.
+- [x] `prisma validate` y las dos migraciones aplicadas en local sin errores.
+- [x] `pnpm run check-types` y `pnpm run lint` en `apps/web` sin errores.
+
+### Garantías de base de datos
+
+Ejercicio sobre la base local, dentro de una transacción revertida al final
+(la base quedó intacta: 0 casos internos persistidos):
+
+1. Un caso interno se crea con `source = INTERNAL_ORDER_STATE`,
+   `status = ASSIGNED`, `priority = ALTA` y `entryReason = NO_ENTREGADO`,
+   conservando orden origen, asesor y equipo originales.
+2. Su evento `CASE_CREATED` queda escrito en la misma transacción.
+3. **La idempotencia la garantiza la base, no solo el código:** el segundo
+   caso abierto para la misma orden fue rechazado con
+   `Unique constraint failed on the fields: (source_dito_order_id)`.
+
+### Recorrido end to end — sesión ADMIN local, 30/08/2026 (tarde)
+
+Se reprodujo el **caso de referencia `1942469714A`** (AC-052) desde la
+interfaz real:
+
+1. En `/orders?status=RECOVERY`, la orden muestra la observación del OL
+   ("VALENTINA - MALA VENTA… no incluyen los beneficios que le ofrecieron en
+   su contrato") y el panel "Enviar a recupero" (AC-047).
+2. Se envió con motivo "Promesa comercial incorrecta" preservando el mensaje
+   del OL en la observación.
+3. El caso nació **Crítica · Sin responsable** — nunca asignado a Steven
+   Lizarraga, el asesor originador (AC-048) — y la tarjeta del pedido pasó a
+   mostrar el badge "En recuperación" en lugar del formulario (idempotencia
+   visible).
+4. `/recovery/sales` lo presenta con sus cuatro indicadores (1 abierto, 1
+   crítica sin responsable), la atribución "Venta de Steven Lizarraga ·
+   Huancayo" y **próxima acción a las 2 horas exactas** de la novedad
+   (18:57 → 20:57, BR-066).
+
+### Reasignación desde la bandeja — sesión ADMIN local, 30/08/2026 (noche)
+
+Sobre el caso Crítico `1942469714A` creado en el recorrido anterior:
+
+1. El selector "Asignar a…" lista los 13 vendedores activos — **Steven
+   Lizarraga, el originador, no aparece** (BR-065 aplicado en la interfaz; el
+   servidor lo rechaza además sin excepción de rol).
+2. Asignado a Christian Ruiz (Huancayo): estado pasó a **Asignado**, el
+   indicador "Críticas sin responsable" bajó de 1 a 0, el control cambió a
+   "Reasignar a…" y la próxima acción se reinició a **2 horas exactas** del
+   momento de asignación (19:06 → 21:06).
+3. Auditoría en base de datos: `CASE_CREATED (MANUAL · CRITICA)` seguido de
+   `ASSIGNED_TO_USER (OPEN → ASSIGNED)` con actor, destino, equipo y
+   responsable previo.
+4. Incidente de entorno documentado: el primer intento falló con
+   `PrismaClientValidationError` porque el dev server conservaba en memoria el
+   cliente anterior a la migración del enum; la transacción se revirtió
+   completa (sin estado parcial) y tras reiniciar el server el flujo se
+   completó. En producción no aplica: el deploy corre `migrate deploy` antes
+   de arrancar el proceso nuevo.
+
+### Intentos y resolución — 30/08/2026 (noche)
+
+- [x] 197 pruebas de `validation` en verde, con la cadencia D1/D3/D7 y la
+      pausa de 1–2 días cubiertas por casos nuevos.
+- [x] Migraciones `add_recovery_case_attempts` y
+      `add_recovery_case_resolved_event` aplicadas; tipos y lint limpios.
+- [x] Mecánica verificada sobre la base local en transacción revertida
+      (0 residuos): intento fija `firstContactAt` y pasa el caso a
+      `IN_PROGRESS`; la resolución `LOST` escribe `CASE_RESOLVED`; y tras
+      resolver, el índice parcial admite un caso sucesor para la misma orden.
+- [x] Ficha `/recovery/sales/[caseId]` validada con el caso Crítico real:
+      cabecera con prioridad, responsable, venta origen, teléfono de contacto
+      y reloj; motivo con la observación del OL íntegra; formulario de
+      intentos con los nueve resultados de BR-036; y el cierre `RECOVERED`
+      correctamente **bloqueado** porque el cliente aún no tiene una orden
+      nueva posterior al caso (BR-042 en acción).
+
+### Compuertas de pérdida y SLA — 30/08/2026 (cierre del día)
+
+- [x] 201 pruebas de `validation` en verde; las compuertas cubren el conteo
+      de días en calendario de Lima (un intento a las 23:00 y otro a las
+      04:00 UTC del día siguiente cuentan como un solo día de gestión).
+- [x] **AC-034 (adaptado al carril interno) verificado en vivo:** con cero
+      intentos, la ficha muestra los seis motivos con evidencia pendiente
+      marcados ⏳ y la explicación de qué falta; al intentar cerrar
+      `INUBICABLE` el servidor respondió "Exige 3 días distintos con 3 o más
+      intentos sin respuesta cada uno; llevas 0" y el caso permaneció
+      Asignado.
+- [x] El sondeo `/api/order-escalations/notifications` devuelve
+      `recoveryOverdue` con el alcance del rol; el aviso flotante aparece
+      cuando existe al menos un caso interno con la próxima acción vencida.
+      Comprobación natural pendiente: el caso real vence a las 21:06 del
+      30/08 — si nadie lo gestiona, el aviso debe aparecer solo.
+
+### Alcance por rol — verificación de datos, 30/08/2026
+
+Simulación de las mismas cláusulas de alcance que aplica el código, sobre los
+usuarios reales de la organización:
+
+| Usuario | Rol | Casos visibles | Puede asignar | Ve "Enviar a recupero" |
+|---|---|---|---|---|
+| Alexandra Huaranca | AGENT (Ayacucho - Magisterial) | 0 | No | No |
+| Erika Lavado | SUPERVISOR (Huancayo) | 1 (el caso Crítico) | Sí | Sí |
+
+- **BR-049 / AC-023 confirmado:** la asesora no ve la acción de envío a
+  recupero, no puede asignar, y **abrir la ficha del caso por URL directa le
+  devuelve 404** porque no es su responsable.
+- La supervisora ve el caso porque tanto el equipo original como el asignado
+  son Huancayo; su selector de destino se limita a los **4 vendedores de
+  Huancayo** frente a los 14 que ve un ADMIN, y para este caso Crítico son
+  **3**, porque Steven Lizarraga queda excluido por ser el originador
+  (BR-065).
+- Nota: Erika es supervisora **no vendedora** (`salesEnabled = false`), así
+  que la regla del supervisor vendedor (BR-050b, auto-asignación) no puede
+  ejercitarse con su cuenta; requiere un supervisor con venta habilitada.
+
+### Recorrido con sesión AGENT real — 30/08/2026
+
+Sesión de Alexandra Huaranca (AGENT, Ayacucho - Magisterial):
+
+1. `/recovery/sales` muestra el alcance **"Mis casos"**, cero casos y el
+   estado vacío: *"No hay ventas en recuperación. Las nuevas caídas
+   aparecerán aquí solas."*
+2. La navegación le ofrece **"Recupero de ventas"** y **no** "Base nacional"
+   (BR-049), sin ítems administrativos.
+3. Cero controles de asignación en la página (`canAssign = false`).
+4. **Acceso directo a la ficha del caso ajeno devuelve 404**, no una página
+   vacía ni un error de permisos: el dato no existe para ella.
+5. En la bandeja ve sus 7 pedidos del mes; al expandir una tarjeta aparecen
+   "Actualizar seguimiento" y "Datos de la venta", pero **ningún panel
+   "Enviar a recupero"** (AC-023, BR-049 confirmados en pantalla).
+
+### Recorrido con sesión SUPERVISOR real — 30/08/2026
+
+Sesión de Erika Lavado (SUPERVISOR de Huancayo, no vendedora):
+
+1. `/recovery/sales` muestra el alcance **"Mis equipos"** y **solo** el caso
+   Crítico de Huancayo; no ve casos de otros equipos.
+2. Navegación con **ambos carriles** ("Recupero de ventas" y "Base
+   nacional") y sin ítems administrativos (Ventas, Logística, Personas,
+   Equipos).
+3. **AC-048 confirmado en pantalla:** el selector de destino ofrece
+   exactamente **3 asesores de Huancayo** — Christian, Francesco y Sarai —.
+   Steven Lizarraga, originador de la venta, **no figura**, y tampoco ningún
+   asesor de otros equipos (un ADMIN ve 14).
+4. Reasignación ejercida desde su sesión: el caso pasó a Francesco con el
+   mensaje *"Su primer contacto vence en 2 horas"* y el reloj reiniciado; se
+   devolvió luego a Christian para conservar el escenario de prueba.
+5. **Auditoría íntegra**: los cuatro eventos del caso conservan actor y
+   transición — `CASE_CREATED` y la primera asignación por José, las dos
+   reasignaciones por Erika —, y el intento registrado sobrevivió a ambas
+   reasignaciones (BR-051, BR-044).
+
+### Pendiente de verificación
+
+- **AC-046 y AC-049** end to end automático: exige provocar un cambio de
+  estado real (`CANCELLED` / `NOT_DELIVERED`) sobre una venta local.
+- **BR-050b** (supervisor vendedor no se autoasigna): Erika no tiene venta
+  habilitada, así que la regla requiere una cuenta de supervisor vendedor.
+- **AC-050** end to end exige una venta reingresada real del mismo cliente.
+- **AC-051, AC-053 a AC-058** dependen de las fases 3 y 4, del retorno al
+  pool y de las campañas.
+
+## 8. Decisión
+
+Pendiente. Los supuestos SA-001 a SA-005 están resueltos y la puerta interna
+tiene su núcleo implementado y probado. La spec no avanza a
+`READY_FOR_VALIDATION` hasta cerrar la interfaz de la fase 5 y las fases 3
+y 4.

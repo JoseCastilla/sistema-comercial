@@ -101,9 +101,12 @@ construir un reporte a mano.
   el prefijo `51`.
 - **BR-008:** una fila sin DNI o sin número de servicio no genera caso y se
   reporta como inválida con su motivo.
-- **BR-009:** la cadencia de carga es: **una única base inicial** con los tres
-  días de antigüedad, y a partir de entonces **una base diaria solo con los
-  pedidos del día anterior**. La base es un flujo de entrada de pedidos, no un
+- **BR-009** (revisado el 30/08/2026): la carga es **episódica**: la base se
+  sube cuando la operación decide trabajarla, no todos los días. No existe una
+  "base inicial de tres días": cada carga es simplemente la base diaria
+  disponible al momento de activar. Los solapamientos entre cargas no duplican
+  nada — la identidad por cliente y los avistamientos (BR-006, BR-009b) los
+  absorben. La base sigue siendo un flujo de entrada de pedidos, no un
   refresco del estado de los casos: que un cliente no vuelva a aparecer es lo
   normal y no cierra ni degrada ningún caso.
 - **BR-009b:** un cliente puede registrar más de un pedido de portabilidad en
@@ -398,6 +401,144 @@ construir un reporte a mano.
   la carga inicial del 26/08 (4 492 casos), el rango objetivo es de 135 a 270
   ventas recuperadas.
 
+### Puerta interna (Fase 5) — unificación con SPEC-026
+
+Definida el 30/08/2026 sobre el motor ya construido. Las reglas de dominio
+provienen de SPEC-026; aquí se resuelve su encaje con `recovery_cases`.
+
+- **BR-061:** la puerta interna tiene dos entradas. La **automática**
+  (`INTERNAL_ORDER_STATE`) crea un caso cuando una orden DITO queda
+  `CANCELLED` o `SENT + NOT_DELIVERED`. Los puntos de enganche son las dos
+  transacciones que hoy mutan el estado de una orden — la actualización de
+  estado desde la bandeja y la aprobación de una solicitud de cancelación —,
+  no el webhook ni el importador DITO: ambos solo dan de alta órdenes `OPEN`
+  y el importador mantiene el estado fuera de su lista blanca de campos
+  actualizables. La creación es idempotente: una orden origen tiene a lo sumo
+  un caso abierto. La **manual** (`MANUAL`) es la acción "Enviar a recupero"
+  sobre la tarjeta del pedido, disponible para `ADMIN`, `BACKOFFICE` y
+  `SUPERVISOR` dentro de su alcance, nunca para `AGENT`.
+- **BR-062:** el caso interno nace `OPEN`, no `TRIAGE`: el cliente ya es
+  conocido y la elegibilidad ya ocurrió al vender. Nace vinculado a su orden
+  origen (`sourceDitoOrderId`) y con el asesor y equipo originales copiados
+  (`originalAgentUserId`, `originalTeamId`); la orden cancelada permanece
+  cerrada e inmutable y una recuperación se materializa **enlazando una orden
+  DITO nueva**, nunca reabriendo la original.
+- **BR-063:** todo caso interno lleva **motivo estructurado de entrada**:
+  `NO_ENTREGADO`, `INCIDENCIA_LOGISTICA`, `PROMESA_COMERCIAL_INCORRECTA`,
+  `DEUDA`, `ANTIGUEDAD_PORTA`, `OTRO`. En la entrada automática el sistema lo
+  propone desde estado × motivo × submotivo del OL (regla de acción de
+  SPEC-029) y la observación conserva íntegro el mensaje del OL; en la manual
+  el actor lo elige y la observación es obligatoria.
+- **BR-064:** la prioridad deriva del motivo, según SPEC-026: **Crítica** =
+  promesa comercial incorrecta (reasignación inmediata fuera del vendedor
+  originador); **Alta** = no recibió por falta de tiempo, ausencia o cambio de
+  fecha; **Media** = incidencia logística solucionable; **Condicionada** =
+  deuda o antigüedad, que se agenda. Dentro de cada nivel, primero el más
+  antiguo sin contacto.
+- **BR-065:** propiedad y escalamiento: en motivos Alta y Media el asesor
+  original tiene la primera oportunidad durante el **Día 0**; sin acción
+  dentro del SLA el caso escala al supervisor, que puede reasignarlo o
+  enviarlo a la cola del equipo autorizado usando los modos de BR-028. Un caso
+  **Crítico nunca vuelve al asesor originador**, ni por asignación directa ni
+  por cola.
+- **BR-066:** la cadencia interna (habilitada por BR-031) es: primer contacto
+  a más tardar **2 horas** después del rechazo o de la novedad del OL; toques
+  en Día 0, Día 1 (corrección de oferta o fecha), Día 3 y Día 7 con
+  **resolución obligatoria**, reutilizando el mecanismo de BR-058 con
+  parámetros por fuente. Una promesa de contacto agenda el caso (BR-034) y
+  suspende la cadencia hasta la fecha acordada.
+- **BR-067:** antifraude del originador, adicional a BR-049/BR-050/BR-050b: un
+  asesor no puede enviar su propia venta a la cola compartida ni autoasignarse
+  casos ajenos; un supervisor vendedor no puede tomar su propia venta caída a
+  través del recupero. Toda reasignación conserva historial y actor.
+- **BR-068:** encaje de esquema, sin migración destructiva: `recovery_cases`
+  agrega `sourceDitoOrderId`, `originalAgentUserId`, `originalTeamId`,
+  `entryReason`, `entryObservation` y `priority` (nulos para la base
+  nacional); para un caso interno, `firstRegisteredAt` toma el `registeredAt`
+  de la orden origen y `lastSightingAt` el momento de la novedad que creó el
+  caso, conservando los `NOT NULL` existentes. Los intentos reutilizan la
+  tabla de gestiones de la Fase 3.
+- **BR-069:** los casos internos abiertos participan del cruce de portabilidad
+  como cualquier caso (BR-017 a BR-021): si el cliente porta con otra agencia,
+  aplica BR-059 y alimenta la métrica de pérdidas frente a otras agencias.
+- **BR-070:** medición interna, sobre el tablero de BR-052: tasa de recupero
+  por cohorte de creación (recuperadas / casos, con descartes fuera del
+  denominador), tiempo a primer contacto y pérdidas por motivo, por asesor y
+  equipo. El KPI "Por recuperar" del dashboard de rendimiento pasa de contador
+  de pendientes a par pendientes/recuperadas del período.
+- **BR-071:** un rechazo del OL (`RECHAZADO`) cancela la orden automáticamente
+  en el dominio de Máximo, así que la puerta automática lo captura al llegar
+  `CANCELLED`; el submotivo decide motivo y prioridad del caso. La bandeja de
+  incidencias de SPEC-016 (BR-003) no cambia: el caso Crítico por promesa
+  incorrecta entra al recupero sin sacar el rechazo de incidencias.
+- **BR-072** (revisado el 30/08/2026): un cliente tiene un solo caso abierto,
+  venga por la puerta que venga (BR-006 vale para todas las fuentes). Si llega
+  una novedad de una puerta distinta, no se crea un caso nuevo: se anota como
+  evento con su fuente, motivo y observación, y el caso adopta la prioridad
+  más alta entre la vigente y la entrante. **El carril interno siempre domina
+  la fusión**: cuando la novedad es una venta propia caída, el caso — esté en
+  triage, en el pool o asignado como lead frío — salta al modelo de gestión
+  interno: queda asignado al asesor original con el reloj de dos horas
+  corriendo (BR-065, BR-066), o sin responsable si la prioridad resultante es
+  Crítica. Un caso de venta caída jamás puede quedar dormido dentro de un
+  lead frío invisible. En el sentido inverso, una aparición en la base sobre
+  un caso interno abierto es solo un avistamiento: la gestión interna
+  continúa y el cliente nunca se reparte como lead frío. La fusión queda
+  auditada con actor, fuente entrante, prioridad y responsable previos.
+- **BR-073:** un caso interno por `NO ENTREGADO` nace en el **primer intento
+  fallido del courier**, no al agotarse las visitas: el estado es reintentable
+  y la ventana comercial útil está entre una visita y la siguiente. Si el
+  courier entrega en un intento posterior, el caso se cierra automáticamente
+  como `DISCARDED` con motivo de entrega concretada y **no cuenta como
+  pérdida** (BR-056), aunque conserva sus intentos como evidencia del esfuerzo.
+  Los estados terminales `RECHAZADO` y `CANCELADO` no admiten este matiz:
+  crean el caso en el momento en que llegan.
+
+### Carriles de gestión y campañas (30/08/2026)
+
+El recupero de ventas propias y la base nacional comparten motor de datos,
+pero son trabajos distintos: el primero es **push** — un evento sobre una
+venta tuya, caliente, siempre activo, con dueño natural —; el segundo es
+**pull** — un lote frío que la operación decide trabajar cuando la producción
+baja, generalmente porque las ventas de publicidad no alcanzan. Mezclar sus
+colas, relojes o métricas arruina ambos.
+
+- **BR-074:** los casos de fuente `INTERNAL_ORDER_STATE` y `MANUAL` nunca
+  aparecen en el triage de base, nunca entran a la distribución en bloques ni
+  a la cola compartida de base; los de `NATIONAL_BASE` nunca aparecen en la
+  bandeja de ventas caídas. Son dos superficies: **Recupero de ventas**
+  (evolución de la pestaña "Por recuperar", respaldada por casos con dueño,
+  prioridad y próxima acción) y **Base nacional** (triage, campañas y
+  bloques).
+- **BR-075:** las métricas se segregan por fuente. El objetivo del 3–6 %
+  (BR-056b) mide **solo** cohortes `NATIONAL_BASE`. El carril interno mide
+  tasa de salvado (recuperadas / casos), tiempo a primer contacto y pérdidas
+  por motivo, asesor y equipo. Ninguna vista suma fuentes en un mismo
+  indicador.
+- **BR-076:** los relojes de cadencia de base (tres intentos diarios,
+  resolución al séptimo día) corren **solo desde la asignación**. Un caso en
+  triage o en el pool no tiene SLA: una base deliberadamente no trabajada no
+  genera alertas de cobertura.
+- **BR-077:** un caso de base **asignado y sin ningún intento durante dos
+  días** vuelve solo al pool de su equipo, conservando el historial de la
+  asignación. Complementa la redistribución manual de BR-030b: cuando la
+  producción se recupera a mitad de campaña, nadie carga inventario muerto.
+- **BR-078:** la cola de base ordena por: primero las habilitaciones vencidas
+  (BR-039), después **lo más reciente primero** — un lead frío pierde valor
+  con cada día, así que el anticuamiento se gestiona al final de forma
+  natural. El asesor puede filtrar el pool de su equipo por atributos
+  objetivos — departamento, plan, antigüedad — y tomar desde el filtro; la
+  toma sigue siendo atómica y los filtros no debilitan BR-050b. La toma es
+  **por bloque de hasta 10 casos**: el asesor no vuelve al pool después de
+  cada llamada, y el sistema le entrega los 10 más recientes que cumplan su
+  filtro en una sola operación atómica.
+- **BR-079:** trabajar la base es una **campaña registrada**: la activación
+  guarda actor, fecha, equipos participantes y configuración vigente, y exige
+  la secuencia carga del día → cruce de portabilidad fresco → distribución.
+  La efectividad se mide por campaña, no por calendario. El dashboard de
+  rendimiento **sugiere** activar una campaña cuando el ingreso del día cae
+  por debajo del promedio del período; la decisión es siempre humana.
+
 ## 5. Criterios de aceptación
 
 - **AC-001:** subir la base del día genera una previsualización con total de
@@ -502,16 +643,61 @@ construir un reporte a mano.
   queda agendado automáticamente a su fecha de habilitación.
 - **AC-028:** una línea de planta queda marcada como tal, sin fecha de
   habilitación, y su caso se trabaja con la cadencia normal.
+- **AC-046:** una orden que pasa a `CANCELLED` o `SENT + NOT_DELIVERED` crea
+  su caso interno una sola vez, con motivo propuesto y observación del OL;
+  reprocesar la misma novedad no duplica el caso.
+- **AC-047:** "Enviar a recupero" es visible para `ADMIN`, `BACKOFFICE` y
+  `SUPERVISOR` dentro de su alcance, no existe para `AGENT`, y exige motivo
+  estructurado y observación.
+- **AC-048:** un caso `PROMESA_COMERCIAL_INCORRECTA` nace Crítico, sin
+  asignarse al originador, y el sistema rechaza cualquier intento de
+  asignárselo.
+- **AC-049:** un caso `NO_ENTREGADO` nace asignado al asesor original con
+  vencimiento de primer contacto a 2 horas; sin gestión dentro del SLA aparece
+  escalado en la bandeja del supervisor.
+- **AC-050:** resolver `RECOVERED` exige vincular la orden DITO nueva; la
+  venta se atribuye a quien cerró y la tasa de recupero de la cohorte se
+  actualiza.
+- **AC-051:** los casos internos abiertos aparecen en la exportación de
+  números y el cruce los cierra si el cliente ya portó.
+- **AC-052:** los casos de referencia de SPEC-026 se reproducen: `1942469714A`
+  entra manual como Crítica con la observación del OL; `1942303517A` admite
+  `LOST · YA_MIGRO_OTRA_AGENCIA`.
+- **AC-053:** un cliente con caso abierto de base nacional cuya venta propia
+  cae no genera un segundo caso: la novedad aparece como evento en el caso
+  existente, la prioridad sube y sigue habiendo un solo responsable.
+- **AC-054:** si esa fusión eleva el caso a Crítica y su responsable es el
+  asesor originador de la venta, el sistema lo reasigna fuera de él y registra
+  el movimiento.
+- **AC-055:** el primer `NO ENTREGADO` de una orden crea su caso con
+  vencimiento de primer contacto a 2 horas; una segunda novedad de la misma
+  orden no crea un caso adicional.
+- **AC-056:** si el courier entrega después de haberse creado el caso, este se
+  cierra solo como `DISCARDED`, conserva sus intentos y no figura entre las
+  pérdidas del asesor.
+- **AC-057:** una venta caída de un cliente cuyo caso de base duerme en triage
+  deja el caso asignado al asesor original, con reloj de dos horas y evento de
+  fusión auditado; si el motivo es Crítico, queda sin responsable.
+- **AC-058:** un caso de base asignado sin intentos durante dos días vuelve
+  solo al pool de su equipo con su historial.
+- **AC-059:** la cola de base presenta primero las habilitaciones vencidas y
+  luego los casos más recientes; un caso interno jamás aparece en ella, ni un
+  caso de base en la bandeja de ventas caídas.
+- **AC-060:** activar una campaña queda registrado con actor, equipos y
+  configuración; el dashboard sugiere activarla cuando el ingreso del día está
+  bajo el promedio, sin activarla solo.
+- **AC-061:** ninguna vista mezcla fuentes: la conversión 3–6 % solo cuenta
+  casos de base y la tasa de salvado solo casos internos.
 
 ## 6. Supuestos abiertos
 
-- **SA-001** (resuelto el 26/08/2026): la base no es un mecanismo de refresco.
-  Se carga una única base inicial de tres días y luego solo el día anterior
-  (BR-009), así que dejar de aparecer es lo esperado y no cierra ningún caso.
-  Un caso `WAITING` se revalida por el cruce diario de portabilidad, que
-  incluye todos los casos abiertos (BR-017), y por el chequeo manual del
-  supervisor. Un cliente que vuelve a aparecer trae un pedido nuevo y se trata
-  según BR-009b.
+- **SA-001** (resuelto el 26/08/2026; **revisado el 30/08/2026**): la base no
+  es un mecanismo de refresco y dejar de aparecer no cierra ningún caso. La
+  revisión: la carga es episódica — se sube cuando se decide trabajar la
+  base, sin base inicial de tres días ni obligación de continuidad diaria
+  (BR-009). La frescura se protege ordenando la cola por recencia (BR-078) y
+  ejecutando el cruce de portabilidad al activar cada campaña (BR-079). Un
+  cliente que vuelve a aparecer trae un pedido nuevo y se trata según BR-009b.
 - **SA-002** (resuelto el 26/08/2026): el reporte completo es el CSV de siete
   columnas descrito en BR-018, generado por la consulta a
   `consulta.portabilidad.pe` que hoy corre como script local con Playwright.
@@ -521,6 +707,17 @@ construir un reporte a mano.
   `fecha_de_la_ventana` para líneas que ya portaron (BR-037); una línea de
   planta no la tiene y se trabaja con cadencia normal (BR-040). La captura
   manual del asesor queda como complemento (BR-038).
+- **SA-004** (resuelto el 30/08/2026): convivencia de puertas para el mismo
+  cliente. Se mantiene un caso abierto por cliente en todas las fuentes: la
+  novedad de la segunda puerta se anota como evento, el caso adopta la
+  prioridad más alta y conserva su fuente y su responsable, salvo que la
+  prioridad resultante sea Crítica sobre el asesor originador. Formalizado en
+  BR-072 y verificado por AC-053 y AC-054.
+- **SA-005** (resuelto el 30/08/2026): el caso interno por `NO ENTREGADO` nace
+  en el primer intento fallido del courier, para poder intervenir entre una
+  visita y la siguiente; si la entrega finalmente ocurre, el caso se cierra
+  solo sin contar como pérdida. Formalizado en BR-073 y verificado por AC-055
+  y AC-056.
 
 ## 7. Relación con otras especificaciones
 

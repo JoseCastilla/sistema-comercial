@@ -90,9 +90,95 @@
 
 ## Fase 5 — Puerta interna
 
-- [ ] Entrada automática desde `CANCELLED` y `SENT + NOT_DELIVERED`.
-- [ ] Cadencia propia de SPEC-026 sobre el mismo motor.
-- [ ] Prioridad y motivos comerciales definidos en SPEC-026.
+- [x] Diseño detallado (30/08/2026): BR-061 a BR-073 y AC-046 a AC-056 en
+      `spec.md`.
+- [x] SA-004 y SA-005 resueltos el 30/08/2026: un caso abierto por cliente con
+      fusión por evento y prioridad máxima (BR-072); creación en el primer
+      `NO ENTREGADO` con cierre automático si la entrega ocurre (BR-073).
+- [x] Migración `20260830100000_add_internal_recovery_gate`:
+      `source_dito_order_id`, `original_agent_user_id`, `original_team_id`,
+      `entry_reason`, `entry_observation`, `priority`, sus FKs, índices y el
+      **índice parcial único** que garantiza un caso abierto por orden origen
+      (BR-061, BR-068). Enums `RecoveryEntryReason` y `RecoveryCasePriority`.
+- [x] `ENTREGA_CONCRETADA` en `RecoveryDiscardReason`, en migración aparte por
+      la limitación de `ALTER TYPE ... ADD VALUE` (BR-073).
+- [x] Reglas puras en `@repo/validation/recovery-internal-gate`: elegibilidad,
+      motivo por estado × motivo × submotivo, prioridad, fusión por prioridad
+      máxima, veto del originador en Crítica y reloj de dos horas
+      (BR-061, BR-063 a BR-067, BR-072).
+- [x] Helper transaccional `openInternalRecoveryCase` con idempotencia por
+      orden y por cliente, fusión entre puertas y auditoría por evento
+      (BR-072, AC-053, AC-054).
+- [x] Entrada automática enganchada en las dos transacciones que sí mutan
+      estado: actualización desde la bandeja y aprobación de cancelación. El
+      webhook y el importador quedaron descartados como enganche porque solo
+      dan de alta órdenes `OPEN` (BR-061 corregido).
+- [x] Cierre automático `ENTREGA_CONCRETADA` cuando la entrega se concreta
+      después de crear el caso (BR-073, AC-056).
+- [x] Acción `sendOrderToRecoveryAction` con motivo y observación obligatorios
+      y veto de la venta propia (BR-061, BR-067, AC-047).
+- [x] Separación de carriles y campañas definida el 30/08/2026 (BR-074 a
+      BR-079, AC-057 a AC-061): interno domina la fusión, colas y métricas
+      por fuente, carga episódica (BR-009 revisado), retorno automático al
+      pool a los dos días sin gestión, cola por recencia con filtros del
+      asesor, campañas registradas con sugerencia desde el dashboard.
+- [x] Fusión con dominio del carril interno implementada en
+      `openInternalRecoveryCase` (BR-072 revisado, AC-057): el caso adopta
+      asesor original, equipo, motivo, prioridad máxima y reloj de dos horas;
+      la toma de control queda auditada con el responsable previo.
+- [x] Formulario "Enviar a recupero" en la tarjeta del pedido, con motivo y
+      observación obligatorios; tras crear el caso la tarjeta muestra el badge
+      "En recuperación" con prioridad y responsable (AC-047).
+- [x] Superficie "Recupero de ventas" en `/recovery/sales`: cuatro
+      indicadores (abiertos, contacto vencido, críticas sin responsable,
+      recuperadas del mes) y cola ordenada por prioridad, con alcance por rol
+      (BR-074). Navegación dividida: "Recupero de ventas" para todos los
+      roles y "Base nacional" para supervisión.
+- [x] Reasignación de casos internos desde la bandeja
+      (`assignSalesRecoveryCaseAction` + evento `ASSIGNED_TO_USER`): la
+      Crítica excluye al originador del selector y el servidor lo rechaza sin
+      excepción de rol; un supervisor no puede asignarse a sí mismo; el nuevo
+      responsable recibe su propio reloj de dos horas y una agenda pactada no
+      se pisa (BR-029, BR-030, BR-065, BR-067).
+- [x] Tabla `recovery_case_attempts` (inmutable: sin camino de actualización)
+      con canal, resultado tipificado BR-036, teléfono, observación y actor;
+      compartida entre carriles (BR-035).
+- [x] Ficha del caso en `/recovery/sales/[caseId]`: datos, motivo con la
+      observación del OL, historial de intentos, formulario de gestión y de
+      resolución. Alcance por rol (el asesor solo sus casos asignados).
+- [x] Registro de intentos con efectos en la misma transacción: primer
+      contacto, `IN_PROGRESS`, agenda que suspende cadencia (BR-034), pausa
+      de 1–2 días por rechazo (BR-033) y cadencia D1/D3/D7 desde la
+      asignación con aviso de resolución obligatoria al agotarse
+      (BR-066, BR-058). Helpers puros con pruebas.
+- [x] Resolución `RECOVERED` con sugerencia de orden por documento —
+      posterior al caso, no cancelada, distinta de la origen — y confirmación
+      humana (BR-042); `LOST` con motivo estructurado y observación
+      obligatoria, `OTRO` vetado para el asesor (BR-043, BR-057). Evento
+      `CASE_RESOLVED` en ambos caminos.
+- [x] Criterios habilitantes por motivo de pérdida (BR-057) como función pura
+      `evaluateInternalLossReasonGates` con pruebas: INUBICABLE exige 3 días
+      con 3+ intentos sin respuesta (calendario de Lima), RECHAZO_DEFINITIVO
+      dos rechazos en días distintos o la solicitud expresa del cliente
+      (checkbox + observación + al menos un intento), y el resto la evidencia
+      de su intento. La interfaz marca ⏳ y explica qué falta; el servidor
+      recalcula desde los intentos reales y rechaza el cierre prematuro.
+- [x] Vigilancia del SLA (BR-066/BR-058): el sondeo de notificaciones ya
+      cuenta los casos internos con la próxima acción vencida en el alcance
+      del supervisor, y el aviso flotante "recupero(s) vencido(s)" enlaza a
+      la bandeja. Reutiliza el canal en tiempo real + sondeo de respaldo de
+      los escalamientos.
+- [ ] Retorno automático al pool de casos de base sin gestión (BR-077).
+- [ ] Orden de cola por recencia + habilitaciones y filtros del asesor sobre
+      el pool (BR-078).
+- [ ] Campañas de base: activación registrada, checklist carga → cruce →
+      distribución, y sugerencia en el dashboard de rendimiento (BR-079).
+- [ ] Métricas segregadas por fuente en tablero y dashboard (BR-075, AC-061).
+- [ ] Inclusión de casos internos en la exportación y cruce de portabilidad
+      (BR-069, AC-051).
+- [ ] Métricas internas y evolución del KPI "Por recuperar" del dashboard
+      (BR-070).
+- [ ] Reproducir los casos de referencia de SPEC-026 (AC-052).
 
 ## Verificación
 
