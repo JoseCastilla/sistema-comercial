@@ -23,11 +23,14 @@ asesor y día:
 
 Tres medidas distintas que hasta ahora se mezclaban:
 
+Las tres se cuentan **solo sobre portabilidades**: un alta nueva aporta carga
+operativa, pero no comisiona ni cuenta para cuota ni acelerador.
+
 - **Ingresada:** la venta se registró. Es actividad, no resultado.
-- **Entregada:** el cliente recibió el chip. Es el último paso que el asesor
-  puede influir, y por eso **es la medida de la cuota**.
-- **Confirmada:** entregada y además cerrada. Es cuando el negocio cobra, y
-  por eso **es la medida del acelerador**.
+- **Portabilidad entregada:** el cliente recibió el chip. Es el último paso
+  que el asesor puede influir, y por eso **es la medida de la cuota**.
+- **Confirmada:** portabilidad entregada y además cerrada. Es cuando el
+  negocio cobra, y por eso **es la medida del acelerador**.
 
 La diferencia entre entregada y confirmada es exactamente el pendiente de
 activación, que el sistema ya calcula. Hacerla visible convierte un reclamo
@@ -59,11 +62,13 @@ que falta.
 
 ### Cuotas
 
-- **BR-007:** la cuota se mide en **ventas entregadas de la cohorte de la
-  ventana**: ingresadas dentro de la ventana que llegaron a entregarse, aunque
-  la entrega ocurra después de que la ventana cierre. Comparte cohorte con el
-  acelerador y se diferencia solo en el criterio de cumplimiento, para que
-  ambos números hablen del mismo conjunto de ventas.
+- **BR-007:** la cuota se mide en **portabilidades entregadas de la cohorte de
+  la ventana**: portabilidades ingresadas dentro de la ventana que llegaron a
+  entregarse, aunque la entrega ocurra después de que la ventana cierre. Las
+  altas nuevas quedan fuera, igual que en el acelerador. Cuota y acelerador
+  comparten cohorte y se diferencian solo en el criterio de cumplimiento
+  —entregada frente a entregada y cerrada—, de modo que ambos números hablen
+  del mismo conjunto de ventas.
 - **BR-008:** la cuota por defecto de cada ventana es **el primer tramo de su
   acelerador** —30 en la primera, 15 en la segunda—. El sistema funciona sin
   configurar nada y el objetivo por defecto ya significa dinero.

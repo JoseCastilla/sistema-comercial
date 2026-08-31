@@ -16,6 +16,8 @@
 - [x] La redacción de importes cubre todas las ventanas (BR-016).
 - [x] El panel del asesor muestra ambas ventanas, el pendiente de activación
       de cada una, y cuánto falta y cuánto vale el siguiente tramo (BR-013).
+- [x] La cuota cuenta solo portabilidades: un alta nueva entregada no suma
+      (BR-007).
 - [x] Pruebas de dominio: ventana del 25 al fin de mes, 18 confirmadas igual a
       S/ 130, suma de ambos bonos, días 16–24 sin acelerador, cohorte que
       confirma después del cierre, y la distinción entregadas/confirmadas.

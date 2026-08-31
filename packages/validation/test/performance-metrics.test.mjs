@@ -210,6 +210,23 @@ test("una venta ingresada el 14 y cerrada el 22 cuenta en la primera ventana", (
   assert.equal(result.accelerators[0].confirmed, 1);
 });
 
+test("la cuota cuenta portabilidades entregadas, no altas nuevas", () => {
+  const result = calculatePerformanceMetrics([
+    order({ registeredAt: new Date("2026-08-05T15:00:00.000Z") }),
+    // Alta nueva entregada y cerrada: no es portabilidad, no cuenta ni para
+    // la cuota ni para el acelerador.
+    order({
+      registeredAt: new Date("2026-08-05T15:00:00.000Z"),
+      commercialOperation: "NEW_LINE",
+    }),
+  ]);
+  const ventanaUno = result.accelerators[0];
+
+  assert.equal(ventanaUno.eligible, 1);
+  assert.equal(ventanaUno.delivered, 1);
+  assert.equal(ventanaUno.confirmed, 1);
+});
+
 test("la cuota mide entregadas y el acelerador confirmadas", () => {
   const result = calculatePerformanceMetrics([
     order({ registeredAt: new Date("2026-08-05T15:00:00.000Z") }),

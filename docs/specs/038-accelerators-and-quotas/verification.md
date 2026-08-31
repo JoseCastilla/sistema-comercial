@@ -12,7 +12,8 @@
         comisión base (BR-002);
       - una venta ingresada el 14 y cerrada el 22 cuenta en la primera
         ventana (AC-004);
-      - entregada sin cerrar suma a la cuota y no al acelerador (BR-007);
+      - portabilidad entregada sin cerrar suma a la cuota y no al acelerador,
+        y un alta nueva entregada no suma a ninguno (BR-007);
       - el siguiente objetivo expone cuántas faltan y cuánto vale (AC-009).
 - [x] Cuatro pruebas nuevas del formateador de nombres con los casos reales de
       la operación, incluido el apellido compuesto "DE LOS RIOS".
