@@ -24,6 +24,7 @@ type IconName =
   | "identity"
   | "tools"
   | "recovery"
+  | "campaigns"
   | "sales"
   | "logistics"
   | "people"
@@ -76,10 +77,18 @@ function NavigationIcon({ name }: { name: IconName }) {
         <circle cx="14.5" cy="15.5" r="1.5" />
       </>
     ),
+    /* Recupero: la flecha que regresa: algo que se cayo y se trae de vuelta. */
     recovery: (
       <>
         <path d="M15.5 8.5A6 6 0 1 0 16 11" />
         <path d="M16 5v4h-4" />
+      </>
+    ),
+    /* Campanas: un lote de registros por trabajar, no un rescate. */
+    campaigns: (
+      <>
+        <path d="M10 3 3 6.5l7 3.5 7-3.5L10 3Z" />
+        <path d="m3 11 7 3.5 7-3.5" />
       </>
     ),
     people: (
@@ -289,10 +298,10 @@ export function CommercialAppShell({
           {canTriageRecovery ? (
             <NavigationItem
               active={activeSection === "recovery"}
-              description="Campañas sobre base fría"
+              description="Prospección sobre base fría"
               href={isAdmin ? "/admin/recovery-base" : "/recovery/triage"}
-              icon="recovery"
-              label="Base nacional"
+              icon="campaigns"
+              label="Campañas"
             />
           ) : null}
           {isAdmin ? (
@@ -399,8 +408,8 @@ export function CommercialAppShell({
           <MobileNavigationItem
             active={activeSection === "recovery"}
             href={isAdmin ? "/admin/recovery-base" : "/recovery/triage"}
-            icon="recovery"
-            label="Base"
+            icon="campaigns"
+            label="Campañas"
           />
         ) : null}
         {isAdmin ? (

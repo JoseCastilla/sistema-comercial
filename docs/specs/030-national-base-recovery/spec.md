@@ -504,12 +504,15 @@ baja, generalmente porque las ventas de publicidad no alcanzan. Mezclar sus
 colas, relojes o métricas arruina ambos.
 
 - **BR-074:** los casos de fuente `INTERNAL_ORDER_STATE` y `MANUAL` nunca
-  aparecen en el triage de base, nunca entran a la distribución en bloques ni
-  a la cola compartida de base; los de `NATIONAL_BASE` nunca aparecen en la
-  bandeja de ventas caídas. Son dos superficies: **Recupero de ventas**
-  (evolución de la pestaña "Por recuperar", respaldada por casos con dueño,
-  prioridad y próxima acción) y **Base nacional** (triage, campañas y
-  bloques).
+  aparecen en el triage de campaña, nunca entran a la distribución en bloques
+  ni a la cola compartida; los de `NATIONAL_BASE` nunca aparecen en la bandeja
+  de ventas caídas. Son dos superficies con nombre e icono propios:
+  **Recupero de ventas** (evolución de la pestaña "Por recuperar", respaldada
+  por casos con dueño, prioridad y próxima acción, con el icono de flecha que
+  regresa) y **Campañas** (preparación, triage y bloques, con el icono de lote
+  de registros). El nombre de la superficie describe el trabajo —activar una
+  campaña cuando baja la producción—, no la fuente del dato: una base nacional
+  es la fuente de hoy, pero la superficie admite otras sin cambiar de nombre.
 - **BR-075:** las métricas se segregan por fuente. El objetivo del 3–6 %
   (BR-056b) mide **solo** cohortes `NATIONAL_BASE`. El carril interno mide
   tasa de salvado (recuperadas / casos), tiempo a primer contacto y pérdidas

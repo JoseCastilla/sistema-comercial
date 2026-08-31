@@ -136,9 +136,9 @@ export default async function RecoveryBaseAdminPage({
     >
       <div className="ui-page-stack">
         <PageHeader
-          eyebrow="Recuperación"
-          title="Base nacional diaria"
-          description="Importa la base consolidada, revisa la elegibilidad y crea los casos de recupero."
+          eyebrow="Campañas"
+          title="Preparar campaña"
+          description="Importa la base del día, cruza portabilidad y crea los casos que el equipo trabajará."
         />
 
         <MetricGroup>

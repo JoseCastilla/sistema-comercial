@@ -131,10 +131,8 @@ export default async function RecoveryTriagePage() {
     >
       <div className="ui-page-stack">
         <PageHeader
-          eyebrow="Recuperación"
-          title={
-            isSupervisor ? "Triage de mi base" : "Triage de la base nacional"
-          }
+          eyebrow="Campañas"
+          title={isSupervisor ? "Triage de mi bloque" : "Triage de campaña"}
           description={
             isSupervisor
               ? "Esta es la base entregada a tus equipos. Marca en lote el resultado del chequeo manual: con pedido en curso a espera, sin pedido a la cola de asignación."
