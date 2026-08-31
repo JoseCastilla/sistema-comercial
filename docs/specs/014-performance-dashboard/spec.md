@@ -141,12 +141,43 @@ permitir que el usuario modifique los resultados calculados.
   ingresada dentro de la ventana que termina entregada y cerrada, aunque el
   cierre ocurra después de que la ventana se cierre.
 
+## Ciclo de vida de una orden (confirmado el 31/08/2026)
+
+El recorrido real, que fija los tiempos de maduración de una liquidación:
+
+| Estado | Qué significa | Tiempo esperado |
+|---|---|---|
+| Abierto | La venta se subió, todavía sin aprobar | — |
+| Enviado · sin subestado | Subida reciente | **5 minutos** para recibir subestado |
+| Enviado · Asignado | Asignado a una zonal; estado normal de un pedido regular | — |
+| Enviado · Agendado | La entrega inicia | **3 horas** si es express |
+| Enviado · No entregado | Cliente ausente o reprograma | Reintentable |
+| Enviado · Rechazado | Sistema, cliente, biometría, deuda o antigüedad | Terminal |
+| Enviado · Entregado | El cliente recibió el chip | Alta nueva cierra **el mismo día**; portabilidad, **al día siguiente** |
+| Cerrado | Activación confirmada | — |
+| Cancelado | Sin entregar en 4–5 días, o tras un rechazo | Terminal |
+
+- **BR-017:** una orden que permanece en `SENT` varios días es una
+  **incidencia** y **no se paga al asesor**. La liquidación no la espera: no
+  es pagable mientras no esté entregada y cerrada.
+- **BR-018:** como una portabilidad entregada cierra al día siguiente y una
+  orden sin entregar se cancela a los 4–5 días, toda venta del mes queda
+  resuelta —cerrada, cancelada o en incidencia no pagable— dentro de la
+  primera semana del mes siguiente.
+
+## Reglas económicas confirmadas el 31/08/2026
+
+- **BR-019:** el `SUPERVISOR` **ve el importe individual de comisión** de los
+  asesores de sus equipos. Esto reemplaza la recomendación original de esta
+  spec, que proponía mostrarle solo totales. `BACKOFFICE` sigue sin ver
+  montos.
+
 ## Decisiones económicas pendientes
 
-1. Hasta qué fecha puede madurar una orden después de terminar el mes antes de
-   bloquear la liquidación.
-2. Si el SUPERVISOR puede ver importes individuales o únicamente totales del
-   equipo, como recomienda esta especificación.
+1. La fecha exacta de corte de la liquidación. BR-018 acota la respuesta —una
+   semana cubre el ciclo completo—, pero falta fijar el día concreto y decidir
+   qué ocurre con una orden que madura después del corte: si se pierde o entra
+   como ajuste en la liquidación del mes siguiente.
 
 ## Experiencia de usuario
 

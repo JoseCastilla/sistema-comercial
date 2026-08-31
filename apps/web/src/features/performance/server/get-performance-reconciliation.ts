@@ -233,7 +233,9 @@ export async function getPerformanceReconciliation(
   // SPEC-014 BR-010/BR-011: BACKOFFICE no ve montos; el supervisor conoce el
   // total de sus equipos pero no el pago individual de cada asesor.
   const showTotals = access.role !== "BACKOFFICE";
-  const showLineAmounts = access.role === "ADMIN" || access.role === "AGENT";
+  // El supervisor ve el importe individual de sus asesores (SPEC-014,
+  // decidido el 31/08/2026); BACKOFFICE no ve montos.
+  const showLineAmounts = access.role !== "BACKOFFICE";
 
   return {
     generatedAt: dateTimeFormatter.format(now),

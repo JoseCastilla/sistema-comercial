@@ -1001,7 +1001,9 @@ export function PerformanceDashboard({
                   <th>Pagables</th>
                   <th>Recuperar</th>
                   <th>Por activar</th>
-                  {data.role === "ADMIN" ? <th>Estimado</th> : null}
+                  {data.showCommission && data.role !== "AGENT" ? (
+                    <th>Estimado</th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -1041,7 +1043,7 @@ export function PerformanceDashboard({
                     <td>{item.metrics.payable}</td>
                     <td>{item.metrics.recovery}</td>
                     <td>{item.metrics.deliveredPendingActivation}</td>
-                    {data.role === "ADMIN" ? (
+                    {data.showCommission && data.role !== "AGENT" ? (
                       <td>{money(item.metrics.estimatedCommissionCents)}</td>
                     ) : null}
                   </tr>
@@ -1063,7 +1065,7 @@ export function PerformanceDashboard({
                     <td>
                       {data.unattributed.metrics.deliveredPendingActivation}
                     </td>
-                    {data.role === "ADMIN" ? <td>—</td> : null}
+                    {data.showCommission && data.role !== "AGENT" ? <td>—</td> : null}
                   </tr>
                 ) : null}
               </tbody>

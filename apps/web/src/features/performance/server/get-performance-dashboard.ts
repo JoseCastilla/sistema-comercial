@@ -134,6 +134,7 @@ function groupByAgent(
   quotaWindowKey: "ONE" | "TWO" | null,
   quotaTargets: ReadonlyMap<string, number>,
 ) {
+  const showsIndividualCommission = role === "ADMIN" || role === "SUPERVISOR";
   const groups = new Map<string, PerformanceOrderRecord[]>();
   const previousGroups = new Map<string, PerformanceOrderRecord[]>();
 
@@ -197,18 +198,20 @@ function groupByAgent(
         // BR-017: la presentación normaliza; el nombre registrado no cambia.
         name: formatAdvisorDisplayName(rawName, email) || "Asesor sin nombre",
         teamName,
-        metrics:
-          role === "ADMIN" ? currentMetrics : redactCommission(currentMetrics),
-        previousMetrics:
-          role === "ADMIN"
-            ? previousAgentMetrics
-            : redactCommission(previousAgentMetrics),
+        // SPEC-014: el supervisor ve el importe individual de sus asesores
+        // —decisión del 31/08/2026—; BACKOFFICE nunca ve montos.
+        metrics: showsIndividualCommission
+          ? currentMetrics
+          : redactCommission(currentMetrics),
+        previousMetrics: showsIndividualCommission
+          ? previousAgentMetrics
+          : redactCommission(previousAgentMetrics),
         enteredDelta: percentDelta(
           currentMetrics.entered,
           previousAgentMetrics.entered,
         ),
         isActiveSeller: activeSeller !== undefined,
-        showCommission: role === "ADMIN",
+        showCommission: showsIndividualCommission,
         dailyEntered: monthDayKeys.map((key) => dailyCounts.get(key) ?? 0),
         // Avance de cuota de la ventana relevante: entregadas frente al
         // objetivo, para detectar de un vistazo a quien está cerca sin
