@@ -148,7 +148,7 @@ El recorrido real, que fija los tiempos de maduración de una liquidación:
 | Estado | Qué significa | Tiempo esperado |
 |---|---|---|
 | Abierto | La venta se subió, todavía sin aprobar | — |
-| Enviado · sin subestado | Subida reciente | **5 minutos** para recibir subestado |
+| Enviado · sin subestado | Subida reciente | Se espera subestado en pocos minutos; el sistema marca incidencia a los **10 minutos** |
 | Enviado · Asignado | Asignado a una zonal; estado normal de un pedido regular | — |
 | Enviado · Agendado | La entrega inicia | **3 horas** si es express |
 | Enviado · No entregado | Cliente ausente o reprograma | Reintentable |
@@ -157,6 +157,10 @@ El recorrido real, que fija los tiempos de maduración de una liquidación:
 | Cerrado | Activación confirmada | — |
 | Cancelado | Sin entregar en 4–5 días, o tras un rechazo | Terminal |
 
+- **BR-016b:** el umbral de incidencia por falta de subestado es de **10
+  minutos**, confirmado el 31/08/2026. La operación espera el subestado antes,
+  pero el sistema concede ese margen para no alarmar por demoras normales del
+  operador logístico.
 - **BR-017:** una orden que permanece en `SENT` varios días es una
   **incidencia** y **no se paga al asesor**. La liquidación no la espera: no
   es pagable mientras no esté entregada y cerrada.
