@@ -1,6 +1,6 @@
 # SPEC-013 — Solicitud y aprobación de cancelaciones
 
-**Estado:** `IN_PROGRESS`
+**Estado:** `VERIFIED`
 **Versión:** 1.0
 **Fecha:** 2026-08-09
 

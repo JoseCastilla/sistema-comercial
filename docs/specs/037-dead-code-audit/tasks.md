@@ -14,8 +14,8 @@ abajo es el punto de partida, no la lista final.
 
 ## Hallazgos ya confirmados
 
-- [ ] Retirar `apps/web/src/app/tools/external-preview/`: solo redirige a
-      `/tools/lines` y ninguna referencia la enlaza.
+- [x] Retirada `apps/web/src/app/tools/external-preview/` el 31/08/2026:
+      solo redirigia a `/tools/lines` y ninguna referencia la enlazaba.
 - [ ] Verificar si quedó código del prototipo `prospecting` descartado; sus
       tablas ya se eliminaron de la base local.
 
