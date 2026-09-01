@@ -35,9 +35,13 @@
     text-transform: uppercase;
   }
 
-  /** Dato operativo: monoespaciada para que alinee y se escanee (BR-003). */
+  /**
+   * Dato operativo en tabla: conserva la tipografía de la interfaz y solo
+   * fija cifras tabulares, para que las columnas de números alineen sin
+   * introducir una familia distinta (SPEC-039 BR-003, revisado el
+   * 01/09/2026).
+   */
   .ui-data {
-    font-family: var(--ui-font-mono, ui-monospace, "SFMono-Regular", "Menlo", monospace);
     font-size: 0.78rem;
     font-variant-numeric: tabular-nums;
   }

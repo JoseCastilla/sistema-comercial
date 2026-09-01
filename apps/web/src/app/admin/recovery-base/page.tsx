@@ -81,6 +81,8 @@ export default async function RecoveryBaseAdminPage({
     openCount,
     managedCount,
     recoveredCount,
+    discardedCount,
+    lostCount,
     openServiceCount,
     portabilityBatches,
   ] = await Promise.all([
@@ -144,6 +146,22 @@ export default async function RecoveryBaseAdminPage({
         status: "RECOVERED",
       },
     }),
+    // BR-056: los descartes por portabilidad no son pérdidas, pero sí
+    // explican por qué el embudo tiene menos casos de los que se crearon.
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "DISCARDED",
+      },
+    }),
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "LOST",
+      },
+    }),
     database.recoveryCaseService.count({
       where: {
         organizationId: membership.organization.id,
@@ -179,6 +197,15 @@ export default async function RecoveryBaseAdminPage({
       },
     }),
   ]);
+
+  const totalCases =
+    triageCount +
+    waitingCount +
+    openCount +
+    managedCount +
+    recoveredCount +
+    discardedCount +
+    lostCount;
 
   const selectedBatch = parameters.batch
     ? (batches.find((batch) => batch.id === parameters.batch) ?? null)
@@ -217,6 +244,38 @@ export default async function RecoveryBaseAdminPage({
             <Metric label="En gestión" value={managedCount} />
             <Metric label="Recuperados" value={recoveredCount} />
           </MetricGroup>
+
+          {/* El embudo debe cuadrar: sin esta línea, los casos cerrados por
+              el cruce desaparecen y el total no explica de dónde sale. */}
+          <p className="text-xs leading-5 text-ui-muted">
+            <strong className="text-ui-text">
+              {totalCases.toLocaleString("es-PE")}
+            </strong>{" "}
+            caso(s) creados desde la base
+            {discardedCount > 0 ? (
+              <>
+                {" "}
+                ·{" "}
+                <strong className="text-ui-text">
+                  {discardedCount.toLocaleString("es-PE")}
+                </strong>{" "}
+                descartados por el cruce (ya estaban en Movistar, no cuentan
+                como pérdida)
+              </>
+            ) : null}
+            {lostCount > 0 ? (
+              <>
+                {" "}
+                ·{" "}
+                <strong className="text-ui-text">
+                  {lostCount.toLocaleString("es-PE")}
+                </strong>{" "}
+                perdidos
+              </>
+            ) : null}
+            . Un caso es un cliente: las líneas de un mismo cliente se agrupan
+            en un solo caso.
+          </p>
           <div className="ui-form-row">
             {triageCount > 0 ? (
               <a className="ui-button ui-button--primary" href="/recovery/triage">

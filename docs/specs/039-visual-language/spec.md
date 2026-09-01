@@ -71,9 +71,14 @@ sidebar; color únicamente semántico.
   conocido; la plataforma tiene asesores en móvil y pantallas variadas. El
   principio (subordinar el andamiaje, P-2) se cumple igual con un punto más
   de margen de legibilidad.
-- **Monoespaciada solo para datos, no para prosa.** La referencia la usa
-  hasta en texto libre; P-2 dice que la mono señala "dato". Un comentario u
-  observación del asesor es prosa y va en sans.
+- **Una sola familia tipográfica** (decidido el 01/09/2026 al verlo
+  aplicado). La referencia usa monoespaciada para datos e inputs; en el
+  Sistema Comercial esa segunda familia se leía como un cuerpo extraño
+  dentro de la pantalla. El canal de P-2 se conserva con otros medios
+  —cifras tabulares, alineación a la derecha, etiqueta pequeña—, que
+  distinguen el dato sin fracturar la página. La monoespaciada queda donde
+  el carácter individual importa: números de línea, DNI copiables y las
+  listas de configuración.
 - **Densidad por frecuencia, no densidad uniforme.** La referencia tiene un
   solo tipo de usuario; la plataforma tiene varios (P-1, corolario). La cola
   del asesor merece la densidad máxima; una pantalla de configuración puede
@@ -88,9 +93,16 @@ sidebar; color únicamente semántico.
   descripción; si la explicación ya vive en el botón, el tooltip o el estado
   vacío, no se repite. Ninguna información aparece dos veces en la misma
   pantalla.
-- **BR-003 (P-2):** todo dato operativo — DNI, teléfonos, códigos, líneas,
-  fechas tabulares, montos — se presenta en monoespaciada; la prosa (
-  observaciones, descripciones) permanece en sans.
+- **BR-003 (P-2)** (revisado el 01/09/2026): la plataforma conserva **una
+  sola familia tipográfica**, la de la interfaz. Los datos operativos en
+  tablas y cifras usan `font-variant-numeric: tabular-nums` para que las
+  columnas alineen, pero **no** cambian de familia: al probarlo, la
+  monoespaciada introducía una tipografía ajena que competía con el resto
+  de la pantalla. La monoespaciada se reserva para lo que ya la usaba y
+  donde el carácter individual importa —números de línea, DNI copiables y
+  las listas de configuración—, no para todo dato tabular. El canal de
+  P-2 que distingue "dato" de "interfaz" lo sostienen el peso, la
+  alineación a la derecha y la etiqueta pequeña.
 - **BR-004 (P-2):** etiquetas de campos y KPI en 11px, peso fuerte,
   mayúsculas, color atenuado, uniforme en toda la plataforma.
 - **BR-005 (P-4):** los KPI usan etiqueta + número grande monoespaciado +
@@ -140,8 +152,8 @@ Primera pasada sobre las superficies de mayor uso diario, en este orden:
 ## 7. Criterios de aceptación
 
 - **AC-001:** ninguna página repite la misma explicación en dos elementos.
-- **AC-002:** todos los datos operativos listados usan monoespaciada y
-  ninguna prosa la usa.
+- **AC-002:** las columnas de números alinean por cifras tabulares y ninguna
+  vista introduce una familia tipográfica distinta a la de la interfaz.
 - **AC-003:** títulos de página en escala compacta y etiquetas en 11px en
   toda la plataforma.
 - **AC-004:** las barras de filtro de las vistas listadas comparten orden y
