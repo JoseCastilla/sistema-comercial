@@ -331,6 +331,12 @@ export default async function RecoveryBaseAdminPage({
                 Sin casos por revisar ni distribuir. Carga la base del día.
               </p>
             ) : null}
+            <a
+              className="ui-button ui-button--secondary"
+              href="/recovery/board"
+            >
+              Tablero del día
+            </a>
           </div>
         </SectionPanel>
 

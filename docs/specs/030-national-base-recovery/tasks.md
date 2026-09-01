@@ -111,10 +111,17 @@
       supervisor en el sondeo de notificaciones.
 - [ ] Pérdida automática `YA_MIGRO_OTRA_AGENCIA` cuando un caso con gestión
       porta a Movistar (BR-059).
-- [ ] Tablero de avance, cobertura y efectividad por asesor.
-- [ ] Conversión por cohorte contra el rango objetivo del 3 % al 6 %
-      (BR-056b), con descartes fuera del denominador.
-- [ ] Separación de descartes por portabilidad respecto de las pérdidas.
+- [x] Tablero del día en `/recovery/board` (01/09/2026): avance (asignados,
+      trabajados, sin primer contacto, agenda vencida — BR-053), cobertura
+      con numerador y denominador visibles (BR-054) y efectividad por
+      asesor con intentos, contactados, recuperados y pérdidas —
+      distinguiendo las pérdidas frente a otras agencias (BR-055). Alcance
+      por rol y filtro de equipo para administración. Primera versión: se
+      itera durante la semana con datos reales de operación.
+- [x] Conversión por cohorte de los últimos 7 días contra la meta 3–6 %
+      (BR-056b), descartes fuera del denominador; cohortes jóvenes marcadas
+      "en maduración" en lugar de alarma.
+- [x] Descartes del día como contador propio, nunca como pérdidas (BR-056).
 
 ## Fase 5 — Puerta interna
 

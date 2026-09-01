@@ -278,6 +278,12 @@ export default async function RecoveryTriagePage({
           >
             Esperando consulta ({pendingTotal.toLocaleString("es-PE")})
           </a>
+          <a
+            className="ui-button ui-button--secondary"
+            href="/recovery/board"
+          >
+            Tablero del día
+          </a>
           <span className="pb-2 text-xs text-ui-muted">
             {view === "pendientes"
               ? "Sin verificación completa: se pueden entregar a un equipo o liberar, sabiendo que el asesor llamaría sin confirmar la línea."
