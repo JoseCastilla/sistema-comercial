@@ -266,6 +266,17 @@
       reporte desmiente → `ASSIGNED` de vuelta a su asesor con próxima
       acción inmediata.
 
+## Bandeja del asesor y barrido rápido (01/09/2026)
+
+- [x] Filtros de departamento y plan sobre la cola propia del asesor
+      ("hoy solo llamo Lima"), con conteo real y paginación de 100 por
+      página hasta cubrir el mes completo.
+- [x] Exportación `?days=N`: **barrido** de todas las líneas cargadas en los
+      últimos N días, consultadas o no, para el filtro rápido diario — caza
+      al cliente que portó después de su consulta. Botón "Barrido: últimos
+      3 días completos" en la preparación. Verificado: incluye la línea
+      consultada y viva que la exportación de pendientes excluye.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

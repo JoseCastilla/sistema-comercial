@@ -507,6 +507,19 @@ export default async function RecoveryBaseAdminPage({
             </p>
           )}
 
+          <div className="ui-form-row">
+            <a
+              className="ui-button ui-button--secondary"
+              href="/admin/recovery-base/numbers?days=3"
+            >
+              Barrido: últimos 3 días completos
+            </a>
+            <span className="pb-2 text-xs text-ui-muted">
+              Todas las líneas recientes, consultadas o no — para el filtro
+              rápido diario: caza al que portó después de su consulta.
+            </span>
+          </div>
+
           <PortabilityCrossForm />
 
           {portabilityBatches.length > 0 ? (

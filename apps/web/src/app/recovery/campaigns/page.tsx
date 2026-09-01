@@ -11,6 +11,8 @@ import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-st
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
+import type { Prisma } from "@repo/database";
+
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
@@ -44,26 +46,60 @@ const statusLabels: Record<string, string> = {
  * Muestra sus casos asignados con la exigencia del día y el pool de su
  * equipo, del que toma bloques de hasta 10 casos.
  */
-export default async function RecoveryCampaignsPage() {
+const pageSize = 100;
+
+export default async function RecoveryCampaignsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ department?: string; plan?: string; page?: string }>;
+}) {
   const { session, membership } = await requireCommercialAccess();
+  const parameters = await searchParams;
+  const departmentFilter = parameters.department ?? "";
+  const planFilter = (parameters.plan ?? "").trim().slice(0, 100);
+  const page = Math.max(1, Number.parseInt(parameters.page ?? "1", 10) || 1);
 
   // BR-077: al abrir la cola, lo abandonado ya volvió al pool.
   await returnStaleBaseCasesToPool(membership.organization.id);
 
   const now = new Date();
 
-  const [myCases, sellingMembership] = await Promise.all([
+  /**
+   * "Hoy solo llamo Lima": la bandeja propia se filtra igual que el pool.
+   * El orden es el del día del asesor — vencidos primero, luego lo de hoy,
+   * después los agendados, y al fondo lo que está en verificación.
+   */
+  const myCasesWhere: Prisma.RecoveryCaseWhereInput = {
+    organizationId: membership.organization.id,
+    source: "NATIONAL_BASE",
+    assignedUserId: session.user.id,
+    // WAITING incluido: el reportado como "ya Movistar" queda visible al
+    // fondo, en verificación, sin exigir gestión (BR-085).
+    status: {
+      in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
+    },
+    ...(departmentFilter
+      ? { department: { equals: departmentFilter, mode: "insensitive" } }
+      : {}),
+    ...(planFilter
+      ? {
+          services: {
+            some: {
+              discardedAt: null,
+              planRaw: { contains: planFilter, mode: "insensitive" },
+            },
+          },
+        }
+      : {}),
+  };
+
+  const [myCases, myTotal, myDepartments, sellingMembership] =
+    await Promise.all([
     database.recoveryCase.findMany({
-      where: {
-        organizationId: membership.organization.id,
-        source: "NATIONAL_BASE",
-        assignedUserId: session.user.id,
-        // WAITING incluido: el reportado como "ya Movistar" queda visible al
-        // fondo, en verificación, sin exigir gestión (BR-085).
-        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"] },
-      },
+      where: myCasesWhere,
       orderBy: [{ nextActionAt: { sort: "asc", nulls: "last" } }],
-      take: 100,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       select: {
         id: true,
         holderName: true,
@@ -83,6 +119,21 @@ export default async function RecoveryCampaignsPage() {
           select: { createdAt: true, result: true },
         },
       },
+    }),
+    database.recoveryCase.count({ where: myCasesWhere }),
+    database.recoveryCase.groupBy({
+      by: ["department"],
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        assignedUserId: session.user.id,
+        status: {
+          in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
+        },
+      },
+      _count: { _all: true },
+      orderBy: { _count: { department: "desc" } },
+      take: 30,
     }),
     database.commercialTeamMember.findFirst({
       where: {
@@ -164,6 +215,20 @@ export default async function RecoveryCampaignsPage() {
   const departments = poolDepartments
     .map((group) => group.department)
     .filter((value): value is string => value !== null && value.length > 0);
+  const myDepartmentOptions = myDepartments
+    .map((group) => group.department)
+    .filter((value): value is string => value !== null && value.length > 0);
+
+  const totalPages = Math.max(1, Math.ceil(myTotal / pageSize));
+
+  function pageHref(target: number): string {
+    const query = new URLSearchParams();
+    if (departmentFilter) query.set("department", departmentFilter);
+    if (planFilter) query.set("plan", planFilter);
+    if (target > 1) query.set("page", String(target));
+    const suffix = query.toString();
+    return `/recovery/campaigns${suffix ? `?${suffix}` : ""}`;
+  }
 
   return (
     <CommercialAppShell
@@ -181,7 +246,7 @@ export default async function RecoveryCampaignsPage() {
         />
 
         <MetricGroup>
-          <Metric label="Mis casos abiertos" value={rows.length} />
+          <Metric label="Mis casos abiertos" value={myTotal} />
           <Metric label="Vencidos o por resolver" value={dueToday.length} />
           <Metric label="Sin los 3 intentos de hoy" value={underMinimum.length} />
           <Metric
@@ -221,8 +286,46 @@ export default async function RecoveryCampaignsPage() {
 
         <SectionPanel
           title="Mis casos"
-          description="Ordenados por la próxima acción. Al séptimo día de gestión un caso sin venta ni agenda exige resolverse."
+          description="Vencidos primero, luego lo de hoy, después los agendados; lo que está en verificación queda al fondo."
         >
+          <form
+            action="/recovery/campaigns"
+            className="flex flex-wrap items-end gap-3"
+            method="get"
+          >
+            <label className="block">
+              <span className="ui-label-eyebrow">Departamento</span>
+              <select
+                className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
+                defaultValue={departmentFilter}
+                name="department"
+              >
+                <option value="">Todos</option>
+                {myDepartmentOptions.map((department) => (
+                  <option key={department} value={department}>
+                    {department}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="ui-label-eyebrow">Plan contiene</span>
+              <input
+                className="block w-32 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
+                defaultValue={planFilter}
+                maxLength={100}
+                name="plan"
+                placeholder="49.9"
+              />
+            </label>
+            <button className="ui-button ui-button--secondary" type="submit">
+              Filtrar
+            </button>
+            <span className="pb-2 text-xs text-ui-muted">
+              {myTotal.toLocaleString("es-PE")} caso(s) cumplen el filtro.
+            </span>
+          </form>
+
           <div className="overflow-x-auto rounded-xl border border-ui-border">
             <table className="min-w-full divide-y divide-ui-border text-sm">
               <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
@@ -317,6 +420,30 @@ export default async function RecoveryCampaignsPage() {
               </tbody>
             </table>
           </div>
+
+          {totalPages > 1 ? (
+            <div className="flex items-center gap-3 text-sm">
+              {page > 1 ? (
+                <a
+                  className="text-ui-accent underline-offset-2 hover:underline"
+                  href={pageHref(page - 1)}
+                >
+                  ← Anterior
+                </a>
+              ) : null}
+              <span className="text-ui-muted">
+                Página {page} de {totalPages}
+              </span>
+              {page < totalPages ? (
+                <a
+                  className="text-ui-accent underline-offset-2 hover:underline"
+                  href={pageHref(page + 1)}
+                >
+                  Siguiente →
+                </a>
+              ) : null}
+            </div>
+          ) : null}
         </SectionPanel>
       </div>
     </CommercialAppShell>
