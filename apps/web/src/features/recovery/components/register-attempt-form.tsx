@@ -22,11 +22,12 @@ const channelLabels: Record<string, string> = {
 const resultLabels: Record<string, string> = {
   SIN_RESPUESTA: "Sin respuesta",
   INTERESADO: "Interesado",
+  INTERESADO_CON_PEDIDO: "Interesado · tiene pedido en curso",
   RECHAZA: "Rechaza (pausa 1–2 días)",
   AGENDA: "Agenda una próxima llamada",
   NUMERO_ERRADO: "Número errado",
   NO_CUMPLE_30D: "No cumple los 30 días de porta",
-  YA_ACTIVO: "Ya está activo en Movistar",
+  YA_ACTIVO: "Ya está activo en Movistar (pasa a verificación)",
   DATOS_INVALIDOS: "Datos inválidos",
   VENDIDO: "Vendido: aceptó de nuevo",
 };

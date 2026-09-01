@@ -92,8 +92,12 @@ export function countOnSameLimaDay(
   ).length;
 }
 
-/** Las 9:00 de Lima del día siguiente al de `now` (Perú no tiene horario de verano). */
-function getNextLimaMorning(now: Date): Date {
+/**
+ * Las 9:00 de Lima del día siguiente al de `now` (Perú no tiene horario de
+ * verano). Exportada porque BR-086 agenda el "interesado con pedido en
+ * curso" para la mañana siguiente sin intervención del asesor.
+ */
+export function getNextLimaMorning(now: Date): Date {
   const lima = new Date(now.getTime() - limaOffsetMs);
   const nextMorningUtc = Date.UTC(
     lima.getUTCFullYear(),

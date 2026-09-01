@@ -301,9 +301,10 @@ construir un reporte a mano.
   fecha acordada.
 - **BR-035:** cada intento registra canal, resultado tipificado, teléfono
   utilizado, observación, actor y momento. Un intento registrado es inmutable.
-- **BR-036:** el resultado tipificado pertenece al conjunto `SIN_RESPUESTA`,
-  `INTERESADO`, `RECHAZA`, `AGENDA`, `NUMERO_ERRADO`, `NO_CUMPLE_30D`,
-  `YA_ACTIVO`, `DATOS_INVALIDOS`, `VENDIDO`.
+- **BR-036** (ampliado el 01/09/2026): el resultado tipificado pertenece al
+  conjunto `SIN_RESPUESTA`, `INTERESADO`, `INTERESADO_CON_PEDIDO`,
+  `RECHAZA`, `AGENDA`, `NUMERO_ERRADO`, `NO_CUMPLE_30D`, `YA_ACTIVO`,
+  `DATOS_INVALIDOS`, `VENDIDO`.
 
 ### Antigüedad de portabilidad
 
@@ -607,6 +608,44 @@ sobrevivientes.
   operación); es la única excepción nueva a BR-041 y, como BR-059, está
   respaldada por un hecho verificable: nadie consultó a tiempo.
 
+### El ciclo del lead en manos del asesor (01/09/2026)
+
+Dos hallazgos del asesor deciden el destino de un caso, y ninguno de los
+dos se resuelve con su palabra: los resuelve la evidencia.
+
+- **BR-085 — reporte "ya es Movistar", con verificación**: la palabra del
+  asesor **nunca descarta un caso** — si lo hiciera, reportar "ya es
+  Movistar" sería la puerta para deshacerse de leads difíciles. Al
+  registrar `YA_ACTIVO`: el caso pasa a `WAITING` conservando a su asesor,
+  sale de su cola activa (visible al fondo, "en verificación") y sus líneas
+  entran marcadas a la próxima exportación. La verificación tiene dos vías,
+  según el rol: el **supervisor confirma manual** sobre el caso puntual,
+  con su usuario registrado; el **administrador verifica en lote** con el
+  cruce. Confirmado → aplica BR-059: pérdida `YA_MIGRO_OTRA_AGENCIA` (tuvo
+  gestión) y jamás vuelve. No confirmado → regresa a la cola del asesor con
+  próxima acción inmediata: el cliente le mintió y sigue portable.
+- **BR-086 — interesado con pedido en curso**: el cliente quiere, pero otra
+  agencia ya le envió un pedido. Es **el lead más caliente de la base** —
+  ya dijo sí a portar y prefiere nuestra oferta; solo estorba un pedido
+  ajeno que puede caerse. Al registrar `INTERESADO_CON_PEDIDO`: el caso
+  queda `SCHEDULED` para la mañana siguiente **conservando a su asesor**
+  (quien encontró el oro se lo queda), y sus líneas entran en revalidación
+  diaria. Cada mañana reaparece al frente con su distintivo para que el
+  asesor re-contacte y pregunte si el pedido anterior cayó; en paralelo el
+  cruce vigila: portado → pérdida por BR-059; programado con fecha → el
+  chip ajeno ya llegó, espera; no portado → sigue vivo y el asesor insiste.
+  Cuando el pedido ajeno cae y el cliente acepta → `VENDIDO` →
+  `RECOVERED` con la orden nueva. Es la asimetría deliberada con el triage:
+  antes de asignar, "tiene pedido" es `EN_ESPERA` sin dueño; después de
+  asignar, el caso ya tiene dueño y lo conserva.
+- **BR-087:** el cruce ejecuta BR-059 al cerrar por portabilidad: un caso
+  **con intentos** que porta a Movistar cierra `LOST ·
+  YA_MIGRO_OTRA_AGENCIA` (alimenta la métrica de pérdidas frente a otras
+  agencias por asesor); **sin intentos**, `DISCARDED · YA_ACTIVO`. Y un
+  caso en verificación o revalidación cuyo reporte dice "no portado"
+  vuelve a quien lo trabajaba: con asesor asignado, a su cola con próxima
+  acción inmediata; sin asesor, al triage.
+
 ## 5. Criterios de aceptación
 
 - **AC-001:** subir la base del día genera una previsualización con total de
@@ -766,6 +805,19 @@ sobrevivientes.
 - **AC-065:** un caso que cumple 7 días sin verificación completa queda
   `DISCARDED · VENCIDO`, no figura entre las pérdidas y sus líneas
   desaparecen de la exportación.
+- **AC-066:** registrar `YA_ACTIVO` deja el caso en verificación al fondo de
+  la cola del asesor, sus líneas salen en la próxima exportación y el caso
+  no se cierra por la palabra del asesor.
+- **AC-067:** el cruce que confirma portado a Movistar cierra `LOST ·
+  YA_MIGRO_OTRA_AGENCIA` cuando el caso tiene intentos, y `DISCARDED ·
+  YA_ACTIVO` cuando no; el reporte "no portado" devuelve el caso a la cola
+  del asesor asignado con próxima acción inmediata.
+- **AC-068:** el supervisor puede confirmar o desmentir manualmente un caso
+  reportado, con su usuario en el evento; el asesor no encuentra esa
+  opción.
+- **AC-069:** registrar `INTERESADO_CON_PEDIDO` agenda el caso para la
+  mañana siguiente conservando al asesor, lo marca con su distintivo y
+  pone sus líneas en revalidación diaria.
 
 ## 6. Supuestos abiertos
 

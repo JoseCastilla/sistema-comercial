@@ -36,6 +36,7 @@ const statusLabels: Record<string, string> = {
   ASSIGNED: "Asignado",
   IN_PROGRESS: "En gestión",
   SCHEDULED: "Agendado",
+  WAITING: "En verificación",
 };
 
 /**
@@ -57,7 +58,9 @@ export default async function RecoveryCampaignsPage() {
         organizationId: membership.organization.id,
         source: "NATIONAL_BASE",
         assignedUserId: session.user.id,
-        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
+        // WAITING incluido: el reportado como "ya Movistar" queda visible al
+        // fondo, en verificación, sin exigir gestión (BR-085).
+        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"] },
       },
       orderBy: [{ nextActionAt: { sort: "asc", nulls: "last" } }],
       take: 100,
@@ -77,7 +80,7 @@ export default async function RecoveryCampaignsPage() {
         attempts: {
           orderBy: { createdAt: "desc" },
           take: 15,
-          select: { createdAt: true },
+          select: { createdAt: true, result: true },
         },
       },
     }),
@@ -122,7 +125,11 @@ export default async function RecoveryCampaignsPage() {
       item.attempts.map((attempt) => attempt.createdAt),
       now,
     );
+    const lastResult = item.attempts[0] ? String(item.attempts[0].result) : null;
     return {
+      interestedWithOrder:
+        lastResult === "INTERESADO_CON_PEDIDO" &&
+        String(item.status) !== "WAITING",
       id: item.id,
       holderName: item.holderName,
       documentNumber: item.documentNumber,
@@ -150,6 +157,7 @@ export default async function RecoveryCampaignsPage() {
   const underMinimum = rows.filter(
     (row) =>
       row.status !== "SCHEDULED" &&
+      row.status !== "WAITING" &&
       row.attemptsToday < baseRecoveryMinimumDailyAttempts,
   );
 
@@ -243,6 +251,11 @@ export default async function RecoveryCampaignsPage() {
                           Habilitada para portar
                         </span>
                       ) : null}
+                      {row.interestedWithOrder ? (
+                        <span className="ml-2 rounded-full bg-ui-accent-soft px-2 py-0.5 text-[11px] text-ui-accent">
+                          Pedido en curso: ¿ya cayó?
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2">
                       <CopyValue label="DNI" value={row.documentNumber} />
@@ -260,6 +273,7 @@ export default async function RecoveryCampaignsPage() {
                       <span
                         className={
                           row.status !== "SCHEDULED" &&
+                          row.status !== "WAITING" &&
                           row.attemptsToday < baseRecoveryMinimumDailyAttempts
                             ? "font-semibold text-ui-warning"
                             : "text-ui-muted"

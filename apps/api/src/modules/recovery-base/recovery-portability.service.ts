@@ -140,7 +140,8 @@ export class RecoveryPortabilityService {
         caseId: true,
         serviceNumber: true,
         portabilityState: true,
-        case: { select: { id: true, status: true } },
+        needsRevalidation: true,
+        case: { select: { id: true, status: true, assignedUserId: true } },
       },
     });
 
@@ -206,7 +207,8 @@ export class RecoveryPortabilityService {
       caseId: string;
       serviceNumber: string;
       portabilityState: string | null;
-      case: { id: string; status: string };
+      needsRevalidation: boolean;
+      case: { id: string; status: string; assignedUserId: string | null };
     },
     row: ParsedPortabilityRow,
     now: Date,
@@ -307,19 +309,41 @@ export class RecoveryPortabilityService {
     }
 
     /**
-     * Una portación que falló devuelve el caso al triage (BR-019e), pero solo
-     * cuando la espera la puso el propio cruce (el servicio venía PROGRAMADO).
-     * Una espera marcada a mano por el supervisor se respeta: él vio un
-     * pedido que este reporte no puede ver.
+     * Una portación que falló devuelve el caso a quien lo trabajaba (BR-019e,
+     * BR-087), pero solo cuando la espera la puso el sistema — el servicio
+     * venía `PROGRAMADO` o estaba marcado para revalidación (el reporte del
+     * asesor de BR-085 y el "interesado con pedido" de BR-086 usan esa
+     * marca). Una espera marcada a mano por el supervisor se respeta: él vio
+     * un pedido que este reporte no puede ver. Con asesor asignado, el caso
+     * vuelve a su cola con próxima acción inmediata; sin asesor, al triage.
      */
     if (
       service.case.status === 'WAITING' &&
-      service.portabilityState === 'PROGRAMADO' &&
-      (decision.outcome === 'OPPORTUNITY' || decision.outcome === 'PLANT_LINE')
+      (service.portabilityState === 'PROGRAMADO' ||
+        service.needsRevalidation) &&
+      (decision.outcome === 'OPPORTUNITY' ||
+        decision.outcome === 'PLANT_LINE' ||
+        decision.outcome === 'SCHEDULE_UNTIL_ELIGIBLE')
     ) {
+      const backToOwner = service.case.assignedUserId !== null;
+      // Portó a otro operador hace poco: con dueño, se agenda a la fecha de
+      // habilitación (BR-039); la línea no es portable todavía.
+      const scheduledUntil =
+        decision.outcome === 'SCHEDULE_UNTIL_ELIGIBLE'
+          ? decision.eligibleAt
+          : null;
+      const newStatus = backToOwner
+        ? scheduledUntil
+          ? ('SCHEDULED' as const)
+          : ('ASSIGNED' as const)
+        : ('TRIAGE' as const);
+
       await transaction.recoveryCase.update({
         where: { id: service.caseId },
-        data: { status: 'TRIAGE' },
+        data: {
+          status: newStatus,
+          ...(backToOwner ? { nextActionAt: scheduledUntil ?? now } : {}),
+        },
       });
 
       await transaction.recoveryCaseEvent.create({
@@ -328,9 +352,10 @@ export class RecoveryPortabilityService {
           caseId: service.caseId,
           type: 'PORTABILITY_CROSSED',
           previousStatus: 'WAITING',
-          newStatus: 'TRIAGE',
-          observation:
-            'La portación no prosperó: el caso vuelve a ser oportunidad.',
+          newStatus,
+          observation: backToOwner
+            ? 'El reporte dice que la línea sigue portable: vuelve a la cola de su asesor.'
+            : 'La portación no prosperó: el caso vuelve a ser oportunidad.',
           metadata: {
             serviceNumber: service.serviceNumber,
           },
@@ -339,6 +364,13 @@ export class RecoveryPortabilityService {
     }
   }
 
+  /**
+   * BR-059/BR-087: portado a Movistar es terminal siempre, pero la
+   * clasificación depende del esfuerzo invertido. Con intentos registrados
+   * es una pérdida frente a otra agencia — la única que el sistema declara
+   * solo, porque el hecho ya ocurrió y el reporte es la evidencia. Sin
+   * intentos es un descarte que no cuenta como pérdida (BR-056).
+   */
   private async closeCaseAsDiscarded(
     transaction: Prisma.TransactionClient,
     organizationId: string,
@@ -346,24 +378,41 @@ export class RecoveryPortabilityService {
     previousStatus: string,
     now: Date,
   ): Promise<void> {
+    const attemptCount = await transaction.recoveryCaseAttempt.count({
+      where: { caseId },
+    });
+    const asLoss = attemptCount > 0;
+
     await transaction.recoveryCase.update({
       where: { id: caseId },
-      data: {
-        status: 'DISCARDED',
-        discardReason: 'YA_ACTIVO',
-        resolvedAt: now,
-      },
+      data: asLoss
+        ? {
+            status: 'LOST',
+            lossReason: 'YA_MIGRO_OTRA_AGENCIA',
+            resolvedAt: now,
+            nextActionAt: null,
+          }
+        : {
+            status: 'DISCARDED',
+            discardReason: 'YA_ACTIVO',
+            resolvedAt: now,
+            nextActionAt: null,
+          },
     });
 
     await transaction.recoveryCaseEvent.create({
       data: {
         organizationId,
         caseId,
-        type: 'CASE_DISCARDED',
+        type: asLoss ? 'CASE_RESOLVED' : 'CASE_DISCARDED',
         previousStatus: previousStatus as never,
-        newStatus: 'DISCARDED',
-        observation:
-          'Todas las líneas del cliente ya están activas en Movistar.',
+        newStatus: asLoss ? 'LOST' : 'DISCARDED',
+        observation: asLoss
+          ? 'Portado a Movistar con gestión previa: pérdida frente a otra agencia, con el reporte como evidencia (BR-059).'
+          : 'Todas las líneas del cliente ya están activas en Movistar.',
+        ...(asLoss
+          ? { metadata: { lossReason: 'YA_MIGRO_OTRA_AGENCIA', attemptCount } }
+          : {}),
       },
     });
   }

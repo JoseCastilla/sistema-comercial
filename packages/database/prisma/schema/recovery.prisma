@@ -36,6 +36,8 @@ enum RecoveryAttemptChannel {
 enum RecoveryAttemptResult {
   SIN_RESPUESTA
   INTERESADO
+  /// Quiere, pero otra agencia ya le envió un pedido (BR-086).
+  INTERESADO_CON_PEDIDO
   RECHAZA
   AGENDA
   NUMERO_ERRADO

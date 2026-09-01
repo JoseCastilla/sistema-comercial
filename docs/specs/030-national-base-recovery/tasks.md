@@ -236,6 +236,36 @@
 - [ ] Anticuamiento de casos verificados sin trabajar (consulta vieja):
       pendiente para campañas registradas (BR-079).
 
+## El ciclo del lead en manos del asesor (01/09/2026)
+
+- [x] BR-085 a BR-087 y AC-066 a AC-069 definidos con José: la palabra del
+      asesor nunca cierra un caso; verificación por reporte (admin, lote) o
+      confirmación manual del supervisor; el interesado con pedido ajeno se
+      agenda solo para la mañana siguiente conservando a su asesor.
+- [x] Migración `20260901180000_add_interested_with_order_result`
+      (`INTERESADO_CON_PEDIDO` en `RecoveryAttemptResult`).
+- [x] `YA_ACTIVO` en caso de base → `WAITING` con asesor conservado, visible
+      al fondo de su cola ("En verificación"), líneas a la próxima
+      exportación (AC-066).
+- [x] `INTERESADO_CON_PEDIDO` → `SCHEDULED` a las 9:00 de Lima siguientes,
+      distintivo "Pedido en curso: ¿ya cayó?" en cola y ficha, líneas en
+      revalidación diaria (AC-069). Cuenta como contacto efectivo en los
+      criterios de pérdida.
+- [x] BR-059 implementado en el cruce (AC-067): portado a Movistar con
+      intentos → `LOST · YA_MIGRO_OTRA_AGENCIA` con el reporte como
+      evidencia; sin intentos → `DISCARDED · YA_ACTIVO`. "No portado" sobre
+      un caso en verificación/revalidación vuelve al asesor asignado con
+      próxima acción inmediata (o al triage si no tiene); portado a otro
+      operador con habilitación futura agenda el caso a esa fecha.
+- [x] Verificación manual del supervisor en la ficha
+      (`verifyReportedActiveAction`): confirmar → pérdida con su usuario
+      como evidencia; desmentir → vuelve a la cola del asesor (AC-068). El
+      asesor no ve esos botones.
+- [x] E2E verificado el 01/09 contra el API vivo: caso reportado que el
+      reporte confirma → `LOST · YA_MIGRO_OTRA_AGENCIA`; caso que el
+      reporte desmiente → `ASSIGNED` de vuelta a su asesor con próxima
+      acción inmediata.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

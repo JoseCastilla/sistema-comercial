@@ -214,6 +214,7 @@ export interface RecoveryAttemptSummary {
   result:
     | "SIN_RESPUESTA"
     | "INTERESADO"
+    | "INTERESADO_CON_PEDIDO"
     | "RECHAZA"
     | "AGENDA"
     | "NUMERO_ERRADO"
@@ -236,7 +237,13 @@ const limaDayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-const contactedResults = new Set(["INTERESADO", "RECHAZA", "AGENDA", "VENDIDO"]);
+const contactedResults = new Set([
+  "INTERESADO",
+  "INTERESADO_CON_PEDIDO",
+  "RECHAZA",
+  "AGENDA",
+  "VENDIDO",
+]);
 
 /**
  * BR-057: cada motivo de pérdida se habilita solo cuando su criterio se

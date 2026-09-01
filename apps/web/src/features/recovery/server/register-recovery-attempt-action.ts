@@ -7,6 +7,7 @@ import {
   getBaseRecoveryNextTouchAt,
   getInternalRecoveryNextTouchAt,
   getInternalRecoveryPauseUntil,
+  getNextLimaMorning,
   isBaseRecoveryResolutionDue,
 } from "@repo/validation";
 
@@ -31,6 +32,7 @@ const channels = new Set(["LLAMADA", "WHATSAPP", "SMS", "PRESENCIAL", "OTRO"]);
 const results = new Set([
   "SIN_RESPUESTA",
   "INTERESADO",
+  "INTERESADO_CON_PEDIDO",
   "RECHAZA",
   "AGENDA",
   "NUMERO_ERRADO",
@@ -176,6 +178,38 @@ export async function registerRecoveryAttemptAction(
         now,
       ) + 1;
 
+    /**
+     * BR-085: "ya es Movistar" es una afirmación, no una prueba — el caso
+     * pasa a verificación (WAITING, conserva a su asesor) y sus líneas
+     * entran a la próxima exportación. BR-086: "interesado con pedido en
+     * curso" agenda solo para mañana y también entra a revalidación diaria:
+     * el cruce vigila si el pedido ajeno prospera o cae.
+     */
+    if (isBaseCase && (result === "YA_ACTIVO" || result === "INTERESADO_CON_PEDIDO")) {
+      await transaction.recoveryCaseService.updateMany({
+        where: { caseId: recoveryCase.id, discardedAt: null },
+        data: { needsRevalidation: true },
+      });
+
+      await transaction.recoveryCase.update({
+        where: { id: recoveryCase.id },
+        data: {
+          status: result === "YA_ACTIVO" ? "WAITING" : "SCHEDULED",
+          firstContactAt: recoveryCase.firstContactAt ?? now,
+          nextActionAt:
+            result === "YA_ACTIVO" ? null : getNextLimaMorning(now),
+        },
+      });
+
+      return {
+        kind: "DONE" as const,
+        holderName: recoveryCase.holderName,
+        result,
+        attemptsToday,
+        mustResolve: false,
+      };
+    }
+
     // BR-034: la agenda suspende la cadencia; BR-033: el rechazo pausa 1–2
     // días; el resto sigue la cadencia de su fuente (BR-031).
     const nextActionAt =
@@ -223,11 +257,15 @@ export async function registerRecoveryAttemptAction(
   const suffix =
     outcome.result === "VENDIDO"
       ? " Vincula la orden nueva para resolverlo como recuperado."
-      : outcome.mustResolve
-        ? " La cadencia se agotó: este caso entra en resolución obligatoria."
-        : outcome.attemptsToday !== null && outcome.attemptsToday < 3
-          ? ` Llevas ${outcome.attemptsToday} de 3 intentos exigidos hoy.`
-          : "";
+      : outcome.result === "YA_ACTIVO"
+        ? " Pasa a verificación: el caso no se cierra hasta que el reporte o tu supervisor lo confirmen."
+        : outcome.result === "INTERESADO_CON_PEDIDO"
+          ? " Agendado para mañana: vuelve a llamarlo para ver si el pedido anterior cayó; el cruce lo vigila en paralelo."
+          : outcome.mustResolve
+            ? " La cadencia se agotó: este caso entra en resolución obligatoria."
+            : outcome.attemptsToday !== null && outcome.attemptsToday < 3
+              ? ` Llevas ${outcome.attemptsToday} de 3 intentos exigidos hoy.`
+              : "";
 
   return {
     type: "success",

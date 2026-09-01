@@ -40,6 +40,10 @@ export interface CampaignCaseDetail {
   resolutionDue: boolean;
   isResolved: boolean;
   resolutionLabel: string | null;
+  /** BR-085: reportado como "ya es Movistar", pendiente de verificación. */
+  reportedActive: boolean;
+  /** BR-086: interesado con pedido ajeno en curso, en vigilancia diaria. */
+  interestedWithOrder: boolean;
   canManage: boolean;
   canResolveOther: boolean;
   services: Array<{
@@ -187,8 +191,19 @@ export async function getCampaignCase(
   );
 
   const hasInterestedAttempt = recoveryCase.attempts.some(
-    (attempt) => String(attempt.result) === "INTERESADO",
+    (attempt) =>
+      String(attempt.result) === "INTERESADO" ||
+      String(attempt.result) === "INTERESADO_CON_PEDIDO",
   );
+
+  const lastAttemptResult = recoveryCase.attempts[0]
+    ? String(recoveryCase.attempts[0].result)
+    : null;
+  const reportedActive =
+    String(recoveryCase.status) === "WAITING" &&
+    lastAttemptResult === "YA_ACTIVO";
+  const interestedWithOrder =
+    !isResolved && lastAttemptResult === "INTERESADO_CON_PEDIDO";
 
   // BR-046: solo el asesor asignado, solo con validación pendiente y solo
   // tras un intento INTERESADO. En un caso ya validado no se muestran nunca.
@@ -251,6 +266,8 @@ export async function getCampaignCase(
           ? `Perdido · ${recoveryCase.lossReason ?? ""}`
           : "Descartado"
       : null,
+    reportedActive,
+    interestedWithOrder,
     canManage: !isResolved && (access.role !== "AGENT" || isAssignedToViewer),
     canResolveOther: access.role !== "AGENT",
     services: recoveryCase.services.map((service) => ({

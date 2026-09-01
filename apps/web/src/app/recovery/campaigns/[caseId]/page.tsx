@@ -6,6 +6,7 @@ import { CopyValue } from "@/features/recovery/components/copy-value";
 import { RegisterAttemptForm } from "@/features/recovery/components/register-attempt-form";
 import { ResolveCaseForm } from "@/features/recovery/components/resolve-case-form";
 import { RevealSensitiveForm } from "@/features/recovery/components/reveal-sensitive-form";
+import { VerifyReportedForm } from "@/features/recovery/components/verify-reported-form";
 import { getCampaignCase } from "@/features/recovery/server/get-campaign-case";
 import { requireCommercialAccess } from "@/server/auth/access";
 
@@ -86,6 +87,34 @@ export default async function CampaignCasePage({
           <SectionPanel title="Caso resuelto" description={detail.resolutionLabel ?? ""}>
             <p className="text-sm text-ui-muted">
               El historial queda como evidencia; un caso resuelto no se reabre.
+            </p>
+          </SectionPanel>
+        ) : null}
+
+        {detail.reportedActive ? (
+          <SectionPanel
+            title="En verificación: reportado como ya activo en Movistar"
+            description="La palabra del asesor no cierra el caso; lo cierra el reporte de portabilidad o esta confirmación."
+          >
+            {detail.canResolveOther ? (
+              <VerifyReportedForm caseId={detail.id} />
+            ) : (
+              <p className="text-sm text-ui-muted">
+                Sus líneas saldrán en la próxima exportación; el cruce o tu
+                supervisor decidirán. Mientras tanto no exige gestión.
+              </p>
+            )}
+          </SectionPanel>
+        ) : null}
+
+        {detail.interestedWithOrder && !detail.isResolved ? (
+          <SectionPanel
+            title="Interesado con pedido en curso"
+            description="El cliente quiere, pero otra agencia ya le envió un pedido. Reaparece cada mañana para re-contactar; el cruce vigila en paralelo."
+          >
+            <p className="text-sm text-ui-muted">
+              Si el cliente confirma que el pedido anterior cayó, registra{" "}
+              <strong>Vendido</strong> y vincula la orden nueva.
             </p>
           </SectionPanel>
         ) : null}
