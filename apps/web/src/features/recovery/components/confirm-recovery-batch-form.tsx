@@ -29,9 +29,17 @@ export function ConfirmRecoveryBatchForm({
   );
 
   return (
-    <form action={formAction} className="ui-form-stack">
+    <form action={formAction} className="space-y-2">
       <input name="batchId" type="hidden" value={batchId} />
       <input name="expectedUpdatedAt" type="hidden" value={expectedUpdatedAt} />
+
+      {state.type !== "success" ? (
+        <Button disabled={pending} type="submit">
+          {pending
+            ? "Creando casos…"
+            : `Confirmar y crear ${eligibleRows.toLocaleString("es-PE")} casos`}
+        </Button>
+      ) : null}
 
       <InlineFeedback
         message={state.message}
@@ -43,14 +51,6 @@ export function ConfirmRecoveryBatchForm({
               : "neutral"
         }
       />
-
-      {state.type !== "success" ? (
-        <Button disabled={pending} fullWidth type="submit">
-          {pending
-            ? "Creando casos..."
-            : `Confirmar lote y crear casos (${eligibleRows.toLocaleString("es-PE")} filas elegibles)`}
-        </Button>
-      ) : null}
     </form>
   );
 }

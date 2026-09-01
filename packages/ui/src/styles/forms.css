@@ -3,6 +3,71 @@
     display: grid;
     gap: 1rem;
   }
+
+  /**
+   * SPEC-039 BR-001: una acción que cabe en una línea ocupa una línea. El
+   * campo crece, el botón conserva su ancho natural y en móvil el conjunto
+   * se apila solo.
+   */
+  .ui-form-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.6rem;
+  }
+  .ui-form-row__grow {
+    flex: 1 1 18rem;
+    min-width: 0;
+  }
+  .ui-form-row__fixed {
+    flex: 0 1 14rem;
+    min-width: 0;
+  }
+
+  /** Etiqueta de andamiaje: pequeña, en versales, atenuada (BR-004). */
+  .ui-label-eyebrow {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: var(--ui-text-soft);
+    font-size: 0.688rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /** Dato operativo: monoespaciada para que alinee y se escanee (BR-003). */
+  .ui-data {
+    font-family: var(--ui-font-mono, ui-monospace, "SFMono-Regular", "Menlo", monospace);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ui-file-input {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: var(--ui-radius-md, 0.6rem);
+    color: var(--ui-text-muted);
+    font-size: 0.8rem;
+    background: var(--ui-surface);
+    cursor: pointer;
+  }
+  .ui-file-input::file-selector-button {
+    margin-right: 0.6rem;
+    padding: 0.3rem 0.6rem;
+    border: 0;
+    border-radius: 0.45rem;
+    color: var(--ui-on-strong);
+    font-weight: 600;
+    font-size: 0.78rem;
+    background: var(--ui-surface-strong);
+    cursor: pointer;
+  }
+  .ui-file-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--ui-accent);
+  }
   .ui-field {
     display: grid;
     gap: 0.38rem;

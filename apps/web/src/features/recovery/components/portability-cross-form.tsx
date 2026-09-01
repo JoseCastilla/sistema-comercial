@@ -21,41 +21,33 @@ export function PortabilityCrossForm() {
   );
 
   return (
-    <form action={formAction} className="ui-form-stack">
-      <label className="block">
-        <span className="mb-2 block text-sm font-medium text-ui-text">
-          Reporte de portabilidad
-        </span>
-
-        <input
-          accept=".csv,.txt,text/csv,text/plain"
-          className="block w-full cursor-pointer rounded-xl border border-ui-border-strong bg-ui-surface px-3 py-3 text-sm text-ui-muted file:mr-3 file:rounded-lg file:border-0 file:bg-ui-strong file:px-3 file:py-2 file:font-medium file:text-ui-on-strong hover:border-ui-border-strong focus:outline-none focus:ring-2 focus:ring-ui-accent focus:ring-offset-2"
-          disabled={pending}
-          name="file"
-          required
-          type="file"
-        />
-      </label>
-
-      <p className="text-xs leading-5 text-ui-muted">
-        El reporte completo de <code>consulta.portabilidad.pe</code> se detecta
-        por sus columnas y decide descartes, esperas y habilitaciones. Un cruce
-        rápido con solo números se interpreta como líneas ya activas en
-        Movistar y únicamente produce descartes.
-      </p>
-
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-ui-text">
-          Columna del número (solo para el cruce rápido)
-        </span>
-        <input
-          className="block w-full rounded-xl border border-ui-border-strong bg-ui-surface px-3 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent focus:ring-offset-2"
-          disabled={pending}
-          name="quickColumn"
-          placeholder="Se detecta sola si la columna se llama numero, telefono o linea"
-          type="text"
-        />
-      </label>
+    <form action={formAction} className="space-y-2">
+      <div className="ui-form-row">
+        <label className="ui-form-row__grow">
+          <span className="ui-label-eyebrow">Reporte de la consulta</span>
+          <input
+            accept=".csv,.txt,text/csv,text/plain"
+            className="ui-file-input"
+            disabled={pending}
+            name="file"
+            required
+            type="file"
+          />
+        </label>
+        <label className="ui-form-row__fixed">
+          <span className="ui-label-eyebrow">Columna · solo cruce rápido</span>
+          <input
+            className="block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
+            disabled={pending}
+            name="quickColumn"
+            placeholder="Se detecta sola"
+            type="text"
+          />
+        </label>
+        <Button disabled={pending} type="submit">
+          {pending ? "Cruzando…" : "Aplicar cruce"}
+        </Button>
+      </div>
 
       <InlineFeedback
         message={state.message}
@@ -67,10 +59,6 @@ export function PortabilityCrossForm() {
               : "neutral"
         }
       />
-
-      <Button disabled={pending} fullWidth type="submit">
-        {pending ? "Cruzando portabilidad..." : "Aplicar cruce de portabilidad"}
-      </Button>
     </form>
   );
 }

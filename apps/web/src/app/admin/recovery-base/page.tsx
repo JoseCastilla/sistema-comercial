@@ -14,10 +14,15 @@ import { SectionPanel } from "@repo/ui/section-panel";
 
 import { SignOutButton } from "@/app/orders/sign-out-button";
 
+// 24 horas y sin segundos: la hora es un dato tabular, no una frase.
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: "America/Lima",
-  dateStyle: "short",
-  timeStyle: "short",
+  day: "2-digit",
+  month: "2-digit",
+  year: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
 });
 
 const dateFormatter = new Intl.DateTimeFormat("es-PE", {
@@ -31,6 +36,34 @@ const batchStatusLabels: Record<string, string> = {
   CONFIRMED: "Confirmado",
   FAILED: "Con error",
 };
+
+/**
+ * Cifra del lote: etiqueta pequeña y número monoespaciado en la misma
+ * fijación de la vista (SPEC-039 BR-004, BR-005). Más denso que una tarjeta
+ * de métrica, que aquí competiría con el embudo de la campaña.
+ */
+function BatchStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "warning";
+}) {
+  return (
+    <div>
+      <dt className="ui-label-eyebrow">{label}</dt>
+      <dd
+        className={`ui-data text-base font-semibold ${
+          tone === "warning" ? "text-ui-warning" : "text-ui-text"
+        }`}
+      >
+        {value.toLocaleString("es-PE")}
+      </dd>
+    </div>
+  );
+}
 
 export default async function RecoveryBaseAdminPage({
   searchParams,
@@ -170,12 +203,12 @@ export default async function RecoveryBaseAdminPage({
         <PageHeader
           eyebrow="Campañas"
           title="Preparar campaña"
-          description="Importa la base del día, cruza portabilidad y crea los casos que el equipo trabajará."
+          description="Cargar la base, cruzar portabilidad y crear los casos."
         />
 
         <SectionPanel
           title="Embudo de la campaña"
-          description="El recorrido de la base: cargar, cruzar portabilidad, revisar, distribuir y gestionar. Al volver en otra sesión, aquí está lo que falta."
+          description="Al volver en otra sesión, aquí está lo que falta."
         >
           <MetricGroup>
             <Metric label="En triage" value={triageCount} />
@@ -184,7 +217,7 @@ export default async function RecoveryBaseAdminPage({
             <Metric label="En gestión" value={managedCount} />
             <Metric label="Recuperados" value={recoveredCount} />
           </MetricGroup>
-          <div className="flex flex-wrap gap-3">
+          <div className="ui-form-row">
             {triageCount > 0 ? (
               <a className="ui-button ui-button--primary" href="/recovery/triage">
                 Revisar {triageCount.toLocaleString("es-PE")} en triage
@@ -200,105 +233,108 @@ export default async function RecoveryBaseAdminPage({
             ) : null}
             {triageCount === 0 && openCount === 0 ? (
               <p className="text-sm text-ui-muted">
-                No hay casos esperando revisión ni distribución. Importa la base
-                del día o revisa la gestión en curso.
+                Sin casos por revisar ni distribuir. Carga la base del día.
               </p>
             ) : null}
           </div>
         </SectionPanel>
 
-        {selectedBatch ? (
-          <SectionPanel
-            title={`Lote: ${selectedBatch.fileName}`}
-            description={`${batchStatusLabels[selectedBatch.status] ?? selectedBatch.status} · subido por ${selectedBatch.uploadedBy.name} el ${dateTimeFormatter.format(selectedBatch.uploadedAt)}${
-              selectedBatch.registeredFrom && selectedBatch.registeredTo
-                ? ` · pedidos del ${dateFormatter.format(selectedBatch.registeredFrom)} al ${dateFormatter.format(selectedBatch.registeredTo)}`
-                : ""
-            }`}
-          >
-            <MetricGroup>
-              <Metric label="Filas leídas" value={selectedBatch.sourceRows} />
-              <Metric
-                label="Filas elegibles"
-                value={selectedBatch.eligibleRows}
-              />
-              <Metric
-                label="Filas excluidas por filtros"
-                value={selectedBatch.excludedRows}
-              />
-              <Metric
-                label="Filas inválidas"
-                value={selectedBatch.invalidRows}
-              />
-            </MetricGroup>
-
-            {selectedBatch.status === "CONFIRMED" ? (
-              <>
-                <p className="text-sm text-ui-muted">
-                  Cada fila es un pedido; cada caso es un cliente. Las filas de
-                  un mismo cliente se agrupan en un solo caso con todos sus
-                  servicios y teléfonos.
-                </p>
-                <MetricGroup>
-                  <Metric
-                    label="Clientes con caso nuevo"
-                    value={selectedBatch.newCases}
-                  />
-                  <Metric
-                    label="Clientes que reaparecieron"
-                    value={selectedBatch.sightingCases}
-                  />
-                  <Metric
-                    label="Filas agrupadas"
-                    value={
-                      selectedBatch.eligibleRows -
-                      selectedBatch.newCases -
-                      selectedBatch.sightingCases
-                    }
-                  />
-                </MetricGroup>
-              </>
-            ) : null}
-
-            {selectedBatch.status === "PREVIEW" ||
-            selectedBatch.status === "CONFIRMING" ? (
-              <ConfirmRecoveryBatchForm
-                batchId={selectedBatch.id}
-                eligibleRows={selectedBatch.eligibleRows}
-                expectedUpdatedAt={selectedBatch.updatedAt.toISOString()}
-              />
-            ) : null}
-          </SectionPanel>
-        ) : null}
-
         <SectionPanel
-          title="Importar base del día"
-          description="Carga inicial de tres días una sola vez; después, solo los pedidos del día anterior."
+          title="Base del día"
+          description="Reimportar un archivo idéntico no duplica casos."
         >
           <RecoveryBaseUploadForm />
-        </SectionPanel>
 
-        {batches.length > 0 ? (
-          <SectionPanel
-            title="Lotes recientes"
-            description="Reimportar un archivo idéntico no duplica casos."
-          >
+          {selectedBatch ? (
+            <div className="rounded-xl border border-ui-border p-3">
+              <p className="text-sm font-semibold text-ui-text">
+                {selectedBatch.fileName}
+                <span className="ml-2 text-xs font-normal text-ui-muted">
+                  {batchStatusLabels[selectedBatch.status] ??
+                    selectedBatch.status}{" "}
+                  · {selectedBatch.uploadedBy.name} ·{" "}
+                  <span className="ui-data">
+                    {dateTimeFormatter.format(selectedBatch.uploadedAt)}
+                  </span>
+                  {selectedBatch.registeredFrom && selectedBatch.registeredTo
+                    ? ` · pedidos del ${dateFormatter.format(selectedBatch.registeredFrom)} al ${dateFormatter.format(selectedBatch.registeredTo)}`
+                    : ""}
+                </span>
+              </p>
+
+              <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
+                <BatchStat label="Leídas" value={selectedBatch.sourceRows} />
+                <BatchStat
+                  label="Elegibles"
+                  value={selectedBatch.eligibleRows}
+                />
+                <BatchStat
+                  label="Excluidas"
+                  value={selectedBatch.excludedRows}
+                />
+                <BatchStat
+                  label="Inválidas"
+                  tone={selectedBatch.invalidRows > 0 ? "warning" : undefined}
+                  value={selectedBatch.invalidRows}
+                />
+                {selectedBatch.status === "CONFIRMED" ? (
+                  <>
+                    <BatchStat
+                      label="Casos nuevos"
+                      value={selectedBatch.newCases}
+                    />
+                    <BatchStat
+                      label="Reaparecidos"
+                      value={selectedBatch.sightingCases}
+                    />
+                    <BatchStat
+                      label="Filas agrupadas"
+                      value={
+                        selectedBatch.eligibleRows -
+                        selectedBatch.newCases -
+                        selectedBatch.sightingCases
+                      }
+                    />
+                  </>
+                ) : null}
+              </dl>
+
+              {selectedBatch.status === "PREVIEW" ||
+              selectedBatch.status === "CONFIRMING" ? (
+                <div className="mt-3">
+                  <ConfirmRecoveryBatchForm
+                    batchId={selectedBatch.id}
+                    eligibleRows={selectedBatch.eligibleRows}
+                    expectedUpdatedAt={selectedBatch.updatedAt.toISOString()}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {batches.length > 1 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-ui-border text-sm">
                 <thead className="text-left text-xs uppercase tracking-wide text-ui-muted">
                   <tr>
-                    <th className="px-3 py-2">Archivo</th>
-                    <th className="px-3 py-2">Estado</th>
-                    <th className="px-3 py-2">Leídas</th>
-                    <th className="px-3 py-2">Elegibles</th>
-                    <th className="px-3 py-2">Casos nuevos</th>
-                    <th className="px-3 py-2">Subido</th>
+                    <th className="px-3 py-1.5 font-semibold">Archivo</th>
+                    <th className="px-3 py-1.5 font-semibold">Estado</th>
+                    <th className="px-3 py-1.5 text-right font-semibold">
+                      Leídas
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-semibold">
+                      Elegibles
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-semibold">
+                      Casos
+                    </th>
+                    <th className="px-3 py-1.5 font-semibold">Subido</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ui-border">
                   {batches.map((batch) => (
                     <tr key={batch.id}>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-1.5">
                         <a
                           className="text-ui-accent underline-offset-2 hover:underline"
                           href={`/admin/recovery-base?batch=${batch.id}`}
@@ -306,13 +342,19 @@ export default async function RecoveryBaseAdminPage({
                           {batch.fileName}
                         </a>
                       </td>
-                      <td className="px-3 py-2 text-xs">
+                      <td className="px-3 py-1.5 text-xs text-ui-muted">
                         {batchStatusLabels[batch.status] ?? batch.status}
                       </td>
-                      <td className="px-3 py-2">{batch.sourceRows}</td>
-                      <td className="px-3 py-2">{batch.eligibleRows}</td>
-                      <td className="px-3 py-2">{batch.newCases}</td>
-                      <td className="px-3 py-2 text-xs text-ui-muted">
+                      <td className="ui-data px-3 py-1.5 text-right">
+                        {batch.sourceRows.toLocaleString("es-PE")}
+                      </td>
+                      <td className="ui-data px-3 py-1.5 text-right">
+                        {batch.eligibleRows.toLocaleString("es-PE")}
+                      </td>
+                      <td className="ui-data px-3 py-1.5 text-right">
+                        {batch.newCases.toLocaleString("es-PE")}
+                      </td>
+                      <td className="ui-data px-3 py-1.5 text-ui-muted">
                         {dateTimeFormatter.format(batch.uploadedAt)}
                       </td>
                     </tr>
@@ -320,28 +362,25 @@ export default async function RecoveryBaseAdminPage({
                 </tbody>
               </table>
             </div>
-          </SectionPanel>
-        ) : null}
+          ) : null}
+        </SectionPanel>
 
         <SectionPanel
           title="Cruce de portabilidad"
-          description="Exporta los números, consúltalos fuera y sube el reporte. Los que ya están en Movistar salen de la bandeja; los que tienen portación en curso pasan a espera."
+          description="Los que ya están en Movistar salen de la bandeja; los que tienen portación en curso pasan a espera."
         >
-          <p className="text-sm text-ui-muted">
-            Hay{" "}
-            <strong className="text-ui-text">
-              {openServiceCount.toLocaleString("es-PE")}
-            </strong>{" "}
-            línea(s) de casos abiertos para consultar.
-          </p>
-          <p>
+          <div className="ui-form-row">
             <a
               className="ui-button ui-button--secondary"
               href="/admin/recovery-base/numbers"
             >
-              Descargar números para consultar
+              Descargar {openServiceCount.toLocaleString("es-PE")} números
             </a>
-          </p>
+            <span className="pb-2 text-xs text-ui-muted">
+              Consúltalos fuera y sube el reporte.
+            </span>
+          </div>
+
           <PortabilityCrossForm />
 
           {portabilityBatches.length > 0 ? (
@@ -349,27 +388,43 @@ export default async function RecoveryBaseAdminPage({
               <table className="min-w-full divide-y divide-ui-border text-sm">
                 <thead className="text-left text-xs uppercase tracking-wide text-ui-muted">
                   <tr>
-                    <th className="px-3 py-2">Reporte</th>
-                    <th className="px-3 py-2">Tipo</th>
-                    <th className="px-3 py-2">Consultadas</th>
-                    <th className="px-3 py-2">Cruzadas</th>
-                    <th className="px-3 py-2">Descartados</th>
-                    <th className="px-3 py-2">En espera</th>
-                    <th className="px-3 py-2">Aplicado</th>
+                    <th className="px-3 py-1.5 font-semibold">Reporte</th>
+                    <th className="px-3 py-1.5 font-semibold">Tipo</th>
+                    <th className="px-3 py-1.5 text-right font-semibold">
+                      Consultadas
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-semibold">
+                      Cruzadas
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-semibold">
+                      Descartados
+                    </th>
+                    <th className="px-3 py-1.5 text-right font-semibold">
+                      En espera
+                    </th>
+                    <th className="px-3 py-1.5 font-semibold">Aplicado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ui-border">
                   {portabilityBatches.map((cross) => (
                     <tr key={cross.id}>
-                      <td className="px-3 py-2">{cross.fileName}</td>
-                      <td className="px-3 py-2 text-xs">
-                        {cross.kind === "FULL" ? "Completo" : "Cruce rápido"}
+                      <td className="px-3 py-1.5">{cross.fileName}</td>
+                      <td className="px-3 py-1.5 text-xs text-ui-muted">
+                        {cross.kind === "FULL" ? "Completo" : "Rápido"}
                       </td>
-                      <td className="px-3 py-2">{cross.totalRows}</td>
-                      <td className="px-3 py-2">{cross.matchedServices}</td>
-                      <td className="px-3 py-2">{cross.discardedCases}</td>
-                      <td className="px-3 py-2">{cross.waitingCases}</td>
-                      <td className="px-3 py-2 text-xs text-ui-muted">
+                      <td className="ui-data px-3 py-1.5 text-right">
+                        {cross.totalRows.toLocaleString("es-PE")}
+                      </td>
+                      <td className="ui-data px-3 py-1.5 text-right">
+                        {cross.matchedServices.toLocaleString("es-PE")}
+                      </td>
+                      <td className="ui-data px-3 py-1.5 text-right">
+                        {cross.discardedCases.toLocaleString("es-PE")}
+                      </td>
+                      <td className="ui-data px-3 py-1.5 text-right">
+                        {cross.waitingCases.toLocaleString("es-PE")}
+                      </td>
+                      <td className="ui-data px-3 py-1.5 text-ui-muted">
                         {dateTimeFormatter.format(cross.uploadedAt)}
                       </td>
                     </tr>
@@ -382,7 +437,7 @@ export default async function RecoveryBaseAdminPage({
 
         <SectionPanel
           title="Filtros de elegibilidad"
-          description="Los cambios aplican a las próximas importaciones. Cada lote conserva la configuración con la que se evaluó."
+          description="Aplican a las próximas importaciones; cada lote conserva la configuración con la que se evaluó."
         >
           <RecoveryConfigForm
             carrierNames={config.carrierNames}

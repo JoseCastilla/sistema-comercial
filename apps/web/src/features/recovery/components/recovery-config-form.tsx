@@ -32,16 +32,16 @@ function ListField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-ui-text">
-        {label}
-      </span>
+      <span className="ui-label-eyebrow">{label}</span>
       <textarea
         className={textareaClassName}
         defaultValue={defaultValue.join("\n")}
         name={name}
         rows={rows}
       />
-      {hint ? <span className="mt-1 block text-xs text-ui-muted">{hint}</span> : null}
+      {hint ? (
+        <span className="mt-1 block text-xs text-ui-muted">{hint}</span>
+      ) : null}
     </label>
   );
 }
@@ -63,49 +63,51 @@ export function RecoveryConfigForm({
   );
 
   return (
-    <form action={formAction} className="ui-form-stack">
-      <ListField
-        defaultValue={modalities}
-        label="Modalidades permitidas"
-        name="modalities"
-        rows={2}
-      />
-      <ListField
-        defaultValue={planNames}
-        hint="Un plan por línea, tal como aparece en la columna Plan Móvil."
-        label="Planes elegibles"
-        name="planNames"
-        rows={5}
-      />
-      <ListField
-        defaultValue={equipmentNames}
-        hint="Cuando el canal habilite equipos, agrega aquí los modelos permitidos."
-        label="Equipos permitidos"
-        name="equipmentNames"
-        rows={2}
-      />
-      <ListField
-        defaultValue={carrierNames}
-        hint="El código 27 corresponde a Guinea Mobile S.A.C."
-        label="Operadores cedentes válidos"
-        name="carrierNames"
-        rows={3}
-      />
+    <form action={formAction} className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ListField
+          defaultValue={planNames}
+          hint="Un plan por línea, tal como aparece en Plan Móvil."
+          label="Planes elegibles"
+          name="planNames"
+          rows={4}
+        />
+        <ListField
+          defaultValue={carrierNames}
+          hint="El código 27 es Guinea Mobile S.A.C."
+          label="Operadores cedentes"
+          name="carrierNames"
+          rows={4}
+        />
+        <ListField
+          defaultValue={modalities}
+          label="Modalidades"
+          name="modalities"
+          rows={2}
+        />
+        <ListField
+          defaultValue={equipmentNames}
+          label="Equipos permitidos"
+          name="equipmentNames"
+          rows={2}
+        />
+      </div>
 
-      <InlineFeedback
-        message={state.message}
-        tone={
-          state.type === "error"
-            ? "danger"
-            : state.type === "success"
-              ? "success"
-              : "neutral"
-        }
-      />
-
-      <Button disabled={pending} fullWidth type="submit" variant="secondary">
-        {pending ? "Guardando filtros..." : "Guardar filtros de elegibilidad"}
-      </Button>
+      <div className="ui-form-row">
+        <Button disabled={pending} type="submit" variant="secondary">
+          {pending ? "Guardando…" : "Guardar filtros"}
+        </Button>
+        <InlineFeedback
+          message={state.message}
+          tone={
+            state.type === "error"
+              ? "danger"
+              : state.type === "success"
+                ? "success"
+                : "neutral"
+          }
+        />
+      </div>
     </form>
   );
 }
