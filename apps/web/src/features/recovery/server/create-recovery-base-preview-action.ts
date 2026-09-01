@@ -32,12 +32,16 @@ export async function createRecoveryBasePreviewAction(
   if (!(file instanceof File) || file.size === 0) {
     return {
       type: "error",
-      message: "Selecciona el archivo XLSX de la base consolidada.",
+      message: "Selecciona el archivo de la base consolidada (XLSX o CSV).",
     };
   }
 
-  if (!file.name.toLowerCase().endsWith(".xlsx")) {
-    return { type: "error", message: "El archivo debe tener extensión .xlsx." };
+  const lowerName = file.name.toLowerCase();
+  if (!lowerName.endsWith(".xlsx") && !lowerName.endsWith(".csv")) {
+    return {
+      type: "error",
+      message: "El archivo debe tener extensión .xlsx o .csv.",
+    };
   }
 
   if (file.size > maximumFileBytes) {
@@ -58,7 +62,9 @@ export async function createRecoveryBasePreviewAction(
   outbound.set(
     "file",
     new Blob([workbook], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      type: lowerName.endsWith(".csv")
+        ? "text/csv"
+        : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }),
     file.name,
   );
