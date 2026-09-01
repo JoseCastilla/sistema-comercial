@@ -141,9 +141,6 @@ export default async function CampaignCasePage({
               DNI: <CopyValue label="DNI" value={detail.documentNumber} />
             </span>
             <span className="text-ui-muted">
-              Departamento: {detail.department ?? "—"}
-            </span>
-            <span className="text-ui-muted">
               Intentos hoy: {detail.attemptsToday} /{" "}
               {detail.minimumDailyAttempts}
             </span>
@@ -157,6 +154,40 @@ export default async function CampaignCasePage({
               >
                 Próxima acción: {detail.nextActionAtLabel}
               </span>
+            ) : null}
+          </div>
+
+          <div className="rounded-xl border border-ui-border p-3 text-sm">
+            <p className="ui-label-eyebrow">Ubicación</p>
+            <p className="text-ui-text">
+              {[detail.department, detail.province, detail.district]
+                .filter(Boolean)
+                .join(" · ") || "Sin ubicación en la base"}
+            </p>
+            {detail.address ? (
+              <p className="mt-1 text-ui-muted">{detail.address}</p>
+            ) : null}
+            {detail.reference ? (
+              <p className="mt-1 text-ui-muted">
+                Referencia: {detail.reference}
+              </p>
+            ) : null}
+            {detail.deliveryInstructions ? (
+              <p className="mt-1 text-ui-muted">
+                Indicaciones: {detail.deliveryInstructions}
+              </p>
+            ) : null}
+            {detail.mapsUrl ? (
+              <p className="mt-1">
+                <a
+                  className="text-ui-accent underline-offset-2 hover:underline"
+                  href={detail.mapsUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Ver coordenadas en el mapa ↗
+                </a>
+              </p>
             ) : null}
           </div>
 

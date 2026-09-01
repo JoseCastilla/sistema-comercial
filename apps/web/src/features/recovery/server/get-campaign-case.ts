@@ -26,6 +26,14 @@ export interface CampaignCaseDetail {
   holderName: string;
   documentNumber: string;
   department: string | null;
+  province: string | null;
+  district: string | null;
+  /** Dirección compuesta desde la base: vía, número, complejo, manzana y lote. */
+  address: string | null;
+  reference: string | null;
+  deliveryInstructions: string | null;
+  /** Enlace a mapas cuando la base trae coordenadas. */
+  mapsUrl: string | null;
   status: string;
   teamName: string | null;
   assignedToName: string | null;
@@ -130,6 +138,9 @@ export async function getCampaignCase(
       holderName: true,
       documentNumber: true,
       department: true,
+      province: true,
+      district: true,
+      contactSummary: true,
       requiresIdentityValidation: true,
       fatherName: true,
       motherName: true,
@@ -196,6 +207,30 @@ export async function getCampaignCase(
       String(attempt.result) === "INTERESADO_CON_PEDIDO",
   );
 
+  /**
+   * BR-003: las columnas N–AP son el material de trabajo comercial. La
+   * dirección, la referencia y las coordenadas viven en el resumen de
+   * contacto del caso y el asesor las necesita a la vista para la llamada.
+   */
+  const summary = (recoveryCase.contactSummary ?? {}) as Record<
+    string,
+    string | undefined
+  >;
+  const addressParts = [
+    [summary.streetType, summary.streetName, summary.streetNumber]
+      .filter(Boolean)
+      .join(" "),
+    [summary.housingType, summary.housingName].filter(Boolean).join(" "),
+    summary.block ? `Mz. ${summary.block}` : "",
+    summary.lot ? `Lote ${summary.lot}` : "",
+  ].filter((part) => part.length > 0);
+  const latitude = Number(summary.latitude);
+  const longitude = Number(summary.longitude);
+  const hasCoordinates =
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    (latitude !== 0 || longitude !== 0);
+
   const lastAttemptResult = recoveryCase.attempts[0]
     ? String(recoveryCase.attempts[0].result)
     : null;
@@ -237,6 +272,14 @@ export async function getCampaignCase(
     holderName: recoveryCase.holderName,
     documentNumber: recoveryCase.documentNumber,
     department: recoveryCase.department,
+    province: recoveryCase.province,
+    district: recoveryCase.district,
+    address: addressParts.length > 0 ? addressParts.join(" · ") : null,
+    reference: summary.reference ?? null,
+    deliveryInstructions: summary.shippingInstructions ?? null,
+    mapsUrl: hasCoordinates
+      ? `https://maps.google.com/?q=${latitude},${longitude}`
+      : null,
     status: String(recoveryCase.status),
     teamName: recoveryCase.assignedTeam?.name ?? null,
     assignedToName: recoveryCase.assignedUser?.name ?? null,

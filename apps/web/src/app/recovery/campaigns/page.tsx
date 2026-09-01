@@ -111,7 +111,12 @@ export default async function RecoveryCampaignsPage({
         portabilityEligibleAt: true,
         services: {
           where: { discardedAt: null },
-          select: { planRaw: true },
+          select: { planRaw: true, serviceNumber: true },
+        },
+        phones: {
+          where: { kind: "CONTACT", invalidMarkedAt: null },
+          take: 1,
+          select: { phoneNumber: true },
         },
         attempts: {
           orderBy: { createdAt: "desc" },
@@ -178,6 +183,12 @@ export default async function RecoveryCampaignsPage({
     );
     const lastResult = item.attempts[0] ? String(item.attempts[0].result) : null;
     return {
+      // Llamar es la acción: primero el teléfono de contacto; sin él, la
+      // propia línea a portar.
+      phone:
+        item.phones[0]?.phoneNumber ??
+        item.services[0]?.serviceNumber ??
+        null,
       interestedWithOrder:
         lastResult === "INTERESADO_CON_PEDIDO" &&
         String(item.status) !== "WAITING",
@@ -331,6 +342,7 @@ export default async function RecoveryCampaignsPage({
               <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
                 <tr>
                   <th className="px-3 py-2">Cliente</th>
+                  <th className="px-3 py-2">Teléfono</th>
                   <th className="px-3 py-2">DNI</th>
                   <th className="px-3 py-2">Plan</th>
                   <th className="px-3 py-2">Estado</th>
@@ -359,6 +371,13 @@ export default async function RecoveryCampaignsPage({
                           Pedido en curso: ¿ya cayó?
                         </span>
                       ) : null}
+                    </td>
+                    <td className="px-3 py-2">
+                      {row.phone ? (
+                        <CopyValue label="Teléfono" value={row.phone} />
+                      ) : (
+                        <span className="text-xs text-ui-muted">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <CopyValue label="DNI" value={row.documentNumber} />
@@ -410,7 +429,7 @@ export default async function RecoveryCampaignsPage({
                   <tr>
                     <td
                       className="px-3 py-6 text-center text-ui-muted"
-                      colSpan={7}
+                      colSpan={8}
                     >
                       No tienes casos de campaña asignados. Toma un bloque del
                       pool para empezar.
