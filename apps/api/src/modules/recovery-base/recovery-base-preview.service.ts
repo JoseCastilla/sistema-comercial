@@ -77,12 +77,24 @@ export class RecoveryBasePreviewService {
       input.actorUserId,
     );
 
-    const parsed = await parseRecoveryBaseWorkbook(input.workbook, {
-      modalities: eligibilityConfig.modalities,
-      planNames: eligibilityConfig.planNames,
-      equipmentNames: eligibilityConfig.equipmentNames,
-      carrierNames: eligibilityConfig.carrierNames,
-    });
+    // Un archivo ilegible o con otra estructura es un error del usuario con
+    // explicación, nunca un 500 (incidente del 01/09/2026: subir la base en
+    // CSV reventaba el lector XLSX con un error interno).
+    let parsed: Awaited<ReturnType<typeof parseRecoveryBaseWorkbook>>;
+    try {
+      parsed = await parseRecoveryBaseWorkbook(input.workbook, {
+        modalities: eligibilityConfig.modalities,
+        planNames: eligibilityConfig.planNames,
+        equipmentNames: eligibilityConfig.equipmentNames,
+        carrierNames: eligibilityConfig.carrierNames,
+      });
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error
+          ? error.message
+          : 'El archivo no se pudo leer como base consolidada.',
+      );
+    }
 
     if (parsed.rows.length === 0) {
       throw new BadRequestException(

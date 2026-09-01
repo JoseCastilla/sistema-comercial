@@ -5,6 +5,7 @@ import {
   normalizeRecoveryDocumentNumber,
   normalizeRecoveryPhoneNumber,
   normalizeRecoveryServiceNumber,
+  splitCsvLine,
   type RecoveryEligibilityConfigInput,
   type RecoveryRecordClassification,
   type RecoveryRecordIssueCode,
@@ -12,6 +13,9 @@ import {
 
 const maximumWorkbookBytes = 25 * 1024 * 1024;
 const businessTimeZoneOffset = '-05:00';
+
+/** Firma ZIP de un XLSX real; lo demás se intenta leer como CSV de texto. */
+const zipMagic = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
 
 export const recoveryBaseParserVersion = '1.0';
 
@@ -109,7 +113,20 @@ export interface ParsedRecoveryBaseWorkbook {
   rows: ParsedRecoveryBaseRow[];
 }
 
-export function parseRecoveryBaseWorkbook(
+/**
+ * Vista uniforme sobre la fuente de datos: una hoja XLSX o un CSV de texto.
+ * El resto del parser no distingue el origen; los valores del XLSX conservan
+ * sus tipos (fechas, seriales) y los del CSV llegan como texto, que las
+ * mismas rutas de parseo ya entienden.
+ */
+interface RecoveryBaseGrid {
+  name: string;
+  rowCount: number;
+  columnCount: number;
+  cellValue(row: number, column: number): ExcelJS.CellValue;
+}
+
+export async function parseRecoveryBaseWorkbook(
   buffer: Buffer,
   config: RecoveryEligibilityConfigInput,
 ): Promise<ParsedRecoveryBaseWorkbook> {
@@ -117,16 +134,34 @@ export function parseRecoveryBaseWorkbook(
     throw new Error('El archivo supera el tamaño máximo permitido de 25 MB.');
   }
 
-  return readWorkbook(buffer, config);
+  const grid = buffer.subarray(0, 4).equals(zipMagic)
+    ? await readWorkbookGrid(buffer)
+    : readCsvGrid(buffer);
+
+  const columns = resolveColumns(grid);
+  const rows: ParsedRecoveryBaseRow[] = [];
+
+  for (let sourceRow = 2; sourceRow <= grid.rowCount; sourceRow += 1) {
+    const parsed = parseRow(grid, sourceRow, columns, config);
+
+    if (parsed) {
+      rows.push(parsed);
+    }
+  }
+
+  return { sheetName: grid.name, rows };
 }
 
-async function readWorkbook(
-  buffer: Buffer,
-  config: RecoveryEligibilityConfigInput,
-): Promise<ParsedRecoveryBaseWorkbook> {
+async function readWorkbookGrid(buffer: Buffer): Promise<RecoveryBaseGrid> {
   const workbook = new ExcelJS.Workbook();
 
-  await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+  try {
+    await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+  } catch {
+    throw new Error(
+      'El archivo no se pudo leer como XLSX. Sube la base como .xlsx o como .csv con las mismas columnas.',
+    );
+  }
 
   const worksheet =
     workbook.getWorksheet('Base Consolidada') ?? workbook.worksheets[0];
@@ -135,18 +170,50 @@ async function readWorkbook(
     throw new Error('El archivo no contiene hojas de cálculo legibles.');
   }
 
-  const columns = resolveColumns(worksheet);
-  const rows: ParsedRecoveryBaseRow[] = [];
+  return {
+    name: worksheet.name,
+    rowCount: worksheet.rowCount,
+    columnCount: worksheet.columnCount,
+    cellValue: (row, column) => worksheet.getCell(row, column).value,
+  };
+}
 
-  for (let sourceRow = 2; sourceRow <= worksheet.rowCount; sourceRow += 1) {
-    const parsed = parseRow(worksheet, sourceRow, columns, config);
+/**
+ * La base también llega como CSV (mismas columnas). Excel en español suele
+ * exportar en Latin-1: si la decodificación UTF-8 produce caracteres de
+ * reemplazo, se reintenta como Latin-1 para no corromper tildes que luego
+ * romperían los filtros de plan.
+ */
+function readCsvGrid(buffer: Buffer): RecoveryBaseGrid {
+  let text = buffer.toString('utf8');
 
-    if (parsed) {
-      rows.push(parsed);
-    }
+  if (text.includes('�')) {
+    text = buffer.toString('latin1');
   }
 
-  return { sheetName: worksheet.name, rows };
+  if (text.charCodeAt(0) === 0xfeff) {
+    text = text.slice(1);
+  }
+
+  const lines = text
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0)
+    .map((line) => splitCsvLine(line));
+
+  if (lines.length === 0) {
+    throw new Error(
+      'El archivo no se pudo leer: no es un XLSX ni un CSV con contenido.',
+    );
+  }
+
+  const columnCount = Math.max(...lines.map((cells) => cells.length));
+
+  return {
+    name: 'CSV',
+    rowCount: lines.length,
+    columnCount,
+    cellValue: (row, column) => lines[row - 1]?.[column - 1] ?? null,
+  };
 }
 
 function normalizeHeader(value: string): string {
@@ -160,18 +227,23 @@ function normalizeHeader(value: string): string {
 }
 
 function resolveColumns(
-  worksheet: ExcelJS.Worksheet,
+  grid: RecoveryBaseGrid,
 ): Map<RecoveryColumnKey, number> {
-  const headerRow = worksheet.getRow(1);
   const byHeader = new Map<string, number>();
 
-  headerRow.eachCell({ includeEmpty: false }, (cell, columnNumber) => {
-    const text = normalizeHeader(cellValueToText(cell.value));
+  for (
+    let columnNumber = 1;
+    columnNumber <= grid.columnCount;
+    columnNumber += 1
+  ) {
+    const text = normalizeHeader(
+      cellValueToText(grid.cellValue(1, columnNumber)),
+    );
 
     if (text && !byHeader.has(text)) {
       byHeader.set(text, columnNumber);
     }
-  });
+  }
 
   const columns = new Map<RecoveryColumnKey, number>();
   const missing: string[] = [];
@@ -198,7 +270,7 @@ function resolveColumns(
 }
 
 function parseRow(
-  worksheet: ExcelJS.Worksheet,
+  grid: RecoveryBaseGrid,
   sourceRow: number,
   columns: Map<RecoveryColumnKey, number>,
   config: RecoveryEligibilityConfigInput,
@@ -207,10 +279,17 @@ function parseRow(
 
   for (const [key, columnNumber] of columns) {
     const text = cleanText(
-      cellValueToText(worksheet.getCell(sourceRow, columnNumber).value),
+      cellValueToText(grid.cellValue(sourceRow, columnNumber)),
     );
 
     rawData[key] = text;
+  }
+
+  // Una columna opcional ausente del archivo debe leerse como nula, no como
+  // `undefined`: el resto del flujo (validación, confirmación) asume la
+  // llave presente.
+  for (const column of recoveryBaseColumns) {
+    rawData[column.key] ??= null;
   }
 
   const hasContent = Object.values(rawData).some((value) => value !== null);
@@ -219,12 +298,14 @@ function parseRow(
     return null;
   }
 
+  const registeredDateColumn = columns.get('registeredDate');
+  const registeredTimeColumn = columns.get('registeredTime');
   const registeredAt = parseRegisteredAt(
-    columns.has('registeredDate')
-      ? worksheet.getCell(sourceRow, columns.get('registeredDate')).value
+    registeredDateColumn !== undefined
+      ? grid.cellValue(sourceRow, registeredDateColumn)
       : null,
-    columns.has('registeredTime')
-      ? worksheet.getCell(sourceRow, columns.get('registeredTime')).value
+    registeredTimeColumn !== undefined
+      ? grid.cellValue(sourceRow, registeredTimeColumn)
       : null,
   );
 

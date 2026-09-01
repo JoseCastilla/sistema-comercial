@@ -28,7 +28,7 @@ export function RecoveryBaseUploadForm() {
         </span>
 
         <input
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
           className="block w-full cursor-pointer rounded-xl border border-ui-border-strong bg-ui-surface px-3 py-3 text-sm text-ui-muted file:mr-3 file:rounded-lg file:border-0 file:bg-ui-strong file:px-3 file:py-2 file:font-medium file:text-ui-on-strong hover:border-ui-border-strong focus:outline-none focus:ring-2 focus:ring-ui-accent focus:ring-offset-2"
           disabled={pending}
           name="file"
@@ -38,8 +38,9 @@ export function RecoveryBaseUploadForm() {
       </label>
 
       <p className="text-xs leading-5 text-ui-muted">
-        Máximo 25 MB. Analizar el archivo no crea casos: primero verás la vista
-        previa con elegibles, excluidos e inválidos.
+        XLSX o CSV con las mismas columnas, máximo 25 MB. Analizar el archivo
+        no crea casos: primero verás la vista previa con elegibles, excluidos
+        e inválidos.
       </p>
 
       <InlineFeedback

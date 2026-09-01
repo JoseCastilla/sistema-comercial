@@ -83,9 +83,18 @@ export class RecoveryPortabilityService {
       };
     }
 
-    const parsed = parsePortabilityReport(input.report, {
-      quickColumn: input.quickColumn ?? null,
-    });
+    // Un archivo con formato inesperado es un error del usuario con
+    // explicación (p. ej. el rechazo de BR-018c), nunca un 500.
+    let parsed: ReturnType<typeof parsePortabilityReport>;
+    try {
+      parsed = parsePortabilityReport(input.report, {
+        quickColumn: input.quickColumn ?? null,
+      });
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'El reporte no se pudo leer.',
+      );
+    }
 
     if (parsed.rows.length === 0) {
       throw new BadRequestException(

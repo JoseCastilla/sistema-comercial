@@ -232,7 +232,12 @@ function stripBom(value: string): string {
   return value.charCodeAt(0) === 0xfeff ? value.slice(1) : value;
 }
 
-function splitCsvLine(line: string): string[] {
+/**
+ * Separa una línea CSV respetando comillas; acepta coma y punto y coma como
+ * delimitadores porque Excel en español exporta con `;`. Compartida entre el
+ * reporte de portabilidad y la base consolidada en CSV.
+ */
+export function splitCsvLine(line: string): string[] {
   const cells: string[] = [];
   let current = "";
   let quoted = false;
