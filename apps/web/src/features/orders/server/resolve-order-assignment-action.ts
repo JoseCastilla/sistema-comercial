@@ -24,7 +24,7 @@ export async function resolveOrderAssignmentAction(
   if (!parsed.success) {
     return {
       type: "error",
-      message: "La orden o su versión no son válidas. Recarga la bandeja.",
+      message: "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
     };
   }
 
@@ -166,7 +166,7 @@ export async function resolveOrderAssignmentAction(
     return {
       type: "error",
       message:
-        "El correo todavía no corresponde a un asesor activo con un único equipo principal activo.",
+        "Ese correo no corresponde a un asesor activo, o el asesor está en más de un equipo. Revisa su ficha en Personas.",
     };
   }
 

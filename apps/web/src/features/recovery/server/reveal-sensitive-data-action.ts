@@ -74,7 +74,7 @@ export async function revealSensitiveDataAction(
     return {
       type: "error",
       message:
-        "Primero registra un intento con resultado INTERESADO: los datos se revelan solo cuando el cliente quiere avanzar.",
+        "Primero registra un intento donde el cliente se muestre interesado: los datos se muestran solo cuando el cliente quiere avanzar.",
     };
   }
 

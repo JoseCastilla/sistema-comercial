@@ -157,7 +157,7 @@ export async function verifyReportedActiveAction(
     return {
       type: "error",
       message:
-        "El caso no está en verificación o está fuera de tu alcance.",
+        "El caso no está esperando confirmación o no pertenece a tus equipos.",
     };
   }
 

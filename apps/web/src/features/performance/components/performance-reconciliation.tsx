@@ -61,13 +61,13 @@ export function PerformanceReconciliation({
   return (
     <div className="ui-page-stack">
       <PageHeader
-        description="Explica qué órdenes generan comisión base y cuáles requieren una corrección o todavía deben madurar."
+        description="Explica qué órdenes generan comisión fija, cuáles hay que corregir y cuáles todavía están en camino."
         eyebrow={data.scopeLabel}
         meta={<span>Actualizado: {data.generatedAt}</span>}
         title={
           data.role === "AGENT"
-            ? "Evidencia de mis pagables"
-            : "Conciliación de comisiones"
+            ? "Por qué me pagan cada venta"
+            : "Detalle de comisiones"
         }
       />
 
@@ -77,12 +77,12 @@ export function PerformanceReconciliation({
         >
           ← Volver a rendimiento
         </Link>
-        <span>Los aceleradores se concilian por asesor, no por orden individual.</span>
+        <span>Los bonos se calculan por asesor, no venta por venta.</span>
       </div>
 
       <section className="performance-controls ui-surface">
         <div>
-          <p className="performance-controls__eyebrow">Cohorte revisada</p>
+          <p className="performance-controls__eyebrow">Mes que estás revisando</p>
           <p className="performance-controls__month">{data.monthLabel}</p>
         </div>
         <form className="performance-filter" method="get">
@@ -112,13 +112,13 @@ export function PerformanceReconciliation({
             <span>Resultado</span>
             <select defaultValue={data.filter} name="reason">
               <option value="ALL">Todos los resultados</option>
-              <option value="PAYABLE">Pagables</option>
-              <option value="NOT_ACTIVATED">Entregadas por activar</option>
+              <option value="PAYABLE">Ya generan comisión</option>
+              <option value="NOT_ACTIVATED">Entregadas, falta activarlas</option>
               <option value="NOT_DELIVERED">Pendientes de entrega</option>
               <option value="UNASSIGNED">Sin asesor responsable</option>
-              <option value="UNKNOWN_OPERATION">Operación por corregir</option>
+              <option value="UNKNOWN_OPERATION">Falta clasificar la operación</option>
               <option value="CANCELLED">Canceladas</option>
-              <option value="NEW_LINE_NO_COMMISSION">Altas sin comisión</option>
+              <option value="NEW_LINE_NO_COMMISSION">Altas nuevas (no pagan comisión)</option>
             </select>
           </label>
           <button type="submit">Aplicar</button>
@@ -127,9 +127,9 @@ export function PerformanceReconciliation({
 
       <section className="reconciliation-summary" aria-label="Resumen de conciliación">
         <article>
-          <span>Órdenes de la cohorte</span>
+          <span>Órdenes del mes</span>
           <strong>{data.totals.orders}</strong>
-          <small>{data.pagination.filteredTotal} visibles con el filtro</small>
+          <small>{data.pagination.filteredTotal} coinciden con el filtro</small>
         </article>
         <article data-tone="positive">
           <span>Portabilidades pagables</span>
@@ -138,9 +138,9 @@ export function PerformanceReconciliation({
         </article>
         {data.showTotals ? (
           <article>
-            <span>Comisión base provisional</span>
+            <span>Comisión fija estimada</span>
             <strong>{money(data.totals.baseCommissionCents)}</strong>
-            <small>No incluye aceleradores</small>
+            <small>No incluye bonos</small>
           </article>
         ) : null}
       </section>
@@ -148,9 +148,9 @@ export function PerformanceReconciliation({
       <section className="performance-panel">
         <header className="performance-panel__header">
           <div>
-            <p className="performance-panel__eyebrow">Evidencia por orden</p>
+            <p className="performance-panel__eyebrow">Detalle por orden</p>
             <h2>Detalle del cálculo</h2>
-            <p>Cada fila conserva un enlace al pedido que respalda el resultado.</p>
+            <p>Toca la orden para abrir el pedido.</p>
           </div>
         </header>
         <div className="performance-table-wrap">
@@ -162,7 +162,7 @@ export function PerformanceReconciliation({
                 <th>Asesor</th>
                 <th>Operación</th>
                 <th>Resultado</th>
-                {data.showLineAmounts ? <th>Base</th> : null}
+                {data.showLineAmounts ? <th>Comisión fija</th> : null}
               </tr>
             </thead>
             <tbody>

@@ -147,7 +147,7 @@ export function RecoveryTriageForm({
           value="EN_ESPERA"
           variant="secondary"
         >
-          {pending ? "Aplicando…" : "Marcar en espera"}
+          {pending ? "Aplicando…" : "Poner en espera"}
         </Button>
         <Button
           disabled={pending || selected.size === 0}
@@ -155,7 +155,7 @@ export function RecoveryTriageForm({
           type="submit"
           value="LIBERADO"
         >
-          {pending ? "Aplicando…" : "Liberar para asignar"}
+          {pending ? "Aplicando…" : "Dejar listo para repartir"}
         </Button>
 
         {canAssignTeams ? (
@@ -188,11 +188,11 @@ export function RecoveryTriageForm({
       </div>
 
       <p className="text-xs leading-5 text-ui-muted">
-        Con pedido en curso → <strong>en espera</strong>, reaparece mañana y
-        sale sola si porta. Sin pedido vigente →{" "}
-        <strong>liberar</strong>, queda lista para repartir.
+        Si el cliente ya tiene un pedido en curso, ponlo{" "}
+        <strong>en espera</strong>: reaparece mañana y sale solo si porta. Si no
+        tiene pedido, déjalo <strong>listo para repartir</strong>.
         {canAssignTeams
-          ? " Entregar al equipo deja el bloque en el triage de su supervisor."
+          ? " «Entregar al equipo» manda el bloque a la bandeja de su supervisor."
           : ""}
       </p>
 
@@ -302,7 +302,7 @@ export function RecoveryTriageForm({
                   className="px-3 py-6 text-center text-ui-muted"
                   colSpan={columnCount}
                 >
-                  No hay casos pendientes de triage. Buen trabajo.
+                  No hay casos por revisar. Buen trabajo.
                 </td>
               </tr>
             ) : null}

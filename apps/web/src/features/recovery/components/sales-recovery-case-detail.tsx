@@ -21,10 +21,10 @@ const statusLabels: Record<string, string> = {
   ASSIGNED: "Asignado",
   IN_PROGRESS: "En gestión",
   SCHEDULED: "Agendado",
-  WAITING: "En espera",
+  WAITING: "Esperando confirmación",
   RECOVERED: "Recuperado",
   LOST: "Perdido",
-  DISCARDED: "Descartado",
+  DISCARDED: "Cerrado: ya era Movistar",
 };
 
 const priorityLabels: Record<string, string> = {
@@ -48,7 +48,7 @@ const resultLabels: Record<string, string> = {
   RECHAZA: "Rechaza",
   AGENDA: "Agenda",
   NUMERO_ERRADO: "Número errado",
-  NO_CUMPLE_30D: "No cumple 30 días",
+  NO_CUMPLE_30D: "No cumple los 30 días para portar",
   YA_ACTIVO: "Ya activo",
   DATOS_INVALIDOS: "Datos inválidos",
   VENDIDO: "Vendido",
@@ -65,7 +65,7 @@ export function SalesRecoveryCaseDetail({
         description={
           data.isResolved
             ? (data.resolutionLabel ?? "Caso resuelto")
-            : "Registra cada intento; el caso decide solo su próxima aparición."
+            : "Registra cada intento; el sistema te dice cuándo volver a llamar."
         }
         eyebrow={`Recupero de ventas · ${data.priority ? (priorityLabels[data.priority] ?? data.priority) : "Sin prioridad"}`}
         meta={
@@ -98,7 +98,7 @@ export function SalesRecoveryCaseDetail({
           <small>
             {data.originalAgentName
               ? `Venta de ${data.originalAgentName}${data.originalTeamName ? ` · ${data.originalTeamName}` : ""}`
-              : "Sin atribución"}
+              : "Sin asesor registrado"}
           </small>
         </article>
         <article>
@@ -174,7 +174,10 @@ export function SalesRecoveryCaseDetail({
           <div>
             <p className="performance-panel__eyebrow">Historial</p>
             <h2>Intentos registrados</h2>
-            <p>Cada intento es inmutable y conserva a su actor.</p>
+            <p>
+              Los intentos no se pueden editar y queda registrado quién los
+              hizo.
+            </p>
           </div>
         </header>
         <div className="performance-table-wrap">
@@ -186,7 +189,7 @@ export function SalesRecoveryCaseDetail({
                 <th>Resultado</th>
                 <th>Teléfono</th>
                 <th>Observación</th>
-                <th>Actor</th>
+                <th>Quién lo registró</th>
               </tr>
             </thead>
             <tbody>

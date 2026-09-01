@@ -78,7 +78,7 @@ export function AssignTeamMemberForm({
           }}
           value={memberRole}
         >
-          <option value="AGENT">Asesor principal</option>
+          <option value="AGENT">Asesor (este es su equipo principal)</option>
           <option value="SUPERVISOR">Supervisor</option>
           <option value="SELLING_SUPERVISOR">
             Supervisor que también vende

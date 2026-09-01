@@ -39,13 +39,13 @@ export async function assignPerformanceQuotaAction(
   const rawTarget = Number(formData.get("target"));
 
   if (scope !== "ORG" && scope !== "TEAM" && scope !== "USER") {
-    return { type: "error", message: "Destino de cuota no reconocido." };
+    return { type: "error", message: "Elige a quién le asignas la cuota." };
   }
   if (scope !== "ORG" && !targetId) {
-    return { type: "error", message: "Falta el destinatario." };
+    return { type: "error", message: "Falta elegir al asesor o equipo." };
   }
   if (windowRaw !== "ONE" && windowRaw !== "TWO") {
-    return { type: "error", message: "Falta la ventana." };
+    return { type: "error", message: "Elige el tramo de días." };
   }
   // BR-009b: la cuota de la organización es el ancla de todo el reparto y la
   // fija administración.
@@ -70,8 +70,7 @@ export async function assignPerformanceQuotaAction(
   if (!isQuotaPeriodEditable(period, currentPeriodKey)) {
     return {
       type: "error",
-      message:
-        "Ese período ya terminó. Cambiar su cuota reescribiría la historia de cumplimiento.",
+      message: "Ese mes ya cerró; su cuota no se puede cambiar.",
     };
   }
 

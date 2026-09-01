@@ -37,7 +37,7 @@ const filterOptions: Array<{
   },
   {
     value: "LOGISTICS",
-    label: "Oportunidades logísticas",
+    label: "Entregas fallidas por gestionar",
   },
   {
     value: "INCIDENTS",
@@ -128,13 +128,17 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
           <p className="ui-period-bar__eyebrow">Bandeja operativa</p>
           <p className="ui-period-bar__label">
             {logistics
-              ? "Oportunidades logísticas desde el 10/08"
+              ? "Entregas fallidas por gestionar desde el 10/08"
               : "Escalaciones de todas las fechas"}
           </p>
         </div>
         <p className="max-w-xl text-sm text-ui-muted">
           {logistics
-            ? `Solo aparecen pedidos con una acción pendiente según Máximo. Última consulta: ${data.logisticsSummary.lastFetchedAtLabel ?? "aún no disponible"}.`
+            ? `Solo aparecen pedidos con una acción pendiente según Máximo. ${
+                data.logisticsSummary.lastFetchedAtLabel
+                  ? `Última consulta: ${data.logisticsSummary.lastFetchedAtLabel}.`
+                  : "Aún no se ha consultado hoy."
+              }`
             : "Las incidencias permanecen aquí hasta que un supervisor las resuelva, aunque la venta pertenezca a un período anterior."}
         </p>
       </Surface>
@@ -301,7 +305,7 @@ function StatusBadge({
 
       {order.noStatusIncident ? (
         <span className="ui-order-badge" data-tone="danger">
-          Incidencia +10 min
+          Sin avance hace más de 10 min
         </span>
       ) : null}
 
@@ -391,6 +395,94 @@ function DetailItem({
   );
 }
 
+/*
+ * Máximo responde en mayúsculas de sistema (RECHAZADO, DEUDA EXIGIBLE...).
+ * Aquí se traducen a frases que el asesor pueda leer y explicar al cliente.
+ * Los valores no contemplados caen al texto original, solo capitalizado.
+ */
+function toSentenceCase(value: string): string {
+  const normalized = value.trim().toLocaleLowerCase("es-PE");
+  if (!normalized) return value;
+  return `${normalized.charAt(0).toLocaleUpperCase("es-PE")}${normalized.slice(1)}`;
+}
+
+const agrStatusRules: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /RECHAZ/, label: "El operador rechazó la entrega" },
+  { pattern: /CANCEL/, label: "El operador canceló el pedido" },
+  { pattern: /ANUL/, label: "El operador anuló el pedido" },
+  { pattern: /DEVUEL/, label: "El pedido fue devuelto" },
+  { pattern: /NO\s*ENTREG/, label: "El operador no pudo entregar" },
+  { pattern: /AGENDADO/, label: "Entrega agendada por el operador" },
+  { pattern: /SIN\s*GESTI/, label: "El operador aún no gestiona el pedido" },
+];
+
+function getAgrStatusLabel(status: string): string {
+  const normalized = status.trim().toUpperCase();
+  const match = agrStatusRules.find((rule) => rule.pattern.test(normalized));
+  return match ? match.label : toSentenceCase(status);
+}
+
+const agrReasonRules: Array<{ pattern: RegExp; label: string }> = [
+  {
+    pattern: /FUERA DE COBERTURA/,
+    label: "La dirección está fuera de la zona de reparto",
+  },
+  {
+    pattern: /ZONA PELIGROSA/,
+    label: "El courier considera peligrosa la zona de entrega",
+  },
+  {
+    pattern: /DIRECCION NO RECUPERABLE/,
+    label: "No se pudo ubicar la dirección de entrega",
+  },
+  {
+    pattern: /TIEMPO MINIMO DE PORTA/,
+    label: "La línea no cumple los 30 días para portar",
+  },
+  {
+    pattern: /NO ESTUVO EN SERVICIO/,
+    label: "No se pudo comprobar la antigüedad de la línea",
+  },
+  {
+    pattern: /DEUDA EXIGIBLE/,
+    label: "El cliente tiene deuda pendiente con su operador",
+  },
+  {
+    pattern: /SERVICIO SUSPENDIDO/,
+    label: "La línea del cliente está suspendida",
+  },
+  {
+    pattern: /OTRA PORTA EN CURSO/,
+    label: "Hay otra portabilidad en curso para esta línea",
+  },
+  {
+    pattern: /HUELLA NO CORRESPONDE|NO CORRESPONDE AL DNI|CLIENTE NO IDENTIFICADO/,
+    label: "Falló la validación de identidad del cliente",
+  },
+  {
+    pattern: /NO CUENTA CON PIN/,
+    label: "El cliente no tenía el PIN de portabilidad",
+  },
+  {
+    pattern: /CLIENTE AUSENTE/,
+    label: "El cliente no estaba cuando llegó el courier",
+  },
+  {
+    pattern: /VISITA EN FECHA NO ACORDADA/,
+    label: "El courier fue en una fecha que el cliente no acordó",
+  },
+  {
+    pattern: /CLIENTE NO DESEA/,
+    label: "El cliente dijo que ya no quiere el servicio",
+  },
+];
+
+function getAgrReasonLabel(reason: string): string {
+  const normalized = reason.toUpperCase();
+  const match = agrReasonRules.find((rule) => rule.pattern.test(normalized));
+  return match ? match.label : toSentenceCase(reason);
+}
+
 function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
   const agr = order.agrDelivery;
   if (!agr) return null;
@@ -398,12 +490,16 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
   return (
     <section className="ui-order-notice">
       <h4 className="ui-order-notice__headline">
-        <span className="ui-order-notice__source">{agr.status}</span>
+        <span className="ui-order-notice__source">
+          {getAgrStatusLabel(agr.status)}
+        </span>
         {" · "}
         {agr.actionLabel}
       </h4>
       <dl className="ui-order-notice__details">
-        {agr.reason ? <DetailItem label="Motivo" value={agr.reason} /> : null}
+        {agr.reason ? (
+          <DetailItem label="Motivo" value={getAgrReasonLabel(agr.reason)} />
+        ) : null}
         {agr.result ? (
           <DetailItem label="Resultado" value={agr.result} />
         ) : null}
@@ -576,8 +672,8 @@ function OrderDetails({
 
         {order.parseStatus !== "PARSED" ? (
           <p className="mt-3 rounded-lg border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning">
-            Datos incompletos: vuelve a capturar con el detalle DITO desplegado
-            o corrige manualmente.
+            Faltan datos: vuelve a exportar el pedido desde DITO con el detalle
+            abierto, o complétalos a mano aquí.
           </p>
         ) : null}
       </div>
@@ -609,7 +705,7 @@ function OrderDetails({
           </div>
 
           <div>
-            <dt>Estado desde</dt>
+            <dt>En este estado desde hace</dt>
             <dd>{order.statusAgeLabel}</dd>
           </div>
 
@@ -633,10 +729,10 @@ function OrderDetails({
           </div>
 
           <div>
-            <dt>Ventana</dt>
+            <dt>Horario de entrega</dt>
             <dd>
               {order.slaState === "PENDING_SHIFT"
-                ? "Turno por asignar"
+                ? "Aún sin horario"
                 : order.deliveryWindowLabel}
             </dd>
           </div>
@@ -733,7 +829,7 @@ function OrderDetails({
                 value={
                   order.closedByName && order.closedAtLabel
                     ? `${order.closedByName} · ${order.closedAtLabel}`
-                    : "Cierre histórico sin atribución"
+                    : "Cerrada antes del sistema; no se sabe quién"
                 }
               />
             ) : null}
@@ -875,7 +971,7 @@ function MobileOrderCard({
 
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="truncate text-xs text-ui-muted">
-            Estado desde {order.statusAgeLabel}
+            En este estado desde hace {order.statusAgeLabel}
           </p>
 
           <SlaBadge order={order} />
@@ -1017,7 +1113,7 @@ function DesktopOrderList({
           {showAdvisorColumn ? <span>Asesor</span> : null}
           <span>Estado</span>
           <span>Acción</span>
-          <span>SLA</span>
+          <span>Plazo</span>
         </div>
 
         <div className="ui-order-grid__body">
@@ -1144,7 +1240,10 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             label="Contactar y validar"
             value={data.logisticsSummary.contact}
           />
-          <Metric label="Por reingresar" value={data.logisticsSummary.review} />
+          <Metric
+            label="Por volver a ingresar"
+            value={data.logisticsSummary.review}
+          />
         </MetricGroup>
       ) : (
         <>
@@ -1154,9 +1253,12 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               label={`Ventas · ${data.periodLabel}`}
               value={data.totals.visible}
             />
-            <Metric label="Entregados internos" value={data.totals.delivered} />
             <Metric
-              label={`No entregados internos · ${data.periodLabel}`}
+              label="Entregados (según nuestro registro)"
+              value={data.totals.delivered}
+            />
+            <Metric
+              label={`No entregados (según nuestro registro) · ${data.periodLabel}`}
               value={data.totals.notDelivered}
             />
             <Metric
@@ -1179,7 +1281,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               value={data.totals.escalations}
             />
             <Metric
-              label="Oportunidades logísticas"
+              label="Entregas fallidas por gestionar"
               tone={data.totals.logistics > 0 ? "warning" : "neutral"}
               value={data.totals.logistics}
             />
@@ -1220,8 +1322,8 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           <span>
             <strong>
               {data.totals.logistics === 1
-                ? "1 caso requiere revisión logística"
-                : `${data.totals.logistics} casos requieren revisión logística`}
+                ? "1 entrega fallida por gestionar"
+                : `${data.totals.logistics} entregas fallidas por gestionar`}
             </strong>
             <span className="ml-2">
               Hay pedidos para contactar, reagendar o revisar su cancelación.

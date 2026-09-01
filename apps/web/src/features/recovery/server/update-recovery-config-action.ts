@@ -74,6 +74,6 @@ export async function updateRecoveryConfigAction(
   return {
     type: "success",
     message:
-      "Filtros actualizados. Aplican a las próximas importaciones; los lotes confirmados no cambian.",
+      "Filtros actualizados. Aplican a las próximas importaciones; los archivos ya confirmados no cambian.",
   };
 }

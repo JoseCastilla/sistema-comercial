@@ -44,7 +44,7 @@ export function AssignAgentAliasForm({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-ui-muted">
-            Vínculos de alias DITO
+            Nombres con los que aparece en DITO
           </p>
 
           <p className="mt-1 text-sm text-ui-muted">
@@ -53,7 +53,7 @@ export function AssignAgentAliasForm({
         </div>
 
         <span className="rounded-full bg-ui-surface px-2.5 py-1 text-xs font-medium text-ui-muted shadow-sm">
-          {aliases.length} {aliases.length === 1 ? "alias" : "aliases"}
+          {aliases.length} {aliases.length === 1 ? "nombre" : "nombres"}
         </span>
       </div>
 
@@ -63,7 +63,6 @@ export function AssignAgentAliasForm({
             <span
               className="rounded-full border border-ui-border bg-ui-surface px-2.5 py-1 text-xs text-ui-muted"
               key={alias.id}
-              title={`Normalizado: ${alias.normalizedAlias}`}
             >
               {alias.alias}
             </span>
@@ -71,7 +70,7 @@ export function AssignAgentAliasForm({
         </div>
       ) : (
         <p className="mt-3 text-xs text-ui-muted">
-          Este asesor todavía no tiene vínculos de alias configurados.
+          Este asesor todavía no tiene nombres configurados.
         </p>
       )}
 
@@ -127,7 +126,7 @@ export function AssignAgentAliasForm({
         ].join(" ")}
       >
         {state.message ||
-          "El vínculo se usará para órdenes nuevas. Las órdenes históricas y su alias original no se modifican."}
+          "Se aplicará a las ventas nuevas; las anteriores no cambian."}
       </p>
     </div>
   );

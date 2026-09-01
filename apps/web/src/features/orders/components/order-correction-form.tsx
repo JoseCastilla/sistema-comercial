@@ -26,8 +26,8 @@ export function OrderCorrectionForm({ order }: { order: OrderInboxItem }) {
       </summary>
 
       <p className="mt-2 text-sm leading-6 text-ui-warning">
-        Esta acción modifica los datos operativos, conserva el resumen original
-        y registra tu identidad y el motivo.
+        Se cambian los datos del pedido; el original se conserva y queda
+        registrado quién corrigió y por qué.
       </p>
 
       <form action={action} className="ui-form-stack mt-4">
@@ -37,7 +37,7 @@ export function OrderCorrectionForm({ order }: { order: OrderInboxItem }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             error={state.fieldErrors?.operationRaw}
-            label="Operación completa"
+            label="Texto original de la operación"
           >
             <TextInput
               defaultValue={order.operation}
@@ -70,7 +70,7 @@ export function OrderCorrectionForm({ order }: { order: OrderInboxItem }) {
               name="carrier"
               required
             >
-              <option value="UNKNOWN">No aplica / desconocido</option>
+              <option value="UNKNOWN">No aplica</option>
               <option value="BITEL">Bitel</option>
               <option value="CLARO">Claro</option>
               <option value="ENTEL">Entel</option>
@@ -198,7 +198,7 @@ export function OrderCorrectionForm({ order }: { order: OrderInboxItem }) {
           </Field>
           <Field
             error={state.fieldErrors?.billingCycleDay}
-            label="Día de ciclo"
+            label="Día del ciclo de facturación"
           >
             <TextInput
               defaultValue={order.billingCycleDay ?? ""}
@@ -268,7 +268,7 @@ export function OrderCorrectionForm({ order }: { order: OrderInboxItem }) {
           }
         />
         <Button disabled={pending} type="submit">
-          {pending ? "Guardando corrección..." : "Guardar corrección auditada"}
+          {pending ? "Guardando corrección..." : "Guardar corrección"}
         </Button>
       </form>
     </details>

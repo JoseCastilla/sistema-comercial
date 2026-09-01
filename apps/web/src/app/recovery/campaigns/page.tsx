@@ -39,7 +39,7 @@ const statusLabels: Record<string, string> = {
   ASSIGNED: "Asignado",
   IN_PROGRESS: "En gestión",
   SCHEDULED: "Agendado",
-  WAITING: "En verificación",
+  WAITING: "Esperando confirmación de portabilidad",
 };
 
 /**
@@ -276,7 +276,7 @@ export default async function RecoveryCampaignsPage({
         <PageHeader
           eyebrow="Campañas"
           title="Mi cola de campaña"
-          description="Tus casos de base asignados y el pool de tu equipo. Un caso sin respuesta exige tres intentos en el día."
+          description="Tus casos de base asignados y los casos libres de tu equipo. Un caso sin respuesta exige tres intentos en el día."
         />
 
         <MetricGroup>
@@ -286,8 +286,8 @@ export default async function RecoveryCampaignsPage({
           <Metric
             label={
               sellingMembership
-                ? `Pool de ${sellingMembership.team.name}`
-                : "Pool del equipo"
+                ? `Casos libres de ${sellingMembership.team.name}`
+                : "Casos libres del equipo"
             }
             value={poolCount}
           />
@@ -295,15 +295,15 @@ export default async function RecoveryCampaignsPage({
 
         {sellingMembership ? (
           <SectionPanel
-            title="Tomar trabajo del pool"
-            description="Bloques de hasta 10 casos, los más recientes primero. Las habilitaciones vencidas llegan al inicio porque su ventana es más corta."
+            title="Tomar casos libres"
+            description="Bloques de hasta 10 casos, los más recientes primero. Primero los clientes que ya cumplieron los 30 días y pueden portar: hay que llamarlos antes."
           >
             <TakePoolBlockForm departments={departments} />
           </SectionPanel>
         ) : (
           <SectionPanel
             title="Sin equipo vendedor"
-            description="No tienes venta habilitada en un equipo activo, así que no puedes tomar casos del pool."
+            description="No tienes venta habilitada en un equipo activo, así que no puedes tomar casos libres."
           >
             <p className="text-sm text-ui-muted">
               Si distribuyes trabajo, hazlo desde{" "}
@@ -320,7 +320,7 @@ export default async function RecoveryCampaignsPage({
 
         <SectionPanel
           title="Mis casos"
-          description="Vencidos primero, luego lo de hoy, después los agendados; lo que está en verificación queda al fondo."
+          description="Vencidos primero, luego lo de hoy, después los agendados; lo que espera confirmación queda al fondo."
         >
           <form
             action="/recovery/campaigns"
@@ -387,12 +387,12 @@ export default async function RecoveryCampaignsPage({
                       ) : null}
                       {row.habilitationOverdue ? (
                         <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-[11px] text-ui-warning">
-                          Habilitada para portar
+                          Ya puede portar
                         </span>
                       ) : null}
                       {row.interestedWithOrder ? (
                         <span className="ml-2 rounded-full bg-ui-accent-soft px-2 py-0.5 text-[11px] text-ui-accent">
-                          Pedido en curso: ¿ya cayó?
+                          Tenía pedido en curso: pregunta si se cayó
                         </span>
                       ) : null}
                     </td>
@@ -471,8 +471,8 @@ export default async function RecoveryCampaignsPage({
                       className="px-3 py-6 text-center text-ui-muted"
                       colSpan={9}
                     >
-                      No tienes casos de campaña asignados. Toma un bloque del
-                      pool para empezar.
+                      No tienes casos de campaña asignados. Toma casos libres
+                      para empezar.
                     </td>
                   </tr>
                 ) : null}

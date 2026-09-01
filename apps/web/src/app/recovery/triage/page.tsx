@@ -250,19 +250,35 @@ export default async function RecoveryTriagePage({
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
-          title={isSupervisor ? "Triage de mi bloque" : "Triage de campaña"}
+          title={isSupervisor ? "Revisar mi bloque" : "Revisar y repartir la base"}
           description={
             isSupervisor
               ? "La base entregada a tus equipos. El DNI se copia con un clic."
-              : "Reparte bloques a los equipos o marca el chequeo manual. El DNI se copia con un clic."
+              : "Reparte bloques a los equipos o pon en espera a los que ya tienen pedido. El DNI se copia con un clic."
           }
         />
 
         <MetricGroup>
-          <Metric label="Listos para revisar" value={readyTotal} />
-          <Metric label="Esperando consulta" value={pendingTotal} />
-          <Metric label="En espera" value={waitingTotal} />
-          <Metric label="Liberados por distribuir" value={openTotal} />
+          <Metric
+            label="Listos para repartir"
+            value={readyTotal}
+            hint="Líneas ya verificadas: se pueden entregar hoy"
+          />
+          <Metric
+            label="Falta consultar"
+            value={pendingTotal}
+            hint="Aún no pasan por el reporte de portabilidad"
+          />
+          <Metric
+            label="Con pedido en curso"
+            value={waitingTotal}
+            hint="Su pedido avanza solo; salen cuando se concreta"
+          />
+          <Metric
+            label="Por repartir"
+            value={openTotal}
+            hint="Ya revisados; falta asignarlos a un equipo"
+          />
         </MetricGroup>
 
         <div className="ui-form-row">
@@ -270,13 +286,13 @@ export default async function RecoveryTriagePage({
             className={`ui-button ${view === "listos" ? "ui-button--primary" : "ui-button--secondary"}`}
             href={viewHref("listos")}
           >
-            Listos ({readyTotal.toLocaleString("es-PE")})
+            Listos para repartir ({readyTotal.toLocaleString("es-PE")})
           </a>
           <a
             className={`ui-button ${view === "pendientes" ? "ui-button--primary" : "ui-button--secondary"}`}
             href={viewHref("pendientes")}
           >
-            Esperando consulta ({pendingTotal.toLocaleString("es-PE")})
+            Falta consultar ({pendingTotal.toLocaleString("es-PE")})
           </a>
           <a
             className="ui-button ui-button--secondary"
@@ -286,14 +302,14 @@ export default async function RecoveryTriagePage({
           </a>
           <span className="pb-2 text-xs text-ui-muted">
             {view === "pendientes"
-              ? "Sin verificación completa: se pueden entregar a un equipo o liberar, sabiendo que el asesor llamaría sin confirmar la línea."
-              : "Verificados por el cruce: oportunidad confirmada."}
+              ? "Aún sin verificar: si los repartes, el asesor llamará sin saber si el cliente ya es Movistar."
+              : "Ya verificados: el cliente no es Movistar y no tiene portación en curso."}
           </span>
         </div>
 
         {openTotal > 0 ? (
           <p className="text-sm text-ui-muted">
-            Hay {openTotal.toLocaleString("es-PE")} caso(s) liberados esperando
+            Hay {openTotal.toLocaleString("es-PE")} caso(s) listos esperando
             reparto.{" "}
             <a
               className="text-ui-accent underline-offset-2 hover:underline"
@@ -306,7 +322,7 @@ export default async function RecoveryTriagePage({
 
         <SectionPanel
           title="Casos pendientes"
-          description={`${filteredTotal.toLocaleString("es-PE")} caso(s) cumplen el filtro; se muestran ${rows.length.toLocaleString("es-PE")} por página, primero los del último lote. La selección admite rango con Shift y selección por cantidad.`}
+          description={`${filteredTotal.toLocaleString("es-PE")} caso(s) cumplen el filtro; se muestran ${rows.length.toLocaleString("es-PE")} por página, primero los del último archivo cargado. Puedes marcar un rango con Shift o elegir cuántos tomar.`}
         >
           <form
             action="/recovery/triage"

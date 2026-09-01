@@ -45,7 +45,7 @@ export function ResetUserPasswordForm({
         }}
         type="button"
       >
-        {open ? "Cerrar seguridad" : "Seguridad"}
+        {open ? "Cancelar" : "Cambiar contraseña"}
       </button>
 
       {open ? (
@@ -58,8 +58,8 @@ export function ResetUserPasswordForm({
 
           {isCurrentUser ? (
             <p className="mt-3 rounded-lg border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-xs leading-5 text-ui-warning">
-              Estás modificando tu propia cuenta. Al guardar, tu sesión actual
-              será revocada y tendrás que iniciar sesión nuevamente.
+              Estás modificando tu propia cuenta. Al guardar, se cerrará tu
+              sesión y tendrás que volver a entrar.
             </p>
           ) : (
             <p className="mt-3 text-xs leading-5 text-ui-muted">

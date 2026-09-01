@@ -26,7 +26,10 @@ export async function confirmDitoImportAction(
   });
 
   if (!parsed.success) {
-    return { type: "error", message: "El lote o su versión no son válidos." };
+    return {
+      type: "error",
+      message: "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
+    };
   }
 
   const resourceFingerprint = createHash("sha256")
@@ -67,7 +70,8 @@ export async function confirmDitoImportAction(
   } catch {
     return {
       type: "error",
-      message: "No se pudo contactar a la API de importación.",
+      message:
+        "No pudimos procesar el archivo en este momento. Vuelve a intentarlo; si sigue igual, avisa a soporte.",
     };
   }
 

@@ -281,42 +281,42 @@ export function evaluateInternalLossReasonGates(
       missing:
         exhaustedDays >= 3
           ? null
-          : `Exige 3 días distintos con 3 o más intentos sin respuesta cada uno; llevas ${exhaustedDays}.`,
+          : `Necesitas 3 días distintos con 3 o más intentos sin respuesta cada uno; llevas ${exhaustedDays}.`,
     },
     RECHAZO_DEFINITIVO: {
       enabled: rejectionDays.size >= 2,
       missing:
         rejectionDays.size >= 2
           ? null
-          : `Exige dos rechazos en días distintos (llevas ${rejectionDays.size}) o la solicitud expresa del cliente de no ser contactado.`,
+          : `Necesitas dos rechazos en días distintos (llevas ${rejectionDays.size}) o la solicitud expresa del cliente de no ser contactado.`,
     },
     DEUDA: {
       enabled: contacted >= 1,
       missing:
         contacted >= 1
           ? null
-          : "Exige al menos un contacto efectivo que confirme la deuda sin fecha de solución.",
+          : "Antes registra al menos un contacto efectivo que confirme la deuda sin fecha de solución.",
     },
     DATOS_INVALIDOS: {
       enabled: wrongNumber >= 1,
       missing:
         wrongNumber >= 1
           ? null
-          : "Exige al menos un intento marcado como número errado.",
+          : "Antes registra al menos un intento marcado como número errado.",
     },
     NO_PORTABLE: {
       enabled: notPortable >= 1,
       missing:
         notPortable >= 1
           ? null
-          : "Exige un intento tipificado como no cumple los 30 días, sin fecha de habilitación determinable.",
+          : "Antes registra un intento donde el cliente no cumpla los 30 días para portar y no se conozca desde cuándo podría.",
     },
     YA_MIGRO_OTRA_AGENCIA: {
       enabled: contacted >= 1,
       missing:
         contacted >= 1
           ? null
-          : "Exige que el cliente lo haya confirmado en un contacto; si lo dice el reporte de portabilidad, el cierre es automático.",
+          : "Necesitas que el cliente lo haya confirmado en un contacto; si lo dice el reporte de portabilidad, el cierre es automático.",
     },
     OTRO: { enabled: true, missing: null },
   };

@@ -78,23 +78,23 @@ export default async function LogisticsAdminPage() {
         <PageHeader
           eyebrow="Integraciones"
           title="Estado logístico Máximo"
-          description="Consulta únicamente ventas recuperables desde el 10/08. Las entregadas o cerradas dejan de recorrerse."
+          description="Consulta únicamente ventas recuperables desde el 10/08. Las entregadas o cerradas ya no se vuelven a consultar."
         />
         <MetricGroup>
           <Metric
-            label="Credencial"
+            label="Acceso"
             tone={
               integration?.credentialStatus === "ACTIVE" ? "success" : "danger"
             }
             value={
               integration?.credentialStatus === "ACTIVE"
-                ? "Activa"
+                ? "Activo"
                 : integration
-                  ? "Requiere actualización"
+                  ? "Hay que renovarlo"
                   : "Sin configurar"
             }
           />
-          <Metric label="Casos accionables" value={opportunityCount} />
+          <Metric label="Pedidos que requieren acción" value={opportunityCount} />
           <Metric
             label="Última sincronización"
             value={
@@ -105,17 +105,20 @@ export default async function LogisticsAdminPage() {
           />
         </MetricGroup>
         {integration?.lastError ? (
-          <p className="rounded-xl border border-ui-danger-border bg-ui-danger-soft p-4 text-sm text-ui-danger">
-            {integration.lastError}
-          </p>
+          <div className="rounded-xl border border-ui-danger-border bg-ui-danger-soft p-4 text-sm text-ui-danger">
+            <p>No se pudo conectar con Máximo. Vuelve a configurar el acceso.</p>
+            <p className="mt-1 text-xs opacity-80">
+              Detalle para soporte: {integration.lastError}
+            </p>
+          </div>
         ) : null}
         <div className="grid gap-5 lg:grid-cols-2">
           <SectionPanel
-            title="Credencial de sesión"
+            title="Acceso al portal Máximo"
             description={
               integration
                 ? `Actual: ••••${integration.credentialHint} · actualizada por ${integration.credentialUpdatedBy.name} el ${format(integration.credentialUpdatedAt)}`
-                : "Configura la cookie obtenida al iniciar sesión en la plataforma logística."
+                : "Pega la clave que aparece al iniciar sesión en Máximo."
             }
           >
             <AgrDeliveryCredentialForm />

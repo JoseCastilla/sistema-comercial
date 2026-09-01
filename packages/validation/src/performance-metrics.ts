@@ -132,7 +132,7 @@ const commissionPolicy: PerformanceCommissionPolicy = {
   acceleratorWindows: [
     {
       key: "ONE",
-      label: "Acelerador 1–15",
+      label: "Bono días 1 al 15",
       windowStartDay: 1,
       windowEndDay: 15,
       tiers: [
@@ -144,7 +144,7 @@ const commissionPolicy: PerformanceCommissionPolicy = {
     {
       // BR-001: cierra con el mes, así que el 31 cuenta cuando existe.
       key: "TWO",
-      label: "Acelerador 25–fin",
+      label: "Bono del 25 a fin de mes",
       windowStartDay: 25,
       windowEndDay: null,
       tiers: [{ target: 15, amountCents: 10_000 }],

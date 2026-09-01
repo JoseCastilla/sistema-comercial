@@ -381,7 +381,7 @@ export default async function RecoveryBoardPage({
 
         <SectionPanel
           title="Avance"
-          description="Los relojes corren desde la asignación: la base sin repartir no genera alertas."
+          description="Los plazos corren desde la asignación: los casos sin repartir no generan alertas."
         >
           <dl className="flex flex-wrap gap-x-10 gap-y-3">
             <Stat
@@ -519,7 +519,7 @@ export default async function RecoveryBoardPage({
                       className="px-3 py-6 text-center text-ui-muted"
                       colSpan={10}
                     >
-                      Nadie tiene casos asignados en este alcance. Reparte
+                      Nadie tiene casos asignados en estos equipos. Reparte
                       desde Distribuir la base.
                     </td>
                   </tr>
@@ -530,19 +530,19 @@ export default async function RecoveryBoardPage({
         </SectionPanel>
 
         <SectionPanel
-          title="Conversión por cohorte"
-          description="Cada día de carga contra la meta del 3–6 %. Los descartes salen del denominador: la conversión se mide sobre oportunidad real."
+          title="Conversión por día de carga"
+          description="Cada día de carga contra la meta del 3–6 %. Los que ya eran Movistar no cuentan: la conversión se mide sobre oportunidad real."
         >
           <div className="overflow-x-auto rounded-xl border border-ui-border">
             <table className="min-w-full divide-y divide-ui-border text-sm">
               <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
                 <tr>
-                  <th className="px-3 py-1.5 font-semibold">Cohorte</th>
+                  <th className="px-3 py-1.5 font-semibold">Día de carga</th>
                   <th className="px-3 py-1.5 text-right font-semibold">
                     Casos
                   </th>
                   <th className="px-3 py-1.5 text-right font-semibold">
-                    Descartados
+                    Ya eran Movistar
                   </th>
                   <th className="px-3 py-1.5 text-right font-semibold">
                     Oportunidad real
@@ -581,14 +581,14 @@ export default async function RecoveryBoardPage({
                       </td>
                       <td className="px-3 py-1.5 text-xs">
                         {rate === null ? (
-                          <span className="text-ui-muted">Sin base</span>
+                          <span className="text-ui-muted">Todavía sin casos</span>
                         ) : rate >= 3 ? (
                           <span className="text-ui-success">
                             {rate > 6 ? "Sobre la meta" : "En rango"}
                           </span>
                         ) : (
                           <span className="text-ui-warning">
-                            En maduración
+                            Aún por debajo de la meta
                           </span>
                         )}
                       </td>

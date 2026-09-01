@@ -73,10 +73,10 @@ export function OrderRealtimeStatus() {
 
   const live = connectionState === "LIVE";
   const label = live
-    ? "En vivo"
+    ? "Actualización automática"
     : connectionState === "CONNECTING"
-      ? "Conectando"
-      : "Reconectando";
+      ? "Conectando…"
+      : "Reintentando conexión";
 
   return (
     <span

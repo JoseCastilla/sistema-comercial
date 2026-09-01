@@ -20,7 +20,7 @@ function money(cents: number): string {
 
 function percentage(value: number | null): string {
   return value === null
-    ? "Sin base"
+    ? "Todavía sin ventas para comparar"
     : new Intl.NumberFormat("es-PE", {
         style: "percent",
         maximumFractionDigits: 1,
@@ -32,14 +32,14 @@ function delta(
   comparedThroughDay: number | null,
   points = false,
 ): string {
-  if (value === null) return "Sin base comparable";
+  if (value === null) return "No hubo ventas el mes pasado para comparar";
   const sign = value > 0 ? "+" : "";
   const baseline =
     comparedThroughDay === null
-      ? "vs. mes anterior"
-      : `vs. días 1–${comparedThroughDay} del mes anterior`;
+      ? "vs. el mes pasado"
+      : `vs. los días 1–${comparedThroughDay} del mes pasado`;
   return points
-    ? `${sign}${(value * 100).toFixed(1)} pp ${baseline}`
+    ? `${sign}${(value * 100).toFixed(1)} puntos ${baseline}`
     : `${sign}${percentage(value)} ${baseline}`;
 }
 
@@ -154,7 +154,7 @@ function Funnel({ data }: { data: PerformanceDashboardData }) {
               de la etapa anterior
             </small>
           ) : (
-            <small>Cohorte ingresada en {data.monthLabel}</small>
+            <small>Ventas ingresadas en {data.monthLabel}</small>
           )}
         </div>
       ))}
@@ -171,7 +171,7 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
     1,
   );
   const isAgent = data.view === "SELF";
-  const heading = isAgent ? "Tu pulso de hoy" : "Pulso diario del alcance";
+  const heading = isAgent ? "Tu día de hoy" : "Movimiento de hoy en tu equipo";
   const motivation = isAgent
     ? pulse.entered > 0
       ? `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} hoy y ${pulse.closed} ${pulse.closed === 1 ? "cierre registrado" : "cierres registrados"}. Sigue cuidando la entrega para convertir el potencial en comisión.`
@@ -186,7 +186,7 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
           <h2 id="agent-daily-title">{pulse.todayLabel}</h2>
           <p>{motivation}</p>
         </div>
-        <span className="agent-daily__live">En curso</span>
+        <span className="agent-daily__live">Datos de hoy</span>
       </header>
 
       <div className="agent-daily__metrics">
@@ -225,7 +225,7 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
             <>
               <span>Estimación mensual</span>
               <strong>{money(data.metrics.estimatedCommissionCents)}</strong>
-              <small>Incluye base y acelerador</small>
+              <small>Incluye comisión fija y bono por metas</small>
             </>
           ) : (
             <>
@@ -299,7 +299,7 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
 
       <p className="agent-daily__notice">
         Los cierres muestran cuándo se registró la confirmación en la
-        plataforma; cada venta permanece atribuida a su cohorte de ingreso.
+        plataforma; cada venta se cuenta en el mes en que se registró.
       </p>
     </section>
   );
@@ -398,8 +398,8 @@ function SalesTrendOverview({ data }: { data: PerformanceDashboardData }) {
         </div>
       </div>
       <p className="performance-sales-trend__notice">
-        Ingresadas usa la fecha de registro; cierres usa la fecha de
-        confirmación. Son ritmos distintos, no etapas del mismo grupo.
+        Las ingresadas se cuentan el día que se registró la venta y los cierres
+        el día que se confirmó; por eso las dos líneas no coinciden.
       </p>
     </section>
   );
@@ -625,7 +625,7 @@ function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
           <strong id="sales-mix-title">Composición de ventas entregadas</strong>
           <small>
             {data.view === "SELF"
-              ? "Así se compone el total entregado de tu cohorte"
+              ? "Así se reparten tus ventas entregadas del mes"
               : `Entregadas de ${data.scopeLabel.toLocaleLowerCase("es-PE")}`}
           </small>
         </div>
@@ -696,7 +696,7 @@ export function PerformanceDashboard({
             ←
           </Link>
           <div>
-            <p className="performance-controls__eyebrow">Período de ingreso</p>
+            <p className="performance-controls__eyebrow">Mes de la venta</p>
             <p className="performance-controls__month">{data.monthLabel}</p>
           </div>
           {data.isCurrentMonth ? (
@@ -790,7 +790,7 @@ export function PerformanceDashboard({
         <Kpi
           href={reconciliationHref(data, "PAYABLE")}
           label="Portabilidades pagables"
-          supporting={`${percentage(data.metrics.payableRate)} de ${data.metrics.portability} portabilidades · ver evidencia`}
+          supporting={`${percentage(data.metrics.payableRate)} de ${data.metrics.portability} portabilidades · ver el detalle`}
           tone="positive"
           value={data.metrics.payable}
         />
@@ -875,9 +875,7 @@ export function PerformanceDashboard({
         <section className="performance-panel performance-commission">
           <header className="performance-panel__header">
             <div>
-              <p className="performance-panel__eyebrow">
-                Estimación provisional
-              </p>
+              <p className="performance-panel__eyebrow">Monto estimado</p>
               <h2>Comisión del período</h2>
               <p>
                 Se confirma únicamente con portabilidades entregadas y cerradas.
@@ -916,8 +914,8 @@ export function PerformanceDashboard({
                 <span>{accelerator.label}</span>
                 <strong>{money(accelerator.amountCents)}</strong>
                 <small>
-                  {accelerator.confirmed} confirmadas de{" "}
-                  {accelerator.eligible} ingresadas
+                  {accelerator.confirmed} cerradas de{" "}
+                  {accelerator.eligible} registradas
                   {accelerator.delivered > accelerator.confirmed
                     ? ` · ${accelerator.delivered - accelerator.confirmed} entregadas por activar`
                     : ""}
@@ -935,12 +933,12 @@ export function PerformanceDashboard({
                 .filter((accelerator) => accelerator.nextTarget !== null)
                 .map((accelerator) => (
                   <div key={`next-${accelerator.key}`}>
-                    <span>{accelerator.label}: siguiente tramo</span>
+                    <span>{accelerator.label}: te falta para el siguiente bono</span>
                     <strong>
                       {accelerator.missingForNextTarget}{" "}
                       {accelerator.missingForNextTarget === 1
-                        ? "confirmada"
-                        : "confirmadas"}
+                        ? "cerrada"
+                        : "cerradas"}
                     </strong>
                     <small>
                       para llegar a {accelerator.nextTarget} y sumar{" "}
@@ -951,8 +949,8 @@ export function PerformanceDashboard({
             </div>
           ) : null}
           <p className="performance-commission__notice">
-            No es una liquidación de nómina. Puede cambiar mientras las ventas
-            de esta cohorte maduran.
+            Todavía puede cambiar: algunas ventas aún no se entregan ni se
+            cierran. No es tu boleta de pago.
           </p>
         </section>
       ) : null}
@@ -964,7 +962,8 @@ export function PerformanceDashboard({
               <p className="performance-panel__eyebrow">Análisis detallado</p>
               <h2>Indicadores por asesor</h2>
               <p>
-                Tasas de entrega, pagables y carga pendiente por vendedor.
+                Cuánto entrega, cuánto llega a comisión y cuánto tiene
+                pendiente cada asesor.
                 {data.quotaWindow
                   ? ` La cuota mide portabilidades entregadas de ${data.quotaWindow.label.toLocaleLowerCase("es-PE")}.`
                   : ""}
@@ -984,16 +983,16 @@ export function PerformanceDashboard({
                   <th
                     title={
                       data.comparison.comparedThroughDay === null
-                        ? "Comparado contra el mes anterior completo"
-                        : `Comparado contra los días 1–${data.comparison.comparedThroughDay} del mes anterior`
+                        ? "Comparado contra el mes pasado completo"
+                        : `Comparado contra los días 1–${data.comparison.comparedThroughDay} del mes pasado`
                     }
                   >
-                    Vs. anterior
+                    Vs. mes pasado
                   </th>
                   <th>Tasa de entrega</th>
                   {data.quotaWindow ? (
                     <th
-                      title={`Cuota de ${data.quotaWindow.label}: portabilidades entregadas de esa ventana`}
+                      title={`Cuota de ${data.quotaWindow.label}: portabilidades entregadas en esos días`}
                     >
                       Cuota{data.quotaWindow.isActive ? "" : " (cerrada)"}
                     </th>

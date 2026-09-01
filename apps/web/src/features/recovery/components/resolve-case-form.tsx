@@ -11,6 +11,15 @@ const initialState: SendOrderToRecoveryActionState = {
   message: "",
 };
 
+// Mismos rótulos que usa la bandeja de pedidos para el estado DITO.
+const orderStatusLabels: Record<string, string> = {
+  OPEN: "Abierto",
+  SENT: "Enviado",
+  CLOSED: "Cerrado",
+  CANCELLED: "Cancelado",
+  UNKNOWN: "Sin clasificar",
+};
+
 const lossLabels: Record<string, string> = {
   YA_MIGRO_OTRA_AGENCIA: "Ya migró con otra agencia",
   RECHAZO_DEFINITIVO: "Rechazo definitivo",
@@ -65,7 +74,7 @@ export function ResolveCaseForm({
 
       {resolution === "RECOVERED" ? (
         <label className="block text-sm font-medium text-ui-text">
-          Orden DITO que respalda la recuperación
+          ¿Con qué venta nueva se recuperó?
           {suggestions.length > 0 ? (
             <select
               className="mt-1 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2"
@@ -79,7 +88,7 @@ export function ResolveCaseForm({
               {suggestions.map((order) => (
                 <option key={order.id} value={order.id}>
                   {order.orderCode} · {order.registeredAtLabel} ·{" "}
-                  {order.status}
+                  {orderStatusLabels[order.status] ?? order.status}
                 </option>
               ))}
             </select>
@@ -105,7 +114,9 @@ export function ResolveCaseForm({
                 .filter(([value]) => canUseOther || value !== "OTRO")
                 .map(([value, label]) => (
                   <option key={value} value={value}>
-                    {gates[value]?.enabled === false ? `⏳ ${label}` : label}
+                    {gates[value]?.enabled === false
+                      ? `⏳ ${label} (aún no disponible)`
+                      : label}
                   </option>
                 ))}
             </select>

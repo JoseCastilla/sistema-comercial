@@ -35,19 +35,19 @@ export function AgrDeliveryCredentialForm() {
   return (
     <form action={action} className="space-y-4">
       <label className="block text-sm font-medium text-ui-text">
-        Nueva cookie de sesión
+        Nueva clave de acceso al portal
         <input
           autoComplete="off"
           className="mt-1 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2 font-mono text-sm"
           name="sessionCookie"
-          placeholder="Pega únicamente el valor de la cookie"
+          placeholder="Pega la clave que copiaste del portal"
           required
           type="password"
         />
       </label>
       <p className="text-xs text-ui-muted">
-        El valor se prueba contra una venta desde el 10/08 y se almacena
-        cifrado. Nunca se vuelve a mostrar.
+        La clave se prueba contra una venta desde el 10/08 y se guarda
+        cifrada. Nunca se vuelve a mostrar.
       </p>
       <Feedback state={state} />
       <button
@@ -69,7 +69,7 @@ export function AgrDeliverySyncForm() {
   return (
     <form action={action} className="space-y-3">
       <label className="block text-sm font-medium text-ui-text">
-        Alcance
+        Qué ventas revisar
         <select
           className="mt-1 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2 text-sm"
           defaultValue="LAST_24H"

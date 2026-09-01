@@ -24,10 +24,10 @@ export function RevealSensitiveForm({ caseId }: { caseId: string }) {
     <form action={formAction} className="space-y-2">
       <input name="caseId" type="hidden" value={caseId} />
       <Button disabled={pending} type="submit" variant="secondary">
-        {pending ? "Revelando…" : "Revelar datos de validación"}
+        {pending ? "Mostrando…" : "Ver datos para validar identidad"}
       </Button>
       <p className="text-xs leading-5 text-ui-muted">
-        La revelación queda auditada con tu usuario, el caso y la hora.
+        Queda registrado que tú los viste, en qué caso y a qué hora.
       </p>
       <InlineFeedback
         message={state.message}

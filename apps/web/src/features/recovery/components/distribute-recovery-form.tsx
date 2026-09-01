@@ -165,8 +165,8 @@ export function DistributeRecoveryForm({
           {selected.size.toLocaleString("es-PE")} de{" "}
           {rows.length.toLocaleString("es-PE")} casos seleccionados. Mantén{" "}
           <kbd className="rounded border border-ui-border px-1">Shift</kbd> para
-          seleccionar un rango. Para repartir entre equipos, selecciona N y
-          asigna un sub-lote por equipo.
+          seleccionar un rango. Para repartir entre equipos, marca una cantidad
+          y asígnala a un equipo; luego repite con el resto.
         </span>
       </div>
 
@@ -202,8 +202,8 @@ export function DistributeRecoveryForm({
             </Button>
           </div>
           <p className="mt-2 text-xs leading-5 text-ui-muted">
-            Todo el lote va a un asesor concreto, de cualquier equipo dentro de
-            tu alcance.
+            Todos los casos marcados van a un solo asesor, de cualquiera de tus
+            equipos.
           </p>
         </div>
 
@@ -269,8 +269,8 @@ export function DistributeRecoveryForm({
             </ul>
           )}
           <p className="mt-2 text-xs leading-5 text-ui-muted">
-            Reparto en ronda con diferencia máxima de un caso. Desmarca a quien
-            no trabaja hoy: la exclusión queda registrada en el lote.
+            Se reparte parejo (a lo más un caso de diferencia). Desmarca a quien
+            no trabaja hoy; queda registrado quién quedó fuera.
           </p>
         </div>
 
@@ -304,8 +304,8 @@ export function DistributeRecoveryForm({
             </Button>
           </div>
           <p className="mt-2 text-xs leading-5 text-ui-muted">
-            Sin nominar asesor: cada uno toma bloques de hasta 10 casos y la
-            toma es atómica.
+            Sin nominar asesor: cada asesor toma hasta 10 casos y nadie puede
+            tomar los mismos.
           </p>
         </div>
       </div>
@@ -345,7 +345,7 @@ export function DistributeRecoveryForm({
               <th className="px-3 py-2">Plan</th>
               <th className="px-3 py-2">Equipo</th>
               <th className="px-3 py-2">Responsable</th>
-              <th className="px-3 py-2">Último registro</th>
+              <th className="px-3 py-2">Última vez en la base</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-ui-border bg-ui-surface">
@@ -375,12 +375,12 @@ export function DistributeRecoveryForm({
                   {row.holderName}
                   {row.habilitationOverdue ? (
                     <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-[11px] text-ui-warning">
-                      Habilitación vencida
+                      Ya puede portar
                     </span>
                   ) : null}
                   {row.unverified ? (
                     <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-[11px] text-ui-warning">
-                      Sin verificar
+                      Falta consultar portabilidad
                     </span>
                   ) : null}
                 </td>
@@ -401,7 +401,7 @@ export function DistributeRecoveryForm({
                 </td>
                 <td className="px-3 py-2 text-xs">
                   {row.assignedToName ?? (
-                    <span className="text-ui-muted">Libre</span>
+                    <span className="text-ui-muted">Sin asignar</span>
                   )}
                 </td>
                 <td className="px-3 py-2 text-xs text-ui-muted">

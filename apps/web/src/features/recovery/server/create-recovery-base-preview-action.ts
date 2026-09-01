@@ -86,7 +86,8 @@ export async function createRecoveryBasePreviewAction(
   } catch {
     return {
       type: "error",
-      message: "No se pudo contactar a la API local de importación.",
+      message:
+        "No pudimos procesar el archivo en este momento. Vuelve a intentarlo; si sigue igual, avisa a soporte.",
     };
   }
 

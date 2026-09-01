@@ -247,7 +247,7 @@ export async function registerRecoveryAttemptAction(
   if (outcome.kind === "NOT_FOUND") {
     return {
       type: "error",
-      message: "El caso no existe, ya se resolvió o está fuera de tu alcance.",
+      message: "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
     };
   }
 

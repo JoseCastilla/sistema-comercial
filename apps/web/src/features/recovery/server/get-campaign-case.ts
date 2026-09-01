@@ -10,6 +10,8 @@ import {
 
 import { database } from "@/server/database";
 
+import { lossReasonLabels } from "../loss-reason-labels";
+
 import type { SalesRecoveryAccess } from "./get-sales-recovery-inbox";
 import type { LossReasonGate, RecoveryLossReasonOption } from "@repo/validation";
 
@@ -312,8 +314,13 @@ export async function getCampaignCase(
       ? recoveryCase.status === "RECOVERED"
         ? `Recuperado con ${recoveryCase.recoveredDitoOrder?.orderCodeRaw ?? "orden vinculada"}`
         : recoveryCase.status === "LOST"
-          ? `Perdido · ${recoveryCase.lossReason ?? ""}`
-          : "Descartado"
+          ? `Perdido · ${
+              recoveryCase.lossReason
+                ? (lossReasonLabels[String(recoveryCase.lossReason)] ??
+                  String(recoveryCase.lossReason))
+                : ""
+            }`
+          : "Cerrado: ya era Movistar"
       : null,
     reportedActive,
     interestedWithOrder,
@@ -357,7 +364,7 @@ export async function getCampaignCase(
         !canReveal &&
         isAssignedToViewer &&
         !isResolved
-          ? "Se revelan tras registrar un intento con resultado INTERESADO."
+          ? "Se muestran tras registrar un intento donde el cliente se muestre interesado."
           : null,
       fatherName: revealed ? recoveryCase.fatherName : null,
       motherName: revealed ? recoveryCase.motherName : null,

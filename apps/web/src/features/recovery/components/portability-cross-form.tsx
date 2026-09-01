@@ -24,7 +24,7 @@ export function PortabilityCrossForm() {
     <form action={formAction} className="space-y-2">
       <div className="ui-form-row">
         <label className="ui-form-row__grow">
-          <span className="ui-label-eyebrow">Reporte de la consulta</span>
+          <span className="ui-label-eyebrow">Archivo del reporte de portabilidad</span>
           <input
             accept=".csv,.txt,text/csv,text/plain"
             className="ui-file-input"
@@ -35,12 +35,14 @@ export function PortabilityCrossForm() {
           />
         </label>
         <label className="ui-form-row__fixed">
-          <span className="ui-label-eyebrow">Columna · solo cruce rápido</span>
+          <span className="ui-label-eyebrow">
+            Columna con los números (solo cruce rápido)
+          </span>
           <input
             className="block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
             disabled={pending}
             name="quickColumn"
-            placeholder="Se detecta sola"
+            placeholder="Normalmente se detecta sola"
             type="text"
           />
         </label>

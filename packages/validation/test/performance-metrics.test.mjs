@@ -32,7 +32,7 @@ test("41 portabilidades confirmadas de la primera quincena generan S/ 310", () =
 
   assert.deepEqual(result, {
     key: "ONE",
-    label: "Acelerador 1–15",
+    label: "Bono días 1 al 15",
     eligible: 41,
     delivered: 41,
     confirmed: 41,
@@ -274,7 +274,7 @@ test("la política de comisiones es la única fuente de tarifas y tramos", () =>
   assert.deepEqual(policy.acceleratorWindows, [
     {
       key: "ONE",
-      label: "Acelerador 1–15",
+      label: "Bono días 1 al 15",
       windowStartDay: 1,
       windowEndDay: 15,
       tiers: [
@@ -285,7 +285,7 @@ test("la política de comisiones es la única fuente de tarifas y tramos", () =>
     },
     {
       key: "TWO",
-      label: "Acelerador 25–fin",
+      label: "Bono del 25 a fin de mes",
       windowStartDay: 25,
       windowEndDay: null,
       tiers: [{ target: 15, amountCents: 10_000 }],

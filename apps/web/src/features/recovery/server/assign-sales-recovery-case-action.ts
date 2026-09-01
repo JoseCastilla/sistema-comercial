@@ -171,7 +171,7 @@ export async function assignSalesRecoveryCaseAction(
   if (outcome.kind === "NOT_FOUND") {
     return {
       type: "error",
-      message: "El caso no existe, ya se resolvió o está fuera de tu alcance.",
+      message: "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
     };
   }
   if (outcome.kind === "ORIGINATOR_BLOCKED") {
@@ -185,7 +185,7 @@ export async function assignSalesRecoveryCaseAction(
     return {
       type: "error",
       message:
-        "El asesor destino no está activo con venta habilitada dentro de tu alcance.",
+        "El asesor destino no está activo con venta habilitada en tus equipos.",
     };
   }
 

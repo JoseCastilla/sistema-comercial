@@ -31,7 +31,7 @@ export async function saveAgrDeliveryCredentialAction(
   ) {
     return {
       type: "error",
-      message: "La cookie de sesión no tiene un formato válido.",
+      message: "La clave de acceso no tiene un formato válido.",
     };
   }
 
@@ -81,7 +81,7 @@ export async function saveAgrDeliveryCredentialAction(
     revalidatePath("/admin/logistics");
     return {
       type: "success",
-      message: "Conexión validada. La cookie quedó guardada de forma cifrada.",
+      message: "Conexión validada. La clave quedó guardada de forma segura.",
     };
   } catch (error) {
     return {
@@ -89,7 +89,7 @@ export async function saveAgrDeliveryCredentialAction(
       message:
         error instanceof Error
           ? error.message
-          : "No se pudo validar la cookie.",
+          : "No se pudo validar la clave de acceso.",
     };
   }
 }
@@ -111,7 +111,7 @@ export async function runAgrDeliverySyncAction(
   if (!result)
     return {
       type: "error",
-      message: "Configura una cookie activa antes de sincronizar.",
+      message: "Configura la clave de acceso antes de sincronizar.",
     };
   if ("error" in result) {
     return {
@@ -124,12 +124,15 @@ export async function runAgrDeliverySyncAction(
   if (result.candidates === 0) {
     return {
       type: "success",
-      message: `No hay ventas por consultar en el alcance "${alcance}".`,
+      message:
+        window === "ALL"
+          ? "No hay ventas por revisar."
+          : `No hay ventas de ${alcance} por revisar.`,
     };
   }
 
   return {
     type: "success",
-    message: `${alcance}: ${result.consulted} consultadas, ${result.opportunities} oportunidades.`,
+    message: `${AGR_SYNC_WINDOWS[window].label}: ${result.consulted} pedidos revisados, ${result.opportunities} requieren acción.`,
   };
 }

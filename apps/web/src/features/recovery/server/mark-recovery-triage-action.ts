@@ -42,7 +42,10 @@ export async function markRecoveryTriageAction(
     decision !== "LIBERADO" &&
     decision !== "ASIGNAR_EQUIPO"
   ) {
-    return { type: "error", message: "La decisión de triage no es válida." };
+    return {
+      type: "error",
+      message: "No se reconoce la acción. Recarga la página.",
+    };
   }
 
   const caseIds = formData
@@ -127,7 +130,7 @@ export async function markRecoveryTriageAction(
     return {
       type: "error",
       message:
-        "Ninguno de los casos seleccionados podía cambiar a ese estado dentro de tu alcance.",
+        "Ninguno de los casos seleccionados podía cambiar a ese estado en tus equipos.",
     };
   }
 
@@ -136,7 +139,7 @@ export async function markRecoveryTriageAction(
     message:
       decision === "EN_ESPERA"
         ? `${affected} caso(s) quedaron en espera y reaparecerán en la revisión de mañana.`
-        : `${affected} caso(s) liberados, listos para asignar al equipo.`,
+        : `${affected} caso(s) quedaron listos para repartir.`,
   };
 }
 
@@ -218,7 +221,7 @@ async function assignTeam(
 
   return {
     type: "success",
-    message: `${affected} caso(s) asignados al equipo ${team.name}. Su supervisor ya los ve en su triage.`,
+    message: `${affected} caso(s) asignados al equipo ${team.name}. Su supervisor ya los ve en su bandeja.`,
   };
 }
 

@@ -87,7 +87,8 @@ export async function applyPortabilityAction(
   } catch {
     return {
       type: "error",
-      message: "No se pudo contactar a la API local de importación.",
+      message:
+        "No pudimos procesar el archivo en este momento. Vuelve a intentarlo; si sigue igual, avisa a soporte.",
     };
   }
 
@@ -108,20 +109,22 @@ export async function applyPortabilityAction(
   const summary = (payload ?? {}) as Partial<CrossSummary>;
 
   const parts = [
-    `${summary.matchedServices ?? 0} línea(s) cruzadas de ${summary.totalRows ?? 0} consultadas`,
-    `${summary.discardedCases ?? 0} caso(s) descartados por ya estar en Movistar`,
-    `${summary.waitingCases ?? 0} en espera por portación en curso`,
-    `${summary.scheduledServices ?? 0} agendadas por los 30 días`,
+    `${summary.matchedServices ?? 0} línea(s) encontradas en la base de ${summary.totalRows ?? 0} consultadas`,
+    `${summary.discardedCases ?? 0} caso(s) cerrados porque ya eran Movistar`,
+    `${summary.waitingCases ?? 0} pasaron a espera: están portando a Movistar`,
+    `${summary.scheduledServices ?? 0} agendadas hasta cumplir los 30 días desde su última portación`,
   ];
 
   if ((summary.revalidationCases ?? 0) > 0) {
     parts.push(
-      `${summary.revalidationCases} sin fecha visible, se revalidan mañana`,
+      `${summary.revalidationCases} portan sin fecha visible, se revisan con el próximo reporte`,
     );
   }
 
   if ((summary.plantLineServices ?? 0) > 0) {
-    parts.push(`${summary.plantLineServices} línea(s) de planta`);
+    parts.push(
+      `${summary.plantLineServices} línea(s) que nunca han portado (planta)`,
+    );
   }
 
   // Un archivo ya conocido no crea un lote nuevo, pero sí vuelve a cruzarse

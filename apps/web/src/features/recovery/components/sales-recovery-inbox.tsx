@@ -20,7 +20,7 @@ const statusLabels: Record<string, string> = {
   ASSIGNED: "Asignado",
   IN_PROGRESS: "En gestión",
   SCHEDULED: "Agendado",
-  WAITING: "En espera",
+  WAITING: "Esperando confirmación",
 };
 
 const priorityLabels: Record<string, string> = {
@@ -39,7 +39,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
   return (
     <div className="ui-page-stack">
       <PageHeader
-        description="Ventas propias caídas o no entregadas que todavía pueden salvarse. El primer contacto vence a las dos horas de la novedad."
+        description="Ventas propias caídas o no entregadas que todavía pueden salvarse. El primer contacto vence a las dos horas de que la venta se cayó."
         eyebrow={data.scopeLabel}
         meta={<span>Actualizado: {data.generatedAt}</span>}
         title="Recupero de ventas"
@@ -52,7 +52,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
         <article>
           <span>Casos abiertos</span>
           <strong>{data.totals.open}</strong>
-          <small>Del carril de ventas propias</small>
+          <small>De nuestras propias ventas</small>
         </article>
         <article data-tone={data.totals.overdue > 0 ? "attention" : undefined}>
           <span>Primer contacto vencido</span>
@@ -66,7 +66,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
         >
           <span>Críticas sin responsable</span>
           <strong>{data.totals.criticalUnassigned}</strong>
-          <small>Requieren reasignación de supervisión</small>
+          <small>El supervisor debe asignarlos a otro asesor</small>
         </article>
         <article data-tone="positive">
           <span>Recuperadas este mes</span>
@@ -81,8 +81,8 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
             <p className="performance-panel__eyebrow">Cola de trabajo</p>
             <h2>Casos por prioridad</h2>
             <p>
-              Crítica nunca vuelve a quien originó la venta; el resto conserva
-              a su asesor durante el Día 0.
+              Crítica nunca vuelve a quien originó la venta; el resto se queda
+              con su asesor el primer día.
             </p>
           </div>
         </header>
@@ -119,7 +119,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
                     ) : (
                       "—"
                     )}
-                    <small>Novedad {item.noveltyAtLabel}</small>
+                    <small>Se cayó el {item.noveltyAtLabel}</small>
                   </td>
                   <td>
                     {item.entryReason

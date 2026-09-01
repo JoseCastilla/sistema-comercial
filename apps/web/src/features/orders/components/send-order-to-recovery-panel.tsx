@@ -26,7 +26,7 @@ const statusLabels: Record<string, string> = {
   ASSIGNED: "Asignado",
   IN_PROGRESS: "En gestión",
   SCHEDULED: "Agendado",
-  TRIAGE: "En triage",
+  TRIAGE: "Por revisar",
   WAITING: "En espera",
 };
 

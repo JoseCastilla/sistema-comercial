@@ -212,8 +212,8 @@ export function CommercialAppShell({
       ? "/recovery/triage"
       : "/recovery/campaigns";
   const campaignsDescription = canTriageRecovery
-    ? "Prospección sobre base fría"
-    : "Mi cola y el pool del equipo";
+    ? "Clientes nuevos por contactar"
+    : "Mi cola y los casos libres del equipo";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(role === "AGENT");
 
   useEffect(() => {
@@ -323,14 +323,14 @@ export function CommercialAppShell({
               />
               <NavigationItem
                 active={activeSection === "logistics"}
-                description="Estados Máximo y recuperación"
+                description="Estado de entregas en Máximo"
                 href="/admin/logistics"
                 icon="logistics"
                 label="Logística"
               />
               <NavigationItem
                 active={activeSection === "people"}
-                description="Usuarios, roles y vínculos DITO"
+                description="Usuarios, roles y nombres de DITO"
                 href="/admin/users"
                 icon="people"
                 label="Personas"

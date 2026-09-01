@@ -10,15 +10,15 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
   return (
     <div className="ui-page-stack">
       <PageHeader
-        description="La cuota se mide en portabilidades entregadas de la ventana. No paga por sí misma: lo que paga son la comisión base y los aceleradores."
+        description="La cuota se mide en portabilidades entregadas en el tramo de días. No paga por sí misma: lo que paga son la comisión fija y los bonos."
         eyebrow="Rendimiento"
         meta={<Link href="/performance">← Volver a rendimiento</Link>}
-        title="Cuotas por ventana"
+        title="Cuotas por tramo de días"
       />
 
       <section className="performance-controls ui-surface">
         <div>
-          <p className="performance-controls__eyebrow">Período y ventana</p>
+          <p className="performance-controls__eyebrow">Mes y tramo de días</p>
           <p className="performance-controls__month">
             {data.periodLabel} · {data.windowLabel}
           </p>
@@ -35,7 +35,7 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
             />
           </label>
           <label>
-            <span>Ventana</span>
+            <span>Tramo de días</span>
             <select defaultValue={data.window} name="window">
               {data.windowOptions.map((option) => (
                 <option key={option.key} value={option.key}>
@@ -50,8 +50,8 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
 
       {!data.editable ? (
         <p className="rounded-lg border border-ui-warning-border bg-ui-warning-soft px-4 py-3 text-sm text-ui-warning">
-          Este período ya terminó, así que sus cuotas quedaron congeladas.
-          Cambiarlas reescribiría la historia de cumplimiento.
+          Este mes ya cerró: las cuotas no se pueden cambiar porque alterarían
+          los resultados ya publicados.
         </p>
       ) : null}
 
@@ -117,7 +117,7 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
               <thead>
                 <tr>
                   <th>Asesor</th>
-                  <th>Cuota de la ventana</th>
+                  <th>Cuota del tramo</th>
                 </tr>
               </thead>
               <tbody>
@@ -155,7 +155,7 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
 
       {data.teams.length === 0 ? (
         <p className="rounded-lg border border-ui-border bg-ui-surface px-4 py-3 text-sm text-ui-muted">
-          No hay equipos dentro de tu alcance.
+          No hay equipos a tu cargo.
         </p>
       ) : null}
     </div>

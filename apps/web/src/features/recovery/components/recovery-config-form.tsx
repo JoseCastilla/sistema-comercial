@@ -68,7 +68,7 @@ export function RecoveryConfigForm({
         <ListField
           defaultValue={planNames}
           hint="Un plan por línea, tal como aparece en Plan Móvil."
-          label="Planes elegibles"
+          label="Planes que entran a la campaña"
           name="planNames"
           rows={4}
         />
@@ -81,7 +81,7 @@ export function RecoveryConfigForm({
         />
         <ListField
           defaultValue={modalities}
-          label="Modalidades"
+          label="Modalidad de venta"
           name="modalities"
           rows={2}
         />

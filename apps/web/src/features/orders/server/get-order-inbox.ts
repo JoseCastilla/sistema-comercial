@@ -235,7 +235,7 @@ function createLocationLabel(
 
 function createWindowLabel(start: Date | null, end: Date | null): string {
   if (!start || !end) {
-    return "Turno pendiente";
+    return "Sin horario asignado";
   }
 
   const sameBusinessDate =
@@ -297,7 +297,7 @@ function getSentSubstatusLabel(
 ): string | null {
   switch (substatus) {
     case "NO_STATUS":
-      return "Sin estado";
+      return "El operador aún no reporta";
 
     case "ASSIGNED":
       return "Asignado";
@@ -354,14 +354,14 @@ function getSlaState(
     ) {
       return {
         state: "PENDING_SHIFT",
-        label: "Turno pendiente",
+        label: "Sin horario asignado",
         detail: null,
       };
     }
 
     return {
       state: "NO_DEADLINE",
-      label: "Sin plazo calculado",
+      label: "Todavía sin plazo",
       detail: null,
     };
   }
@@ -1290,9 +1290,9 @@ export async function getOrderInbox(
         order.agentUserId && order.assignedTeamId
           ? "Asignado"
           : order.agentUserId || order.assignedTeamId
-            ? "Asignación incompleta"
+            ? "Falta el asesor o el equipo"
             : order.submitterEmailNormalized
-              ? "Requiere revisión"
+              ? "Falta confirmar a quién pertenece"
               : "Sin asignar",
       parseStatus: String(order.parseStatus),
       deliveryStatus,

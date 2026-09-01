@@ -89,7 +89,7 @@ export function EscalationNotification({ role }: { role: string }) {
         >
           <span aria-hidden="true">🔔</span>
           <span>{count}</span>
-          <span className="hidden sm:inline">ticket(s) por atender</span>
+          <span className="hidden sm:inline">incidencia(s) por atender</span>
         </Link>
       ) : null}
       {recoveryOverdue > 0 ? (

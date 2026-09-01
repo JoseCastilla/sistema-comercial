@@ -4,6 +4,8 @@ import { evaluateInternalLossReasonGates } from "@repo/validation";
 
 import { database } from "@/server/database";
 
+import { lossReasonLabels } from "../loss-reason-labels";
+
 import type { SalesRecoveryAccess } from "./get-sales-recovery-inbox";
 import type { LossReasonGate, RecoveryLossReasonOption } from "@repo/validation";
 
@@ -196,8 +198,13 @@ export async function getSalesRecoveryCase(
       ? recoveryCase.status === "RECOVERED"
         ? `Recuperado con ${recoveryCase.recoveredDitoOrder?.orderCodeRaw ?? "orden vinculada"}`
         : recoveryCase.status === "LOST"
-          ? `Perdido · ${recoveryCase.lossReason ?? ""}`
-          : "Descartado"
+          ? `Perdido · ${
+              recoveryCase.lossReason
+                ? (lossReasonLabels[String(recoveryCase.lossReason)] ??
+                  String(recoveryCase.lossReason))
+                : ""
+            }`
+          : "Cerrado: ya era Movistar"
       : null,
     canManage:
       !isResolved &&

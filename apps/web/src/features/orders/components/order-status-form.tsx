@@ -39,7 +39,7 @@ const sentSubstatusOptions = [
   {
     value: "NO_STATUS",
 
-    label: "Sin estado",
+    label: "El operador aún no reporta",
   },
   {
     value: "ASSIGNED",
@@ -171,7 +171,9 @@ export function OrderStatusForm({
         </label>
 
         <label className="space-y-1.5 text-sm">
-          <span className="font-medium text-ui-text">Subestado de Enviado</span>
+          <span className="font-medium text-ui-text">
+            ¿En qué va la entrega?
+          </span>
 
           <select
             className="w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-ui-text disabled:bg-ui-subtle"

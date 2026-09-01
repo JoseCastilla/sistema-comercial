@@ -188,7 +188,8 @@ export async function resolveDitoImportConflictAction(
   if (result.type === "INVALID") {
     return {
       type: "error",
-      message: "Este conflicto requiere un flujo especializado.",
+      message:
+        "Este caso se resuelve desde la pantalla de correcciones del pedido.",
     };
   }
 

@@ -92,7 +92,7 @@ export function OrderEscalationPanel({ order }: { order: OrderInboxItem }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h4 className="text-sm font-semibold text-ui-text">
-            Escalamiento al supervisor
+            Pedir ayuda al supervisor
           </h4>
           <p className="mt-1 text-xs text-ui-muted">
             La incidencia se gestiona sin cambiar el estado del pedido.
@@ -118,7 +118,7 @@ export function OrderEscalationPanel({ order }: { order: OrderInboxItem }) {
             {priorityLabels[escalation.priority] ?? escalation.priority}
           </p>
           <p className="text-ui-muted">
-            <strong className="text-ui-text">Tipo de ticket:</strong>{" "}
+            <strong className="text-ui-text">Tipo de incidencia:</strong>{" "}
             {templateTypeLabels[escalation.templateType] ??
               escalation.templateType}
           </p>
@@ -253,7 +253,7 @@ export function OrderEscalationPanel({ order }: { order: OrderInboxItem }) {
             <input name="category" type="hidden" value="OTHER" />
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-sm font-medium text-ui-text">
-                Tipo de ticket
+                Tipo de incidencia
                 <select
                   className="mt-1 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2"
                   defaultValue="LOGISTICS_NOT_MANAGED"

@@ -67,13 +67,12 @@ export function TakePoolBlockForm({
           />
         </label>
         <Button disabled={pending} type="submit">
-          {pending ? "Tomando…" : "Tomar bloque"}
+          {pending ? "Tomando…" : "Tomar casos"}
         </Button>
       </div>
       <p className="text-xs leading-5 text-ui-muted">
-        Recibes los casos más recientes que cumplan tu filtro — primero las
-        habilitaciones vencidas. La toma es atómica: nadie más puede llevarse
-        los mismos casos.
+        Recibes los casos más recientes que cumplan tu filtro; primero los que
+        ya pueden portar. Nadie más puede tomar los mismos casos.
       </p>
       <InlineFeedback
         message={state.message}

@@ -128,8 +128,7 @@ export async function assignAgentAliasAction(
     ) {
       return {
         type: "error",
-        message:
-          "El asesor necesita un equipo primario activo antes de vincular aliases DITO.",
+        message: "Primero asigna al asesor a un equipo.",
       };
     }
 

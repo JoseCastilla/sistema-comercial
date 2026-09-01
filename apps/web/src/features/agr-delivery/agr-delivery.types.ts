@@ -13,7 +13,7 @@ export const AGR_SYNC_WINDOWS = {
   LAST_24H: { label: "Últimas 24 horas", hours: 24 },
   LAST_3D: { label: "Últimos 3 días", hours: 72 },
   LAST_7D: { label: "Últimos 7 días", hours: 168 },
-  ALL: { label: "Todas las elegibles", hours: null },
+  ALL: { label: "Todas las que aplican", hours: null },
 } as const;
 
 export type AgrSyncWindow = keyof typeof AGR_SYNC_WINDOWS;

@@ -21,7 +21,7 @@ const attemptResultLabels: Record<string, string> = {
   RECHAZA: "Rechaza",
   AGENDA: "Agenda",
   NUMERO_ERRADO: "Número errado",
-  NO_CUMPLE_30D: "No cumple 30 días",
+  NO_CUMPLE_30D: "No cumple los 30 días para portar",
   YA_ACTIVO: "Ya activo",
   DATOS_INVALIDOS: "Datos inválidos",
   VENDIDO: "Vendido",
@@ -31,7 +31,15 @@ const portabilityLabels: Record<string, string> = {
   PORTADO: "Portado",
   NO_PORTADO: "No portado",
   PROGRAMADO: "Programado",
-  DESCONOCIDO: "Sin consulta",
+  DESCONOCIDO: "Aún no consultada",
+};
+
+const channelLabels: Record<string, string> = {
+  LLAMADA: "Llamada",
+  WHATSAPP: "WhatsApp",
+  SMS: "SMS",
+  PRESENCIAL: "Presencial",
+  OTRO: "Otro",
 };
 
 export default async function CampaignCasePage({
@@ -67,10 +75,10 @@ export default async function CampaignCasePage({
         <PageHeader
           eyebrow="Campañas"
           title={detail.holderName}
-          description={`Caso de base nacional · ${detail.teamName ?? "sin equipo"} · visto por última vez el ${detail.lastSightingLabel}${
+          description={`Caso de base nacional · ${detail.teamName ?? "sin equipo"} · ${
             detail.sightingCount > 1
-              ? ` · ${detail.sightingCount} apariciones`
-              : ""
+              ? `apareció ${detail.sightingCount} veces en la base; la última el ${detail.lastSightingLabel}`
+              : `apareció en la base el ${detail.lastSightingLabel}`
           }`}
         />
 
@@ -100,8 +108,9 @@ export default async function CampaignCasePage({
               <VerifyReportedForm caseId={detail.id} />
             ) : (
               <p className="text-sm text-ui-muted">
-                Sus líneas saldrán en la próxima exportación; el cruce o tu
-                supervisor decidirán. Mientras tanto no exige gestión.
+                Su número entra en la próxima consulta de portabilidad; ahí se
+                confirma, o lo decide tu supervisor. Mientras tanto no exige
+                gestión.
               </p>
             )}
           </SectionPanel>
@@ -110,7 +119,7 @@ export default async function CampaignCasePage({
         {detail.interestedWithOrder && !detail.isResolved ? (
           <SectionPanel
             title="Interesado con pedido en curso"
-            description="El cliente quiere, pero otra agencia ya le envió un pedido. Reaparece cada mañana para re-contactar; el cruce vigila en paralelo."
+            description="El cliente quiere, pero otra agencia ya le envió un pedido. Reaparece cada mañana para re-contactar; el cruce lo sigue revisando."
           >
             <p className="text-sm text-ui-muted">
               Si el cliente confirma que el pedido anterior cayó, registra{" "}
@@ -214,7 +223,7 @@ export default async function CampaignCasePage({
                       />
                       {service.isPlantLine ? (
                         <span className="ml-2 text-[11px] text-ui-muted">
-                          planta
+                          línea de planta (nunca ha portado)
                         </span>
                       ) : null}
                     </td>
@@ -235,9 +244,9 @@ export default async function CampaignCasePage({
                       {service.discarded
                         ? "Descartada"
                         : (portabilityLabels[service.portabilityState ?? ""] ??
-                          "Sin consulta")}
+                          "Aún no consultada")}
                       {service.portabilityEligibleLabel
-                        ? ` · habilitada el ${service.portabilityEligibleLabel}`
+                        ? ` · puede portar desde el ${service.portabilityEligibleLabel}`
                         : ""}
                     </td>
                   </tr>
@@ -262,7 +271,7 @@ export default async function CampaignCasePage({
         {detail.sensitive.requiresValidation ? (
           <SectionPanel
             title="Validación de identidad"
-            description="Datos sensibles del titular: se revelan solo al asesor asignado y tras un intento con resultado INTERESADO."
+            description="Datos sensibles del titular: se muestran solo al asesor asignado y después de registrar un intento donde el cliente se muestre interesado."
           >
             {detail.sensitive.revealed ? (
               <div className="space-y-1 text-sm">
@@ -287,7 +296,7 @@ export default async function CampaignCasePage({
         {detail.canManage && !detail.isResolved ? (
           <SectionPanel
             title="Registrar intento"
-            description="El intento es inmutable. Sin respuesta exige tres intentos en el día; una agenda suspende la cadencia hasta la fecha acordada."
+            description="Lo que registres no se puede editar después. Si no contesta, intenta 3 veces en el día; si agendas, se pausa hasta la fecha acordada."
           >
             <RegisterAttemptForm caseId={detail.id} />
           </SectionPanel>
@@ -311,7 +320,8 @@ export default async function CampaignCasePage({
                   <p className="font-medium text-ui-text">
                     {attemptResultLabels[attempt.result] ?? attempt.result}
                     <span className="ml-2 text-xs font-normal text-ui-muted">
-                      {attempt.channel} · {attempt.createdAtLabel} ·{" "}
+                      {channelLabels[attempt.channel] ?? attempt.channel} ·{" "}
+                      {attempt.createdAtLabel} ·{" "}
                       {attempt.actorName}
                       {attempt.phoneUsed ? ` · ${attempt.phoneUsed}` : ""}
                     </span>
@@ -330,7 +340,7 @@ export default async function CampaignCasePage({
         {detail.canManage && !detail.isResolved ? (
           <SectionPanel
             title="Resolver el caso"
-            description="Recuperado exige vincular la orden DITO nueva; perdido exige motivo estructurado con su criterio cumplido."
+            description="Recuperado exige vincular la orden DITO nueva; para darlo por perdido debes elegir un motivo y cumplir lo que ese motivo pide."
           >
             <ResolveCaseForm
               canUseOther={detail.canResolveOther}

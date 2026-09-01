@@ -65,7 +65,7 @@ export async function resolveRecoveryCaseAction(
     if (!lossReasons.has(lossReason)) {
       return {
         type: "error",
-        message: "Una pérdida exige su motivo estructurado.",
+        message: "Elige el motivo por el que se perdió.",
       };
     }
     if (observation.length < 10) {
@@ -80,7 +80,7 @@ export async function resolveRecoveryCaseAction(
       return {
         type: "error",
         message:
-          "El motivo OTRO requiere que tu supervisor registre la pérdida.",
+          "El motivo «Otro» solo lo puede registrar tu supervisor.",
       };
     }
   }
@@ -214,7 +214,7 @@ export async function resolveRecoveryCaseAction(
   if (outcome.kind === "NOT_FOUND") {
     return {
       type: "error",
-      message: "El caso no existe, ya se resolvió o está fuera de tu alcance.",
+      message: "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
     };
   }
   if (outcome.kind === "ORDER_INVALID") {

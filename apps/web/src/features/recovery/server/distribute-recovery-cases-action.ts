@@ -58,7 +58,7 @@ export async function distributeRecoveryCasesAction(
     .filter((value): value is string => typeof value === "string");
 
   if (mode !== "DIRECTA" && mode !== "EQUITATIVA" && mode !== "COLA") {
-    return { type: "error", message: "El modo de distribución no es válido." };
+    return { type: "error", message: "Elige cómo quieres repartir los casos." };
   }
   if (caseIds.length === 0) {
     return {
@@ -227,18 +227,18 @@ export async function distributeRecoveryCasesAction(
       type: "error",
       message:
         outcome.skipped > 0
-          ? "Los casos seleccionados ya tienen gestión iniciada o están fuera de tu alcance: la redistribución masiva solo alcanza casos sin trabajar."
-          : "Ninguno de los casos seleccionados está disponible para distribuir dentro de tu alcance.",
+          ? "Los casos seleccionados ya tienen gestión iniciada o no pertenecen a tus equipos: el reparto masivo solo aplica a casos sin trabajar."
+          : "Ninguno de los casos seleccionados está disponible para repartir en tus equipos.",
     };
   }
   if (outcome.kind === "TEAM_INVALID") {
-    return { type: "error", message: "El equipo destino no está activo o está fuera de tu alcance." };
+    return { type: "error", message: "El equipo destino no está activo o no es uno de tus equipos." };
   }
   if (outcome.kind === "TARGET_INVALID") {
     return {
       type: "error",
       message:
-        "El asesor destino no está activo con venta habilitada dentro de tu alcance.",
+        "El asesor destino no está activo con venta habilitada en tus equipos.",
     };
   }
   if (outcome.kind === "PARTICIPANTS_INVALID") {

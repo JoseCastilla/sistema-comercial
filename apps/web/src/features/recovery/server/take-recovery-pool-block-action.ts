@@ -71,7 +71,7 @@ export async function takeRecoveryPoolBlockAction(
     return {
       type: "error",
       message:
-        "No tienes venta habilitada en un equipo activo, así que no puedes tomar casos del pool.",
+        "No tienes venta habilitada en un equipo activo, así que no puedes tomar casos libres.",
     };
   }
 
@@ -187,15 +187,15 @@ export async function takeRecoveryPoolBlockAction(
     return {
       type: "error",
       message: department || planContains
-        ? "El pool de tu equipo no tiene casos libres que cumplan ese filtro."
-        : "El pool de tu equipo está vacío por ahora.",
+        ? "Tu equipo no tiene casos libres que cumplan ese filtro."
+        : "Tu equipo no tiene casos libres por ahora.",
     };
   }
   if (outcome.kind === "RACED") {
     return {
       type: "error",
       message:
-        "Otros asesores tomaron esos casos primero. Vuelve a intentar: el pool se reparte en orden de llegada.",
+        "Otros asesores tomaron esos casos primero. Vuelve a intentar: los casos libres se reparten en orden de llegada.",
     };
   }
 
@@ -204,6 +204,6 @@ export async function takeRecoveryPoolBlockAction(
 
   return {
     type: "success",
-    message: `Tomaste ${outcome.taken} caso(s) del pool de ${sellingMembership.team.name}. Trabájalos hoy: cada uno exige tres intentos si no responden.`,
+    message: `Tomaste ${outcome.taken} caso(s) libres de ${sellingMembership.team.name}. Trabájalos hoy: cada uno exige tres intentos si no responden.`,
   };
 }

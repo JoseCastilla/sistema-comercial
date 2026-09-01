@@ -46,7 +46,7 @@ const operationLabels: Record<string, string> = {
 };
 
 const issueLabels: Record<string, string> = {
-  STATUS_NOT_APPROVED: "Estado DITO no aprobado",
+  STATUS_NOT_APPROVED: "DITO todavía no aprueba la venta",
   OUTSIDE_CURRENT_MONTH: "Fuera del mes actual",
   NON_MOBILE_PRODUCT: "Venta no móvil (Movistar Hogar)",
   MISSING_REQUIRED_VALUE: "Faltan datos requeridos",
@@ -60,8 +60,8 @@ const issueLabels: Record<string, string> = {
   UNKNOWN_DELIVERY_METHOD: "Método de entrega no reconocido",
   UNKNOWN_PROVINCE: "Provincia no reconocida",
   UNRESOLVED_DITO_IDENTITY: "Falta vincular al asesor",
-  SALES_CODE_POINTS_TO_ANOTHER_ORDER: "Código de venta en otra orden",
-  VALID_VALUE_CONFLICT: "Datos válidos en conflicto",
+  SALES_CODE_POINTS_TO_ANOTHER_ORDER: "Ese código de venta ya está en otro pedido",
+  VALID_VALUE_CONFLICT: "El archivo y el sistema dicen cosas distintas",
 };
 
 export default async function DitoImportsPage({
@@ -398,16 +398,19 @@ export default async function DitoImportsPage({
                     <span>{selectedBatch.excludedRows} excluidas</span>
                     <span>{selectedBatch.invalidRows} inválidas</span>
                     <span>{selectedBatch.unchangedRows} sin cambios</span>
-                    <span className="font-mono text-xs text-ui-soft">
-                      {selectedBatch.fileSha256.slice(0, 12)}…
+                    <span className="text-xs text-ui-soft">
+                      Huella del archivo (para soporte):{" "}
+                      <span className="font-mono">
+                        {selectedBatch.fileSha256.slice(0, 12)}…
+                      </span>
                     </span>
                   </div>
                   {selectedBatch.parserVersion !==
                   currentDitoImportParserVersion ? (
                     <p className="mt-4 rounded-xl border border-ui-warning bg-ui-warning-soft px-4 py-3 text-sm text-ui-warning">
-                      Este lote se procesó con una versión anterior del lector.
-                      Genera una nueva vista previa para conservar todos los
-                      campos disponibles antes de confirmar.
+                      Este archivo se leyó con una versión antigua del sistema.
+                      Genera una nueva vista previa para que no falte
+                      información.
                     </p>
                   ) : null}
                 </SectionPanel>
@@ -430,7 +433,7 @@ export default async function DitoImportsPage({
                             </p>
                             <p className="mt-1 font-mono text-xs text-ui-muted">
                               {identity.externalUsername} ·{" "}
-                              {identity._count.importRows} filas
+                              {identity._count.importRows} ventas
                             </p>
                           </div>
                           <div className="space-y-2">
@@ -514,7 +517,9 @@ export default async function DitoImportsPage({
                     <table className="min-w-full text-left text-sm">
                       <thead className="border-b border-ui-border text-xs uppercase tracking-wide text-ui-muted">
                         <tr>
-                          <th className="px-3 py-3 font-medium">Fila</th>
+                          <th className="px-3 py-3 font-medium">
+                            Línea del archivo
+                          </th>
                           <th className="px-3 py-3 font-medium">Orden</th>
                           <th className="px-3 py-3 font-medium">Cliente</th>
                           <th className="px-3 py-3 font-medium">Operación</th>
@@ -559,7 +564,9 @@ export default async function DitoImportsPage({
                                 ) ?? "Asesor no reportado"}
                               </span>
                               <span className="mt-1 block font-mono text-xs text-ui-muted">
-                                Cuenta: {row.ditoUsernameNormalized ?? "N/D"}
+                                {row.ditoUsernameNormalized
+                                  ? `Cuenta: ${row.ditoUsernameNormalized}`
+                                  : "Sin cuenta DITO"}
                               </span>
                               {(row.manualAgent?.name ??
                               row.targetOrder?.agent?.name ??
@@ -609,7 +616,7 @@ export default async function DitoImportsPage({
                 </SectionPanel>
 
                 <SectionPanel
-                  description="Aplica todo el lote en una sola transacción y conserva el historial de los datos completados."
+                  description="Aplica todas las ventas de una vez: si algo falla, no se guarda nada a medias."
                   title="Confirmar importación"
                 >
                   {selectedBatch.status === "CONFIRMED" ? (
@@ -736,7 +743,7 @@ function portabilityOriginLabel(value: unknown, parserVersion: string): string {
   if (operation === "NEW_LINE") return "No requiere origen";
   if (origin) return `Origen declarado: ${origin}`;
   if (parserVersion !== currentDitoImportParserVersion) {
-    return `Origen no informado · análisis ${parserVersion}`;
+    return "Origen no informado (leído con versión antigua)";
   }
 
   return "Origen no informado";
@@ -773,10 +780,10 @@ function getConfirmationDisabledReason(
     return "La importación ya está siendo procesada.";
   }
   if (parserVersion !== currentDitoImportParserVersion) {
-    return "Esta vista previa usa un lector anterior. Genera una nueva antes de confirmar.";
+    return "Esta vista previa se hizo con una versión antigua. Genera una nueva antes de confirmar.";
   }
   if (importableRows === 0) {
-    return "No existen filas válidas para importar. Revisa los motivos y carga un archivo corregido.";
+    return "No existen ventas válidas para importar. Revisa los motivos y carga un archivo corregido.";
   }
   if (unresolvedIdentities > 0) {
     return `Vincula ${unresolvedIdentities} ${unresolvedIdentities === 1 ? "asesor pendiente" : "asesores pendientes"} antes de confirmar.`;

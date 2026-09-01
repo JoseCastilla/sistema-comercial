@@ -22,7 +22,10 @@ export async function deleteDitoImportAction(
   });
 
   if (!parsed.success) {
-    return { type: "error", message: "La carga o su versión no son válidas." };
+    return {
+      type: "error",
+      message: "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
+    };
   }
 
   const deleted = await database.ditoImportBatch.deleteMany({

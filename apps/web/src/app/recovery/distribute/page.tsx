@@ -277,26 +277,26 @@ export default async function RecoveryDistributePage({
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
-          title="Distribuir la base"
-          description="Reparte los casos liberados entre asesores o envíalos a la cola del equipo. Los casos asignados sin gestión se pueden redistribuir."
+          title="Repartir la base"
+          description="Reparte los casos listos entre asesores o envíalos a la cola del equipo. Los casos asignados sin gestión se pueden redistribuir."
         />
 
         <MetricGroup>
-          <Metric label="Por distribuir" value={openCount} />
+          <Metric label="Por repartir" value={openCount} />
           <Metric label="Asignados sin gestión" value={unworkedCount} />
           <Metric label="En gestión" value={inProgressCount} />
-          <Metric label="En triage o espera" value={triageCount} />
+          <Metric label="Por revisar o portando" value={triageCount} />
         </MetricGroup>
 
         {triageCount > 0 ? (
           <p className="text-sm text-ui-muted">
             Hay {triageCount.toLocaleString("es-PE")} caso(s) que aún no pasan
-            el triage.{" "}
+            la revisión.{" "}
             <a
               className="text-ui-accent underline-offset-2 hover:underline"
               href="/recovery/triage"
             >
-              Abrir triage
+              Ir a revisarlos
             </a>
           </p>
         ) : null}
@@ -304,7 +304,7 @@ export default async function RecoveryDistributePage({
         <SectionPanel
           title={
             view === "open"
-              ? "Casos liberados por distribuir"
+              ? "Casos listos por repartir"
               : "Asignados sin gestión (redistribuibles)"
           }
           description={`${filteredTotal.toLocaleString("es-PE")} caso(s) cumplen el filtro; se muestran ${rows.length.toLocaleString("es-PE")} por página, los más recientes primero.`}

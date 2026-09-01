@@ -26,14 +26,20 @@ export async function confirmRecoveryBaseAction(
   const expectedUpdatedAt = formData.get("expectedUpdatedAt");
 
   if (typeof batchId !== "string" || batchId.length === 0) {
-    return { type: "error", message: "El lote no es válido." };
+    return {
+      type: "error",
+      message: "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
+    };
   }
 
   if (
     typeof expectedUpdatedAt !== "string" ||
     Number.isNaN(new Date(expectedUpdatedAt).getTime())
   ) {
-    return { type: "error", message: "La versión del lote no es válida." };
+    return {
+      type: "error",
+      message: "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
+    };
   }
 
   const resourceFingerprint = createHash("sha256")
@@ -66,7 +72,8 @@ export async function confirmRecoveryBaseAction(
   } catch {
     return {
       type: "error",
-      message: "No se pudo contactar a la API local de importación.",
+      message:
+        "No pudimos procesar el archivo en este momento. Vuelve a intentarlo; si sigue igual, avisa a soporte.",
     };
   }
 

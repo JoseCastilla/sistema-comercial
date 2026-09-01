@@ -270,13 +270,17 @@ export default async function RecoveryBaseAdminPage({
         />
 
         <SectionPanel
-          title="Embudo de la campaña"
+          title="Cómo va la campaña"
           description="Al volver en otra sesión, aquí está lo que falta."
         >
           <MetricGroup>
-            <Metric label="En triage" value={triageCount} />
-            <Metric label="En espera" value={waitingCount} />
-            <Metric label="Por distribuir" value={openCount} />
+            <Metric label="Por revisar" value={triageCount} />
+            <Metric
+              label="Con pedido en curso"
+              value={waitingCount}
+              hint="Su pedido avanza solo"
+            />
+            <Metric label="Por repartir" value={openCount} />
             <Metric label="En gestión" value={managedCount} />
             <Metric label="Recuperados" value={recoveredCount} />
           </MetricGroup>
@@ -295,8 +299,7 @@ export default async function RecoveryBaseAdminPage({
                 <strong className="text-ui-text">
                   {discardedCount.toLocaleString("es-PE")}
                 </strong>{" "}
-                descartados por el cruce (ya estaban en Movistar, no cuentan
-                como pérdida)
+                cerrados porque ya eran Movistar (no cuentan como pérdida)
               </>
             ) : null}
             {lostCount > 0 ? (
@@ -315,7 +318,7 @@ export default async function RecoveryBaseAdminPage({
           <div className="ui-form-row">
             {triageCount > 0 ? (
               <a className="ui-button ui-button--primary" href="/recovery/triage">
-                Revisar {triageCount.toLocaleString("es-PE")} en triage
+                Revisar {triageCount.toLocaleString("es-PE")} caso(s)
               </a>
             ) : null}
             {openCount > 0 ? (
@@ -323,7 +326,7 @@ export default async function RecoveryBaseAdminPage({
                 className={`ui-button ${triageCount > 0 ? "ui-button--secondary" : "ui-button--primary"}`}
                 href="/recovery/distribute"
               >
-                Distribuir {openCount.toLocaleString("es-PE")} liberados
+                Repartir {openCount.toLocaleString("es-PE")} listos
               </a>
             ) : null}
             {triageCount === 0 && openCount === 0 ? (
@@ -364,9 +367,12 @@ export default async function RecoveryBaseAdminPage({
               </p>
 
               <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
-                <BatchStat label="Leídas" value={selectedBatch.sourceRows} />
                 <BatchStat
-                  label="Elegibles"
+                  label="Filas del archivo"
+                  value={selectedBatch.sourceRows}
+                />
+                <BatchStat
+                  label="Entran a la campaña"
                   value={selectedBatch.eligibleRows}
                 />
                 <BatchStat
@@ -385,11 +391,11 @@ export default async function RecoveryBaseAdminPage({
                       value={selectedBatch.newCases}
                     />
                     <BatchStat
-                      label="Reaparecidos"
+                      label="Clientes que ya estaban"
                       value={selectedBatch.sightingCases}
                     />
                     <BatchStat
-                      label="Filas agrupadas"
+                      label="Líneas del mismo cliente"
                       value={
                         selectedBatch.eligibleRows -
                         selectedBatch.newCases -
@@ -421,10 +427,10 @@ export default async function RecoveryBaseAdminPage({
                     <th className="px-3 py-1.5 font-semibold">Archivo</th>
                     <th className="px-3 py-1.5 font-semibold">Estado</th>
                     <th className="px-3 py-1.5 text-right font-semibold">
-                      Leídas
+                      Filas del archivo
                     </th>
                     <th className="px-3 py-1.5 text-right font-semibold">
-                      Elegibles
+                      Entran a la campaña
                     </th>
                     <th className="px-3 py-1.5 text-right font-semibold">
                       Casos
@@ -477,10 +483,10 @@ export default async function RecoveryBaseAdminPage({
               value={pendingLineCount}
             />
             <BatchStat
-              label="Líneas abiertas"
+              label="Líneas en la bandeja"
               value={openLineCount}
             />
-            <BatchStat label="Casos listos para triage" value={readyCaseCount} />
+            <BatchStat label="Casos listos para repartir" value={readyCaseCount} />
           </dl>
 
           {pendingLineCount > 0 ? (
@@ -489,19 +495,19 @@ export default async function RecoveryBaseAdminPage({
                 className="ui-button ui-button--secondary"
                 href="/admin/recovery-base/numbers?take=200"
               >
-                Descargar tanda de 200
+                Descargar 200 números
               </a>
               <a
                 className="ui-button ui-button--secondary"
                 href="/admin/recovery-base/numbers?take=500"
               >
-                Tanda de 500
+                500 números
               </a>
               <a
                 className="ui-button ui-button--secondary"
                 href="/admin/recovery-base/numbers"
               >
-                Todas las pendientes
+                Todos los pendientes
               </a>
               <span className="pb-2 text-xs text-ui-muted">
                 Solo salen líneas sin consultar, las más recientes primero.
@@ -518,11 +524,12 @@ export default async function RecoveryBaseAdminPage({
               className="ui-button ui-button--secondary"
               href="/admin/recovery-base/numbers?days=3"
             >
-              Barrido: últimos 3 días completos
+              Revisión completa: últimos 3 días
             </a>
             <span className="pb-2 text-xs text-ui-muted">
               Todas las líneas recientes, consultadas o no — para el filtro
-              rápido diario: caza al que portó después de su consulta.
+              rápido diario: detecta a quien portó después de su última
+              consulta.
             </span>
           </div>
 
@@ -539,13 +546,13 @@ export default async function RecoveryBaseAdminPage({
                       Consultadas
                     </th>
                     <th className="px-3 py-1.5 text-right font-semibold">
-                      Cruzadas
+                      Encontradas en la base
                     </th>
                     <th className="px-3 py-1.5 text-right font-semibold">
-                      Descartados
+                      Ya eran Movistar
                     </th>
                     <th className="px-3 py-1.5 text-right font-semibold">
-                      En espera
+                      Portando a Movistar
                     </th>
                     <th className="px-3 py-1.5 font-semibold">Aplicado</th>
                   </tr>
@@ -581,8 +588,8 @@ export default async function RecoveryBaseAdminPage({
         </SectionPanel>
 
         <SectionPanel
-          title="Filtros de elegibilidad"
-          description="Aplican a las próximas importaciones; cada lote conserva la configuración con la que se evaluó."
+          title="Qué ventas entran a la campaña"
+          description="Aplican a las próximas importaciones; cada archivo ya cargado mantiene las reglas con las que se procesó."
         >
           <RecoveryConfigForm
             carrierNames={config.carrierNames}
