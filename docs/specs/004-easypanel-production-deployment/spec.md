@@ -28,6 +28,15 @@ EasyPanel, sin iniciar aplicaciones sobre un esquema de base de datos obsoleto.
 - **BR-005:** el despliegue se valida con salud del API, carga web e inspección funcional de las rutas críticas.
 - **BR-006:** los archivos temporales locales no forman parte del paquete versionado.
 - **BR-007:** Web debe recibir una clave estable de Server Actions durante el build para evitar incompatibilidades entre contenedores durante un reemplazo.
+- **BR-008** (incidente del 01/09/2026): el servicio Web debe tener
+  `DITO_IMPORT_API_URL` apuntando al hostname **interno** del servicio API
+  en EasyPanel (`http://<interno-del-api>:3001/api/v1`). El valor por
+  defecto `127.0.0.1:3001` solo vale en desarrollo local: en producción
+  apunta al propio contenedor web y rompe todo camino web→API — la carga de
+  base de campañas, el cruce de portabilidad y la importación DITO por
+  Excel del administrador. El síntoma es "No se pudo contactar a la API
+  local de importación". Las ventas por webhook no dependen de esta
+  variable, por eso el hueco pasó inadvertido.
 
 ## Criterios de aceptación
 
