@@ -123,6 +123,12 @@ sidebar; color únicamente semántico.
 - **BR-011 (P-1):** la densidad se calibra por frecuencia de uso de la
   vista: máxima en las colas operativas diarias, relajada en configuración
   y administración ocasional.
+- **BR-012 (P-3)** (01/09/2026): una columna cuyas celdas dicen todas lo
+  mismo no se muestra. No informa, ocupa ancho y obliga a leerla para
+  descubrir que no aporta nada — "Equipo: sin equipo" repetido en 250 filas
+  del triage es ruido, no dato. La columna aparece sola en cuanto empieza a
+  distinguir. Vale para toda tabla con columnas que solo se llenan en una
+  etapa posterior del flujo.
 
 ## 6. Alcance de aplicación
 

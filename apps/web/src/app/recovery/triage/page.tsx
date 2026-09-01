@@ -23,8 +23,12 @@ const pageSize = 250;
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: "America/Lima",
-  dateStyle: "short",
-  timeStyle: "short",
+  day: "2-digit",
+  month: "2-digit",
+  year: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
 });
 
 function summarizePlan(planRaw: string | null): string {
@@ -217,8 +221,8 @@ export default async function RecoveryTriagePage({
           title={isSupervisor ? "Triage de mi bloque" : "Triage de campaña"}
           description={
             isSupervisor
-              ? "Esta es la base entregada a tus equipos. Marca en lote el resultado del chequeo manual: con pedido en curso a espera, sin pedido a la cola de asignación."
-              : "Reparte bloques a los equipos o marca en lote el resultado del chequeo manual. El DNI se copia con un clic para pegarlo en el sistema de consulta."
+              ? "La base entregada a tus equipos. El DNI se copia con un clic."
+              : "Reparte bloques a los equipos o marca el chequeo manual. El DNI se copia con un clic."
           }
         />
 
