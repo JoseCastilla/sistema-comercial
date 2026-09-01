@@ -4,6 +4,7 @@ import {
   evaluateRecoveryEligibility,
   normalizeRecoveryDocumentNumber,
   normalizeRecoveryPhoneNumber,
+  normalizeRecoveryServiceNumber,
   type RecoveryEligibilityConfigInput,
   type RecoveryRecordClassification,
   type RecoveryRecordIssueCode,
@@ -230,7 +231,12 @@ function parseRow(
   const documentNumber = normalizeRecoveryDocumentNumber(
     rawData.documentNumber,
   );
-  const serviceNumber = normalizeRecoveryPhoneNumber(rawData.serviceNumber);
+  // La línea a portar exige formato de móvil peruano; el teléfono de
+  // contacto conserva la regla laxa (puede ser fijo).
+  const serviceNumber = normalizeRecoveryServiceNumber(rawData.serviceNumber);
+  const serviceNumberMalformed =
+    serviceNumber === null &&
+    normalizeRecoveryPhoneNumber(rawData.serviceNumber) !== null;
   const contactPhone = normalizeRecoveryPhoneNumber(rawData.contactPhone);
 
   const requiresIdentityValidation =
@@ -240,6 +246,7 @@ function parseRow(
     {
       documentNumber,
       serviceNumber,
+      serviceNumberMalformed,
       registeredAt,
       modalityRaw: rawData.modality,
       planRaw: rawData.plan,

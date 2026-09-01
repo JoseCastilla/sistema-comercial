@@ -26,7 +26,7 @@ export function isMovistarReceiver(value: string | null | undefined): boolean {
 
   const normalized = String(value)
     .normalize("NFD")
-    .replace(/[0300-036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toUpperCase();
 
   return movistarMarkers.some((marker) => normalized.includes(marker));
@@ -37,7 +37,7 @@ export function parseRecoveryPortabilityState(
 ): RecoveryPortabilityState {
   const normalized = String(value ?? "")
     .normalize("NFD")
-    .replace(/[0300-036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toUpperCase();
 
   if (normalized.includes("PROGRAMADO")) return "PROGRAMADO";

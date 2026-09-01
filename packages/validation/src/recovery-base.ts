@@ -3,6 +3,7 @@ export type RecoveryRecordClassification = "ELIGIBLE" | "EXCLUDED" | "INVALID";
 export type RecoveryRecordIssueCode =
   | "MISSING_DOCUMENT"
   | "MISSING_SERVICE_NUMBER"
+  | "INVALID_SERVICE_NUMBER"
   | "INVALID_REGISTERED_AT"
   | "UNKNOWN_CARRIER"
   | "MODALITY_NOT_ALLOWED"
@@ -87,6 +88,24 @@ export function normalizeRecoveryPhoneNumber(value: unknown): string | null {
   return digits;
 }
 
+/**
+ * Un número de servicio es la línea móvil que el cliente quiere portar:
+ * nueve dígitos empezando en 9, sin excepciones. Un valor como `519201255`
+ * — nueve dígitos que empiezan en 51 — es basura de exportación, no una
+ * línea consultable: la herramienta de portabilidad lo rechaza. Detectado
+ * con la base real del 27/08/2026 (dos números malformados pasaron la
+ * carga y contaminaron la exportación).
+ */
+export function normalizeRecoveryServiceNumber(value: unknown): string | null {
+  const digits = normalizeRecoveryPhoneNumber(value);
+
+  if (digits === null || !/^9\d{8}$/.test(digits)) {
+    return null;
+  }
+
+  return digits;
+}
+
 export function normalizeRecoveryComparableText(value: unknown): string {
   return String(value ?? "")
     .normalize("NFD")
@@ -99,6 +118,8 @@ export function normalizeRecoveryComparableText(value: unknown): string {
 export interface RecoveryEligibilityRowInput {
   documentNumber: string | null;
   serviceNumber: string | null;
+  /** La fila trae un número de servicio, pero no es una línea móvil válida. */
+  serviceNumberMalformed?: boolean;
   registeredAt: Date | null;
   modalityRaw: string | null;
   planRaw: string | null;
@@ -127,7 +148,11 @@ export function evaluateRecoveryEligibility(
   }
 
   if (!row.serviceNumber) {
-    invalid.push("MISSING_SERVICE_NUMBER");
+    invalid.push(
+      row.serviceNumberMalformed
+        ? "INVALID_SERVICE_NUMBER"
+        : "MISSING_SERVICE_NUMBER",
+    );
   }
 
   if (!row.registeredAt || Number.isNaN(row.registeredAt.getTime())) {

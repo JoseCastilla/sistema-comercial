@@ -99,8 +99,13 @@ construir un reporte a mano.
   caso donde se entiende qué servicios quiere portar el cliente y por qué
   números contactarlo. Los teléfonos se normalizan a nueve dígitos retirando
   el prefijo `51`.
-- **BR-008:** una fila sin DNI o sin número de servicio no genera caso y se
-  reporta como inválida con su motivo.
+- **BR-008** (precisado el 01/09/2026): una fila sin DNI o sin número de
+  servicio no genera caso y se reporta como inválida con su motivo. Un
+  número de servicio válido es una línea móvil peruana: nueve dígitos
+  empezando en 9 (tras retirar el prefijo `51` de once dígitos). Un valor
+  como `519201255` es basura de exportación, se reporta
+  `INVALID_SERVICE_NUMBER` y no genera caso — dos de esos contaminaron la
+  exportación de números del 27/08 y la herramienta de consulta los rechazó.
 - **BR-009** (revisado el 30/08/2026): la carga es **episódica**: la base se
   sube cuando la operación decide trabajarla, no todos los días. No existe una
   "base inicial de tres días": cada carga es simplemente la base diaria
@@ -156,14 +161,22 @@ construir un reporte a mano.
   alimentar la consulta externa de portabilidad, e **importa el reporte de
   resultado**. Los casos `WAITING` cuentan como abiertos y siguen incluidos en
   la exportación hasta ser descartados. El cruce reemplaza al `BUSCARV` manual.
-- **BR-018:** existen dos tipos de reporte y la importación distingue cuál se
-  está subiendo. El **reporte completo** es el CSV de la consulta a
-  `consulta.portabilidad.pe`, con siete columnas conocidas: `numero`,
-  `receptor`, `cedente`, `asignatario_original`, `fecha_de_la_ventana`,
-  `estado` y `numero_consultado`; `estado` toma tres valores: `Número
-  portado`, `Número no portado` y `Número programado para portación`. El
-  sistema valida el encabezado al subir y conserva cada fila cruda como
-  evidencia.
+- **BR-018** (corregido el 01/09/2026): existen dos tipos de reporte y la
+  importación distingue cuál se está subiendo. El **reporte completo** es el
+  CSV de la consulta a `consulta.portabilidad.pe`; sus columnas distintivas
+  y obligatorias son `numero`, `receptor`, `cedente`, `fecha_de_la_ventana`
+  y `estado`; `asignatario_original` y `numero_consultado` son opcionales —
+  la exportación real del 27/08 trae seis columnas, sin
+  `numero_consultado`. `estado` toma tres valores: `Número portado`,
+  `Número no portado` y `Número programado para portación`. El sistema
+  valida el encabezado al subir y conserva cada fila cruda como evidencia.
+- **BR-018c** (incidente del 01/09/2026): un archivo que trae columnas de
+  resultado (`estado`, `fecha_de_la_ventana`, `receptor`, `cedente`) es un
+  reporte de resultados y **jamás se procesa como cruce rápido**: si no
+  califica como reporte completo, la importación se rechaza explicando qué
+  columna falta. El fallback silencioso descartó como `YA_ACTIVO` los 100
+  números de la primera consulta del día 27 — incluidos 13 no portados y
+  ~11 portados a otros operadores — cerrando 91 casos en lugar de 76.
 - **BR-018b:** el **cruce rápido** es un filtro más veloz que solo indica si un
   número está o no está en Movistar, sin fecha de portación. Se importa
   mapeando la columna del número al subir y produce únicamente descartes

@@ -7,6 +7,7 @@ import {
   groupRecoveryRecordsByClient,
   normalizeRecoveryDocumentNumber,
   normalizeRecoveryPhoneNumber,
+  normalizeRecoveryServiceNumber,
 } from "../dist/recovery-base.js";
 
 describe("normalizeRecoveryDocumentNumber", () => {
@@ -237,5 +238,41 @@ describe("groupRecoveryRecordsByClient", () => {
 
     assert.equal(groups[0].services[0].sightings.length, 1);
     assert.deepEqual(groups[0].contactPhones, ["955000000", "956000000"]);
+  });
+});
+
+describe("normalizeRecoveryServiceNumber", () => {
+  it("acepta móviles peruanos y retira el prefijo 51 de once dígitos", () => {
+    assert.equal(normalizeRecoveryServiceNumber("900019627"), "900019627");
+    assert.equal(normalizeRecoveryServiceNumber("51920125533"), "920125533");
+    assert.equal(normalizeRecoveryServiceNumber("987654321.0"), "987654321");
+  });
+
+  it("rechaza los malformados de la base real del 27/08", () => {
+    // Nueve dígitos que empiezan en 51: basura de exportación, no una línea.
+    assert.equal(normalizeRecoveryServiceNumber("519201255"), null);
+    assert.equal(normalizeRecoveryServiceNumber("519351292"), null);
+    // Un fijo tampoco es portable en este flujo.
+    assert.equal(normalizeRecoveryServiceNumber("014567890"), null);
+    assert.equal(normalizeRecoveryServiceNumber(""), null);
+  });
+
+  it("una fila con servicio malformado se reporta INVALID_SERVICE_NUMBER", () => {
+    const evaluation = evaluateRecoveryEligibility(
+      {
+        documentNumber: "05245525",
+        serviceNumber: null,
+        serviceNumberMalformed: true,
+        registeredAt: new Date("2026-08-27T10:00:00.000-05:00"),
+        modalityRaw: "POST",
+        planRaw: defaultRecoveryEligibilityConfig.planNames[0],
+        equipmentRaw: "Simcard",
+        carrierRaw: "CLARO",
+      },
+      defaultRecoveryEligibilityConfig,
+    );
+
+    assert.equal(evaluation.classification, "INVALID");
+    assert.deepEqual(evaluation.issueCodes, ["INVALID_SERVICE_NUMBER"]);
   });
 });
