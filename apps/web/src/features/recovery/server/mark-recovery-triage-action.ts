@@ -170,7 +170,12 @@ async function assignTeam(
         id: { in: caseIds },
         organizationId,
         status: { in: ["TRIAGE", "WAITING", "OPEN"] },
-        NOT: { assignedTeamId: team.id },
+        // Cuidado con el NULL de SQL: `NOT (columna = X)` también excluye a
+        // los casos sin equipo, que son justamente los recién cargados.
+        OR: [
+          { assignedTeamId: null },
+          { assignedTeamId: { not: team.id } },
+        ],
       },
       select: { id: true, status: true, assignedTeamId: true },
     });

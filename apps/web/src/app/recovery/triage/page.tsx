@@ -265,32 +265,25 @@ export default async function RecoveryTriagePage({
           <Metric label="Liberados por distribuir" value={openTotal} />
         </MetricGroup>
 
-        {view === "listos" && pendingTotal > 0 ? (
-          <p className="text-xs text-ui-muted">
-            {pendingTotal.toLocaleString("es-PE")} caso(s) aún no pasan por el
-            cruce de portabilidad; aparecerán aquí cuando su consulta confirme
-            que siguen siendo oportunidad.{" "}
-            <a
-              className="text-ui-accent underline-offset-2 hover:underline"
-              href={viewHref("pendientes")}
-            >
-              Verlos
-            </a>
-          </p>
-        ) : null}
-        {view === "pendientes" ? (
-          <p className="text-xs text-ui-muted">
-            Estás viendo casos <strong>sin verificación completa</strong>.
-            Liberarlos es posible pero el asesor llamaría sin saber si la
-            línea sigue portable.{" "}
-            <a
-              className="text-ui-accent underline-offset-2 hover:underline"
-              href={viewHref("listos")}
-            >
-              Volver a los listos
-            </a>
-          </p>
-        ) : null}
+        <div className="ui-form-row">
+          <a
+            className={`ui-button ${view === "listos" ? "ui-button--primary" : "ui-button--secondary"}`}
+            href={viewHref("listos")}
+          >
+            Listos ({readyTotal.toLocaleString("es-PE")})
+          </a>
+          <a
+            className={`ui-button ${view === "pendientes" ? "ui-button--primary" : "ui-button--secondary"}`}
+            href={viewHref("pendientes")}
+          >
+            Esperando consulta ({pendingTotal.toLocaleString("es-PE")})
+          </a>
+          <span className="pb-2 text-xs text-ui-muted">
+            {view === "pendientes"
+              ? "Sin verificación completa: se pueden entregar a un equipo o liberar, sabiendo que el asesor llamaría sin confirmar la línea."
+              : "Verificados por el cruce: oportunidad confirmada."}
+          </span>
+        </div>
 
         {openTotal > 0 ? (
           <p className="text-sm text-ui-muted">
