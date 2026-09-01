@@ -74,6 +74,8 @@ enum RecoveryDiscardReason {
   ADMIN
   /// La entrega se concretó en un intento posterior (SPEC-030 BR-073).
   ENTREGA_CONCRETADA
+  /// Cumplió 7 días sin verificación completa de portabilidad (BR-084).
+  VENCIDO
 }
 
 enum RecoveryBaseBatchStatus {

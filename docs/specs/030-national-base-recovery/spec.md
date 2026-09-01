@@ -564,6 +564,49 @@ colas, relojes o métricas arruina ambos.
   rendimiento **sugiere** activar una campaña cuando el ingreso del día cae
   por debajo del promedio del período; la decisión es siempre humana.
 
+### Verificación por tandas y anticuamiento (01/09/2026)
+
+Filtrar 2 000 líneas toma tiempo y la operación no puede esperar al lote
+completo: el flujo real es continuo — se consulta una tanda, lo que
+sobrevive entra a trabajo, y se sigue consultando mientras el equipo ya
+llama. La realidad operativa usa **dos herramientas**: el cruce rápido
+recorre las 2 000 líneas diarias y solo dice quién ya está activo en
+Movistar (a veces deja líneas sin verificar); el reporte completo es más
+lento pero deja la fecha de portación, información clave para el asesor.
+El día típico: rápido primero para limpiar, completo después sobre los
+sobrevivientes.
+
+- **BR-080:** la **verificación es una propiedad derivada**, no un estado
+  almacenado: un caso está **listo** cuando ninguna de sus líneas activas
+  está sin consultar (`portabilityCheckedAt`). Un caso con líneas
+  parcialmente consultadas **espera** (decidido el 01/09/2026): el asesor
+  debe saber exactamente qué puede ofrecer antes de llamar.
+- **BR-081:** el cruce rápido **nunca verifica**: descarta los activos que
+  lista y no dice nada de los demás (no se puede distinguir "revisado y no
+  activo" de "no revisado"). Solo el reporte completo marca una línea como
+  consultada. Complementa BR-018b: el rápido limpia, el completo decide
+  **y verifica**.
+- **BR-082:** la exportación de números es **incremental**: emite solo las
+  líneas sin consultar o marcadas para revalidación, de casos abiertos no
+  vencidos, las más recientes primero, con tandas del tamaño que la
+  herramienta soporte. Consultar dos veces lo mismo es tiempo de operación
+  perdido.
+- **BR-083:** el triage muestra por defecto los casos **listos**; los que
+  esperan consulta son visibles bajo su propio contador, nunca mezclados.
+  Distribuir casos sin verificar **se advierte pero no se bloquea**
+  (decidido el 01/09/2026): si la herramienta de consulta falla, la
+  operación decide asumir el costo con el sistema diciéndoselo.
+- **BR-084:** **anticuamiento de la verificación**: un caso en `TRIAGE` o
+  `WAITING` que llega a los **7 días** desde su fecha de registro sin
+  verificación completa se descarta solo con motivo `VENCIDO` y sus líneas
+  salen de la exportación. No cuenta como pérdida (BR-056): nunca fue
+  oportunidad confirmada. La experiencia manda: de la base diaria quedan
+  400–500 registros llamables, y al día 30 validar los 15 000 acumulados
+  del mes es inviable — el embudo debe drenar solo. Los siete días cubren
+  el ciclo completo (ventana móvil de tres días de la base más margen de
+  operación); es la única excepción nueva a BR-041 y, como BR-059, está
+  respaldada por un hecho verificable: nadie consultó a tiempo.
+
 ## 5. Criterios de aceptación
 
 - **AC-001:** subir la base del día genera una previsualización con total de
@@ -713,6 +756,16 @@ colas, relojes o métricas arruina ambos.
   bajo el promedio, sin activarla solo.
 - **AC-061:** ninguna vista mezcla fuentes: la conversión 3–6 % solo cuenta
   casos de base y la tasa de salvado solo casos internos.
+- **AC-062:** exportar una tanda de 200 emite solo líneas sin consultar o en
+  revalidación, las más recientes primero; una línea ya consultada no
+  vuelve a salir.
+- **AC-063:** el triage separa listos de esperando consulta, muestra los
+  listos por defecto y sus contadores suman el total.
+- **AC-064:** distribuir una selección que incluye casos sin verificar
+  informa cuántos van sin verificación, sin bloquear la operación.
+- **AC-065:** un caso que cumple 7 días sin verificación completa queda
+  `DISCARDED · VENCIDO`, no figura entre las pérdidas y sus líneas
+  desaparecen de la exportación.
 
 ## 6. Supuestos abiertos
 

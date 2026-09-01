@@ -131,6 +131,11 @@ export async function distributeRecoveryCasesAction(
           take: 1,
           select: { createdAt: true },
         },
+        services: {
+          where: { discardedAt: null, portabilityCheckedAt: null },
+          take: 1,
+          select: { id: true },
+        },
       },
     });
 
@@ -162,6 +167,12 @@ export async function distributeRecoveryCasesAction(
       return { kind: "NONE" as const, skipped: candidates.length };
     }
 
+    // BR-083: distribuir sin verificar se advierte pero no se bloquea. Si la
+    // herramienta de consulta falla, la operación decide asumir el costo.
+    const unverifiedCount = candidates.filter(
+      (item) => item.services.length > 0,
+    ).length;
+
     // BR-028c/BR-078: el reparto respeta el orden de prioridad de la cola —
     // habilitaciones vencidas primero, luego lo más reciente.
     const ordered = [...distributable].sort((left, right) => {
@@ -177,39 +188,38 @@ export async function distributeRecoveryCasesAction(
 
     const skipped = candidates.length - distributable.length;
 
-    if (mode === "COLA") {
-      return applyPoolMode(transaction, {
-        organizationId: membership.organization.id,
-        actorUserId: session.user.id,
-        supervisedTeamIds,
-        teamId,
-        cases: ordered,
-        skipped,
-      });
-    }
+    const result =
+      mode === "COLA"
+        ? await applyPoolMode(transaction, {
+            organizationId: membership.organization.id,
+            actorUserId: session.user.id,
+            supervisedTeamIds,
+            teamId,
+            cases: ordered,
+            skipped,
+          })
+        : mode === "DIRECTA"
+          ? await applyDirectMode(transaction, {
+              organizationId: membership.organization.id,
+              actorUserId: session.user.id,
+              supervisedTeamIds,
+              targetUserId,
+              cases: ordered,
+              skipped,
+              now,
+            })
+          : await applyEquitableMode(transaction, {
+              organizationId: membership.organization.id,
+              actorUserId: session.user.id,
+              supervisedTeamIds,
+              teamId,
+              participantIds,
+              cases: ordered,
+              skipped,
+              now,
+            });
 
-    if (mode === "DIRECTA") {
-      return applyDirectMode(transaction, {
-        organizationId: membership.organization.id,
-        actorUserId: session.user.id,
-        supervisedTeamIds,
-        targetUserId,
-        cases: ordered,
-        skipped,
-        now,
-      });
-    }
-
-    return applyEquitableMode(transaction, {
-      organizationId: membership.organization.id,
-      actorUserId: session.user.id,
-      supervisedTeamIds,
-      teamId,
-      participantIds,
-      cases: ordered,
-      skipped,
-      now,
-    });
+    return result.kind === "DONE" ? { ...result, unverifiedCount } : result;
   });
 
   if (outcome.kind === "NONE") {
@@ -248,8 +258,15 @@ export async function distributeRecoveryCasesAction(
     outcome.skipped > 0
       ? ` ${outcome.skipped} caso(s) quedaron fuera por tener gestión iniciada.`
       : "";
+  const unverifiedSuffix =
+    "unverifiedCount" in outcome && (outcome.unverifiedCount ?? 0) > 0
+      ? ` Ojo: ${outcome.unverifiedCount} caso(s) van sin verificación de portabilidad.`
+      : "";
 
-  return { type: "success", message: `${outcome.message}${skippedSuffix}` };
+  return {
+    type: "success",
+    message: `${outcome.message}${skippedSuffix}${unverifiedSuffix}`,
+  };
 }
 
 async function applyPoolMode(

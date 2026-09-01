@@ -3,6 +3,7 @@ import { ConfirmRecoveryBatchForm } from "@/features/recovery/components/confirm
 import { RecoveryBaseUploadForm } from "@/features/recovery/components/recovery-base-upload-form";
 import { PortabilityCrossForm } from "@/features/recovery/components/portability-cross-form";
 import { RecoveryConfigForm } from "@/features/recovery/components/recovery-config-form";
+import { expireUnverifiedCases } from "@/features/recovery/server/expire-unverified-cases";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -73,6 +74,9 @@ export default async function RecoveryBaseAdminPage({
   const { session, membership } = await requireAdminAccess();
   const parameters = await searchParams;
 
+  // BR-084: lo vencido drena antes de mostrar el embudo.
+  await expireUnverifiedCases(membership.organization.id);
+
   const [
     activeConfig,
     batches,
@@ -83,7 +87,9 @@ export default async function RecoveryBaseAdminPage({
     recoveredCount,
     discardedCount,
     lostCount,
-    openServiceCount,
+    pendingLineCount,
+    openLineCount,
+    readyCaseCount,
     portabilityBatches,
   ] = await Promise.all([
     database.recoveryEligibilityConfig.findFirst({
@@ -162,6 +168,27 @@ export default async function RecoveryBaseAdminPage({
         status: "LOST",
       },
     }),
+    // BR-082: la exportación es incremental; estos contadores muestran el
+    // avance de la consulta, no el total de líneas.
+    database.recoveryCaseService.count({
+      where: {
+        organizationId: membership.organization.id,
+        discardedAt: null,
+        OR: [{ portabilityCheckedAt: null }, { needsRevalidation: true }],
+        case: {
+          status: {
+            in: [
+              "TRIAGE",
+              "WAITING",
+              "OPEN",
+              "ASSIGNED",
+              "IN_PROGRESS",
+              "SCHEDULED",
+            ],
+          },
+        },
+      },
+    }),
     database.recoveryCaseService.count({
       where: {
         organizationId: membership.organization.id,
@@ -178,6 +205,15 @@ export default async function RecoveryBaseAdminPage({
             ],
           },
         },
+      },
+    }),
+    // BR-080: caso listo = ninguna línea activa sin consultar.
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "TRIAGE",
+        services: { none: { discardedAt: null, portabilityCheckedAt: null } },
       },
     }),
     database.recoveryPortabilityBatch.findMany({
@@ -428,17 +464,48 @@ export default async function RecoveryBaseAdminPage({
           title="Cruce de portabilidad"
           description="Los que ya están en Movistar salen de la bandeja; los que tienen portación en curso pasan a espera."
         >
-          <div className="ui-form-row">
-            <a
-              className="ui-button ui-button--secondary"
-              href="/admin/recovery-base/numbers"
-            >
-              Descargar {openServiceCount.toLocaleString("es-PE")} números
-            </a>
-            <span className="pb-2 text-xs text-ui-muted">
-              Consúltalos fuera y sube el reporte.
-            </span>
-          </div>
+          <dl className="flex flex-wrap gap-x-8 gap-y-2">
+            <BatchStat
+              label="Sin consultar"
+              tone={pendingLineCount > 0 ? "warning" : undefined}
+              value={pendingLineCount}
+            />
+            <BatchStat
+              label="Líneas abiertas"
+              value={openLineCount}
+            />
+            <BatchStat label="Casos listos para triage" value={readyCaseCount} />
+          </dl>
+
+          {pendingLineCount > 0 ? (
+            <div className="ui-form-row">
+              <a
+                className="ui-button ui-button--secondary"
+                href="/admin/recovery-base/numbers?take=200"
+              >
+                Descargar tanda de 200
+              </a>
+              <a
+                className="ui-button ui-button--secondary"
+                href="/admin/recovery-base/numbers?take=500"
+              >
+                Tanda de 500
+              </a>
+              <a
+                className="ui-button ui-button--secondary"
+                href="/admin/recovery-base/numbers"
+              >
+                Todas las pendientes
+              </a>
+              <span className="pb-2 text-xs text-ui-muted">
+                Solo salen líneas sin consultar, las más recientes primero.
+              </span>
+            </div>
+          ) : (
+            <p className="text-xs text-ui-muted">
+              No hay líneas pendientes de consulta.
+            </p>
+          )}
 
           <PortabilityCrossForm />
 

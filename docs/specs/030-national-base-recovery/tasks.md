@@ -212,6 +212,30 @@
       (BR-070).
 - [ ] Reproducir los casos de referencia de SPEC-026 (AC-052).
 
+## Verificación por tandas y anticuamiento (01/09/2026)
+
+- [x] BR-080 a BR-084 definidos con José: verificación derivada por línea,
+      el rápido nunca verifica, exportación incremental, triage separado en
+      listos/esperando, advertencia al distribuir sin verificar y caducidad
+      a los 7 días con motivo `VENCIDO`.
+- [x] Migración `20260901150000_add_recovery_discard_vencido`.
+- [x] Exportación incremental con tandas (`?take=200/500`), solo líneas sin
+      consultar o en revalidación, más recientes primero, deduplicadas;
+      verificado en local: la tanda emite 200 exactos y un número ya
+      consultado no vuelve a salir (AC-062).
+- [x] Barrido perezoso `expireUnverifiedCases` al abrir la preparación y
+      antes de cada exportación; regla pura con prueba
+      (`isRecoveryConsultationExpired`).
+- [x] Avance de consulta en la preparación: sin consultar / líneas abiertas
+      / casos listos.
+- [x] Triage con vistas listos (por defecto) y esperando consulta, con
+      contadores separados (AC-063); verificado en local con la base real:
+      24 listos + 1,900 esperando = 1,924.
+- [x] Distribución: badge "Sin verificar" por fila y advertencia con conteo
+      en el resultado, sin bloquear (AC-064).
+- [ ] Anticuamiento de casos verificados sin trabajar (consulta vieja):
+      pendiente para campañas registradas (BR-079).
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

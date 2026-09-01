@@ -188,3 +188,20 @@ test("un solo intento desde la asignación retiene el caso con su responsable", 
 test("el bloque de toma del pool es de 10 casos", () => {
   assert.equal(baseRecoveryPoolTakeLimit, 10);
 });
+
+test("la verificación caduca al séptimo día desde el registro (BR-084)", async () => {
+  const { isRecoveryConsultationExpired, recoveryConsultationMaxAgeDays } =
+    await import("../dist/recovery-base-distribution.js");
+
+  const registeredAt = new Date("2026-09-01T14:00:00.000Z");
+
+  assert.equal(recoveryConsultationMaxAgeDays, 7);
+  assert.equal(
+    isRecoveryConsultationExpired(registeredAt, new Date("2026-09-08T13:59:00.000Z")),
+    false,
+  );
+  assert.equal(
+    isRecoveryConsultationExpired(registeredAt, new Date("2026-09-08T14:00:00.000Z")),
+    true,
+  );
+});

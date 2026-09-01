@@ -28,6 +28,7 @@ export interface DistributeRecoveryRow {
   teamName: string | null;
   assignedToName: string | null;
   habilitationOverdue: boolean;
+  unverified: boolean;
   lastSightingLabel: string;
 }
 
@@ -375,6 +376,11 @@ export function DistributeRecoveryForm({
                   {row.habilitationOverdue ? (
                     <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-[11px] text-ui-warning">
                       Habilitación vencida
+                    </span>
+                  ) : null}
+                  {row.unverified ? (
+                    <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-[11px] text-ui-warning">
+                      Sin verificar
                     </span>
                   ) : null}
                 </td>

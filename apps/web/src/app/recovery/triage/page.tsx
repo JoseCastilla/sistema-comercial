@@ -43,6 +43,7 @@ export default async function RecoveryTriagePage({
   searchParams,
 }: {
   searchParams: Promise<{
+    view?: string;
     team?: string;
     department?: string;
     plan?: string;
@@ -57,6 +58,7 @@ export default async function RecoveryTriagePage({
   }
 
   const parameters = await searchParams;
+  const view = parameters.view === "pendientes" ? "pendientes" : "listos";
   const teamFilter = parameters.team ?? "";
   const departmentFilter = parameters.department ?? "";
   const planFilter = (parameters.plan ?? "").trim().slice(0, 100);
@@ -91,9 +93,22 @@ export default async function RecoveryTriagePage({
     ...(supervisedTeamIds ? { assignedTeamId: { in: supervisedTeamIds } } : {}),
   };
 
+  /**
+   * BR-080/BR-083: un caso está listo cuando ninguna línea activa queda sin
+   * consultar. El triage trabaja los listos; los que esperan consulta se ven
+   * bajo su propio contador, nunca mezclados.
+   */
+  const readyWhere: Prisma.RecoveryCaseWhereInput = {
+    services: { none: { discardedAt: null, portabilityCheckedAt: null } },
+  };
+  const pendingWhere: Prisma.RecoveryCaseWhereInput = {
+    services: { some: { discardedAt: null, portabilityCheckedAt: null } },
+  };
+
   const caseScope: Prisma.RecoveryCaseWhereInput = {
     ...scopeWhere,
     status: { in: ["TRIAGE", "WAITING"] },
+    ...(view === "listos" ? readyWhere : pendingWhere),
     ...(teamFilter ? { assignedTeamId: teamFilter } : {}),
     ...(departmentFilter
       ? { department: { equals: departmentFilter, mode: "insensitive" } }
@@ -114,7 +129,8 @@ export default async function RecoveryTriagePage({
   };
 
   const [
-    triageTotal,
+    readyTotal,
+    pendingTotal,
     waitingTotal,
     openTotal,
     filteredTotal,
@@ -123,10 +139,17 @@ export default async function RecoveryTriagePage({
     teams,
   ] = await Promise.all([
     database.recoveryCase.count({
-      where: { ...scopeWhere, status: "TRIAGE" },
+      where: { ...scopeWhere, status: "TRIAGE", ...readyWhere },
     }),
     database.recoveryCase.count({
-      where: { ...scopeWhere, status: "WAITING" },
+      where: {
+        ...scopeWhere,
+        status: { in: ["TRIAGE", "WAITING"] },
+        ...pendingWhere,
+      },
+    }),
+    database.recoveryCase.count({
+      where: { ...scopeWhere, status: "WAITING", ...readyWhere },
     }),
     database.recoveryCase.count({ where: { ...scopeWhere, status: "OPEN" } }),
     database.recoveryCase.count({ where: caseScope }),
@@ -195,6 +218,7 @@ export default async function RecoveryTriagePage({
   const totalPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
 
   const baseQuery = new URLSearchParams();
+  if (view !== "listos") baseQuery.set("view", view);
   if (teamFilter) baseQuery.set("team", teamFilter);
   if (departmentFilter) baseQuery.set("department", departmentFilter);
   if (planFilter) baseQuery.set("plan", planFilter);
@@ -203,6 +227,14 @@ export default async function RecoveryTriagePage({
   function pageHref(target: number): string {
     const query = new URLSearchParams(baseQuery);
     if (target > 1) query.set("page", String(target));
+    const suffix = query.toString();
+    return `/recovery/triage${suffix ? `?${suffix}` : ""}`;
+  }
+
+  function viewHref(target: "listos" | "pendientes"): string {
+    const query = new URLSearchParams(baseQuery);
+    query.delete("view");
+    if (target !== "listos") query.set("view", target);
     const suffix = query.toString();
     return `/recovery/triage${suffix ? `?${suffix}` : ""}`;
   }
@@ -227,10 +259,38 @@ export default async function RecoveryTriagePage({
         />
 
         <MetricGroup>
-          <Metric label="Por revisar" value={triageTotal} />
+          <Metric label="Listos para revisar" value={readyTotal} />
+          <Metric label="Esperando consulta" value={pendingTotal} />
           <Metric label="En espera" value={waitingTotal} />
           <Metric label="Liberados por distribuir" value={openTotal} />
         </MetricGroup>
+
+        {view === "listos" && pendingTotal > 0 ? (
+          <p className="text-xs text-ui-muted">
+            {pendingTotal.toLocaleString("es-PE")} caso(s) aún no pasan por el
+            cruce de portabilidad; aparecerán aquí cuando su consulta confirme
+            que siguen siendo oportunidad.{" "}
+            <a
+              className="text-ui-accent underline-offset-2 hover:underline"
+              href={viewHref("pendientes")}
+            >
+              Verlos
+            </a>
+          </p>
+        ) : null}
+        {view === "pendientes" ? (
+          <p className="text-xs text-ui-muted">
+            Estás viendo casos <strong>sin verificación completa</strong>.
+            Liberarlos es posible pero el asesor llamaría sin saber si la
+            línea sigue portable.{" "}
+            <a
+              className="text-ui-accent underline-offset-2 hover:underline"
+              href={viewHref("listos")}
+            >
+              Volver a los listos
+            </a>
+          </p>
+        ) : null}
 
         {openTotal > 0 ? (
           <p className="text-sm text-ui-muted">

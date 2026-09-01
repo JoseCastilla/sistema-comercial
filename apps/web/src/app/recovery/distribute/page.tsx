@@ -160,7 +160,7 @@ export default async function RecoveryDistributePage({
         assignedUser: { select: { name: true } },
         services: {
           where: { discardedAt: null },
-          select: { planRaw: true },
+          select: { planRaw: true, portabilityCheckedAt: true },
         },
       },
     }),
@@ -223,6 +223,10 @@ export default async function RecoveryDistributePage({
     department: item.department,
     planSummary: summarizePlan(item.services[0]?.planRaw ?? null),
     serviceCount: item.services.length,
+    // BR-083: distribuir sin verificar se advierte, no se bloquea.
+    unverified: item.services.some(
+      (service) => service.portabilityCheckedAt === null,
+    ),
     teamName: item.assignedTeam?.name ?? null,
     assignedToName: item.assignedUser?.name ?? null,
     habilitationOverdue:

@@ -62,6 +62,25 @@ export const baseRecoveryResolutionDays = 7;
 /** BR-077: dos días asignado sin ningún intento devuelven el caso al pool. */
 export const baseRecoveryPoolReturnDays = 2;
 
+/**
+ * BR-084: un caso sin verificación completa de portabilidad caduca a los
+ * siete días de su fecha de registro. La experiencia operativa manda: de la
+ * base diaria quedan 400–500 registros llamables, y validar los 15 000
+ * acumulados de un mes es inviable — el embudo debe drenar solo. Siete días
+ * cubren la ventana móvil de tres días de la base más margen de operación.
+ */
+export const recoveryConsultationMaxAgeDays = 7;
+
+export function isRecoveryConsultationExpired(
+  firstRegisteredAt: Date,
+  now: Date,
+): boolean {
+  return (
+    now.getTime() - firstRegisteredAt.getTime() >=
+    recoveryConsultationMaxAgeDays * 24 * 60 * 60 * 1000
+  );
+}
+
 /** Cuenta cuántos momentos caen en el mismo día calendario de Lima que `reference`. */
 export function countOnSameLimaDay(
   moments: readonly Date[],
