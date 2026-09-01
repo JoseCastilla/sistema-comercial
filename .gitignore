@@ -58,3 +58,6 @@ packages/database/src/generated/
 
 # API local environment
 apps/api/.env
+
+# Archivos reales para pruebas locales (contienen datos personales de clientes)
+fixtures/

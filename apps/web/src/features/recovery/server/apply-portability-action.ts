@@ -107,14 +107,6 @@ export async function applyPortabilityAction(
 
   const summary = (payload ?? {}) as Partial<CrossSummary>;
 
-  if (summary.reused) {
-    return {
-      type: "success",
-      message:
-        "Este reporte ya se había aplicado. No se volvió a cruzar para no alterar los casos.",
-    };
-  }
-
   const parts = [
     `${summary.matchedServices ?? 0} línea(s) cruzadas de ${summary.totalRows ?? 0} consultadas`,
     `${summary.discardedCases ?? 0} caso(s) descartados por ya estar en Movistar`,
@@ -132,5 +124,9 @@ export async function applyPortabilityAction(
     parts.push(`${summary.plantLineServices} línea(s) de planta`);
   }
 
-  return { type: "success", message: `${parts.join(" · ")}.` };
+  // Un archivo ya conocido no crea un lote nuevo, pero sí vuelve a cruzarse
+  // contra los casos abiertos de hoy (BR-020).
+  const prefix = summary.reused ? "Reporte ya conocido, cruzado de nuevo: " : "";
+
+  return { type: "success", message: `${prefix}${parts.join(" · ")}.` };
 }

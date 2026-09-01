@@ -209,9 +209,18 @@ construir un reporte a mano.
   más treinta días. Ninguna señal de un operador distinto de Movistar cierra
   un caso como perdido; la única pérdida automática del sistema es la de
   BR-059, respaldada por evidencia del reporte.
-- **BR-020:** el cruce se ejecuta sobre todos los casos abiertos en cada
-  importación de reporte, no solo sobre los del lote del día. Un cliente que
-  porta el jueves deja de llamarse el jueves.
+- **BR-020** (precisado el 01/09/2026): el cruce se ejecuta sobre todos los
+  casos abiertos en cada importación de reporte, no solo sobre los del lote
+  del día. Un cliente que porta el jueves deja de llamarse el jueves.
+  **Reimportar un reporte ya conocido no se rechaza**: se conserva un solo
+  lote por archivo como evidencia —la huella sigue siendo única— y el cruce
+  vuelve a ejecutarse sobre los casos abiertos de hoy, porque esa población
+  cambia: una base cargada después trae casos que ese mismo reporte todavía
+  resuelve, y la revalidación de BR-019e necesita reaplicarlo aunque vuelva
+  idéntico. Reaplicar es inocuo porque cada decisión es función del estado
+  que informa el reporte, no del historial del caso. Los contadores del lote
+  describen la última aplicación; el rastro acumulativo vive en los eventos
+  de cada caso.
 - **BR-021:** el descarte por portabilidad es reversible solo por `ADMIN`, con
   motivo registrado, para corregir un reporte equivocado.
 

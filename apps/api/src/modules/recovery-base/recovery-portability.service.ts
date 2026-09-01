@@ -58,6 +58,17 @@ export class RecoveryPortabilityService {
     const client = this.databaseService.getClient();
     const fileSha256 = createHash('sha256').update(input.report).digest('hex');
 
+    /**
+     * BR-020 revisado el 01/09/2026: el cruce corre sobre **todos** los casos
+     * abiertos al momento de aplicarlo, y esa población cambia — una base
+     * cargada después trae casos que este mismo reporte todavía puede
+     * resolver, y BR-019e exige revalidar al día siguiente aunque el reporte
+     * vuelva idéntico. Por eso un archivo ya conocido no se rechaza: se
+     * conserva **un solo lote por archivo** como evidencia (la huella sigue
+     * siendo única) y el cruce se vuelve a ejecutar sobre los casos abiertos
+     * de hoy. Reaplicar es inocuo: cada decisión es función del estado del
+     * reporte, no del historial.
+     */
     const existing = await client.recoveryPortabilityBatch.findUnique({
       where: {
         organizationId_fileSha256: {
@@ -65,23 +76,8 @@ export class RecoveryPortabilityService {
           fileSha256,
         },
       },
+      select: { id: true },
     });
-
-    if (existing) {
-      return {
-        batchId: existing.id,
-        reused: true,
-        kind: existing.kind,
-        totalRows: existing.totalRows,
-        matchedServices: existing.matchedServices,
-        discardedServices: existing.discardedServices,
-        discardedCases: existing.discardedCases,
-        waitingCases: existing.waitingCases,
-        revalidationCases: existing.revalidationCases,
-        scheduledServices: existing.scheduledServices,
-        plantLineServices: existing.plantLineServices,
-      };
-    }
 
     // Un archivo con formato inesperado es un error del usuario con
     // explicación (p. ej. el rechazo de BR-018c), nunca un 500.
@@ -102,18 +98,20 @@ export class RecoveryPortabilityService {
       );
     }
 
-    const batch = await client.recoveryPortabilityBatch.create({
-      data: {
-        organizationId: input.organizationId,
-        kind: parsed.kind,
-        fileName: basename(input.fileName).slice(0, 255),
-        fileSha256,
-        fileSize: input.report.byteLength,
-        totalRows: parsed.rows.length,
-        uploadedByUserId: input.actorUserId,
-      },
-      select: { id: true },
-    });
+    const batch =
+      existing ??
+      (await client.recoveryPortabilityBatch.create({
+        data: {
+          organizationId: input.organizationId,
+          kind: parsed.kind,
+          fileName: basename(input.fileName).slice(0, 255),
+          fileSha256,
+          fileSize: input.report.byteLength,
+          totalRows: parsed.rows.length,
+          uploadedByUserId: input.actorUserId,
+        },
+        select: { id: true },
+      }));
 
     const byNumber = new Map(
       parsed.rows.map((row) => [row.serviceNumber, row]),
@@ -178,6 +176,8 @@ export class RecoveryPortabilityService {
       new Set(services.map((service) => service.serviceNumber)),
     );
 
+    // Los contadores describen la última aplicación; el rastro por caso vive
+    // en sus eventos, que sí son acumulativos.
     const updated = await client.recoveryPortabilityBatch.update({
       where: { id: batch.id },
       data: counters,
@@ -185,7 +185,7 @@ export class RecoveryPortabilityService {
 
     return {
       batchId: batch.id,
-      reused: false,
+      reused: existing !== null,
       kind: parsed.kind,
       totalRows: updated.totalRows,
       matchedServices: updated.matchedServices,
