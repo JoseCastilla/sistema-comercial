@@ -45,6 +45,9 @@ export default async function RecoveryBaseAdminPage({
     batches,
     triageCount,
     waitingCount,
+    openCount,
+    managedCount,
+    recoveredCount,
     openServiceCount,
     portabilityBatches,
   ] = await Promise.all([
@@ -74,10 +77,39 @@ export default async function RecoveryBaseAdminPage({
       },
     }),
     database.recoveryCase.count({
-      where: { organizationId: membership.organization.id, status: "TRIAGE" },
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "TRIAGE",
+      },
     }),
     database.recoveryCase.count({
-      where: { organizationId: membership.organization.id, status: "WAITING" },
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "WAITING",
+      },
+    }),
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "OPEN",
+      },
+    }),
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
+      },
+    }),
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "RECOVERED",
+      },
     }),
     database.recoveryCaseService.count({
       where: {
@@ -141,32 +173,39 @@ export default async function RecoveryBaseAdminPage({
           description="Importa la base del día, cruza portabilidad y crea los casos que el equipo trabajará."
         />
 
-        <MetricGroup>
-          <Metric label="Casos por revisar (triage)" value={triageCount} />
-          <Metric label="Casos en espera" value={waitingCount} />
-          <Metric label="Lotes importados" value={batches.length} />
-        </MetricGroup>
-
-        {triageCount + waitingCount > 0 ? (
-          <SectionPanel
-            title="Siguiente paso: revisar los casos"
-            description="Antes de repartir trabajo, el triage separa a quienes ya tienen un pedido en curso de quienes son oportunidad real."
-          >
-            <p className="text-sm text-ui-muted">
-              Hay{" "}
-              <strong className="text-ui-text">
-                {triageCount.toLocaleString("es-PE")}
-              </strong>{" "}
-              caso(s) esperando revisión. Marca en lote quiénes quedan en espera
-              y quiénes se liberan para asignar.
-            </p>
-            <p>
+        <SectionPanel
+          title="Embudo de la campaña"
+          description="El recorrido de la base: cargar, cruzar portabilidad, revisar, distribuir y gestionar. Al volver en otra sesión, aquí está lo que falta."
+        >
+          <MetricGroup>
+            <Metric label="En triage" value={triageCount} />
+            <Metric label="En espera" value={waitingCount} />
+            <Metric label="Por distribuir" value={openCount} />
+            <Metric label="En gestión" value={managedCount} />
+            <Metric label="Recuperados" value={recoveredCount} />
+          </MetricGroup>
+          <div className="flex flex-wrap gap-3">
+            {triageCount > 0 ? (
               <a className="ui-button ui-button--primary" href="/recovery/triage">
-                Abrir triage de casos
+                Revisar {triageCount.toLocaleString("es-PE")} en triage
               </a>
-            </p>
-          </SectionPanel>
-        ) : null}
+            ) : null}
+            {openCount > 0 ? (
+              <a
+                className={`ui-button ${triageCount > 0 ? "ui-button--secondary" : "ui-button--primary"}`}
+                href="/recovery/distribute"
+              >
+                Distribuir {openCount.toLocaleString("es-PE")} liberados
+              </a>
+            ) : null}
+            {triageCount === 0 && openCount === 0 ? (
+              <p className="text-sm text-ui-muted">
+                No hay casos esperando revisión ni distribución. Importa la base
+                del día o revisa la gestión en curso.
+              </p>
+            ) : null}
+          </div>
+        </SectionPanel>
 
         {selectedBatch ? (
           <SectionPanel

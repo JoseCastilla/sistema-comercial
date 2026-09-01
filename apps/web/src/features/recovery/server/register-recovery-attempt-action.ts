@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  countOnSameLimaDay,
+  getBaseRecoveryNextTouchAt,
   getInternalRecoveryNextTouchAt,
   getInternalRecoveryPauseUntil,
+  isBaseRecoveryResolutionDue,
 } from "@repo/validation";
 
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -16,6 +19,12 @@ import type { SendOrderToRecoveryActionState } from "./recovery-action.types";
  * Registro de un intento de contacto — SPEC-030 BR-032 a BR-036, BR-066.
  * El intento es inmutable; sus efectos sobre el caso (estado, reloj, agenda,
  * pausa) se aplican en la misma transacción.
+ *
+ * BR-031: la cadencia es por fuente. El carril interno usa los toques
+ * D1/D3/D7 desde la asignación; la base nacional exige tres intentos en el
+ * día (BR-032) y reaparece a la mañana siguiente con el mínimo cumplido,
+ * hasta la resolución obligatoria del séptimo día (BR-058). La agenda
+ * (BR-034) y la pausa por rechazo (BR-033) valen igual en ambos carriles.
  */
 const channels = new Set(["LLAMADA", "WHATSAPP", "SMS", "PRESENCIAL", "OTRO"]);
 
@@ -110,7 +119,6 @@ export async function registerRecoveryAttemptAction(
       where: {
         id: caseId,
         organizationId: membership.organization.id,
-        source: { in: ["INTERNAL_ORDER_STATE", "MANUAL"] },
         status: { in: [...openStatuses] },
         // El asesor solo gestiona sus casos asignados (BR-029b); la
         // supervisión, dentro de sus equipos.
@@ -129,11 +137,17 @@ export async function registerRecoveryAttemptAction(
       },
       select: {
         id: true,
+        source: true,
         status: true,
         claimedAt: true,
         createdAt: true,
         firstContactAt: true,
         holderName: true,
+        attempts: {
+          orderBy: { createdAt: "desc" },
+          take: 30,
+          select: { createdAt: true },
+        },
       },
     });
 
@@ -153,17 +167,25 @@ export async function registerRecoveryAttemptAction(
       },
     });
 
+    const isBaseCase = recoveryCase.source === "NATIONAL_BASE";
+    const managedSince = recoveryCase.claimedAt ?? recoveryCase.createdAt;
+    // Incluye el intento recién creado en el conteo del día (BR-032).
+    const attemptsToday =
+      countOnSameLimaDay(
+        recoveryCase.attempts.map((attempt) => attempt.createdAt),
+        now,
+      ) + 1;
+
     // BR-034: la agenda suspende la cadencia; BR-033: el rechazo pausa 1–2
-    // días; el resto sigue la cadencia D1/D3/D7 desde la asignación.
+    // días; el resto sigue la cadencia de su fuente (BR-031).
     const nextActionAt =
       result === "AGENDA"
         ? scheduledAt
         : result === "RECHAZA"
           ? getInternalRecoveryPauseUntil(now, pauseDays)
-          : (getInternalRecoveryNextTouchAt(
-              recoveryCase.claimedAt ?? recoveryCase.createdAt,
-              now,
-            ) ?? now);
+          : isBaseCase
+            ? getBaseRecoveryNextTouchAt(attemptsToday, now)
+            : (getInternalRecoveryNextTouchAt(managedSince, now) ?? now);
 
     await transaction.recoveryCase.update({
       where: { id: recoveryCase.id },
@@ -178,13 +200,13 @@ export async function registerRecoveryAttemptAction(
       kind: "DONE" as const,
       holderName: recoveryCase.holderName,
       result,
+      attemptsToday: isBaseCase ? attemptsToday : null,
       mustResolve:
         result !== "AGENDA" &&
         result !== "RECHAZA" &&
-        getInternalRecoveryNextTouchAt(
-          recoveryCase.claimedAt ?? recoveryCase.createdAt,
-          now,
-        ) === null,
+        (isBaseCase
+          ? isBaseRecoveryResolutionDue(managedSince, now)
+          : getInternalRecoveryNextTouchAt(managedSince, now) === null),
     };
   });
 
@@ -196,13 +218,16 @@ export async function registerRecoveryAttemptAction(
   }
 
   revalidatePath("/recovery/sales");
+  revalidatePath("/recovery/campaigns");
 
   const suffix =
     outcome.result === "VENDIDO"
       ? " Vincula la orden nueva para resolverlo como recuperado."
       : outcome.mustResolve
         ? " La cadencia se agotó: este caso entra en resolución obligatoria."
-        : "";
+        : outcome.attemptsToday !== null && outcome.attemptsToday < 3
+          ? ` Llevas ${outcome.attemptsToday} de 3 intentos exigidos hoy.`
+          : "";
 
   return {
     type: "success",

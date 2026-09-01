@@ -322,6 +322,9 @@
   .app-shell__mobile-nav[data-items="4"] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+  .app-shell__mobile-nav[data-items="6"] {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
   .app-mobile-nav-item {
     display: flex;
     min-width: 0;

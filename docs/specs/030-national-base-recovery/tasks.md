@@ -50,37 +50,65 @@
 - [x] Marcado de líneas de planta.
 - [ ] Reversión de descarte para `ADMIN`, con motivo.
 
-## Fase 3 — Motor de contactos
+## Fase 3 — Motor de contactos (construida el 31/08/2026)
 
 - [x] Entrega de bloques a equipos desde el triage, con alcance por rol y
       selección masiva (Shift y por cantidad) — BR-022b, AC-043 a AC-045.
-- [ ] Cola por equipo con alcance por rol.
-- [ ] Toma atómica mediante actualización condicional.
-- [ ] Asignación en lote: directa a asesor, equitativa en equipo, manual entre
-      equipos y envío a cola (BR-028).
-- [ ] Selector de asesores elegibles con exclusión de ausentes registrada
-      (BR-028b).
-- [ ] Algoritmo de reparto equitativo como función pura en `@repo/validation`
-      (BR-028c).
-- [ ] Redistribución en lote de casos sin gestión de un asesor (BR-030b).
-- [ ] Bloqueo de auto-asignación directa para supervisor vendedor (BR-050b).
-- [ ] Registro de intentos inmutables con canal, tipificación y teléfono.
-- [ ] Contador de intentos del día y señal de cobertura insuficiente.
-- [ ] Pausa de uno o dos días con reaparición automática.
-- [ ] Agenda con fecha y hora exactas.
-- [ ] Captura manual de antigüedad para líneas sin fecha de ventana.
-- [ ] Prioridad al inicio de la cola al vencer la habilitación.
-- [ ] Revelación auditada de datos sensibles: solo `Validacion = false` y tras
-      un intento `INTERESADO`.
-- [ ] Reasignación supervisada con historial.
+- [x] Cola por equipo con alcance por rol: modo `COLA` en
+      `/recovery/distribute` deja el lote `OPEN` sin responsable y sin SLA
+      (BR-076); el pool se ve y se toma desde `/recovery/campaigns`.
+- [x] Toma atómica por bloque de hasta 10 mediante `updateMany` condicional
+      (`status = OPEN AND assignedUserId IS NULL`): el segundo asesor no
+      recibe los casos que el primero ya tomó (AC-013, BR-078).
+- [x] Asignación en lote: directa a asesor, equitativa en equipo y envío a
+      cola (BR-028). El reparto manual entre equipos se compone con
+      "seleccionar los primeros N" + un modo por equipo; cada sub-lote queda
+      auditado con su propio lote de eventos.
+- [x] Selector de asesores elegibles con exclusión de ausentes registrada en
+      la metadata del lote (BR-028b, AC-039) — verificado en local: 12 casos
+      entre 3 participantes con 1 excluido produjo 4/4/4 y 0 al excluido.
+- [x] Algoritmo de reparto equitativo como función pura
+      `distributeCasesEquitably` en
+      `@repo/validation/recovery-base-distribution`, con pruebas de
+      diferencia máxima, residuo al menos cargado y mezcla por ronda
+      (BR-028c, AC-038).
+- [x] Redistribución en lote de casos sin gestión (BR-030b, AC-042): vista
+      "Asignados sin gestión" en `/recovery/distribute`; un caso con intento
+      posterior a su asignación queda fuera del lote y se informa.
+- [x] Bloqueo de auto-asignación directa para supervisor vendedor (BR-050b):
+      la interfaz lo excluye del selector directo y el servidor lo rechaza;
+      la toma del pool excluye los casos que él mismo liberó (BR-050).
+- [x] Registro de intentos inmutables con canal, tipificación y teléfono:
+      la acción de Fase 5 ahora acepta ambas fuentes, con cadencia por
+      fuente (BR-031) — la base exige tres intentos del día y reaparece a las
+      9:00 de Lima siguientes con el mínimo cumplido.
+- [x] Contador de intentos del día y señal de cobertura insuficiente: "X / 3
+      hoy" en cola y ficha, métrica "Sin los 3 intentos de hoy" (BR-032).
+- [x] Pausa de uno o dos días con reaparición automática (compartida con el
+      carril interno, BR-033).
+- [x] Agenda con fecha y hora exactas (compartida, BR-034).
+- [ ] Captura manual de antigüedad para líneas sin fecha de ventana (BR-038).
+- [x] Prioridad al inicio de la cola al vencer la habilitación (BR-039): la
+      toma del pool y el orden del reparto sirven primero las habilitaciones
+      vencidas.
+- [x] Revelación auditada de datos sensibles (BR-045/BR-046, AC-021): solo el
+      asesor asignado, solo con `Validacion = false`, solo tras un intento
+      `INTERESADO`, mediante acción explícita que registra actor y momento.
+- [ ] Reasignación individual supervisada de un caso de base con gestión
+      iniciada (BR-030); la redistribución masiva cubre solo los no
+      trabajados.
 
 ## Fase 4 — Cierre y medición
 
-- [ ] Resolución `RECOVERED` con sugerencia de orden DITO y confirmación humana.
-- [ ] Resolución `LOST` con motivo estructurado y criterios habilitantes por
-      motivo (BR-057).
+- [x] Resolución `RECOVERED` con sugerencia de orden DITO y confirmación
+      humana (31/08/2026): la acción de Fase 5 acepta ambas fuentes y la
+      ficha de campaña la ofrece con las mismas garantías (BR-042).
+- [x] Resolución `LOST` con motivo estructurado y criterios habilitantes por
+      motivo (BR-057), compartidos con el carril interno.
 - [ ] Resolución obligatoria al séptimo día con escalamiento al supervisor
-      (BR-058).
+      (BR-058). La señal ya existe — "Resolver hoy" en cola y ficha desde el
+      séptimo día de gestión —; falta el escalamiento automático al
+      supervisor en el sondeo de notificaciones.
 - [ ] Pérdida automática `YA_MIGRO_OTRA_AGENCIA` cuando un caso con gestión
       porta a Movistar (BR-059).
 - [ ] Tablero de avance, cobertura y efectividad por asesor.
@@ -168,9 +196,13 @@
       del supervisor, y el aviso flotante "recupero(s) vencido(s)" enlaza a
       la bandeja. Reutiliza el canal en tiempo real + sondeo de respaldo de
       los escalamientos.
-- [ ] Retorno automático al pool de casos de base sin gestión (BR-077).
-- [ ] Orden de cola por recencia + habilitaciones y filtros del asesor sobre
-      el pool (BR-078).
+- [x] Retorno automático al pool de casos de base sin gestión (BR-077,
+      AC-058): barrido perezoso e idempotente `returnStaleBaseCasesToPool`
+      al abrir las superficies de campaña y antes de cada toma; regla pura
+      `shouldReturnBaseCaseToPool` con pruebas.
+- [x] Orden de cola por recencia + habilitaciones y filtros del asesor sobre
+      el pool (BR-078, AC-059): toma por bloque con filtros de departamento
+      y plan; habilitaciones vencidas primero, luego lo más reciente.
 - [ ] Campañas de base: activación registrada, checklist carga → cruce →
       distribución, y sugerencia en el dashboard de rendimiento (BR-079).
 - [ ] Métricas segregadas por fuente en tablero y dashboard (BR-075, AC-061).
@@ -180,12 +212,36 @@
       (BR-070).
 - [ ] Reproducir los casos de referencia de SPEC-026 (AC-052).
 
+## Superficie y honestidad de datos (31/08/2026)
+
+- [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en
+      la distribución, resueltos en el servidor.
+- [x] Métricas del triage calculadas con `count` reales, no sobre las filas
+      visibles: el tope silencioso de 500 quedó reemplazado por paginación
+      con total declarado.
+- [x] Embudo de campaña en `/admin/recovery-base` (triage → espera → por
+      distribuir → en gestión → recuperados) con la siguiente acción como
+      ancla para retomar en otra sesión.
+- [x] Navegación: "Campañas" visible para todos los roles, cada uno hacia su
+      superficie — admin prepara, supervisión hace triage, asesor trabaja su
+      cola en `/recovery/campaigns`.
+- [x] BR-074 reforzado: el triage y la distribución filtran
+      `source = NATIONAL_BASE` explícitamente.
+
 ## Verificación
 
+- [x] Pruebas de dominio del reparto y la cadencia (11 pruebas en
+      `recovery-base-distribution.test.mjs`; 226 en verde en el paquete).
+- [x] Verificación en local con sesión `SUPERVISOR` (31/08/2026): liberar 12
+      → equitativa 3 participantes / 1 excluido → 4/4/4 → redistribución de 5
+      a la cola; eventos auditados con actor, participantes, excluidos y
+      responsable previo verificados en base de datos; intento sobre ficha
+      con contador 1/3 y cadencia vigente el mismo día.
 - [ ] Pruebas de dominio con la base real como fixture.
-- [ ] Prueba de concurrencia sobre la toma de casos.
-- [ ] Verificación con roles `AGENT`, `SUPERVISOR`, `SUPERVISOR` vendedor,
-      `BACKOFFICE` y `ADMIN`.
+- [ ] Prueba de concurrencia sobre la toma de casos (el diseño la garantiza
+      por `updateMany` condicional; falta el test automatizado).
+- [ ] Verificación con roles `AGENT`, `SUPERVISOR` vendedor y `BACKOFFICE` —
+      bloqueada por la falta de cuentas de prueba por rol.
 - [ ] Verificación de que sensibles y columnas `A`–`M` no salen en listas ni
       exportaciones.
 - [ ] Aprobar antes de desplegar.

@@ -11,9 +11,10 @@ import type { SendOrderToRecoveryActionState } from "./recovery-action.types";
 import type { RecoveryLossReasonOption } from "@repo/validation";
 
 /**
- * Resolución de un caso interno — SPEC-030 BR-041 a BR-044, BR-057.
- * `RECOVERED` exige vincular la orden DITO nueva con confirmación humana;
- * `LOST` exige motivo estructurado y observación. Nada se cierra solo.
+ * Resolución de un caso de recuperación — SPEC-030 BR-041 a BR-044, BR-057.
+ * Vale para ambos carriles: `RECOVERED` exige vincular la orden DITO nueva
+ * con confirmación humana; `LOST` exige motivo estructurado, observación y el
+ * criterio habilitante de su motivo. Nada se cierra solo.
  */
 const lossReasons = new Set([
   "YA_MIGRO_OTRA_AGENCIA",
@@ -107,7 +108,6 @@ export async function resolveRecoveryCaseAction(
       where: {
         id: caseId,
         organizationId: membership.organization.id,
-        source: { in: ["INTERNAL_ORDER_STATE", "MANUAL"] },
         status: { in: [...openStatuses] },
         ...(membership.role === "AGENT"
           ? { assignedUserId: session.user.id }
@@ -229,6 +229,7 @@ export async function resolveRecoveryCaseAction(
   }
 
   revalidatePath("/recovery/sales");
+  revalidatePath("/recovery/campaigns");
   revalidatePath("/orders");
   revalidatePath("/performance");
 

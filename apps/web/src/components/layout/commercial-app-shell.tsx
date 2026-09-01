@@ -204,6 +204,16 @@ export function CommercialAppShell({
   const isAdmin = role === "ADMIN";
   const canTriageRecovery =
     role === "ADMIN" || role === "BACKOFFICE" || role === "SUPERVISOR";
+  // Cada rol entra a Campañas por su superficie de trabajo: el admin prepara
+  // la base, la supervisión hace triage y el asesor trabaja su cola.
+  const campaignsHref = isAdmin
+    ? "/admin/recovery-base"
+    : canTriageRecovery
+      ? "/recovery/triage"
+      : "/recovery/campaigns";
+  const campaignsDescription = canTriageRecovery
+    ? "Prospección sobre base fría"
+    : "Mi cola y el pool del equipo";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(role === "AGENT");
 
   useEffect(() => {
@@ -295,15 +305,13 @@ export function CommercialAppShell({
             icon="recovery"
             label="Recupero de ventas"
           />
-          {canTriageRecovery ? (
-            <NavigationItem
-              active={activeSection === "recovery"}
-              description="Prospección sobre base fría"
-              href={isAdmin ? "/admin/recovery-base" : "/recovery/triage"}
-              icon="campaigns"
-              label="Campañas"
-            />
-          ) : null}
+          <NavigationItem
+            active={activeSection === "recovery"}
+            description={campaignsDescription}
+            href={campaignsHref}
+            icon="campaigns"
+            label="Campañas"
+          />
           {isAdmin ? (
             <>
               <NavigationItem
@@ -372,7 +380,7 @@ export function CommercialAppShell({
       <nav
         aria-label="Navegación móvil"
         className="app-shell__mobile-nav"
-        data-items={isAdmin ? "9" : canTriageRecovery ? "5" : "4"}
+        data-items={isAdmin ? "9" : "6"}
       >
         <MobileNavigationItem
           active={activeSection === "performance"}
@@ -404,14 +412,12 @@ export function CommercialAppShell({
           icon="recovery"
           label="Recupero"
         />
-        {canTriageRecovery ? (
-          <MobileNavigationItem
-            active={activeSection === "recovery"}
-            href={isAdmin ? "/admin/recovery-base" : "/recovery/triage"}
-            icon="campaigns"
-            label="Campañas"
-          />
-        ) : null}
+        <MobileNavigationItem
+          active={activeSection === "recovery"}
+          href={campaignsHref}
+          icon="campaigns"
+          label="Campañas"
+        />
         {isAdmin ? (
           <>
             <MobileNavigationItem

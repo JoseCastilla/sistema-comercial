@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 
 import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import {
-  RecoveryTriageForm,
-  type RecoveryTriageRow,
-  type RecoveryTriageTeamOption,
-} from "@/features/recovery/components/recovery-triage-form";
+  DistributeRecoveryForm,
+  type DistributeAdvisorOption,
+  type DistributeRecoveryRow,
+  type DistributeTeamOption,
+} from "@/features/recovery/components/distribute-recovery-form";
+import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -17,7 +19,7 @@ import { SectionPanel } from "@repo/ui/section-panel";
 
 import { SignOutButton } from "@/app/orders/sign-out-button";
 
-const triageRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
+const distributionRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
 
 const pageSize = 250;
 
@@ -29,16 +31,15 @@ const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
 
 function summarizePlan(planRaw: string | null): string {
   if (!planRaw) return "—";
-
   const match = planRaw.match(/S\/\s?\d+(?:\.\d+)?/);
-
   return match ? `Máximo ${match[0]}` : planRaw;
 }
 
-export default async function RecoveryTriagePage({
+export default async function RecoveryDistributePage({
   searchParams,
 }: {
   searchParams: Promise<{
+    view?: string;
     team?: string;
     department?: string;
     plan?: string;
@@ -48,24 +49,22 @@ export default async function RecoveryTriagePage({
 }) {
   const { session, membership } = await requireCommercialAccess();
 
-  if (!triageRoles.has(membership.role)) {
+  if (!distributionRoles.has(membership.role)) {
     redirect("/access-denied");
   }
 
   const parameters = await searchParams;
+  const view = parameters.view === "unworked" ? "unworked" : "open";
   const teamFilter = parameters.team ?? "";
   const departmentFilter = parameters.department ?? "";
   const planFilter = (parameters.plan ?? "").trim().slice(0, 100);
   const documentFilter = (parameters.q ?? "").trim().slice(0, 20);
   const page = Math.max(1, Number.parseInt(parameters.page ?? "1", 10) || 1);
 
-  const isSupervisor = membership.role === "SUPERVISOR";
+  // BR-077: lo abandonado vuelve al pool antes de mirar qué distribuir.
+  await returnStaleBaseCasesToPool(membership.organization.id);
 
-  /**
-   * BR-022b/BR-029: un supervisor solo ve el triage de la base que le fue
-   * entregada — los casos asignados a sus equipos. ADMIN y BACKOFFICE ven la
-   * organización completa y son quienes reparten bloques entre equipos.
-   */
+  const isSupervisor = membership.role === "SUPERVISOR";
   const supervisedTeamIds = isSupervisor
     ? (
         await database.commercialTeamMember.findMany({
@@ -87,9 +86,8 @@ export default async function RecoveryTriagePage({
     ...(supervisedTeamIds ? { assignedTeamId: { in: supervisedTeamIds } } : {}),
   };
 
-  const caseScope: Prisma.RecoveryCaseWhereInput = {
+  const filterWhere: Prisma.RecoveryCaseWhereInput = {
     ...scopeWhere,
-    status: { in: ["TRIAGE", "WAITING"] },
     ...(teamFilter ? { assignedTeamId: teamFilter } : {}),
     ...(departmentFilter
       ? { department: { equals: departmentFilter, mode: "insensitive" } }
@@ -109,88 +107,149 @@ export default async function RecoveryTriagePage({
       : {}),
   };
 
+  const viewWhere: Prisma.RecoveryCaseWhereInput =
+    view === "open"
+      ? { ...filterWhere, status: "OPEN" }
+      : { ...filterWhere, status: "ASSIGNED", attempts: { none: {} } };
+
   const [
-    triageTotal,
-    waitingTotal,
-    openTotal,
+    openCount,
+    unworkedCount,
+    inProgressCount,
+    triageCount,
     filteredTotal,
     cases,
     departmentGroups,
     teams,
+    advisorMemberships,
+    advisorOpenCounts,
   ] = await Promise.all([
-    database.recoveryCase.count({
-      where: { ...scopeWhere, status: "TRIAGE" },
-    }),
-    database.recoveryCase.count({
-      where: { ...scopeWhere, status: "WAITING" },
-    }),
     database.recoveryCase.count({ where: { ...scopeWhere, status: "OPEN" } }),
-    database.recoveryCase.count({ where: caseScope }),
+    database.recoveryCase.count({
+      where: { ...scopeWhere, status: "ASSIGNED", attempts: { none: {} } },
+    }),
+    database.recoveryCase.count({
+      where: {
+        ...scopeWhere,
+        OR: [
+          { status: { in: ["IN_PROGRESS", "SCHEDULED"] } },
+          { status: "ASSIGNED", attempts: { some: {} } },
+        ],
+      },
+    }),
+    database.recoveryCase.count({
+      where: { ...scopeWhere, status: { in: ["TRIAGE", "WAITING"] } },
+    }),
+    database.recoveryCase.count({ where: viewWhere }),
     database.recoveryCase.findMany({
-      where: caseScope,
-      orderBy: [{ status: "asc" }, { lastSightingAt: "desc" }],
+      where: viewWhere,
+      orderBy:
+        view === "open"
+          ? [{ lastSightingAt: "desc" }]
+          : [{ claimedAt: "asc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
       select: {
         id: true,
         holderName: true,
         documentNumber: true,
-        status: true,
+        department: true,
         lastSightingAt: true,
+        portabilityEligibleAt: true,
         assignedTeam: { select: { name: true } },
+        assignedUser: { select: { name: true } },
         services: {
-          select: { serviceNumber: true, planRaw: true, carrierRaw: true },
+          where: { discardedAt: null },
+          select: { planRaw: true },
         },
-        _count: { select: { sightings: true } },
       },
     }),
     database.recoveryCase.groupBy({
       by: ["department"],
-      where: { ...scopeWhere, status: { in: ["TRIAGE", "WAITING"] } },
+      where: { ...scopeWhere, status: view === "open" ? "OPEN" : "ASSIGNED" },
       _count: { _all: true },
       orderBy: { _count: { department: "desc" } },
       take: 30,
     }),
-    isSupervisor
-      ? Promise.resolve([])
-      : database.commercialTeam.findMany({
-          where: {
-            organizationId: membership.organization.id,
-            status: "ACTIVE",
-          },
-          orderBy: { name: "asc" },
-          select: { id: true, name: true },
-        }),
+    database.commercialTeam.findMany({
+      where: {
+        organizationId: membership.organization.id,
+        status: "ACTIVE",
+        ...(supervisedTeamIds ? { id: { in: supervisedTeamIds } } : {}),
+      },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    database.commercialTeamMember.findMany({
+      where: {
+        salesEnabled: true,
+        isActive: true,
+        isPrimary: true,
+        team: {
+          organizationId: membership.organization.id,
+          status: "ACTIVE",
+          ...(supervisedTeamIds ? { id: { in: supervisedTeamIds } } : {}),
+        },
+        user: { status: "ACTIVE" },
+      },
+      select: {
+        userId: true,
+        teamId: true,
+        user: { select: { name: true } },
+        team: { select: { name: true } },
+      },
+    }),
+    database.recoveryCase.groupBy({
+      by: ["assignedUserId"],
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
+        assignedUserId: { not: null },
+      },
+      _count: { _all: true },
+    }),
   ]);
 
-  const rows: RecoveryTriageRow[] = cases.map((recoveryCase) => ({
-    id: recoveryCase.id,
-    holderName: recoveryCase.holderName,
-    documentNumber: recoveryCase.documentNumber,
-    status: recoveryCase.status === "WAITING" ? "WAITING" : "TRIAGE",
-    serviceNumbers: recoveryCase.services.map(
-      (service) => service.serviceNumber,
-    ),
-    planSummary: summarizePlan(recoveryCase.services[0]?.planRaw ?? null),
-    carrierSummary: [
-      ...new Set(
-        recoveryCase.services
-          .map((service) => service.carrierRaw)
-          .filter((value): value is string => value !== null),
-      ),
-    ].join(", "),
-    teamName: recoveryCase.assignedTeam?.name ?? null,
-    lastSightingLabel: dateTimeFormatter.format(recoveryCase.lastSightingAt),
-    sightingCount: recoveryCase._count.sightings,
+  const now = new Date();
+  const openByUser = new Map(
+    advisorOpenCounts.map((item) => [item.assignedUserId, item._count._all]),
+  );
+
+  const rows: DistributeRecoveryRow[] = cases.map((item) => ({
+    id: item.id,
+    holderName: item.holderName,
+    documentNumber: item.documentNumber,
+    department: item.department,
+    planSummary: summarizePlan(item.services[0]?.planRaw ?? null),
+    serviceCount: item.services.length,
+    teamName: item.assignedTeam?.name ?? null,
+    assignedToName: item.assignedUser?.name ?? null,
+    habilitationOverdue:
+      item.portabilityEligibleAt !== null &&
+      item.portabilityEligibleAt.getTime() <= now.getTime(),
+    lastSightingLabel: dateTimeFormatter.format(item.lastSightingAt),
   }));
 
-  const teamOptions: RecoveryTriageTeamOption[] = teams;
+  const teamOptions: DistributeTeamOption[] = teams;
+  const advisorOptions: DistributeAdvisorOption[] = advisorMemberships
+    .map((item) => ({
+      id: item.userId,
+      name: item.user.name,
+      teamId: item.teamId,
+      teamName: item.team.name,
+      openCases: openByUser.get(item.userId) ?? 0,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name, "es"));
+
   const departments = departmentGroups
     .map((group) => group.department)
     .filter((value): value is string => value !== null && value.length > 0);
+
   const totalPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
 
   const baseQuery = new URLSearchParams();
+  if (view !== "open") baseQuery.set("view", view);
   if (teamFilter) baseQuery.set("team", teamFilter);
   if (departmentFilter) baseQuery.set("department", departmentFilter);
   if (planFilter) baseQuery.set("plan", planFilter);
@@ -200,7 +259,7 @@ export default async function RecoveryTriagePage({
     const query = new URLSearchParams(baseQuery);
     if (target > 1) query.set("page", String(target));
     const suffix = query.toString();
-    return `/recovery/triage${suffix ? `?${suffix}` : ""}`;
+    return `/recovery/distribute${suffix ? `?${suffix}` : ""}`;
   }
 
   return (
@@ -214,61 +273,73 @@ export default async function RecoveryTriagePage({
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
-          title={isSupervisor ? "Triage de mi bloque" : "Triage de campaña"}
-          description={
-            isSupervisor
-              ? "Esta es la base entregada a tus equipos. Marca en lote el resultado del chequeo manual: con pedido en curso a espera, sin pedido a la cola de asignación."
-              : "Reparte bloques a los equipos o marca en lote el resultado del chequeo manual. El DNI se copia con un clic para pegarlo en el sistema de consulta."
-          }
+          title="Distribuir la base"
+          description="Reparte los casos liberados entre asesores o envíalos a la cola del equipo. Los casos asignados sin gestión se pueden redistribuir."
         />
 
         <MetricGroup>
-          <Metric label="Por revisar" value={triageTotal} />
-          <Metric label="En espera" value={waitingTotal} />
-          <Metric label="Liberados por distribuir" value={openTotal} />
+          <Metric label="Por distribuir" value={openCount} />
+          <Metric label="Asignados sin gestión" value={unworkedCount} />
+          <Metric label="En gestión" value={inProgressCount} />
+          <Metric label="En triage o espera" value={triageCount} />
         </MetricGroup>
 
-        {openTotal > 0 ? (
+        {triageCount > 0 ? (
           <p className="text-sm text-ui-muted">
-            Hay {openTotal.toLocaleString("es-PE")} caso(s) liberados esperando
-            reparto.{" "}
+            Hay {triageCount.toLocaleString("es-PE")} caso(s) que aún no pasan
+            el triage.{" "}
             <a
               className="text-ui-accent underline-offset-2 hover:underline"
-              href="/recovery/distribute"
+              href="/recovery/triage"
             >
-              Distribuir la base
+              Abrir triage
             </a>
           </p>
         ) : null}
 
         <SectionPanel
-          title="Casos pendientes"
-          description={`${filteredTotal.toLocaleString("es-PE")} caso(s) cumplen el filtro; se muestran ${rows.length.toLocaleString("es-PE")} por página, primero los del último lote. La selección admite rango con Shift y selección por cantidad.`}
+          title={
+            view === "open"
+              ? "Casos liberados por distribuir"
+              : "Asignados sin gestión (redistribuibles)"
+          }
+          description={`${filteredTotal.toLocaleString("es-PE")} caso(s) cumplen el filtro; se muestran ${rows.length.toLocaleString("es-PE")} por página, los más recientes primero.`}
         >
           <form
-            action="/recovery/triage"
+            action="/recovery/distribute"
             className="flex flex-wrap items-end gap-3"
             method="get"
           >
-            {!isSupervisor ? (
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-ui-muted">
-                  Equipo
-                </span>
-                <select
-                  className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                  defaultValue={teamFilter}
-                  name="team"
-                >
-                  <option value="">Todos</option>
-                  {teams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ui-muted">
+                Vista
+              </span>
+              <select
+                className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
+                defaultValue={view}
+                name="view"
+              >
+                <option value="open">Por distribuir</option>
+                <option value="unworked">Asignados sin gestión</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ui-muted">
+                Equipo
+              </span>
+              <select
+                className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
+                defaultValue={teamFilter}
+                name="team"
+              >
+                <option value="">Todos</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-ui-muted">
                 Departamento
@@ -310,15 +381,20 @@ export default async function RecoveryTriagePage({
                 placeholder="Buscar"
               />
             </label>
-            <button className="ui-button ui-button--secondary" type="submit">
+            <button
+              className="ui-button ui-button--secondary"
+              type="submit"
+            >
               Filtrar
             </button>
           </form>
 
-          <RecoveryTriageForm
-            canAssignTeams={!isSupervisor}
+          <DistributeRecoveryForm
+            advisors={advisorOptions}
             rows={rows}
             teams={teamOptions}
+            viewerRole={membership.role}
+            viewerUserId={session.user.id}
           />
 
           {totalPages > 1 ? (
