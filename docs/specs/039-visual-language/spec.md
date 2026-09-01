@@ -123,6 +123,12 @@ sidebar; color únicamente semántico.
 - **BR-011 (P-1):** la densidad se calibra por frecuencia de uso de la
   vista: máxima en las colas operativas diarias, relajada en configuración
   y administración ocasional.
+- **BR-013 (P-5)** (01/09/2026): en una tabla de selección múltiple, el
+  área que selecciona es **la fila entera**, no la casilla. Apuntar a un
+  cuadro de trece píxeles por cliente es el cuello de botella real cuando
+  hay que marcar decenas; la casilla se conserva como señal visual del
+  estado, no como blanco. Los controles dentro de la fila —copiar un dato,
+  abrir una ficha— detienen la propagación para no seleccionar de paso.
 - **BR-012 (P-3)** (01/09/2026): una columna cuyas celdas dicen todas lo
   mismo no se muestra. No informa, ocupa ancho y obliga a leerla para
   descubrir que no aporta nada — "Equipo: sin equipo" repetido en 250 filas

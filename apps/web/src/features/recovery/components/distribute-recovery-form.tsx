@@ -348,14 +348,25 @@ export function DistributeRecoveryForm({
             </tr>
           </thead>
           <tbody className="divide-y divide-ui-border bg-ui-surface">
+            {/* Toda la fila selecciona, igual que en el triage. */}
             {rows.map((row, index) => (
-              <tr className="select-none" key={row.id}>
+              <tr
+                aria-selected={selected.has(row.id)}
+                className={`cursor-pointer select-none ${
+                  selected.has(row.id)
+                    ? "bg-ui-accent-soft"
+                    : "hover:bg-ui-surface-muted"
+                }`}
+                key={row.id}
+                onClick={(event) => handleRowClick(index, event.shiftKey)}
+              >
                 <td className="px-3 py-2">
                   <input
                     aria-label={`Seleccionar a ${row.holderName}`}
                     checked={selected.has(row.id)}
-                    onClick={(event) => handleRowClick(index, event.shiftKey)}
+                    className="pointer-events-none"
                     readOnly
+                    tabIndex={-1}
                     type="checkbox"
                   />
                 </td>

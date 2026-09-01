@@ -24,7 +24,11 @@ export function CopyValue({
     [],
   );
 
-  async function copy() {
+  async function copy(event: React.MouseEvent) {
+    // La fila entera selecciona al cliente; copiar el dato no debe además
+    // marcarlo.
+    event.stopPropagation();
+
     try {
       await navigator.clipboard.writeText(value);
     } catch {
