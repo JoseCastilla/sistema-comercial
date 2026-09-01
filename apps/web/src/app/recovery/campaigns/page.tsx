@@ -1,6 +1,7 @@
 import {
   baseRecoveryMinimumDailyAttempts,
   countOnSameLimaDay,
+  describeRecoveryLineOrigin,
   isBaseRecoveryResolutionDue,
 } from "@repo/validation";
 
@@ -111,7 +112,15 @@ export default async function RecoveryCampaignsPage({
         portabilityEligibleAt: true,
         services: {
           where: { discardedAt: null },
-          select: { planRaw: true, serviceNumber: true },
+          select: {
+            planRaw: true,
+            serviceNumber: true,
+            carrierRaw: true,
+            portabilityState: true,
+            portabilityReceiver: true,
+            portabilityWindowAt: true,
+            isPlantLine: true,
+          },
         },
         phones: {
           where: { kind: "CONTACT", invalidMarkedAt: null },
@@ -182,7 +191,21 @@ export default async function RecoveryCampaignsPage({
       now,
     );
     const lastResult = item.attempts[0] ? String(item.attempts[0].result) : null;
+    const firstService = item.services[0];
+    const origin = firstService
+      ? describeRecoveryLineOrigin({
+          carrierRaw: firstService.carrierRaw,
+          portabilityState: firstService.portabilityState
+            ? (String(firstService.portabilityState) as never)
+            : null,
+          portabilityReceiver: firstService.portabilityReceiver,
+          portabilityWindowAt: firstService.portabilityWindowAt,
+          isPlantLine: firstService.isPlantLine,
+          now,
+        })
+      : null;
     return {
+      origin,
       // Llamar es la acción: primero el teléfono de contacto; sin él, la
       // propia línea a portar.
       phone:
@@ -344,6 +367,7 @@ export default async function RecoveryCampaignsPage({
                   <th className="px-3 py-2">Cliente</th>
                   <th className="px-3 py-2">Teléfono</th>
                   <th className="px-3 py-2">DNI</th>
+                  <th className="px-3 py-2">Operador</th>
                   <th className="px-3 py-2">Plan</th>
                   <th className="px-3 py-2">Estado</th>
                   <th className="px-3 py-2">Intentos hoy</th>
@@ -381,6 +405,22 @@ export default async function RecoveryCampaignsPage({
                     </td>
                     <td className="px-3 py-2">
                       <CopyValue label="DNI" value={row.documentNumber} />
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {row.origin ? (
+                        <>
+                          <span className="font-medium text-ui-text">
+                            {row.origin.operator}
+                          </span>
+                          {row.origin.detail ? (
+                            <span className="block text-[11px] text-ui-muted">
+                              {row.origin.detail}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span className="text-ui-muted">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-xs text-ui-muted">
                       {row.planSummary}
@@ -429,7 +469,7 @@ export default async function RecoveryCampaignsPage({
                   <tr>
                     <td
                       className="px-3 py-6 text-center text-ui-muted"
-                      colSpan={8}
+                      colSpan={9}
                     >
                       No tienes casos de campaña asignados. Toma un bloque del
                       pool para empezar.

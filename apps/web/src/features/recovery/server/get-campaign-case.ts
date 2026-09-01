@@ -3,6 +3,7 @@ import "server-only";
 import {
   baseRecoveryMinimumDailyAttempts,
   countOnSameLimaDay,
+  describeRecoveryLineOrigin,
   evaluateInternalLossReasonGates,
   isBaseRecoveryResolutionDue,
 } from "@repo/validation";
@@ -62,6 +63,9 @@ export interface CampaignCaseDetail {
     portabilityState: string | null;
     portabilityEligibleLabel: string | null;
     isPlantLine: boolean;
+    /** Operador actual más confiable y su antigüedad (reporte completo). */
+    originOperator: string;
+    originDetail: string | null;
   }>;
   contactPhones: string[];
   sensitive: {
@@ -164,6 +168,8 @@ export async function getCampaignCase(
           carrierRaw: true,
           discardedAt: true,
           portabilityState: true,
+          portabilityReceiver: true,
+          portabilityWindowAt: true,
           portabilityEligibleAt: true,
           isPlantLine: true,
         },
@@ -313,19 +319,33 @@ export async function getCampaignCase(
     interestedWithOrder,
     canManage: !isResolved && (access.role !== "AGENT" || isAssignedToViewer),
     canResolveOther: access.role !== "AGENT",
-    services: recoveryCase.services.map((service) => ({
-      serviceNumber: service.serviceNumber,
-      planRaw: service.planRaw,
-      carrierRaw: service.carrierRaw,
-      discarded: service.discardedAt !== null,
-      portabilityState: service.portabilityState
-        ? String(service.portabilityState)
-        : null,
-      portabilityEligibleLabel: service.portabilityEligibleAt
-        ? dateTimeFormatter.format(service.portabilityEligibleAt)
-        : null,
-      isPlantLine: service.isPlantLine,
-    })),
+    services: recoveryCase.services.map((service) => {
+      const origin = describeRecoveryLineOrigin({
+        carrierRaw: service.carrierRaw,
+        portabilityState: service.portabilityState
+          ? (String(service.portabilityState) as never)
+          : null,
+        portabilityReceiver: service.portabilityReceiver,
+        portabilityWindowAt: service.portabilityWindowAt,
+        isPlantLine: service.isPlantLine,
+        now,
+      });
+      return {
+        serviceNumber: service.serviceNumber,
+        planRaw: service.planRaw,
+        carrierRaw: service.carrierRaw,
+        discarded: service.discardedAt !== null,
+        portabilityState: service.portabilityState
+          ? String(service.portabilityState)
+          : null,
+        portabilityEligibleLabel: service.portabilityEligibleAt
+          ? dateTimeFormatter.format(service.portabilityEligibleAt)
+          : null,
+        isPlantLine: service.isPlantLine,
+        originOperator: origin.operator,
+        originDetail: origin.detail,
+      };
+    }),
     contactPhones: recoveryCase.phones.map((phone) => phone.phoneNumber),
     sensitive: {
       requiresValidation: recoveryCase.requiresIdentityValidation,

@@ -22,6 +22,7 @@ export * from "./recovery-portability-report.js";
 export * from "./recovery-selection.js";
 export * from "./recovery-internal-gate.js";
 export * from "./recovery-base-distribution.js";
+export * from "./recovery-line-origin.js";
 export * from "./performance-metrics.js";
 export * from "./performance-period.js";
 export * from "./performance-quota.js";

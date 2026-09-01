@@ -197,7 +197,7 @@ export default async function CampaignCasePage({
                 <tr>
                   <th className="px-3 py-2">Línea a portar</th>
                   <th className="px-3 py-2">Plan</th>
-                  <th className="px-3 py-2">Cedente</th>
+                  <th className="px-3 py-2">Operador actual</th>
                   <th className="px-3 py-2">Portabilidad</th>
                 </tr>
               </thead>
@@ -222,7 +222,14 @@ export default async function CampaignCasePage({
                       {service.planRaw ?? "—"}
                     </td>
                     <td className="px-3 py-2 text-xs">
-                      {service.carrierRaw ?? "—"}
+                      <span className="font-medium text-ui-text">
+                        {service.originOperator}
+                      </span>
+                      {service.originDetail ? (
+                        <span className="block text-[11px] text-ui-muted">
+                          {service.originDetail}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2 text-xs text-ui-muted">
                       {service.discarded
