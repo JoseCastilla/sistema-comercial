@@ -44,6 +44,31 @@
     --ui-shadow-mobile-nav: 0 -8px 24px rgb(16 24 40 / 7%);
     --ui-focus: 0 0 0 3px rgb(36 87 214 / 20%);
     --ui-content-width: 100rem;
+
+    /*
+     * Escala tipográfica. Antes no existía: el color estaba tokenizado pero el
+     * tamaño no, y cada módulo elegía el suyo —41 valores distintos en 164
+     * declaraciones, con veinte de ellos apretados entre 10px y 14px—. Los
+     * pasos se eligieron sobre los tamaños que la plataforma ya usaba, de modo
+     * que unificar no agrande nada.
+     *
+     * Es un CRM, no una portada: el tope es 28px y está reservado a la cifra
+     * que encabeza una pantalla. No hay clamp() que escale con el ancho.
+     */
+    --ui-text-3xs: 0.625rem;
+    --ui-text-2xs: 0.6875rem;
+    --ui-text-xs: 0.75rem;
+    --ui-text-sm: 0.8125rem;
+    --ui-text-base: 0.875rem;
+    --ui-text-md: 1rem;
+    --ui-text-lg: 1.25rem;
+    --ui-text-xl: 1.5rem;
+    --ui-text-2xl: 1.75rem;
+
+    --ui-leading-tight: 1.15;
+    --ui-leading-snug: 1.35;
+    --ui-leading-normal: 1.5;
+
     --ui-duration-fast: 140ms;
   }
 

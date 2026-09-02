@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { formatCount } from "@repo/ui/format";
 import { Button } from "@repo/ui/button";
 import { InlineFeedback } from "@repo/ui/feedback";
 
@@ -37,7 +38,7 @@ export function ConfirmRecoveryBatchForm({
         <Button disabled={pending} type="submit">
           {pending
             ? "Creando casos…"
-            : `Confirmar y crear ${eligibleRows.toLocaleString("es-PE")} casos`}
+            : `Confirmar y crear ${formatCount(eligibleRows)} casos`}
         </Button>
       ) : null}
 

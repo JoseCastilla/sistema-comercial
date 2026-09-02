@@ -1,30 +1,34 @@
+import Form from "next/form";
 import Link from "next/link";
 
 import { getPotentialBaseCommissionCents } from "@repo/validation";
 
+import {
+  formatDecimal,
+  formatMoneyFromCents,
+  formatPercent,
+} from "@repo/ui/format";
+import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 
 import { OrderRealtimeStatus } from "@/features/orders/components/order-realtime-status";
 
 import type { PerformanceDashboardData } from "../performance.types";
 
-const currencyFormatter = new Intl.NumberFormat("es-PE", {
-  style: "currency",
-  currency: "PEN",
-  minimumFractionDigits: 2,
-});
-
+/*
+ * El formato de cifras vive en `@repo/ui/format`. Antes este archivo definia
+ * su propio `Intl.NumberFormat` de moneda —privado, que ningun otro modulo
+ * podia importar— y por eso la misma variable salia con un formato aca y con
+ * otro en la pantalla de al lado.
+ */
 function money(cents: number): string {
-  return currencyFormatter.format(cents / 100);
+  return formatMoneyFromCents(cents);
 }
 
 function percentage(value: number | null): string {
   return value === null
     ? "Todavía sin ventas para comparar"
-    : new Intl.NumberFormat("es-PE", {
-        style: "percent",
-        maximumFractionDigits: 1,
-      }).format(value);
+    : formatPercent(value);
 }
 
 function delta(
@@ -39,7 +43,7 @@ function delta(
       ? "vs. el mes pasado"
       : `vs. los días 1–${comparedThroughDay} del mes pasado`;
   return points
-    ? `${sign}${(value * 100).toFixed(1)} puntos ${baseline}`
+    ? `${sign}${formatDecimal(value * 100)} puntos ${baseline}`
     : `${sign}${percentage(value)} ${baseline}`;
 }
 
@@ -91,38 +95,6 @@ function ordersHref(
   });
   if (data.view !== "SELF" && team !== "ALL") parameters.set("team", team);
   return `/orders?${parameters.toString()}`;
-}
-
-function Kpi({
-  label,
-  value,
-  supporting,
-  tone = "neutral",
-  href,
-}: {
-  label: string;
-  value: string | number;
-  supporting: string;
-  tone?: "neutral" | "primary" | "positive" | "attention" | "info";
-  href?: string;
-}) {
-  const content = (
-    <>
-      <p className="performance-kpi__label">{label}</p>
-      <p className="performance-kpi__value">{value}</p>
-      <p className="performance-kpi__supporting">{supporting}</p>
-    </>
-  );
-
-  return href ? (
-    <Link className="performance-kpi" data-tone={tone} href={href}>
-      {content}
-    </Link>
-  ) : (
-    <article className="performance-kpi" data-tone={tone}>
-      {content}
-    </article>
-  );
 }
 
 function Funnel({ data }: { data: PerformanceDashboardData }) {
@@ -348,7 +320,7 @@ function SalesTrendOverview({ data }: { data: PerformanceDashboardData }) {
           <dl>
             <div>
               <dt>Promedio diario</dt>
-              <dd>{data.monthProgress.averagePerElapsedDay.toFixed(1)}</dd>
+              <dd>{formatDecimal(data.monthProgress.averagePerElapsedDay)}</dd>
             </div>
             <div>
               <dt>Días con ventas</dt>
@@ -439,7 +411,7 @@ function PersonalMonthlyProgress({ data }: { data: PerformanceDashboardData }) {
         </div>
         <div>
           <dt>Promedio diario</dt>
-          <dd>{progress.averagePerElapsedDay.toFixed(1)}</dd>
+          <dd>{formatDecimal(progress.averagePerElapsedDay)}</dd>
         </div>
         <div>
           <dt>Mejor día</dt>
@@ -715,7 +687,7 @@ export function PerformanceDashboard({
           )}
         </div>
 
-        <form className="performance-filter" method="get">
+        <Form action="/performance" className="performance-filter">
           {data.canSwitchView ? (
             <label>
               <span>Vista</span>
@@ -765,57 +737,58 @@ export function PerformanceDashboard({
             </label>
           ) : null}
           <button type="submit">Aplicar</button>
-        </form>
+        </Form>
       </section>
 
-      <section
-        className="performance-kpis"
-        aria-label="Indicadores principales"
-      >
-        <Kpi
-          label="Ventas ingresadas"
-          supporting={delta(
+      {/*
+       * La jerarquia va por tamano, no por color. Antes las cuatro tarjetas
+       * llevaban un `tone` distinto —primary, info, positive, attention— para
+       * «destacar» cada una, con el resultado de que ninguna destacaba y de
+       * que el color dejaba de significar estado. Ahora la cifra que define el
+       * mes encabeza, y el color queda reservado para lo que exige atencion.
+       */}
+      <MetricGroup label="Indicadores principales">
+        <Metric
+          emphasis="hero"
+          hint={delta(
             data.comparison.enteredDelta,
             data.comparison.comparedThroughDay,
           )}
-          tone="primary"
+          label="Ventas ingresadas"
           value={data.metrics.entered}
         />
-        <Kpi
+        <Metric
+          hint={`${percentage(data.metrics.deliveryRate)} de ${data.metrics.entered} ingresadas`}
           label="Ventas entregadas"
-          supporting={`${percentage(data.metrics.deliveryRate)} de ${data.metrics.entered} ingresadas`}
-          tone="info"
           value={data.metrics.delivered}
         />
-        <Kpi
+        <Metric
           href={reconciliationHref(data, "PAYABLE")}
+          hint={`${percentage(data.metrics.payableRate)} de ${data.metrics.portability} portabilidades · ver el detalle`}
           label="Portabilidades pagables"
-          supporting={`${percentage(data.metrics.payableRate)} de ${data.metrics.portability} portabilidades · ver el detalle`}
-          tone="positive"
           value={data.metrics.payable}
         />
         {data.view === "SELF" ? (
-          <Kpi
-            label="Ventas cerradas"
-            supporting={`${percentage(
+          <Metric
+            hint={`${percentage(
               data.metrics.entered > 0
                 ? data.metrics.activated / data.metrics.entered
                 : null,
             )} de tus ventas ingresadas`}
-            tone="positive"
+            label="Ventas cerradas"
             value={data.metrics.activated}
           />
         ) : data.workforce ? (
-          <Kpi
+          <Metric
+            hint={`${data.workforce.sellersWithoutSales} sin producción · ${formatDecimal(data.workforce.averageEnteredPerSeller)} promedio`}
             label="Asesores con ventas"
-            supporting={`${data.workforce.sellersWithoutSales} sin producción · ${data.workforce.averageEnteredPerSeller?.toFixed(1) ?? "—"} promedio`}
             tone={
-              data.workforce.sellersWithoutSales > 0 ? "attention" : "positive"
+              data.workforce.sellersWithoutSales > 0 ? "warning" : "neutral"
             }
             value={`${data.workforce.sellersWithSales}/${data.workforce.activeSellers}`}
           />
         ) : null}
-      </section>
+      </MetricGroup>
 
       <div className="performance-decision-grid">
         {data.view === "SELF" ? (
@@ -914,8 +887,8 @@ export function PerformanceDashboard({
                 <span>{accelerator.label}</span>
                 <strong>{money(accelerator.amountCents)}</strong>
                 <small>
-                  {accelerator.confirmed} cerradas de{" "}
-                  {accelerator.eligible} registradas
+                  {accelerator.confirmed} cerradas de {accelerator.eligible}{" "}
+                  registradas
                   {accelerator.delivered > accelerator.confirmed
                     ? ` · ${accelerator.delivered - accelerator.confirmed} entregadas por activar`
                     : ""}
@@ -933,7 +906,9 @@ export function PerformanceDashboard({
                 .filter((accelerator) => accelerator.nextTarget !== null)
                 .map((accelerator) => (
                   <div key={`next-${accelerator.key}`}>
-                    <span>{accelerator.label}: te falta para el siguiente bono</span>
+                    <span>
+                      {accelerator.label}: te falta para el siguiente bono
+                    </span>
                     <strong>
                       {accelerator.missingForNextTarget}{" "}
                       {accelerator.missingForNextTarget === 1
@@ -962,8 +937,8 @@ export function PerformanceDashboard({
               <p className="performance-panel__eyebrow">Análisis detallado</p>
               <h2>Indicadores por asesor</h2>
               <p>
-                Cuánto entrega, cuánto llega a comisión y cuánto tiene
-                pendiente cada asesor.
+                Cuánto entrega, cuánto llega a comisión y cuánto tiene pendiente
+                cada asesor.
                 {data.quotaWindow
                   ? ` La cuota mide portabilidades entregadas de ${data.quotaWindow.label.toLocaleLowerCase("es-PE")}.`
                   : ""}
@@ -1028,7 +1003,11 @@ export function PerformanceDashboard({
                     <td>{shortDelta(item.enteredDelta)}</td>
                     <td>{percentage(item.metrics.deliveryRate)}</td>
                     {data.quotaWindow ? (
-                      <td data-quota-reached={item.quota?.reached ? "true" : undefined}>
+                      <td
+                        data-quota-reached={
+                          item.quota?.reached ? "true" : undefined
+                        }
+                      >
                         <strong>
                           {item.quota?.delivered ?? 0}/{item.quota?.target ?? 0}
                         </strong>
@@ -1064,7 +1043,9 @@ export function PerformanceDashboard({
                     <td>
                       {data.unattributed.metrics.deliveredPendingActivation}
                     </td>
-                    {data.showCommission && data.role !== "AGENT" ? <td>—</td> : null}
+                    {data.showCommission && data.role !== "AGENT" ? (
+                      <td>—</td>
+                    ) : null}
                   </tr>
                 ) : null}
               </tbody>

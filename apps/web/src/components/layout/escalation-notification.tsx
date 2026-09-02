@@ -9,10 +9,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * El canal en tiempo real es el camino rápido, pero no es confiable por sí
  * solo: si el stream muere (red, 401 al expirar la sesión, reinicio del
  * servidor), `EventSource` puede quedar cerrado sin aviso y el contador se
- * congelaría mostrando información falsa. Por eso el conteo se revalida
- * siempre por sondeo de respaldo y al volver a la pestaña.
+ * congelaría mostrando información falsa.
+ *
+ * El latido del stream ahora es observable, así que el respaldo dejó de ser
+ * un sondeo ciego: solo vuelve a consultar cuando el canal deja de latir, o
+ * al regresar a la pestaña. Con el canal sano el contador se actualiza por
+ * evento y no se gasta una sola petición de más.
  */
-const fallbackPollMs = 60_000;
+const HEARTBEAT_INTERVAL_MS = 10_000;
+const STALE_AFTER_MS = HEARTBEAT_INTERVAL_MS * 2 + 5_000;
+const WATCHDOG_TICK_MS = 10_000;
 
 export function EscalationNotification({ role }: { role: string }) {
   const [count, setCount] = useState(0);
@@ -43,22 +49,39 @@ export function EscalationNotification({ role }: { role: string }) {
 
     void refresh();
 
+    let lastSignalAt = Date.now();
+
     const stream = new EventSource("/api/orders/stream");
 
-    stream.addEventListener("order-change", () => {
+    const markAlive = () => {
+      lastSignalAt = Date.now();
       streamBrokenRef.current = false;
+    };
+
+    stream.addEventListener("open", markAlive);
+    stream.addEventListener("ready", markAlive);
+    stream.addEventListener("heartbeat", markAlive);
+
+    stream.addEventListener("order-change", () => {
+      markAlive();
       void refresh();
     });
 
     stream.addEventListener("error", () => {
       // EventSource reintenta solo ante cortes de red, pero ante respuestas
-      // HTTP de error queda CLOSED sin más señales. El sondeo cubre ambos.
+      // HTTP de error queda CLOSED sin más señales. El vigía cubre ambos.
       streamBrokenRef.current = stream.readyState === EventSource.CLOSED;
     });
 
-    const interval = setInterval(() => {
+    const watchdog = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastSignalAt < STALE_AFTER_MS) return;
+
+      // El canal dejó de latir: el contador en pantalla ya no es confiable.
+      lastSignalAt = Date.now();
+      streamBrokenRef.current = true;
       void refresh();
-    }, fallbackPollMs);
+    }, WATCHDOG_TICK_MS);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") {
@@ -71,7 +94,7 @@ export function EscalationNotification({ role }: { role: string }) {
 
     return () => {
       stream.close();
-      clearInterval(interval);
+      clearInterval(watchdog);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };

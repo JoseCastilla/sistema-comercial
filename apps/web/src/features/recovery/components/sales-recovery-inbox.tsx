@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 
 import { AssignSalesRecoveryForm } from "./assign-sales-recovery-form";
@@ -45,35 +46,32 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
         title="Recupero de ventas"
       />
 
-      <section
-        aria-label="Resumen del recupero de ventas"
-        className="reconciliation-summary"
-      >
-        <article>
-          <span>Casos abiertos</span>
-          <strong>{data.totals.open}</strong>
-          <small>De nuestras propias ventas</small>
-        </article>
-        <article data-tone={data.totals.overdue > 0 ? "attention" : undefined}>
-          <span>Primer contacto vencido</span>
-          <strong>{data.totals.overdue}</strong>
-          <small>Pasaron las 2 horas sin gestión</small>
-        </article>
-        <article
-          data-tone={
-            data.totals.criticalUnassigned > 0 ? "attention" : undefined
-          }
-        >
-          <span>Críticas sin responsable</span>
-          <strong>{data.totals.criticalUnassigned}</strong>
-          <small>El supervisor debe asignarlos a otro asesor</small>
-        </article>
-        <article data-tone="positive">
-          <span>Recuperadas este mes</span>
-          <strong>{data.totals.recoveredThisMonth}</strong>
-          <small>Con orden nueva vinculada</small>
-        </article>
-      </section>
+      <MetricGroup label="Resumen del recupero de ventas">
+        <Metric
+          emphasis="hero"
+          hint="De nuestras propias ventas"
+          label="Casos abiertos"
+          value={data.totals.open}
+        />
+        <Metric
+          hint="Pasaron las 2 horas sin gestión"
+          label="Primer contacto vencido"
+          tone={data.totals.overdue > 0 ? "warning" : "neutral"}
+          value={data.totals.overdue}
+        />
+        <Metric
+          hint="El supervisor debe asignarlas a otro asesor"
+          label="Críticas sin asignar"
+          tone={data.totals.criticalUnassigned > 0 ? "danger" : "neutral"}
+          value={data.totals.criticalUnassigned}
+        />
+        <Metric
+          hint="Con orden nueva vinculada"
+          label="Recuperadas este mes"
+          tone="success"
+          value={data.totals.recoveredThisMonth}
+        />
+      </MetricGroup>
 
       <section className="performance-panel">
         <header className="performance-panel__header">
@@ -140,9 +138,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
                   </td>
                   <td>{statusLabels[item.status] ?? item.status}</td>
                   <td>
-                    {item.assignedToName ?? (
-                      <strong>Sin responsable</strong>
-                    )}
+                    {item.assignedToName ?? <strong>Sin responsable</strong>}
                     {item.originalAgentName ? (
                       <small>
                         Venta de {item.originalAgentName}

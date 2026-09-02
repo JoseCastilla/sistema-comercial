@@ -1,4 +1,3 @@
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import {
   AgrDeliveryCredentialForm,
   AgrDeliverySyncForm,
@@ -9,8 +8,7 @@ import { database } from "@/server/database";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
-
-import { SignOutButton } from "@/app/orders/sign-out-button";
+import { StatusBadge } from "@repo/ui/status-badge";
 
 const formatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: "America/Lima",
@@ -26,7 +24,7 @@ const syncStatusLabels: Record<string, string> = {
 };
 
 export default async function LogisticsAdminPage() {
-  const { session, membership } = await requireAdminAccess();
+  const { membership } = await requireAdminAccess();
   const [integration, opportunityCount, lastRun] = await Promise.all([
     database.agrDeliveryIntegration.findUnique({
       where: { organizationId: membership.organization.id },
@@ -67,46 +65,53 @@ export default async function LogisticsAdminPage() {
   const format = (value: Date | null | undefined) =>
     value ? formatter.format(value) : "Aún no registrado";
   return (
-    <CommercialAppShell
-      activeSection="logistics"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Integraciones"
           title="Estado logístico Máximo"
           description="Consulta únicamente ventas recuperables desde el 10/08. Las entregadas o cerradas ya no se vuelven a consultar."
         />
-        <MetricGroup>
-          <Metric
-            label="Acceso"
+        {/*
+         * El estado del acceso y la fecha de la ultima sincronizacion no son
+         * cifras: ocupaban la tipografia de numero grande para mostrar
+         * «Activo» y una fecha. Un estado es un badge y una fecha es metadato;
+         * la fila de tarjetas queda para la unica cifra que el administrador
+         * necesita ver.
+         */}
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ui-muted">
+          <StatusBadge
             tone={
               integration?.credentialStatus === "ACTIVE" ? "success" : "danger"
             }
-            value={
-              integration?.credentialStatus === "ACTIVE"
-                ? "Activo"
-                : integration
-                  ? "Hay que renovarlo"
-                  : "Sin configurar"
-            }
-          />
-          <Metric label="Pedidos que requieren acción" value={opportunityCount} />
+          >
+            {integration?.credentialStatus === "ACTIVE"
+              ? "Acceso activo"
+              : integration
+                ? "Acceso por renovar"
+                : "Acceso sin configurar"}
+          </StatusBadge>
+          <span>
+            Última sincronización:{" "}
+            {integration?.lastSuccessAt
+              ? format(integration.lastSuccessAt)
+              : "pendiente"}
+          </span>
+        </p>
+
+        <MetricGroup>
           <Metric
-            label="Última sincronización"
-            value={
-              integration?.lastSuccessAt
-                ? format(integration.lastSuccessAt)
-                : "Pendiente"
-            }
+            emphasis="hero"
+            label="Pedidos que requieren acción"
+            tone={opportunityCount > 0 ? "warning" : "neutral"}
+            value={opportunityCount}
           />
         </MetricGroup>
         {integration?.lastError ? (
           <div className="rounded-xl border border-ui-danger-border bg-ui-danger-soft p-4 text-sm text-ui-danger">
-            <p>No se pudo conectar con Máximo. Vuelve a configurar el acceso.</p>
+            <p>
+              No se pudo conectar con Máximo. Vuelve a configurar el acceso.
+            </p>
             <p className="mt-1 text-xs opacity-80">
               Detalle para soporte: {integration.lastError}
             </p>
@@ -161,6 +166,6 @@ export default async function LogisticsAdminPage() {
           </SectionPanel>
         </div>
       </div>
-    </CommercialAppShell>
+    </>
   );
 }

@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
 
-import { SignOutButton } from "@/app/orders/sign-out-button";
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { PerformanceQuotas } from "@/features/performance/components/performance-quotas";
 import { getPerformanceQuotas } from "@/features/performance/server/get-performance-quotas";
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -34,15 +32,5 @@ export default async function PerformanceQuotasPage({
     },
   );
 
-  return (
-    <CommercialAppShell
-      activeSection="performance"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
-      <PerformanceQuotas data={data} />
-    </CommercialAppShell>
-  );
+  return <PerformanceQuotas data={data} />;
 }

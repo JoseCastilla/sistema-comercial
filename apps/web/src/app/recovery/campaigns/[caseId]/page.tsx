@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { CopyValue } from "@/features/recovery/components/copy-value";
 import { RegisterAttemptForm } from "@/features/recovery/components/register-attempt-form";
 import { ResolveCaseForm } from "@/features/recovery/components/resolve-case-form";
@@ -10,10 +9,9 @@ import { VerifyReportedForm } from "@/features/recovery/components/verify-report
 import { getCampaignCase } from "@/features/recovery/server/get-campaign-case";
 import { requireCommercialAccess } from "@/server/auth/access";
 
+import { formatCount } from "@repo/ui/format";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
-
-import { SignOutButton } from "@/app/orders/sign-out-button";
 
 const attemptResultLabels: Record<string, string> = {
   SIN_RESPUESTA: "Sin respuesta",
@@ -64,13 +62,7 @@ export default async function CampaignCasePage({
   }
 
   return (
-    <CommercialAppShell
-      activeSection="recovery"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
@@ -92,7 +84,10 @@ export default async function CampaignCasePage({
         </p>
 
         {detail.isResolved ? (
-          <SectionPanel title="Caso resuelto" description={detail.resolutionLabel ?? ""}>
+          <SectionPanel
+            title="Caso resuelto"
+            description={detail.resolutionLabel ?? ""}
+          >
             <p className="text-sm text-ui-muted">
               El historial queda como evidencia; un caso resuelto no se reabre.
             </p>
@@ -142,7 +137,9 @@ export default async function CampaignCasePage({
         <SectionPanel
           title="Cliente y líneas"
           description={`Responsable: ${detail.assignedToName ?? "sin asignar"}${
-            detail.claimedAtLabel ? ` · asignado el ${detail.claimedAtLabel}` : ""
+            detail.claimedAtLabel
+              ? ` · asignado el ${detail.claimedAtLabel}`
+              : ""
           }`}
         >
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
@@ -217,10 +214,7 @@ export default async function CampaignCasePage({
                     key={service.serviceNumber}
                   >
                     <td className="px-3 py-2 font-mono text-xs">
-                      <CopyValue
-                        label="Línea"
-                        value={service.serviceNumber}
-                      />
+                      <CopyValue label="Línea" value={service.serviceNumber} />
                       {service.isPlantLine ? (
                         <span className="ml-2 text-[11px] text-ui-muted">
                           línea de planta (nunca ha portado)
@@ -304,7 +298,7 @@ export default async function CampaignCasePage({
 
         <SectionPanel
           title="Historial de intentos"
-          description={`${detail.attempts.length} intento(s) registrados.`}
+          description={`${formatCount(detail.attempts.length)} intento(s) registrados.`}
         >
           {detail.attempts.length === 0 ? (
             <p className="text-sm text-ui-muted">
@@ -321,8 +315,7 @@ export default async function CampaignCasePage({
                     {attemptResultLabels[attempt.result] ?? attempt.result}
                     <span className="ml-2 text-xs font-normal text-ui-muted">
                       {channelLabels[attempt.channel] ?? attempt.channel} ·{" "}
-                      {attempt.createdAtLabel} ·{" "}
-                      {attempt.actorName}
+                      {attempt.createdAtLabel} · {attempt.actorName}
                       {attempt.phoneUsed ? ` · ${attempt.phoneUsed}` : ""}
                     </span>
                   </p>
@@ -351,6 +344,6 @@ export default async function CampaignCasePage({
           </SectionPanel>
         ) : null}
       </div>
-    </CommercialAppShell>
+    </>
   );
 }

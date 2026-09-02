@@ -1,4 +1,3 @@
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { after } from "next/server";
 
 import { parseOrderPeriod, parseOrderRange } from "@repo/validation";
@@ -9,8 +8,6 @@ import { getOrderInbox } from "@/features/orders/server/get-order-inbox";
 import { maybeRunScheduledAgrDeliverySync } from "@/features/agr-delivery/server/agr-delivery-sync";
 
 import { requireCommercialAccess } from "@/server/auth/access";
-
-import { SignOutButton } from "./sign-out-button";
 
 import type { OrderFilter } from "@/features/orders/order-inbox.types";
 
@@ -82,14 +79,5 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     },
   );
 
-  return (
-    <CommercialAppShell
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
-      <OrderInbox data={inbox} />
-    </CommercialAppShell>
-  );
+  return <OrderInbox data={inbox} />;
 }

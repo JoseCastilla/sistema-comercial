@@ -1,17 +1,16 @@
+import Form from "next/form";
 import { redirect } from "next/navigation";
 
 import { formatAdvisorDisplayName } from "@repo/validation";
 
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
 
+import { formatCount } from "@repo/ui/format";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
-
-import { SignOutButton } from "@/app/orders/sign-out-button";
 
 const boardRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
 
@@ -310,7 +309,8 @@ export default async function RecoveryBoardPage({
 
   const advisorRows = [...byAdvisor.values()].sort(
     (left, right) =>
-      right.attempts - left.attempts || left.name.localeCompare(right.name, "es"),
+      right.attempts - left.attempts ||
+      left.name.localeCompare(right.name, "es"),
   );
 
   const recoveredToday = resolvedToday.filter(
@@ -342,13 +342,7 @@ export default async function RecoveryBoardPage({
   const cohortRows = [...cohorts.values()].reverse();
 
   return (
-    <CommercialAppShell
-      activeSection="recovery"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
@@ -357,7 +351,7 @@ export default async function RecoveryBoardPage({
         />
 
         {!isSupervisor && teams.length > 0 ? (
-          <form action="/recovery/board" className="ui-form-row" method="get">
+          <Form action="/recovery/board" className="ui-form-row">
             <label>
               <span className="ui-label-eyebrow">Equipo</span>
               <select
@@ -376,7 +370,7 @@ export default async function RecoveryBoardPage({
             <button className="ui-button ui-button--secondary" type="submit">
               Filtrar
             </button>
-          </form>
+          </Form>
         ) : null}
 
         <SectionPanel
@@ -384,27 +378,24 @@ export default async function RecoveryBoardPage({
           description="Los plazos corren desde la asignación: los casos sin repartir no generan alertas."
         >
           <dl className="flex flex-wrap gap-x-10 gap-y-3">
-            <Stat
-              label="Asignados"
-              value={assignedCases.length.toLocaleString("es-PE")}
-            />
+            <Stat label="Asignados" value={formatCount(assignedCases.length)} />
             <Stat
               label="Trabajados hoy"
-              value={workedToday.length.toLocaleString("es-PE")}
+              value={formatCount(workedToday.length)}
             />
             <Stat
               label="Sin primer contacto"
               tone={noFirstContact.length > 0 ? "warning" : undefined}
-              value={noFirstContact.length.toLocaleString("es-PE")}
+              value={formatCount(noFirstContact.length)}
             />
             <Stat
               label="Agenda vencida"
               tone={overdueAgenda.length > 0 ? "danger" : undefined}
-              value={overdueAgenda.length.toLocaleString("es-PE")}
+              value={formatCount(overdueAgenda.length)}
             />
             <Stat
               label="Cobertura · 3+ intentos"
-              detail={`${coveredToday.length} de ${activeToday.length} activos hoy`}
+              detail={`${formatCount(coveredToday.length)} de ${formatCount(activeToday.length)} activos hoy`}
               tone={
                 coverage === null
                   ? undefined
@@ -417,16 +408,13 @@ export default async function RecoveryBoardPage({
             <Stat
               label="Recuperados hoy"
               tone={recoveredToday > 0 ? "success" : undefined}
-              value={recoveredToday.toLocaleString("es-PE")}
+              value={formatCount(recoveredToday)}
             />
-            <Stat
-              label="Perdidos hoy"
-              value={lostToday.toLocaleString("es-PE")}
-            />
+            <Stat label="Perdidos hoy" value={formatCount(lostToday)} />
             <Stat
               label="Descartes del día"
               detail="portabilidad y vencidos; no son pérdidas"
-              value={discardedTodayCount.toLocaleString("es-PE")}
+              value={formatCount(discardedTodayCount)}
             />
           </dl>
         </SectionPanel>
@@ -435,7 +423,7 @@ export default async function RecoveryBoardPage({
           title="Efectividad por asesor"
           description="Intentos y contactos de hoy; recuperos y pérdidas resueltos hoy."
         >
-          <div className="overflow-x-auto rounded-xl border border-ui-border">
+          <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-ui-border text-sm">
               <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
                 <tr>
@@ -489,9 +477,7 @@ export default async function RecoveryBoardPage({
                       {row.contacted}
                     </td>
                     <td className="ui-data px-3 py-1.5 text-right">
-                      {row.active > 0
-                        ? `${row.covered}/${row.active}`
-                        : "—"}
+                      {row.active > 0 ? `${row.covered}/${row.active}` : "—"}
                     </td>
                     <td
                       className={`ui-data px-3 py-1.5 text-right ${row.noContact > 0 ? "font-semibold text-ui-warning" : ""}`}
@@ -533,7 +519,7 @@ export default async function RecoveryBoardPage({
           title="Conversión por día de carga"
           description="Cada día de carga contra la meta del 3–6 %. Los que ya eran Movistar no cuentan: la conversión se mide sobre oportunidad real."
         >
-          <div className="overflow-x-auto rounded-xl border border-ui-border">
+          <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-ui-border text-sm">
               <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
                 <tr>
@@ -560,28 +546,32 @@ export default async function RecoveryBoardPage({
                 {cohortRows.map((row) => {
                   const denominator = row.total - row.discarded;
                   const rate =
-                    denominator > 0 ? (row.recovered / denominator) * 100 : null;
+                    denominator > 0
+                      ? (row.recovered / denominator) * 100
+                      : null;
                   return (
                     <tr key={row.key}>
                       <td className="ui-data px-3 py-1.5">{row.key}</td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {row.total.toLocaleString("es-PE")}
+                        {formatCount(row.total)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right text-ui-muted">
-                        {row.discarded.toLocaleString("es-PE")}
+                        {formatCount(row.discarded)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {denominator.toLocaleString("es-PE")}
+                        {formatCount(denominator)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {row.recovered.toLocaleString("es-PE")}
+                        {formatCount(row.recovered)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
                         {rate === null ? "—" : `${rate.toFixed(1)}%`}
                       </td>
                       <td className="px-3 py-1.5 text-xs">
                         {rate === null ? (
-                          <span className="text-ui-muted">Todavía sin casos</span>
+                          <span className="text-ui-muted">
+                            Todavía sin casos
+                          </span>
                         ) : rate >= 3 ? (
                           <span className="text-ui-success">
                             {rate > 6 ? "Sobre la meta" : "En rango"}
@@ -610,6 +600,6 @@ export default async function RecoveryBoardPage({
           </div>
         </SectionPanel>
       </div>
-    </CommercialAppShell>
+    </>
   );
 }

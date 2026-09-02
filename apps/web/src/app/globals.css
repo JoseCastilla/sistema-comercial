@@ -27,6 +27,23 @@
   --color-ui-on-accent: var(--ui-on-accent);
   --color-ui-on-strong: var(--ui-on-strong);
   --color-ui-on-warning: var(--ui-on-warning);
+
+  /*
+   * Las utilidades de Tailwind leen la MISMA escala que el CSS de @repo/ui.
+   * Antes convivian dos sistemas: 344 utilidades `text-*` con los valores por
+   * defecto de Tailwind y 164 `font-size` a mano en las hojas del paquete.
+   * Ahora `text-sm` en el JSX y `--ui-text-sm` en el CSS son el mismo valor,
+   * asi que no hay forma de que se separen.
+   */
+  --text-3xs: var(--ui-text-3xs);
+  --text-2xs: var(--ui-text-2xs);
+  --text-xs: var(--ui-text-xs);
+  --text-sm: var(--ui-text-sm);
+  --text-base: var(--ui-text-base);
+  --text-md: var(--ui-text-md);
+  --text-lg: var(--ui-text-lg);
+  --text-xl: var(--ui-text-xl);
+  --text-2xl: var(--ui-text-2xl);
 }
 
 :root {
@@ -48,6 +65,13 @@
     margin: 0;
     color: var(--app-foreground);
     background: var(--app-background);
+    /*
+     * Base de herramienta, no de portada. Sin esto el cuerpo heredaba los 16px
+     * por defecto del navegador y todo texto sin clase explicita salia a ese
+     * tamano: era la causa de que la interfaz se sintiera grande por zonas.
+     */
+    font-size: var(--ui-text-base);
+    line-height: var(--ui-leading-normal);
     font-family:
       var(--font-geist-sans),
       ui-sans-serif,

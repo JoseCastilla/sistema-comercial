@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { AssignSharedDitoImportRowsForm } from "@/features/dito-imports/components/assign-shared-dito-import-rows-form";
 import { ConfirmDitoImportForm } from "@/features/dito-imports/components/confirm-dito-import-form";
 import { DitoImportUploadForm } from "@/features/dito-imports/components/dito-import-upload-form";
@@ -11,13 +10,12 @@ import { ResolveDitoImportConflictForm } from "@/features/dito-imports/component
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
+import { formatCount } from "@repo/ui/format";
 import { EmptyState } from "@repo/ui/empty-state";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
 import { StatusBadge } from "@repo/ui/status-badge";
-
-import { SignOutButton } from "@/app/orders/sign-out-button";
 
 const classificationLabels: Record<string, string> = {
   NEW_ORDER: "Nueva",
@@ -60,7 +58,8 @@ const issueLabels: Record<string, string> = {
   UNKNOWN_DELIVERY_METHOD: "Método de entrega no reconocido",
   UNKNOWN_PROVINCE: "Provincia no reconocida",
   UNRESOLVED_DITO_IDENTITY: "Falta vincular al asesor",
-  SALES_CODE_POINTS_TO_ANOTHER_ORDER: "Ese código de venta ya está en otro pedido",
+  SALES_CODE_POINTS_TO_ANOTHER_ORDER:
+    "Ese código de venta ya está en otro pedido",
   VALID_VALUE_CONFLICT: "El archivo y el sistema dicen cosas distintas",
 };
 
@@ -69,7 +68,7 @@ export default async function DitoImportsPage({
 }: {
   searchParams: Promise<{ batch?: string; confirmed?: string }>;
 }) {
-  const { session, membership } = await requireAdminAccess();
+  const { membership } = await requireAdminAccess();
   const parameters = await searchParams;
   const organizationId = membership.organization.id;
   const recentBatches = await database.ditoImportBatch.findMany({
@@ -272,13 +271,7 @@ export default async function DitoImportsPage({
     : null;
 
   return (
-    <CommercialAppShell
-      activeSection="imports"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           description="Carga la bandeja DITO, revisa coincidencias y resuelve observaciones antes de incorporar ventas."
@@ -366,6 +359,7 @@ export default async function DitoImportsPage({
                 >
                   <MetricGroup>
                     <Metric
+                      emphasis="hero"
                       label="Aprobadas"
                       value={selectedBatch.importableRows}
                     />
@@ -375,16 +369,9 @@ export default async function DitoImportsPage({
                       value={selectedBatch.enrichmentRows}
                     />
                     <Metric
+                      hideWhenZero
                       label="Requieren atención"
-                      tone={
-                        unresolvedIdentities.length +
-                          pendingSharedRows +
-                          selectedBatch.invalidRows +
-                          selectedBatch.conflictRows >
-                        0
-                          ? "danger"
-                          : "neutral"
-                      }
+                      tone="danger"
                       value={
                         unresolvedIdentities.length +
                         pendingSharedRows +
@@ -418,7 +405,7 @@ export default async function DitoImportsPage({
                 {unresolvedIdentities.length > 0 ? (
                   <SectionPanel
                     description="Vincula cuentas personales. Si varias personas utilizaron la misma cuenta, asigna sus ventas por orden."
-                    title={`Asesores pendientes (${unresolvedIdentities.length})`}
+                    title={`Asesores pendientes (${formatCount(unresolvedIdentities.length)})`}
                   >
                     <div className="divide-y divide-neutral-100">
                       {unresolvedIdentities.map((identity) => (
@@ -495,7 +482,7 @@ export default async function DitoImportsPage({
                 {conflictRows.length > 0 ? (
                   <SectionPanel
                     description="Compara cada diferencia. El sistema conserva el valor actual por defecto y registra tu decisión."
-                    title={`Resolver conflictos (${conflictRows.length})`}
+                    title={`Resolver conflictos (${formatCount(conflictRows.length)})`}
                   >
                     <div className="space-y-4">
                       {conflictRows.map((row) => (
@@ -647,7 +634,7 @@ export default async function DitoImportsPage({
           </div>
         </section>
       </div>
-    </CommercialAppShell>
+    </>
   );
 }
 

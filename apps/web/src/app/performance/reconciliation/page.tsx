@@ -1,7 +1,5 @@
 import { parsePerformanceMonth } from "@repo/validation";
 
-import { SignOutButton } from "@/app/orders/sign-out-button";
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { PerformanceReconciliation } from "@/features/performance/components/performance-reconciliation";
 import { getPerformanceReconciliation } from "@/features/performance/server/get-performance-reconciliation";
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -50,15 +48,5 @@ export default async function ReconciliationPage({
     },
   );
 
-  return (
-    <CommercialAppShell
-      activeSection="performance"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
-      <PerformanceReconciliation data={data} />
-    </CommercialAppShell>
-  );
+  return <PerformanceReconciliation data={data} />;
 }

@@ -2,6 +2,7 @@
 
 import { useActionState, type ReactNode } from "react";
 
+import { formatCount } from "@repo/ui/format";
 import { Button } from "@repo/ui/button";
 import { InlineFeedback } from "@repo/ui/feedback";
 import { Metric, MetricGroup } from "@repo/ui/metric";
@@ -57,8 +58,12 @@ export function DniLookupForm({
           </p>
         </div>
         <MetricGroup>
+          <Metric
+            emphasis="hero"
+            label="Consultas del mes"
+            value={state.stats.month}
+          />
           <Metric label="Consultas de hoy" value={state.stats.today} />
-          <Metric label="Consultas del mes" value={state.stats.month} />
           <Metric
             label="DNI distintos este mes"
             value={state.stats.uniqueDnisThisMonth}
@@ -307,9 +312,7 @@ function DniCreditPanel({ status }: { status: DniCreditStatus }) {
           />
           <div>
             <p className="text-2xl font-bold tabular-nums text-ui-text">
-              {status.balance === null
-                ? "—"
-                : status.balance.toLocaleString("es-PE")}
+              {status.balance === null ? "—" : formatCount(status.balance)}
             </p>
             <p className="text-xs font-semibold text-ui-muted">
               {status.label}

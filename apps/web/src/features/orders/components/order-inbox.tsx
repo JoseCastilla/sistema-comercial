@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
+import Form from "next/form";
 import { useEffect, useState } from "react";
 
+import { formatCount } from "@repo/ui/format";
 import { EmptyState } from "@repo/ui/empty-state";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
@@ -155,14 +158,14 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
       <div className="ui-period-controls">
         <nav aria-label="Período de ventas" className="ui-period-navigation">
           {periodOptions.map((option) => (
-            <a
+            <Link
               aria-current={data.period === option.value ? "page" : undefined}
               className="ui-period-navigation__item"
               href={ordersHref(data, { period: option.value })}
               key={option.value}
             >
               {option.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
@@ -180,7 +183,7 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
           </summary>
 
           <div className="ui-period-more__panel">
-            <a
+            <Link
               aria-current={data.period === "HISTORY" ? "page" : undefined}
               className="ui-period-more__history"
               href={ordersHref(data, { period: "HISTORY" })}
@@ -190,9 +193,9 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
                 <small>Consulta ventas y pendientes anteriores.</small>
               </span>
               <span aria-hidden="true">→</span>
-            </a>
+            </Link>
 
-            <form className="ui-period-range" method="get">
+            <Form action="/orders" className="ui-period-range">
               <input name="period" type="hidden" value="RANGE" />
               {data.filter !== "ALL" ? (
                 <input name="status" type="hidden" value={data.filter} />
@@ -233,7 +236,7 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
               <button className="ui-period-range__submit" type="submit">
                 Ver rango
               </button>
-            </form>
+            </Form>
           </div>
         </details>
       </div>
@@ -456,7 +459,8 @@ const agrReasonRules: Array<{ pattern: RegExp; label: string }> = [
     label: "Hay otra portabilidad en curso para esta línea",
   },
   {
-    pattern: /HUELLA NO CORRESPONDE|NO CORRESPONDE AL DNI|CLIENTE NO IDENTIFICADO/,
+    pattern:
+      /HUELLA NO CORRESPONDE|NO CORRESPONDE AL DNI|CLIENTE NO IDENTIFICADO/,
     label: "Falló la validación de identidad del cliente",
   },
   {
@@ -656,7 +660,6 @@ function OrderDetails({
             <p className="mt-1 text-xs text-ui-muted">
               Registrado {order.registeredAtLabel}
             </p>
-
           </div>
 
           <SlaBadge order={order} />
@@ -822,7 +825,6 @@ function OrderDetails({
 
         <div className="ui-order-disclosure__content">
           <dl className="ui-order-detail-grid">
-
             {order.status === "CLOSED" ? (
               <DetailItem
                 label="Cierre"
@@ -1228,6 +1230,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       {data.filter === "LOGISTICS" ? (
         <MetricGroup>
           <Metric
+            emphasis="hero"
             label="Casos por revisar"
             tone={data.logisticsSummary.total > 0 ? "warning" : "neutral"}
             value={data.logisticsSummary.total}
@@ -1246,52 +1249,60 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           />
         </MetricGroup>
       ) : (
-        <>
-          {/* Resultado comercial del período: cuánto entró y cómo termina. */}
-          <MetricGroup>
+        /*
+         * Una sola fila, no tres: la venta del periodo encabeza y el resto es
+         * contexto. Los contadores que solo importan cuando exigen accion se
+         * ocultan en cero —antes seis de siete tarjetas mostraban 0 con el
+         * mismo peso visual que el dato accionable— y los que ya tienen un
+         * aviso con accion mas abajo no se repiten aca.
+         */
+        <MetricGroup>
+          <Metric
+            emphasis="hero"
+            label={`Ventas · ${data.periodLabel}`}
+            value={data.totals.visible}
+          />
+          <Metric
+            hint="Según nuestro registro"
+            label="Entregados"
+            value={data.totals.delivered}
+          />
+          <Metric
+            hint="Según nuestro registro"
+            label="No entregados"
+            value={data.totals.notDelivered}
+          />
+          <Metric
+            hideWhenZero
+            label="Fuera de plazo"
+            tone="danger"
+            value={data.totals.overdue}
+          />
+          <Metric
+            hideWhenZero
+            label="Incidencias"
+            tone="danger"
+            value={data.totals.incidents}
+          />
+          {/*
+           * Para ADMIN y SUPERVISOR el aviso de escalaciones de abajo ya lleva
+           * el numero y ademas el enlace a la bandeja; el asesor no ve ese
+           * aviso, asi que para el la tarjeta es su unica senal.
+           */}
+          {data.role === "ADMIN" || data.role === "SUPERVISOR" ? null : (
             <Metric
-              label={`Ventas · ${data.periodLabel}`}
-              value={data.totals.visible}
-            />
-            <Metric
-              label="Entregados (según nuestro registro)"
-              value={data.totals.delivered}
-            />
-            <Metric
-              label={`No entregados (según nuestro registro) · ${data.periodLabel}`}
-              value={data.totals.notDelivered}
-            />
-            <Metric
-              label="Fuera de plazo"
-              tone={data.totals.overdue > 0 ? "danger" : "neutral"}
-              value={data.totals.overdue}
-            />
-          </MetricGroup>
-
-          {/* Atención pendiente: lo que exige acción hoy. */}
-          <MetricGroup>
-            <Metric
-              label="Incidencias"
-              tone={data.totals.incidents > 0 ? "danger" : "neutral"}
-              value={data.totals.incidents}
-            />
-            <Metric
+              hideWhenZero
               label="Escaladas al supervisor"
-              tone={data.totals.escalations > 0 ? "danger" : "neutral"}
+              tone="danger"
               value={data.totals.escalations}
             />
-            <Metric
-              label="Entregas fallidas por gestionar"
-              tone={data.totals.logistics > 0 ? "warning" : "neutral"}
-              value={data.totals.logistics}
-            />
-          </MetricGroup>
-        </>
+          )}
+        </MetricGroup>
       )}
 
       {(data.role === "ADMIN" || data.role === "SUPERVISOR") &&
       data.totals.escalations > 0 ? (
-        <a
+        <Link
           className="ui-inbox-alert"
           data-tone="danger"
           href={ordersHref(data, { filter: "ESCALATIONS" })}
@@ -1306,11 +1317,11 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             </span>
           </span>
           <span className="ui-inbox-alert__action">Ver bandeja →</span>
-        </a>
+        </Link>
       ) : null}
 
       {data.totals.logistics > 0 && data.filter !== "LOGISTICS" ? (
-        <a
+        <Link
           className="ui-inbox-alert"
           data-tone="warning"
           href={ordersHref(data, {
@@ -1330,7 +1341,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             </span>
           </span>
           <span className="ui-inbox-alert__action">Revisar →</span>
-        </a>
+        </Link>
       ) : null}
 
       {data.filter !== "LOGISTICS" &&
@@ -1355,7 +1366,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           {data.filter === "RECOVERY" ? (
             <span className="ui-recovery-queue__current">Bandeja abierta</span>
           ) : (
-            <a
+            <Link
               className="ui-recovery-queue__link"
               href={ordersHref(data, {
                 period: "MONTH",
@@ -1364,7 +1375,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               })}
             >
               Revisar ahora
-            </a>
+            </Link>
           )}
         </div>
       ) : null}
@@ -1381,17 +1392,17 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               No se mezclan con las ventas del mes actual.
             </p>
           </div>
-          <a
+          <Link
             className="ui-prior-pending__link"
             href={ordersHref(data, { period: "HISTORY", filter: "ACTIVE" })}
           >
             Revisar pendientes
-          </a>
+          </Link>
         </div>
       ) : null}
 
       <Surface className="ui-filter-bar" raised>
-        <form className="lg:hidden" method="get">
+        <Form action="/orders" className="lg:hidden">
           <input name="period" type="hidden" value={data.period} />
           {data.from ? (
             <input name="from" type="hidden" value={data.from} />
@@ -1418,7 +1429,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               ))}
             </select>
           </label>
-        </form>
+        </Form>
 
         <nav
           aria-label="Estado de los pedidos"
@@ -1429,21 +1440,21 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               const active = option.value === data.filter;
 
               return (
-                <a
+                <Link
                   aria-current={active ? "page" : undefined}
                   className="ui-segmented__item"
                   href={ordersHref(data, { filter: option.value })}
                   key={option.value}
                 >
                   {option.label}
-                </a>
+                </Link>
               );
             })}
           </div>
         </nav>
 
         {data.showTeamFilter ? (
-          <form className="ui-team-filter" method="get">
+          <Form action="/orders" className="ui-team-filter">
             <input name="period" type="hidden" value={data.period} />
             {data.from ? (
               <input name="from" type="hidden" value={data.from} />
@@ -1472,10 +1483,10 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                 ))}
               </select>
             </label>
-          </form>
+          </Form>
         ) : null}
 
-        <form className="ui-order-search" method="get">
+        <Form action="/orders" className="ui-order-search">
           <input name="period" type="hidden" value={data.period} />
           {data.from ? (
             <input name="from" type="hidden" value={data.from} />
@@ -1514,10 +1525,10 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               />
             </svg>
           </button>
-        </form>
+        </Form>
 
         <p className="text-xs text-ui-muted md:basis-full">
-          {data.items.length} órdenes en esta página
+          {formatCount(data.items.length)} órdenes en esta página
           {data.filteredTotal > data.pagination.pageSize
             ? ` de ${data.filteredTotal} encontradas`
             : ""}
@@ -1630,12 +1641,12 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       {data.pagination.totalPages > 1 ? (
         <nav aria-label="Páginas de ventas" className="ui-pagination">
           {data.pagination.page > 1 ? (
-            <a
+            <Link
               className="ui-pagination__link"
               href={ordersHref(data, { page: data.pagination.page - 1 })}
             >
               Anterior
-            </a>
+            </Link>
           ) : (
             <span />
           )}
@@ -1645,12 +1656,12 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           </span>
 
           {data.pagination.page < data.pagination.totalPages ? (
-            <a
+            <Link
               className="ui-pagination__link"
               href={ordersHref(data, { page: data.pagination.page + 1 })}
             >
               Siguiente
-            </a>
+            </Link>
           ) : (
             <span />
           )}

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { formatCount } from "@repo/ui/format";
 import { Button } from "@repo/ui/button";
 import { InlineFeedback } from "@repo/ui/feedback";
 
@@ -67,7 +68,7 @@ export function ResolveDitoImportConflictForm({
           <p className="mt-1 text-sm text-ui-muted">{row.customerName}</p>
         </div>
         <span className="rounded-full bg-ui-danger-soft px-2.5 py-1 text-xs font-medium text-ui-danger">
-          {row.conflicts.length} por resolver
+          {formatCount(row.conflicts.length)} por resolver
         </span>
       </div>
 

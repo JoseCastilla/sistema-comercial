@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { computeRangeSelection } from "@repo/validation";
 
+import { formatCount } from "@repo/ui/format";
 import { Button } from "@repo/ui/button";
 import { InlineFeedback } from "@repo/ui/feedback";
 
@@ -132,8 +133,8 @@ export function RecoveryTriageForm({
         </label>
 
         <span className="pb-2 text-xs text-ui-muted">
-          {selected.size.toLocaleString("es-PE")} de{" "}
-          {rows.length.toLocaleString("es-PE")} seleccionados ·{" "}
+          {formatCount(selected.size)} de {formatCount(rows.length)}{" "}
+          seleccionados ·{" "}
           <kbd className="rounded border border-ui-border px-1">Shift</kbd> para
           un rango
         </span>

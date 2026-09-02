@@ -1,3 +1,4 @@
+import Form from "next/form";
 import Link from "next/link";
 
 import { PageHeader } from "@repo/ui/page-header";
@@ -23,7 +24,7 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
             {data.periodLabel} · {data.windowLabel}
           </p>
         </div>
-        <form className="performance-filter" method="get">
+        <Form action="/performance/quotas" className="performance-filter">
           <label>
             <span>Mes</span>
             {/* Admite meses futuros: la cuota se fija antes del período. */}
@@ -45,7 +46,7 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
             </select>
           </label>
           <button type="submit">Aplicar</button>
-        </form>
+        </Form>
       </section>
 
       {!data.editable ? (

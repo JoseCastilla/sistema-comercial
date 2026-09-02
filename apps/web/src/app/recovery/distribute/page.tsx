@@ -1,6 +1,7 @@
+import Link from "next/link";
+import Form from "next/form";
 import { redirect } from "next/navigation";
 
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import {
   DistributeRecoveryForm,
   type DistributeAdvisorOption,
@@ -13,11 +14,10 @@ import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
 
+import { formatCount } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
-
-import { SignOutButton } from "@/app/orders/sign-out-button";
 
 const distributionRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
 
@@ -102,9 +102,7 @@ export default async function RecoveryDistributePage({
           },
         }
       : {}),
-    ...(documentFilter
-      ? { documentNumber: { contains: documentFilter } }
-      : {}),
+    ...(documentFilter ? { documentNumber: { contains: documentFilter } } : {}),
   };
 
   const viewWhere: Prisma.RecoveryCaseWhereInput =
@@ -144,9 +142,7 @@ export default async function RecoveryDistributePage({
     database.recoveryCase.findMany({
       where: viewWhere,
       orderBy:
-        view === "open"
-          ? [{ lastSightingAt: "desc" }]
-          : [{ claimedAt: "asc" }],
+        view === "open" ? [{ lastSightingAt: "desc" }] : [{ claimedAt: "asc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
       select: {
@@ -267,13 +263,7 @@ export default async function RecoveryDistributePage({
   }
 
   return (
-    <CommercialAppShell
-      activeSection="recovery"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
@@ -282,7 +272,7 @@ export default async function RecoveryDistributePage({
         />
 
         <MetricGroup>
-          <Metric label="Por repartir" value={openCount} />
+          <Metric label="Disponible" value={openCount} />
           <Metric label="Asignados sin gestión" value={unworkedCount} />
           <Metric label="En gestión" value={inProgressCount} />
           <Metric label="Por revisar o portando" value={triageCount} />
@@ -290,29 +280,27 @@ export default async function RecoveryDistributePage({
 
         {triageCount > 0 ? (
           <p className="text-sm text-ui-muted">
-            Hay {triageCount.toLocaleString("es-PE")} caso(s) que aún no pasan
-            la revisión.{" "}
-            <a
+            Hay {formatCount(triageCount)} caso(s) que aún no pasan la revisión.{" "}
+            <Link
               className="text-ui-accent underline-offset-2 hover:underline"
               href="/recovery/triage"
             >
               Ir a revisarlos
-            </a>
+            </Link>
           </p>
         ) : null}
 
         <SectionPanel
           title={
             view === "open"
-              ? "Casos listos por repartir"
+              ? "Base disponible"
               : "Asignados sin gestión (redistribuibles)"
           }
-          description={`${filteredTotal.toLocaleString("es-PE")} caso(s) cumplen el filtro; se muestran ${rows.length.toLocaleString("es-PE")} por página, los más recientes primero.`}
+          description={`${formatCount(filteredTotal)} caso(s) cumplen el filtro; se muestran ${formatCount(rows.length)} por página, los más recientes primero.`}
         >
-          <form
+          <Form
             action="/recovery/distribute"
             className="flex flex-wrap items-end gap-3"
-            method="get"
           >
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-ui-muted">
@@ -385,13 +373,10 @@ export default async function RecoveryDistributePage({
                 placeholder="Buscar"
               />
             </label>
-            <button
-              className="ui-button ui-button--secondary"
-              type="submit"
-            >
+            <button className="ui-button ui-button--secondary" type="submit">
               Filtrar
             </button>
-          </form>
+          </Form>
 
           <DistributeRecoveryForm
             advisors={advisorOptions}
@@ -404,28 +389,28 @@ export default async function RecoveryDistributePage({
           {totalPages > 1 ? (
             <div className="flex items-center gap-3 text-sm">
               {page > 1 ? (
-                <a
+                <Link
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={pageHref(page - 1)}
                 >
                   ← Anterior
-                </a>
+                </Link>
               ) : null}
               <span className="text-ui-muted">
                 Página {page} de {totalPages}
               </span>
               {page < totalPages ? (
-                <a
+                <Link
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={pageHref(page + 1)}
                 >
                   Siguiente →
-                </a>
+                </Link>
               ) : null}
             </div>
           ) : null}
         </SectionPanel>
       </div>
-    </CommercialAppShell>
+    </>
   );
 }

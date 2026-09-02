@@ -10,6 +10,16 @@ export const runtime = "nodejs";
 
 const encoder = new TextEncoder();
 
+/**
+ * Debe seguir igual al valor que vigila el cliente en OrderRealtimeStatus.
+ * No se exporta: el cliente no puede importar de una ruta de servidor sin
+ * arrastrar su codigo al bundle, asi que ambos lados declaran el suyo.
+ *
+ * A 10s el vigia detecta un canal caido en 25s, dentro de los treinta
+ * segundos que exige AC-006 de SPEC-008 para el respaldo.
+ */
+const HEARTBEAT_INTERVAL_MS = 10_000;
+
 function encodeEvent(eventName: string, data: unknown) {
   return encoder.encode(
     `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`,
@@ -90,9 +100,16 @@ export async function GET(request: Request) {
         send(encodeEvent("order-change", event));
       };
 
+      /**
+       * El latido va como evento con nombre, no como comentario SSE: los
+       * comentarios mantienen viva la conexion pero `EventSource` los
+       * descarta, asi que el cliente no puede distinguir un stream tranquilo
+       * de uno zombi. Con un evento observable el navegador vigila el canal y
+       * reconecta solo cuando de verdad se corto.
+       */
       heartbeat = setInterval(() => {
-        send(encoder.encode(": heartbeat\n\n"));
-      }, 20_000);
+        send(encodeEvent("heartbeat", { at: new Date().toISOString() }));
+      }, HEARTBEAT_INTERVAL_MS);
 
       if (request.signal.aborted) {
         close();

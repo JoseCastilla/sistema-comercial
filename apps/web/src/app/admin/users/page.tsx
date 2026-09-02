@@ -1,5 +1,6 @@
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
-
+import Link from "next/link";
+import Form from "next/form";
+import { formatCount } from "@repo/ui/format";
 import { EmptyState } from "@repo/ui/empty-state";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
@@ -11,8 +12,6 @@ import { ResetUserPasswordForm } from "@/features/users/components/reset-user-pa
 
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
-
-import { SignOutButton } from "@/app/orders/sign-out-button";
 
 const roleLabels: Record<string, string> = {
   ADMIN: "Administrador",
@@ -128,32 +127,27 @@ export default async function AdminUsersPage({
   });
 
   return (
-    <CommercialAppShell
-      activeSection="people"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           description="Administra accesos, roles y equipos usando el correo corporativo como identidad operativa."
           eyebrow="Administración"
           meta={
             <>
-              {activeUsers} de {members.length} personas activas
+              {activeUsers} de {formatCount(members.length)} personas activas
             </>
           }
           title="Personas"
         />
 
         <MetricGroup>
-          <Metric label="Personas" value={members.length} />
+          <Metric emphasis="hero" label="Personas" value={members.length} />
           <Metric label="Asesores" value={agents.length} />
           <Metric label="Supervisores" value={supervisors} />
           <Metric
+            hideWhenZero
             label="Asesores sin equipo"
-            tone={agentsWithoutTeam > 0 ? "danger" : "neutral"}
+            tone="danger"
             value={agentsWithoutTeam}
           />
         </MetricGroup>
@@ -172,10 +166,10 @@ export default async function AdminUsersPage({
         </details>
 
         <SectionPanel
-          description={`${filteredMembers.length} ${filteredMembers.length === 1 ? "resultado" : "resultados"}`}
+          description={`${formatCount(filteredMembers.length)} ${filteredMembers.length === 1 ? "resultado" : "resultados"}`}
           title="Directorio de la organización"
         >
-          <form className="ui-admin-toolbar" method="get">
+          <Form action="/admin/users" className="ui-admin-toolbar">
             <label className="ui-admin-toolbar__search">
               <span className="sr-only">Buscar persona</span>
               <input
@@ -220,11 +214,11 @@ export default async function AdminUsersPage({
               Filtrar
             </button>
             {hasFilters ? (
-              <a className="ui-admin-toolbar__clear" href="/admin/users">
+              <Link className="ui-admin-toolbar__clear" href="/admin/users">
                 Limpiar
-              </a>
+              </Link>
             ) : null}
-          </form>
+          </Form>
 
           {filteredMembers.length === 0 ? (
             <EmptyState
@@ -255,8 +249,7 @@ export default async function AdminUsersPage({
                   );
                 const primaryTeam = activeMemberships.find(
                   (teamMembership) =>
-                    teamMembership.salesEnabled &&
-                    teamMembership.isPrimary,
+                    teamMembership.salesEnabled && teamMembership.isPrimary,
                 );
                 const supervisedTeams = activeMemberships.filter(
                   (teamMembership) =>
@@ -322,6 +315,6 @@ export default async function AdminUsersPage({
           )}
         </SectionPanel>
       </div>
-    </CommercialAppShell>
+    </>
   );
 }

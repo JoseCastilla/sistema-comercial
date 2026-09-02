@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { ThemeControl } from "@repo/ui/theme-control";
@@ -18,6 +19,34 @@ type ActiveSection =
   | "logistics"
   | "people"
   | "teams";
+
+/**
+ * La sección activa se deduce de la ruta en vez de viajar como prop.
+ * Antes cada página repetía `activeSection` a mano —19 copias— y una ruta
+ * nueva quedaba sin resaltar hasta que alguien se acordaba de pasarla. El
+ * orden importa: el prefijo más específico gana.
+ */
+const SECTION_BY_PATH_PREFIX: readonly (readonly [string, ActiveSection])[] = [
+  ["/recovery/sales", "sales-recovery"],
+  ["/admin/dito-imports", "imports"],
+  ["/admin/logistics", "logistics"],
+  ["/admin/recovery-base", "recovery"],
+  ["/admin/users", "people"],
+  ["/admin/teams", "teams"],
+  ["/performance", "performance"],
+  ["/recovery", "recovery"],
+  ["/orders", "orders"],
+  ["/dni", "dni"],
+  ["/tools", "tools"],
+];
+
+function sectionForPath(pathname: string): ActiveSection {
+  const match = SECTION_BY_PATH_PREFIX.find(
+    ([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+
+  return match ? match[1] : "orders";
+}
 type IconName =
   | "home"
   | "orders"
@@ -191,15 +220,18 @@ export function CommercialAppShell({
   role,
   signOut,
   children,
-  activeSection = "orders",
+  activeSection,
 }: {
   organizationName: string;
   userName: string;
   role: string;
   signOut: ReactNode;
   children: ReactNode;
+  /** Solo para forzar una sección que la ruta no represente. */
   activeSection?: ActiveSection;
 }) {
+  const pathname = usePathname();
+  const currentSection = activeSection ?? sectionForPath(pathname);
   const roleLabel = roleLabels[role] ?? role;
   const isAdmin = role === "ADMIN";
   const canTriageRecovery =
@@ -271,42 +303,42 @@ export function CommercialAppShell({
         </div>
         <nav className="app-shell__nav" aria-label="Navegación principal">
           <NavigationItem
-            active={activeSection === "performance"}
+            active={currentSection === "performance"}
             description="Resultados y oportunidades"
             href="/performance"
             icon="home"
             label="Rendimiento"
           />
           <NavigationItem
-            active={activeSection === "orders"}
+            active={currentSection === "orders"}
             description="Seguimiento operativo"
             href="/orders"
             icon="orders"
             label="Pedidos"
           />
           <NavigationItem
-            active={activeSection === "dni"}
+            active={currentSection === "dni"}
             description="Identidad y dirección RENIEC"
             href="/dni"
             icon="identity"
             label="Consulta DNI"
           />
           <NavigationItem
-            active={activeSection === "tools"}
+            active={currentSection === "tools"}
             description="Líneas asociadas a un documento"
             href="/tools/lines"
             icon="tools"
             label="Checa tus líneas"
           />
           <NavigationItem
-            active={activeSection === "sales-recovery"}
+            active={currentSection === "sales-recovery"}
             description="Ventas caídas por salvar"
             href="/recovery/sales"
             icon="recovery"
             label="Recupero de ventas"
           />
           <NavigationItem
-            active={activeSection === "recovery"}
+            active={currentSection === "recovery"}
             description={campaignsDescription}
             href={campaignsHref}
             icon="campaigns"
@@ -315,28 +347,28 @@ export function CommercialAppShell({
           {isAdmin ? (
             <>
               <NavigationItem
-                active={activeSection === "imports"}
+                active={currentSection === "imports"}
                 description="Carga y revisión DITO"
                 href="/admin/dito-imports"
                 icon="sales"
                 label="Ventas"
               />
               <NavigationItem
-                active={activeSection === "logistics"}
+                active={currentSection === "logistics"}
                 description="Estado de entregas en Máximo"
                 href="/admin/logistics"
                 icon="logistics"
                 label="Logística"
               />
               <NavigationItem
-                active={activeSection === "people"}
+                active={currentSection === "people"}
                 description="Usuarios, roles y nombres de DITO"
                 href="/admin/users"
                 icon="people"
                 label="Personas"
               />
               <NavigationItem
-                active={activeSection === "teams"}
+                active={currentSection === "teams"}
                 description="Supervisores y asesores"
                 href="/admin/teams"
                 icon="teams"
@@ -383,37 +415,37 @@ export function CommercialAppShell({
         data-items={isAdmin ? "9" : "6"}
       >
         <MobileNavigationItem
-          active={activeSection === "performance"}
+          active={currentSection === "performance"}
           href="/performance"
           icon="home"
           label="Rendimiento"
         />
         <MobileNavigationItem
-          active={activeSection === "orders"}
+          active={currentSection === "orders"}
           href="/orders"
           icon="orders"
           label="Pedidos"
         />
         <MobileNavigationItem
-          active={activeSection === "dni"}
+          active={currentSection === "dni"}
           href="/dni"
           icon="identity"
           label="DNI"
         />
         <MobileNavigationItem
-          active={activeSection === "tools"}
+          active={currentSection === "tools"}
           href="/tools/lines"
           icon="tools"
           label="Líneas"
         />
         <MobileNavigationItem
-          active={activeSection === "sales-recovery"}
+          active={currentSection === "sales-recovery"}
           href="/recovery/sales"
           icon="recovery"
           label="Recupero"
         />
         <MobileNavigationItem
-          active={activeSection === "recovery"}
+          active={currentSection === "recovery"}
           href={campaignsHref}
           icon="campaigns"
           label="Campañas"
@@ -421,25 +453,25 @@ export function CommercialAppShell({
         {isAdmin ? (
           <>
             <MobileNavigationItem
-              active={activeSection === "imports"}
+              active={currentSection === "imports"}
               href="/admin/dito-imports"
               icon="sales"
               label="Ventas"
             />
             <MobileNavigationItem
-              active={activeSection === "logistics"}
+              active={currentSection === "logistics"}
               href="/admin/logistics"
               icon="logistics"
               label="Logística"
             />
             <MobileNavigationItem
-              active={activeSection === "people"}
+              active={currentSection === "people"}
               href="/admin/users"
               icon="people"
               label="Personas"
             />
             <MobileNavigationItem
-              active={activeSection === "teams"}
+              active={currentSection === "teams"}
               href="/admin/teams"
               icon="teams"
               label="Equipos"

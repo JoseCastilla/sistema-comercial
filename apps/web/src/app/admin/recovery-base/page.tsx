@@ -1,4 +1,4 @@
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
+import Link from "next/link";
 import { ConfirmRecoveryBatchForm } from "@/features/recovery/components/confirm-recovery-batch-form";
 import { RecoveryBaseUploadForm } from "@/features/recovery/components/recovery-base-upload-form";
 import { PortabilityCrossForm } from "@/features/recovery/components/portability-cross-form";
@@ -9,11 +9,10 @@ import { database } from "@/server/database";
 
 import { defaultRecoveryEligibilityConfig } from "@repo/validation";
 
+import { formatCount } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
-
-import { SignOutButton } from "@/app/orders/sign-out-button";
 
 // 24 horas y sin segundos: la hora es un dato tabular, no una frase.
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
@@ -60,7 +59,7 @@ function BatchStat({
           tone === "warning" ? "text-ui-warning" : "text-ui-text"
         }`}
       >
-        {value.toLocaleString("es-PE")}
+        {formatCount(value)}
       </dd>
     </div>
   );
@@ -71,7 +70,7 @@ export default async function RecoveryBaseAdminPage({
 }: {
   searchParams: Promise<{ batch?: string }>;
 }) {
-  const { session, membership } = await requireAdminAccess();
+  const { membership } = await requireAdminAccess();
   const parameters = await searchParams;
 
   // BR-084: lo vencido drena antes de mostrar el embudo.
@@ -255,13 +254,7 @@ export default async function RecoveryBaseAdminPage({
   };
 
   return (
-    <CommercialAppShell
-      activeSection="recovery"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
@@ -280,7 +273,7 @@ export default async function RecoveryBaseAdminPage({
               value={waitingCount}
               hint="Su pedido avanza solo"
             />
-            <Metric label="Por repartir" value={openCount} />
+            <Metric label="Disponible" value={openCount} />
             <Metric label="En gestión" value={managedCount} />
             <Metric label="Recuperados" value={recoveredCount} />
           </MetricGroup>
@@ -288,16 +281,14 @@ export default async function RecoveryBaseAdminPage({
           {/* El embudo debe cuadrar: sin esta línea, los casos cerrados por
               el cruce desaparecen y el total no explica de dónde sale. */}
           <p className="text-xs leading-5 text-ui-muted">
-            <strong className="text-ui-text">
-              {totalCases.toLocaleString("es-PE")}
-            </strong>{" "}
+            <strong className="text-ui-text">{formatCount(totalCases)}</strong>{" "}
             caso(s) creados desde la base
             {discardedCount > 0 ? (
               <>
                 {" "}
                 ·{" "}
                 <strong className="text-ui-text">
-                  {discardedCount.toLocaleString("es-PE")}
+                  {formatCount(discardedCount)}
                 </strong>{" "}
                 cerrados porque ya eran Movistar (no cuentan como pérdida)
               </>
@@ -307,7 +298,7 @@ export default async function RecoveryBaseAdminPage({
                 {" "}
                 ·{" "}
                 <strong className="text-ui-text">
-                  {lostCount.toLocaleString("es-PE")}
+                  {formatCount(lostCount)}
                 </strong>{" "}
                 perdidos
               </>
@@ -317,29 +308,32 @@ export default async function RecoveryBaseAdminPage({
           </p>
           <div className="ui-form-row">
             {triageCount > 0 ? (
-              <a className="ui-button ui-button--primary" href="/recovery/triage">
-                Revisar {triageCount.toLocaleString("es-PE")} caso(s)
-              </a>
+              <Link
+                className="ui-button ui-button--primary"
+                href="/recovery/triage"
+              >
+                Revisar {formatCount(triageCount)} caso(s)
+              </Link>
             ) : null}
             {openCount > 0 ? (
-              <a
+              <Link
                 className={`ui-button ${triageCount > 0 ? "ui-button--secondary" : "ui-button--primary"}`}
                 href="/recovery/distribute"
               >
-                Repartir {openCount.toLocaleString("es-PE")} listos
-              </a>
+                Repartir {formatCount(openCount)} listos
+              </Link>
             ) : null}
             {triageCount === 0 && openCount === 0 ? (
               <p className="text-sm text-ui-muted">
                 Sin casos por revisar ni distribuir. Carga la base del día.
               </p>
             ) : null}
-            <a
+            <Link
               className="ui-button ui-button--secondary"
               href="/recovery/board"
             >
               Tablero del día
-            </a>
+            </Link>
           </div>
         </SectionPanel>
 
@@ -442,24 +436,24 @@ export default async function RecoveryBaseAdminPage({
                   {batches.map((batch) => (
                     <tr key={batch.id}>
                       <td className="px-3 py-1.5">
-                        <a
+                        <Link
                           className="text-ui-accent underline-offset-2 hover:underline"
                           href={`/admin/recovery-base?batch=${batch.id}`}
                         >
                           {batch.fileName}
-                        </a>
+                        </Link>
                       </td>
                       <td className="px-3 py-1.5 text-xs text-ui-muted">
                         {batchStatusLabels[batch.status] ?? batch.status}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {batch.sourceRows.toLocaleString("es-PE")}
+                        {formatCount(batch.sourceRows)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {batch.eligibleRows.toLocaleString("es-PE")}
+                        {formatCount(batch.eligibleRows)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {batch.newCases.toLocaleString("es-PE")}
+                        {formatCount(batch.newCases)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-ui-muted">
                         {dateTimeFormatter.format(batch.uploadedAt)}
@@ -482,11 +476,11 @@ export default async function RecoveryBaseAdminPage({
               tone={pendingLineCount > 0 ? "warning" : undefined}
               value={pendingLineCount}
             />
+            <BatchStat label="Líneas en la bandeja" value={openLineCount} />
             <BatchStat
-              label="Líneas en la bandeja"
-              value={openLineCount}
+              label="Casos listos para repartir"
+              value={readyCaseCount}
             />
-            <BatchStat label="Casos listos para repartir" value={readyCaseCount} />
           </dl>
 
           {pendingLineCount > 0 ? (
@@ -565,16 +559,16 @@ export default async function RecoveryBaseAdminPage({
                         {cross.kind === "FULL" ? "Completo" : "Rápido"}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {cross.totalRows.toLocaleString("es-PE")}
+                        {formatCount(cross.totalRows)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {cross.matchedServices.toLocaleString("es-PE")}
+                        {formatCount(cross.matchedServices)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {cross.discardedCases.toLocaleString("es-PE")}
+                        {formatCount(cross.discardedCases)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-right">
-                        {cross.waitingCases.toLocaleString("es-PE")}
+                        {formatCount(cross.waitingCases)}
                       </td>
                       <td className="ui-data px-3 py-1.5 text-ui-muted">
                         {dateTimeFormatter.format(cross.uploadedAt)}
@@ -599,6 +593,6 @@ export default async function RecoveryBaseAdminPage({
           />
         </SectionPanel>
       </div>
-    </CommercialAppShell>
+    </>
   );
 }

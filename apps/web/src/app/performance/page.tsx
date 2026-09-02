@@ -1,7 +1,5 @@
 import { parsePerformanceMonth } from "@repo/validation";
 
-import { SignOutButton } from "@/app/orders/sign-out-button";
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { PerformanceDashboard } from "@/features/performance/components/performance-dashboard";
 import { getPerformanceDashboard } from "@/features/performance/server/get-performance-dashboard";
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -29,15 +27,5 @@ export default async function PerformancePage({
     { month, team, agent, view },
   );
 
-  return (
-    <CommercialAppShell
-      activeSection="performance"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
-      <PerformanceDashboard data={dashboard} />
-    </CommercialAppShell>
-  );
+  return <PerformanceDashboard data={dashboard} />;
 }

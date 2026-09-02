@@ -1,3 +1,5 @@
+import Link from "next/link";
+import Form from "next/form";
 import {
   baseRecoveryMinimumDailyAttempts,
   countOnSameLimaDay,
@@ -5,7 +7,6 @@ import {
   isBaseRecoveryResolutionDue,
 } from "@repo/validation";
 
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { CopyValue } from "@/features/recovery/components/copy-value";
 import { TakePoolBlockForm } from "@/features/recovery/components/take-pool-block-form";
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
@@ -14,11 +15,10 @@ import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
 
+import { formatCount } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
-
-import { SignOutButton } from "@/app/orders/sign-out-button";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: "America/Lima",
@@ -96,71 +96,71 @@ export default async function RecoveryCampaignsPage({
 
   const [myCases, myTotal, myDepartments, sellingMembership] =
     await Promise.all([
-    database.recoveryCase.findMany({
-      where: myCasesWhere,
-      orderBy: [{ nextActionAt: { sort: "asc", nulls: "last" } }],
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      select: {
-        id: true,
-        holderName: true,
-        documentNumber: true,
-        department: true,
-        status: true,
-        claimedAt: true,
-        nextActionAt: true,
-        portabilityEligibleAt: true,
-        services: {
-          where: { discardedAt: null },
-          select: {
-            planRaw: true,
-            serviceNumber: true,
-            carrierRaw: true,
-            portabilityState: true,
-            portabilityReceiver: true,
-            portabilityWindowAt: true,
-            isPlantLine: true,
+      database.recoveryCase.findMany({
+        where: myCasesWhere,
+        orderBy: [{ nextActionAt: { sort: "asc", nulls: "last" } }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          holderName: true,
+          documentNumber: true,
+          department: true,
+          status: true,
+          claimedAt: true,
+          nextActionAt: true,
+          portabilityEligibleAt: true,
+          services: {
+            where: { discardedAt: null },
+            select: {
+              planRaw: true,
+              serviceNumber: true,
+              carrierRaw: true,
+              portabilityState: true,
+              portabilityReceiver: true,
+              portabilityWindowAt: true,
+              isPlantLine: true,
+            },
+          },
+          phones: {
+            where: { kind: "CONTACT", invalidMarkedAt: null },
+            take: 1,
+            select: { phoneNumber: true },
+          },
+          attempts: {
+            orderBy: { createdAt: "desc" },
+            take: 15,
+            select: { createdAt: true, result: true },
           },
         },
-        phones: {
-          where: { kind: "CONTACT", invalidMarkedAt: null },
-          take: 1,
-          select: { phoneNumber: true },
+      }),
+      database.recoveryCase.count({ where: myCasesWhere }),
+      database.recoveryCase.groupBy({
+        by: ["department"],
+        where: {
+          organizationId: membership.organization.id,
+          source: "NATIONAL_BASE",
+          assignedUserId: session.user.id,
+          status: {
+            in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
+          },
         },
-        attempts: {
-          orderBy: { createdAt: "desc" },
-          take: 15,
-          select: { createdAt: true, result: true },
+        _count: { _all: true },
+        orderBy: { _count: { department: "desc" } },
+        take: 30,
+      }),
+      database.commercialTeamMember.findFirst({
+        where: {
+          organizationId: membership.organization.id,
+          userId: session.user.id,
+          salesEnabled: true,
+          isActive: true,
+          isPrimary: true,
+          team: { status: "ACTIVE" },
         },
-      },
-    }),
-    database.recoveryCase.count({ where: myCasesWhere }),
-    database.recoveryCase.groupBy({
-      by: ["department"],
-      where: {
-        organizationId: membership.organization.id,
-        source: "NATIONAL_BASE",
-        assignedUserId: session.user.id,
-        status: {
-          in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
-        },
-      },
-      _count: { _all: true },
-      orderBy: { _count: { department: "desc" } },
-      take: 30,
-    }),
-    database.commercialTeamMember.findFirst({
-      where: {
-        organizationId: membership.organization.id,
-        userId: session.user.id,
-        salesEnabled: true,
-        isActive: true,
-        isPrimary: true,
-        team: { status: "ACTIVE" },
-      },
-      select: { teamId: true, team: { select: { name: true } } },
-    }),
-  ]);
+        select: { teamId: true, team: { select: { name: true } } },
+      }),
+    ]);
 
   const poolWhere = sellingMembership
     ? {
@@ -190,7 +190,9 @@ export default async function RecoveryCampaignsPage({
       item.attempts.map((attempt) => attempt.createdAt),
       now,
     );
-    const lastResult = item.attempts[0] ? String(item.attempts[0].result) : null;
+    const lastResult = item.attempts[0]
+      ? String(item.attempts[0].result)
+      : null;
     const firstService = item.services[0];
     const origin = firstService
       ? describeRecoveryLineOrigin({
@@ -209,9 +211,7 @@ export default async function RecoveryCampaignsPage({
       // Llamar es la acción: primero el teléfono de contacto; sin él, la
       // propia línea a portar.
       phone:
-        item.phones[0]?.phoneNumber ??
-        item.services[0]?.serviceNumber ??
-        null,
+        item.phones[0]?.phoneNumber ?? item.services[0]?.serviceNumber ?? null,
       interestedWithOrder:
         lastResult === "INTERESADO_CON_PEDIDO" &&
         String(item.status) !== "WAITING",
@@ -265,13 +265,7 @@ export default async function RecoveryCampaignsPage({
   }
 
   return (
-    <CommercialAppShell
-      activeSection="recovery"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
@@ -280,9 +274,19 @@ export default async function RecoveryCampaignsPage({
         />
 
         <MetricGroup>
-          <Metric label="Mis casos abiertos" value={myTotal} />
-          <Metric label="Vencidos o por resolver" value={dueToday.length} />
-          <Metric label="Sin los 3 intentos de hoy" value={underMinimum.length} />
+          <Metric emphasis="hero" label="Mis casos abiertos" value={myTotal} />
+          <Metric
+            hideWhenZero
+            label="Vencidos o por resolver"
+            tone="danger"
+            value={dueToday.length}
+          />
+          <Metric
+            hideWhenZero
+            label="Sin los 3 intentos de hoy"
+            tone="warning"
+            value={underMinimum.length}
+          />
           <Metric
             label={
               sellingMembership
@@ -307,12 +311,12 @@ export default async function RecoveryCampaignsPage({
           >
             <p className="text-sm text-ui-muted">
               Si distribuyes trabajo, hazlo desde{" "}
-              <a
+              <Link
                 className="text-ui-accent underline-offset-2 hover:underline"
                 href="/recovery/distribute"
               >
                 Distribuir la base
-              </a>
+              </Link>
               .
             </p>
           </SectionPanel>
@@ -322,10 +326,9 @@ export default async function RecoveryCampaignsPage({
           title="Mis casos"
           description="Vencidos primero, luego lo de hoy, después los agendados; lo que espera confirmación queda al fondo."
         >
-          <form
+          <Form
             action="/recovery/campaigns"
             className="flex flex-wrap items-end gap-3"
-            method="get"
           >
             <label className="block">
               <span className="ui-label-eyebrow">Departamento</span>
@@ -356,9 +359,9 @@ export default async function RecoveryCampaignsPage({
               Filtrar
             </button>
             <span className="pb-2 text-xs text-ui-muted">
-              {myTotal.toLocaleString("es-PE")} caso(s) cumplen el filtro.
+              {formatCount(myTotal)} caso(s) cumplen el filtro.
             </span>
-          </form>
+          </Form>
 
           <div className="overflow-x-auto rounded-xl border border-ui-border">
             <table className="min-w-full divide-y divide-ui-border text-sm">
@@ -456,12 +459,12 @@ export default async function RecoveryCampaignsPage({
                       </span>
                     </td>
                     <td className="px-3 py-2 text-xs">
-                      <a
+                      <Link
                         className="text-ui-accent underline-offset-2 hover:underline"
                         href={`/recovery/campaigns/${row.id}`}
                       >
                         Abrir
-                      </a>
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -483,28 +486,28 @@ export default async function RecoveryCampaignsPage({
           {totalPages > 1 ? (
             <div className="flex items-center gap-3 text-sm">
               {page > 1 ? (
-                <a
+                <Link
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={pageHref(page - 1)}
                 >
                   ← Anterior
-                </a>
+                </Link>
               ) : null}
               <span className="text-ui-muted">
                 Página {page} de {totalPages}
               </span>
               {page < totalPages ? (
-                <a
+                <Link
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={pageHref(page + 1)}
                 >
                   Siguiente →
-                </a>
+                </Link>
               ) : null}
             </div>
           ) : null}
         </SectionPanel>
       </div>
-    </CommercialAppShell>
+    </>
   );
 }

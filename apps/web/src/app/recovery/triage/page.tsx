@@ -1,6 +1,7 @@
+import Link from "next/link";
+import Form from "next/form";
 import { redirect } from "next/navigation";
 
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import {
   RecoveryTriageForm,
   type RecoveryTriageRow,
@@ -11,11 +12,10 @@ import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
 
+import { formatCount } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
-
-import { SignOutButton } from "@/app/orders/sign-out-button";
 
 const triageRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
 
@@ -123,9 +123,7 @@ export default async function RecoveryTriagePage({
           },
         }
       : {}),
-    ...(documentFilter
-      ? { documentNumber: { contains: documentFilter } }
-      : {}),
+    ...(documentFilter ? { documentNumber: { contains: documentFilter } } : {}),
   };
 
   const [
@@ -240,17 +238,13 @@ export default async function RecoveryTriagePage({
   }
 
   return (
-    <CommercialAppShell
-      activeSection="recovery"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
-          title={isSupervisor ? "Revisar mi bloque" : "Revisar y repartir la base"}
+          title={
+            isSupervisor ? "Revisar mi bloque" : "Revisar y repartir la base"
+          }
           description={
             isSupervisor
               ? "La base entregada a tus equipos. El DNI se copia con un clic."
@@ -275,31 +269,31 @@ export default async function RecoveryTriagePage({
             hint="Su pedido avanza solo; salen cuando se concreta"
           />
           <Metric
-            label="Por repartir"
+            label="Disponible"
             value={openTotal}
             hint="Ya revisados; falta asignarlos a un equipo"
           />
         </MetricGroup>
 
         <div className="ui-form-row">
-          <a
+          <Link
             className={`ui-button ${view === "listos" ? "ui-button--primary" : "ui-button--secondary"}`}
             href={viewHref("listos")}
           >
-            Listos para repartir ({readyTotal.toLocaleString("es-PE")})
-          </a>
-          <a
+            Listos para repartir ({formatCount(readyTotal)})
+          </Link>
+          <Link
             className={`ui-button ${view === "pendientes" ? "ui-button--primary" : "ui-button--secondary"}`}
             href={viewHref("pendientes")}
           >
-            Falta consultar ({pendingTotal.toLocaleString("es-PE")})
-          </a>
-          <a
+            Falta consultar ({formatCount(pendingTotal)})
+          </Link>
+          <Link
             className="ui-button ui-button--secondary"
             href="/recovery/board"
           >
             Tablero del día
-          </a>
+          </Link>
           <span className="pb-2 text-xs text-ui-muted">
             {view === "pendientes"
               ? "Aún sin verificar: si los repartes, el asesor llamará sin saber si el cliente ya es Movistar."
@@ -309,25 +303,23 @@ export default async function RecoveryTriagePage({
 
         {openTotal > 0 ? (
           <p className="text-sm text-ui-muted">
-            Hay {openTotal.toLocaleString("es-PE")} caso(s) listos esperando
-            reparto.{" "}
-            <a
+            Hay {formatCount(openTotal)} caso(s) en la base disponible.{" "}
+            <Link
               className="text-ui-accent underline-offset-2 hover:underline"
               href="/recovery/distribute"
             >
               Distribuir la base
-            </a>
+            </Link>
           </p>
         ) : null}
 
         <SectionPanel
           title="Casos pendientes"
-          description={`${filteredTotal.toLocaleString("es-PE")} caso(s) cumplen el filtro; se muestran ${rows.length.toLocaleString("es-PE")} por página, primero los del último archivo cargado. Puedes marcar un rango con Shift o elegir cuántos tomar.`}
+          description={`${formatCount(filteredTotal)} caso(s) cumplen el filtro; se muestran ${formatCount(rows.length)} por página, primero los del último archivo cargado. Puedes marcar un rango con Shift o elegir cuántos tomar.`}
         >
-          <form
+          <Form
             action="/recovery/triage"
             className="flex flex-wrap items-end gap-3"
-            method="get"
           >
             {!isSupervisor ? (
               <label className="block">
@@ -392,7 +384,7 @@ export default async function RecoveryTriagePage({
             <button className="ui-button ui-button--secondary" type="submit">
               Filtrar
             </button>
-          </form>
+          </Form>
 
           <RecoveryTriageForm
             canAssignTeams={!isSupervisor}
@@ -403,28 +395,28 @@ export default async function RecoveryTriagePage({
           {totalPages > 1 ? (
             <div className="flex items-center gap-3 text-sm">
               {page > 1 ? (
-                <a
+                <Link
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={pageHref(page - 1)}
                 >
                   ← Anterior
-                </a>
+                </Link>
               ) : null}
               <span className="text-ui-muted">
                 Página {page} de {totalPages}
               </span>
               {page < totalPages ? (
-                <a
+                <Link
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={pageHref(page + 1)}
                 >
                   Siguiente →
-                </a>
+                </Link>
               ) : null}
             </div>
           ) : null}
         </SectionPanel>
       </div>
-    </CommercialAppShell>
+    </>
   );
 }

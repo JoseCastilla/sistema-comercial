@@ -1,17 +1,14 @@
+import Form from "next/form";
 import Link from "next/link";
 
+import { formatCount, formatMoneyFromCents } from "@repo/ui/format";
+import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 
 import type {
   PerformanceReconciliationData,
   ReconciliationFilter,
 } from "../reconciliation.types";
-
-const currencyFormatter = new Intl.NumberFormat("es-PE", {
-  style: "currency",
-  currency: "PEN",
-  minimumFractionDigits: 2,
-});
 
 const operationLabels: Record<string, string> = {
   PORT_POSTPAID: "Portabilidad postpago",
@@ -21,7 +18,7 @@ const operationLabels: Record<string, string> = {
 };
 
 function money(cents: number): string {
-  return currencyFormatter.format(cents / 100);
+  return formatMoneyFromCents(cents);
 }
 
 function reconciliationHref(
@@ -82,13 +79,23 @@ export function PerformanceReconciliation({
 
       <section className="performance-controls ui-surface">
         <div>
-          <p className="performance-controls__eyebrow">Mes que estás revisando</p>
+          <p className="performance-controls__eyebrow">
+            Mes que estás revisando
+          </p>
           <p className="performance-controls__month">{data.monthLabel}</p>
         </div>
-        <form className="performance-filter" method="get">
+        <Form
+          action="/performance/reconciliation"
+          className="performance-filter"
+        >
           <label>
             <span>Mes</span>
-            <input defaultValue={data.month} max={data.currentMonth} name="month" type="month" />
+            <input
+              defaultValue={data.month}
+              max={data.currentMonth}
+              name="month"
+              type="month"
+            />
           </label>
           {data.teamOptions.length > 0 ? (
             <label>
@@ -100,7 +107,9 @@ export function PerformanceReconciliation({
                     : "Toda la organización"}
                 </option>
                 {data.teamOptions.map((team) => (
-                  <option key={team.id} value={team.id}>{team.name}</option>
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
                 ))}
               </select>
             </label>
@@ -113,37 +122,45 @@ export function PerformanceReconciliation({
             <select defaultValue={data.filter} name="reason">
               <option value="ALL">Todos los resultados</option>
               <option value="PAYABLE">Ya generan comisión</option>
-              <option value="NOT_ACTIVATED">Entregadas, falta activarlas</option>
+              <option value="NOT_ACTIVATED">
+                Entregadas, falta activarlas
+              </option>
               <option value="NOT_DELIVERED">Pendientes de entrega</option>
               <option value="UNASSIGNED">Sin asesor responsable</option>
-              <option value="UNKNOWN_OPERATION">Falta clasificar la operación</option>
+              <option value="UNKNOWN_OPERATION">
+                Falta clasificar la operación
+              </option>
               <option value="CANCELLED">Canceladas</option>
-              <option value="NEW_LINE_NO_COMMISSION">Altas nuevas (no pagan comisión)</option>
+              <option value="NEW_LINE_NO_COMMISSION">
+                Altas nuevas (no pagan comisión)
+              </option>
             </select>
           </label>
           <button type="submit">Aplicar</button>
-        </form>
+        </Form>
       </section>
 
-      <section className="reconciliation-summary" aria-label="Resumen de conciliación">
-        <article>
-          <span>Órdenes del mes</span>
-          <strong>{data.totals.orders}</strong>
-          <small>{data.pagination.filteredTotal} coinciden con el filtro</small>
-        </article>
-        <article data-tone="positive">
-          <span>Portabilidades pagables</span>
-          <strong>{data.totals.payable}</strong>
-          <small>Entregadas, cerradas y con asesor</small>
-        </article>
+      <MetricGroup label="Resumen de conciliación">
+        <Metric
+          emphasis="hero"
+          hint={`${formatCount(data.pagination.filteredTotal)} coinciden con el filtro`}
+          label="Órdenes del mes"
+          value={data.totals.orders}
+        />
+        <Metric
+          hint="Entregadas, cerradas y con asesor"
+          label="Portabilidades pagables"
+          tone="success"
+          value={data.totals.payable}
+        />
         {data.showTotals ? (
-          <article>
-            <span>Comisión fija estimada</span>
-            <strong>{money(data.totals.baseCommissionCents)}</strong>
-            <small>No incluye bonos</small>
-          </article>
+          <Metric
+            hint="No incluye bonos"
+            label="Comisión fija estimada"
+            value={money(data.totals.baseCommissionCents)}
+          />
         ) : null}
-      </section>
+      </MetricGroup>
 
       <section className="performance-panel">
         <header className="performance-panel__header">
@@ -169,15 +186,29 @@ export function PerformanceReconciliation({
               {data.lines.map((line) => (
                 <tr key={line.id}>
                   <td>
-                    <Link href={orderHref(data, line.orderCode)}>{line.orderCode}</Link>
+                    <Link href={orderHref(data, line.orderCode)}>
+                      {line.orderCode}
+                    </Link>
                     <small>{line.registeredAtLabel}</small>
                   </td>
                   <td>{line.customerName}</td>
-                  <td><strong>{line.agentName}</strong><small>{line.teamName ?? "Sin equipo"}</small></td>
+                  <td>
+                    <strong>{line.agentName}</strong>
+                    <small>{line.teamName ?? "Sin equipo"}</small>
+                  </td>
                   <td>{operationLabels[line.operation] ?? line.operation}</td>
-                  <td><span className="reconciliation-reason" data-reason={line.reason}>{line.reasonLabel}</span></td>
+                  <td>
+                    <span
+                      className="reconciliation-reason"
+                      data-reason={line.reason}
+                    >
+                      {line.reasonLabel}
+                    </span>
+                  </td>
                   {data.showLineAmounts ? (
-                    <td><strong>{money(line.baseCommissionCents)}</strong></td>
+                    <td>
+                      <strong>{money(line.baseCommissionCents)}</strong>
+                    </td>
                   ) : null}
                 </tr>
               ))}
@@ -195,10 +226,35 @@ export function PerformanceReconciliation({
           </table>
         </div>
         {data.pagination.totalPages > 1 ? (
-          <nav className="reconciliation-pagination" aria-label="Paginación de conciliación">
-            {data.pagination.page > 1 ? <Link href={reconciliationHref(data, { page: data.pagination.page - 1 })}>Anterior</Link> : <span />}
-            <small>Página {data.pagination.page} de {data.pagination.totalPages}</small>
-            {data.pagination.page < data.pagination.totalPages ? <Link href={reconciliationHref(data, { page: data.pagination.page + 1 })}>Siguiente</Link> : <span />}
+          <nav
+            className="reconciliation-pagination"
+            aria-label="Paginación de conciliación"
+          >
+            {data.pagination.page > 1 ? (
+              <Link
+                href={reconciliationHref(data, {
+                  page: data.pagination.page - 1,
+                })}
+              >
+                Anterior
+              </Link>
+            ) : (
+              <span />
+            )}
+            <small>
+              Página {data.pagination.page} de {data.pagination.totalPages}
+            </small>
+            {data.pagination.page < data.pagination.totalPages ? (
+              <Link
+                href={reconciliationHref(data, {
+                  page: data.pagination.page + 1,
+                })}
+              >
+                Siguiente
+              </Link>
+            ) : (
+              <span />
+            )}
           </nav>
         ) : null}
       </section>

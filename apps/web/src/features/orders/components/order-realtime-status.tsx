@@ -3,71 +3,156 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type ConnectionState = "CONNECTING" | "LIVE" | "RECONNECTING";
+type ConnectionState = "CONNECTING" | "LIVE" | "STALE";
 
-const FALLBACK_REFRESH_MS = 30_000;
+/**
+ * El servidor late cada 10s con el evento `heartbeat`. Dos latidos perdidos
+ * más un margen —25s en total— es la señal de que el canal murió sin avisar.
+ * El techo lo fija AC-006 de SPEC-008: sin eventos SSE la bandeja debe
+ * actualizarse dentro de los treinta segundos. `EventSource`
+ * puede quedar con el socket abierto y mudo, o pasar a CLOSED tras un error
+ * HTTP, y en ninguno de los dos casos emite algo que podamos observar.
+ *
+ * Antes esa ceguera se tapaba con un `router.refresh()` incondicional cada
+ * 30s, que recargaba la bandeja completa para todos los asesores conectados
+ * aunque no hubiera cambiado nada. El trigger `dito_order_change_notify` de
+ * PostgreSQL ya garantiza que toda escritura sobre `dito_orders` llegue por
+ * el stream, así que el sondeo no aportaba ninguna actualización: solo carga.
+ * Ahora solo se refresca ante un cambio real o ante un canal comprobadamente
+ * caído.
+ */
+const HEARTBEAT_INTERVAL_MS = 10_000;
+const STALE_AFTER_MS = HEARTBEAT_INTERVAL_MS * 2 + 5_000;
+const WATCHDOG_TICK_MS = 5_000;
 const EVENT_DEBOUNCE_MS = 400;
+const RECONNECT_BASE_MS = 3_000;
+const RECONNECT_MAX_MS = 60_000;
 
 export function OrderRealtimeStatus() {
   const router = useRouter();
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("CONNECTING");
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const refreshPendingWhileHidden = useRef(false);
+  const stateRef = useRef<ConnectionState>("CONNECTING");
 
   useEffect(() => {
-    const eventSource = new EventSource("/api/orders/stream");
+    let source: EventSource | null = null;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let refreshPendingWhileHidden = false;
+    let lastSignalAt = Date.now();
+    let failures = 0;
+    let disposed = false;
+
+    const setState = (next: ConnectionState) => {
+      if (stateRef.current === next) return;
+      stateRef.current = next;
+      setConnectionState(next);
+    };
 
     const scheduleRefresh = () => {
       if (document.visibilityState !== "visible") {
-        refreshPendingWhileHidden.current = true;
+        refreshPendingWhileHidden = true;
         return;
       }
 
-      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      if (refreshTimer) clearTimeout(refreshTimer);
 
-      refreshTimer.current = setTimeout(() => {
-        refreshTimer.current = null;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
         router.refresh();
       }, EVENT_DEBOUNCE_MS);
     };
 
-    const handleVisibilityChange = () => {
-      if (
-        document.visibilityState === "visible" &&
-        refreshPendingWhileHidden.current
-      ) {
-        refreshPendingWhileHidden.current = false;
-        scheduleRefresh();
-      }
+    const markAlive = () => {
+      failures = 0;
+      lastSignalAt = Date.now();
+      setState("LIVE");
     };
 
-    eventSource.addEventListener("open", () => {
-      setConnectionState("LIVE");
-    });
+    const scheduleReconnect = () => {
+      if (disposed || reconnectTimer) return;
 
-    eventSource.addEventListener("ready", () => {
-      setConnectionState("LIVE");
-    });
+      const delay = Math.min(
+        RECONNECT_BASE_MS * 2 ** failures,
+        RECONNECT_MAX_MS,
+      );
+      failures += 1;
 
-    eventSource.addEventListener("order-change", scheduleRefresh);
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+      }, delay);
+    };
 
-    eventSource.addEventListener("error", () => {
-      setConnectionState("RECONNECTING");
-    });
+    const connect = () => {
+      if (disposed) return;
 
-    const fallbackRefresh = window.setInterval(() => {
+      source?.close();
+      lastSignalAt = Date.now();
+
+      const next = new EventSource("/api/orders/stream");
+
+      next.addEventListener("open", markAlive);
+      next.addEventListener("ready", markAlive);
+      next.addEventListener("heartbeat", markAlive);
+
+      next.addEventListener("order-change", () => {
+        markAlive();
+        scheduleRefresh();
+      });
+
+      next.addEventListener("error", () => {
+        setState("STALE");
+
+        // En CONNECTING el navegador reintenta solo con el `retry` del stream.
+        // En CLOSED se rindió —típicamente un 401 al expirar la sesión— y solo
+        // revive con una reconexión explícita, que espaciamos para no castigar
+        // al servidor mientras la causa siga presente.
+        if (next.readyState === EventSource.CLOSED) scheduleReconnect();
+      });
+
+      source = next;
+    };
+
+    const recoverIfStale = () => {
+      if (Date.now() - lastSignalAt < STALE_AFTER_MS) return false;
+
+      setState("STALE");
+      scheduleReconnect();
       scheduleRefresh();
-    }, FALLBACK_REFRESH_MS);
+      return true;
+    };
+
+    connect();
+
+    // El vigía no refresca nada mientras el latido siga llegando.
+    const watchdog = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      recoverIfStale();
+    }, WATCHDOG_TICK_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+
+      // Una pestaña dormida puede haber quedado con el stream congelado, así
+      // que el estado del canal se revisa antes de dar por buena la vista.
+      const recovering = recoverIfStale();
+
+      if (refreshPendingWhileHidden) {
+        refreshPendingWhileHidden = false;
+        if (!recovering) scheduleRefresh();
+      }
+    };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      eventSource.close();
-      window.clearInterval(fallbackRefresh);
+      disposed = true;
+      window.clearInterval(watchdog);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-
-      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      source?.close();
     };
   }, [router]);
 
@@ -76,7 +161,7 @@ export function OrderRealtimeStatus() {
     ? "Actualización automática"
     : connectionState === "CONNECTING"
       ? "Conectando…"
-      : "Reintentando conexión";
+      : "Sin conexión en vivo";
 
   return (
     <span
@@ -90,7 +175,7 @@ export function OrderRealtimeStatus() {
       title={
         live
           ? "Los cambios de pedidos se actualizan automáticamente."
-          : "La actualización automática está restableciendo la conexión."
+          : "Se perdió el canal en vivo. Reintentando y recargando la bandeja."
       }
     >
       <span

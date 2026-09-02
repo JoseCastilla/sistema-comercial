@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import { computeRangeSelection } from "@repo/validation";
 
+import { formatCount } from "@repo/ui/format";
 import { Button } from "@repo/ui/button";
 import { InlineFeedback } from "@repo/ui/feedback";
 
@@ -162,8 +163,8 @@ export function DistributeRecoveryForm({
           </Button>
         </div>
         <span className="pb-2 text-sm text-ui-muted">
-          {selected.size.toLocaleString("es-PE")} de{" "}
-          {rows.length.toLocaleString("es-PE")} casos seleccionados. Mantén{" "}
+          {formatCount(selected.size)} de {formatCount(rows.length)} casos
+          seleccionados. Mantén{" "}
           <kbd className="rounded border border-ui-border px-1">Shift</kbd> para
           seleccionar un rango. Para repartir entre equipos, marca una cantidad
           y asígnala a un equipo; luego repite con el resto.

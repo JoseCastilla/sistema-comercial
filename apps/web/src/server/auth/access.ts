@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { headers } from "next/headers";
 
 import { redirect } from "next/navigation";
@@ -8,13 +10,19 @@ import { auth } from "./auth";
 
 import { database } from "../database";
 
-export async function getCurrentSession() {
+/**
+ * Memorizadas por render: con el shell montado en un layout, el layout y la
+ * página resuelven la sesión en paralelo dentro de la misma petición. Sin
+ * `cache()` eso serían dos lecturas de sesión y dos consultas de membresía
+ * por cada navegación.
+ */
+export const getCurrentSession = cache(async () => {
   return auth.api.getSession({
     headers: await headers(),
   });
-}
+});
 
-export async function requireCommercialAccess() {
+export const requireCommercialAccess = cache(async () => {
   const session = await getCurrentSession();
 
   if (!session) {
@@ -60,7 +68,8 @@ export async function requireCommercialAccess() {
     session,
     membership,
   };
-}
+});
+
 export async function requireAdminAccess() {
   const access = await requireCommercialAccess();
 

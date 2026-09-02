@@ -1,5 +1,6 @@
 "use client";
 
+import { formatCount } from "@repo/ui/format";
 import { useActionState, useEffect, useRef } from "react";
 
 import { assignAgentAliasAction } from "../server/assign-agent-alias-action";
@@ -53,7 +54,7 @@ export function AssignAgentAliasForm({
         </div>
 
         <span className="rounded-full bg-ui-surface px-2.5 py-1 text-xs font-medium text-ui-muted shadow-sm">
-          {aliases.length} {aliases.length === 1 ? "nombre" : "nombres"}
+          {formatCount(aliases.length)} {aliases.length === 1 ? "nombre" : "nombres"}
         </span>
       </div>
 

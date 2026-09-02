@@ -1,11 +1,10 @@
+import { formatCount } from "@repo/ui/format";
 import { ConfirmSubmitButton } from "@repo/ui/confirm-submit-button";
 import { EmptyState } from "@repo/ui/empty-state";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { StatusBadge } from "@repo/ui/status-badge";
 
-import { SignOutButton } from "@/app/orders/sign-out-button";
-import { CommercialAppShell } from "@/components/layout/commercial-app-shell";
 import { AssignTeamMemberForm } from "@/features/teams/components/assign-team-member-form";
 import { CreateTeamForm } from "@/features/teams/components/create-team-form";
 import { disableTeamAction } from "@/features/teams/server/team-actions";
@@ -13,7 +12,7 @@ import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
 export default async function AdminTeamsPage() {
-  const { session, membership } = await requireAdminAccess();
+  const { membership } = await requireAdminAccess();
   const organizationId = membership.organization.id;
   const [teams, candidates] = await Promise.all([
     database.commercialTeam.findMany({
@@ -108,13 +107,7 @@ export default async function AdminTeamsPage() {
   ).length;
 
   return (
-    <CommercialAppShell
-      activeSection="teams"
-      organizationName={membership.organization.name}
-      role={membership.role}
-      signOut={<SignOutButton />}
-      userName={session.user.name}
-    >
+    <>
       <div className="ui-page-stack">
         <PageHeader
           description="Revisa la estructura comercial, detecta equipos sin supervisión y administra integrantes cuando sea necesario."
@@ -123,12 +116,17 @@ export default async function AdminTeamsPage() {
         />
 
         <MetricGroup>
-          <Metric label="Equipos activos" value={activeTeams.length} />
+          <Metric
+            emphasis="hero"
+            label="Equipos activos"
+            value={activeTeams.length}
+          />
           <Metric label="Asesores asignados" value={activeAgentIds.size} />
           <Metric label="Supervisores disponibles" value={supervisors.length} />
           <Metric
+            hideWhenZero
             label="Sin supervisor"
-            tone={teamsWithoutSupervisor > 0 ? "danger" : "neutral"}
+            tone="danger"
             value={teamsWithoutSupervisor}
           />
         </MetricGroup>
@@ -172,7 +170,7 @@ export default async function AdminTeamsPage() {
                       <strong>{team.name}</strong>
                       <small>
                         {team.code ? `Código ${team.code} · ` : ""}
-                        {team.members.length} integrantes activos
+                        {formatCount(team.members.length)} integrantes activos
                       </small>
                     </span>
                     <span className="ui-team-overview__supervision">
@@ -188,7 +186,7 @@ export default async function AdminTeamsPage() {
                       </strong>
                     </span>
                     <span className="ui-team-overview__count">
-                      <strong>{teamAgents.length}</strong>
+                      <strong>{formatCount(teamAgents.length)}</strong>
                       <small>asesores</small>
                     </span>
                     <StatusBadge tone={active ? "success" : "neutral"}>
@@ -217,7 +215,7 @@ export default async function AdminTeamsPage() {
                       <section>
                         <header>
                           <span>Supervisores</span>
-                          <strong>{teamSupervisors.length}</strong>
+                          <strong>{formatCount(teamSupervisors.length)}</strong>
                         </header>
                         {teamSupervisors.length > 0 ? (
                           <ul>
@@ -238,7 +236,7 @@ export default async function AdminTeamsPage() {
                       <section>
                         <header>
                           <span>Asesores</span>
-                          <strong>{teamAgents.length}</strong>
+                          <strong>{formatCount(teamAgents.length)}</strong>
                         </header>
                         {teamAgents.length > 0 ? (
                           <ul>
@@ -272,7 +270,7 @@ export default async function AdminTeamsPage() {
                           <input name="teamId" type="hidden" value={team.id} />
                           <ConfirmSubmitButton
                             confirmLabel="Deshabilitar equipo"
-                            description={`Se cerrarán ${team.members.length} membresías activas. Las órdenes y el historial existente se conservarán.`}
+                            description={`Se cerrarán ${formatCount(team.members.length)} membresías activas. Las órdenes y el historial existente se conservarán.`}
                             title={`¿Deshabilitar ${team.name}?`}
                             triggerLabel="Deshabilitar"
                           />
@@ -286,6 +284,6 @@ export default async function AdminTeamsPage() {
           </section>
         )}
       </div>
-    </CommercialAppShell>
+    </>
   );
 }
