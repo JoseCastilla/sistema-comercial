@@ -22,6 +22,10 @@ import type { Prisma } from "@repo/database";
  * cliente que portó después de su consulta. Solo emite el número de
  * servicio: ningún dato personal viaja en este archivo.
  *
+ * `?scope=waiting` emite los **pedidos en curso**: las líneas de los casos
+ * en espera, sin ventana de días. Sirve para confirmar cuáles se concretaron
+ * y cuáles se cayeron, que es la pregunta que mantiene viva una espera.
+ *
  * BR-082b: `?scope=recross` recorta ese barrido a lo que todavía puede
  * cambiar — deja fuera las líneas cuyo pedido a Movistar tiene una fecha de
  * ventana **por delante**, porque hasta ese día nada puede cambiar. Pasada
@@ -42,7 +46,9 @@ export async function GET(request: Request) {
     30,
     Math.max(0, Number.parseInt(url.searchParams.get("days") ?? "0", 10) || 0),
   );
-  const onlyRecrossable = url.searchParams.get("scope") === "recross";
+  const scope = url.searchParams.get("scope");
+  const onlyRecrossable = scope === "recross";
+  const onlyWaiting = scope === "waiting";
 
   const openCase: Prisma.RecoveryCaseWhereInput = {
     status: {
@@ -54,7 +60,17 @@ export async function GET(request: Request) {
     where: {
       organizationId: membership.organization.id,
       discardedAt: null,
-      ...(days > 0
+      ...(onlyWaiting
+        ? {
+            /**
+             * Los pedidos en curso, sin ventana de días: lo que interesa de
+             * una espera es si el pedido se concretó, y eso no caduca a los
+             * tres días. Tras BR-024b aquí solo queda lo que de verdad
+             * todavía espera algo.
+             */
+            case: { status: "WAITING", source: "NATIONAL_BASE" },
+          }
+        : days > 0
         ? {
             // Barrido: todo lo cargado al sistema en los últimos N días,
             // consultado o no. La fecha comercial del pedido no sirve aquí:
@@ -102,8 +118,9 @@ export async function GET(request: Request) {
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Lima",
   }).format(new Date());
-  const suffix =
-    days > 0
+  const suffix = onlyWaiting
+    ? "_pedidos_en_curso"
+    : days > 0
       ? `_barrido_${days}d${onlyRecrossable ? "_sin_movistar" : ""}`
       : take > 0
         ? `_tanda_${batch.length}`

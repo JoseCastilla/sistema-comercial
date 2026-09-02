@@ -347,6 +347,10 @@
       el día de hoy en Lima. Con la fecha por delante la línea sigue fuera
       del barrido; pasada la ventana vuelve a entrar, para que el reporte
       responda lo que antes se daba por supuesto.
+- [x] `?scope=waiting`: descarga de los **pedidos en curso**, las líneas de
+      los casos en espera, sin ventana de días —lo que interesa de una
+      espera es si el pedido se concretó, y eso no caduca a los tres días—.
+      El botón anuncia cuántos números salen y solo aparece si hay esperas.
 - [x] BR-009c: la confirmación pregunta si ya vio esos pedidos **antes** de
       crear un caso, mirando todos los casos del cliente y no solo el
       abierto. El evento de avistamiento se escribe solo si hubo
