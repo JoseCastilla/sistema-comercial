@@ -160,3 +160,39 @@ function scheduleFromWindow(
 
   return { ...base, outcome: "SCHEDULE_UNTIL_ELIGIBLE", eligibleAt };
 }
+
+export interface RecoveryPortabilityRecrossInput {
+  /** `null` cuando la línea todavía no se consultó. */
+  state: RecoveryPortabilityState | null;
+  receiverRaw: string | null;
+  windowDate: Date | null;
+}
+
+/**
+ * BR-082b (02/09/2026): ¿esta línea vuelve al filtro externo?
+ *
+ * De la base de trabajo salen tres poblaciones y solo dos aportan algo al
+ * volver a consultarlas. Una línea **programada hacia Movistar con fecha de
+ * ventana** no aporta nada: si la fecha ya pasó, el chip se entregó y la
+ * línea es Movistar; si aún no llega, no hay nada que el reporte pueda decir
+ * hoy que no dijera ayer. Consultarla gasta el cupo diario de la herramienta
+ * —2 000 números— en respuestas conocidas.
+ *
+ * Vuelven al filtro:
+ * - las **programadas hacia Movistar sin fecha**, que pueden caerse en el
+ *   día y volver a ser oportunidad (BR-019e);
+ * - las que están **en otro operador** o sin consultar, donde cualquier
+ *   movimiento —incluida una portación con otra agencia— es noticia.
+ */
+export function needsPortabilityRecross(
+  input: RecoveryPortabilityRecrossInput,
+): boolean {
+  if (!isMovistarReceiver(input.receiverRaw)) return true;
+
+  // Ya es Movistar: el descarte lo aplica el cruce, no esta función.
+  if (input.state === "PORTADO") return false;
+
+  if (input.state === "PROGRAMADO") return input.windowDate === null;
+
+  return true;
+}

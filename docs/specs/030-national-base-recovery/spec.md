@@ -592,6 +592,19 @@ sobrevivientes.
   vencidos, las más recientes primero, con tandas del tamaño que la
   herramienta soporte. Consultar dos veces lo mismo es tiempo de operación
   perdido.
+- **BR-082b** (02/09/2026): el **barrido diario** no reconsulta lo que ya
+  tiene respuesta. De la base de trabajo salen tres poblaciones y solo dos
+  aportan algo al volver al filtro externo: las líneas **en otro operador**
+  (o sin consultar) y las **programadas hacia Movistar sin fecha de
+  ventana**, que pueden caerse durante el día y volver a ser oportunidad
+  (BR-019e). Queda fuera la **programada hacia Movistar con fecha**: si la
+  fecha ya pasó, el chip se entregó y la línea es Movistar; si aún no
+  llega, el reporte de hoy no dice nada que no dijera ayer. El cupo del
+  filtro rápido —2 000 números diarios— es el recurso escaso, y el barrido
+  sin recorte lo gastaba en respuestas conocidas. La pantalla anuncia
+  cuántos números salen y cuántos quedan fuera antes de descargar; el
+  barrido sin recortar sigue disponible para auditar.
+
 - **BR-083:** el triage muestra por defecto los casos **listos**; los que
   esperan consulta son visibles bajo su propio contador, nunca mezclados.
   Distribuir casos sin verificar **se advierte pero no se bloquea**

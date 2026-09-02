@@ -5,6 +5,7 @@ import {
   addPortabilityLock,
   decideRecoveryPortability,
   isMovistarReceiver,
+  needsPortabilityRecross,
   parseRecoveryPortabilityState,
   parseRecoveryPortabilityWindow,
 } from "../dist/recovery-portability.js";
@@ -172,6 +173,74 @@ describe("decideRecoveryPortability", () => {
 
     assert.equal(
       outcomes.every((outcome) => outcome !== "LOST"),
+      true,
+    );
+  });
+});
+
+describe("needsPortabilityRecross", () => {
+  it("keeps out the line whose chip already has a date", () => {
+    assert.equal(
+      needsPortabilityRecross({
+        state: "PROGRAMADO",
+        receiverRaw: MOVISTAR,
+        windowDate: new Date("2026-09-01T10:00:00.000-05:00"),
+      }),
+      false,
+    );
+    assert.equal(
+      needsPortabilityRecross({
+        state: "PROGRAMADO",
+        receiverRaw: MOVISTAR,
+        windowDate: new Date("2026-09-30T10:00:00.000-05:00"),
+      }),
+      false,
+    );
+  });
+
+  it("keeps out the line already ported to Movistar", () => {
+    assert.equal(
+      needsPortabilityRecross({
+        state: "PORTADO",
+        receiverRaw: MOVISTAR,
+        windowDate: new Date("2026-08-20T10:00:00.000-05:00"),
+      }),
+      false,
+    );
+  });
+
+  it("returns the Movistar order without a date: it can fall through today", () => {
+    assert.equal(
+      needsPortabilityRecross({
+        state: "PROGRAMADO",
+        receiverRaw: MOVISTAR,
+        windowDate: null,
+      }),
+      true,
+    );
+  });
+
+  it("returns every line sitting at another carrier", () => {
+    for (const state of ["PORTADO", "NO_PORTADO", "PROGRAMADO", "DESCONOCIDO"]) {
+      assert.equal(
+        needsPortabilityRecross({
+          state,
+          receiverRaw: CLARO,
+          windowDate: new Date("2026-08-20T10:00:00.000-05:00"),
+        }),
+        true,
+        `${state} hacia otro operador debe volver al filtro`,
+      );
+    }
+  });
+
+  it("returns the line nobody has consulted yet", () => {
+    assert.equal(
+      needsPortabilityRecross({
+        state: null,
+        receiverRaw: null,
+        windowDate: null,
+      }),
       true,
     );
   });
