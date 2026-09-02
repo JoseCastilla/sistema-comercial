@@ -160,3 +160,50 @@ export function shouldReturnBaseCaseToPool(input: {
     baseRecoveryPoolReturnDays * 24 * 60 * 60 * 1000
   );
 }
+
+/**
+ * BR-024b (02/09/2026): una espera no dura para siempre.
+ *
+ * BR-024 ya decía que un caso puesto en espera «reaparece en la revisión del
+ * día siguiente», y el triage se lo promete al supervisor cada vez que pulsa
+ * el botón. Nada lo cumplía: solo el cruce sacaba de `WAITING`, y solo las
+ * esperas que él mismo había puesto y podía desmentir. El resto se quedaba
+ * ahí para siempre —tampoco vencen por BR-084, porque sus líneas sí están
+ * consultadas—, y con ellas la oportunidad.
+ *
+ * Dos poblaciones vuelven a triage, cada una con su reloj:
+ *
+ * - la **espera puesta a mano**, donde no hay fecha de nada: el supervisor
+ *   vio un pedido que el reporte no ve, y esa observación caduca al día
+ *   siguiente. Un pedido que tarde en concretarse se volverá a marcar; se
+ *   asume esa repetición antes que perder al cliente;
+ * - la **portación programada cuya ventana ya pasó**: hasta ese día no podía
+ *   cambiar nada, y desde ese día o portó —y el cruce la descarta— o se cayó
+ *   y vuelve a ser oportunidad.
+ *
+ * Queda fuera la espera de BR-085: el asesor afirmó «ya es Movistar» y el
+ * caso conserva a su dueño mientras se verifica. Liberarla le quitaría el
+ * responsable y convertiría su palabra en un descarte, que es justo lo que
+ * BR-085 impide. Se reconoce por la marca de revalidación de sus líneas.
+ */
+export function shouldReleaseWaitingBaseCase(input: {
+  /** Cuándo el supervisor puso la espera a mano; `null` si no fue manual. */
+  manualWaitAt: Date | null;
+  /** Ventana de portación hacia Movistar más lejana entre sus líneas. */
+  movistarWindowAt: Date | null;
+  now: Date;
+}): boolean {
+  const today = limaDayKeyFormatter.format(input.now);
+
+  if (
+    input.manualWaitAt &&
+    limaDayKeyFormatter.format(input.manualWaitAt) < today
+  ) {
+    return true;
+  }
+
+  return (
+    input.movistarWindowAt !== null &&
+    limaDayKeyFormatter.format(input.movistarWindowAt) < today
+  );
+}

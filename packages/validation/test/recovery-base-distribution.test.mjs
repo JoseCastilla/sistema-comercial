@@ -9,6 +9,7 @@ import {
   getBaseRecoveryNextTouchAt,
   getBaseRecoveryResolutionDueAt,
   isBaseRecoveryResolutionDue,
+  shouldReleaseWaitingBaseCase,
   shouldReturnBaseCaseToPool,
 } from "../dist/recovery-base-distribution.js";
 
@@ -202,6 +203,85 @@ test("la verificación caduca al séptimo día desde el registro (BR-084)", asyn
   );
   assert.equal(
     isRecoveryConsultationExpired(registeredAt, new Date("2026-09-08T14:00:00.000Z")),
+    true,
+  );
+});
+
+const hoyEnLima = new Date("2026-09-02T09:00:00.000-05:00");
+
+test("la espera puesta hoy mismo se mantiene", () => {
+  assert.equal(
+    shouldReleaseWaitingBaseCase({
+      manualWaitAt: new Date("2026-09-02T07:00:00.000-05:00"),
+      movistarWindowAt: null,
+      now: hoyEnLima,
+    }),
+    false,
+  );
+});
+
+test("la espera manual se libera al día siguiente", () => {
+  assert.equal(
+    shouldReleaseWaitingBaseCase({
+      manualWaitAt: new Date("2026-09-01T23:30:00.000-05:00"),
+      movistarWindowAt: null,
+      now: hoyEnLima,
+    }),
+    true,
+  );
+});
+
+test("una portación con ventana por delante sigue esperando", () => {
+  assert.equal(
+    shouldReleaseWaitingBaseCase({
+      manualWaitAt: null,
+      movistarWindowAt: new Date("2026-09-15T10:00:00.000-05:00"),
+      now: hoyEnLima,
+    }),
+    false,
+  );
+});
+
+test("el día de la ventana tampoco libera: el chip llega hoy", () => {
+  assert.equal(
+    shouldReleaseWaitingBaseCase({
+      manualWaitAt: null,
+      movistarWindowAt: new Date("2026-09-02T22:00:00.000-05:00"),
+      now: hoyEnLima,
+    }),
+    false,
+  );
+});
+
+test("pasada la ventana, el caso vuelve a revisión", () => {
+  assert.equal(
+    shouldReleaseWaitingBaseCase({
+      manualWaitAt: null,
+      movistarWindowAt: new Date("2026-09-01T22:00:00.000-05:00"),
+      now: hoyEnLima,
+    }),
+    true,
+  );
+});
+
+test("sin espera manual ni ventana no hay nada que liberar", () => {
+  assert.equal(
+    shouldReleaseWaitingBaseCase({
+      manualWaitAt: null,
+      movistarWindowAt: null,
+      now: hoyEnLima,
+    }),
+    false,
+  );
+});
+
+test("basta con que uno de los dos relojes haya vencido", () => {
+  assert.equal(
+    shouldReleaseWaitingBaseCase({
+      manualWaitAt: new Date("2026-09-02T07:00:00.000-05:00"),
+      movistarWindowAt: new Date("2026-08-28T10:00:00.000-05:00"),
+      now: hoyEnLima,
+    }),
     true,
   );
 });

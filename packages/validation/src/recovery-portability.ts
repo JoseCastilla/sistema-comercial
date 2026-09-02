@@ -1,3 +1,5 @@
+import { getLimaIsoDate } from "./order-period.js";
+
 export type RecoveryPortabilityState =
   | "PORTADO"
   | "NO_PORTADO"
@@ -166,6 +168,7 @@ export interface RecoveryPortabilityRecrossInput {
   state: RecoveryPortabilityState | null;
   receiverRaw: string | null;
   windowDate: Date | null;
+  now: Date;
 }
 
 /**
@@ -181,6 +184,9 @@ export interface RecoveryPortabilityRecrossInput {
  * Vuelven al filtro:
  * - las **programadas hacia Movistar sin fecha**, que pueden caerse en el
  *   día y volver a ser oportunidad (BR-019e);
+ * - las **programadas cuya ventana ya pasó** (corregido el 02/09/2026): dar
+ *   por hecho que portaron era una suposición, y era la que perdía las
+ *   oportunidades. Pasada la ventana, la pregunta la responde el reporte;
  * - las que están **en otro operador** o sin consultar, donde cualquier
  *   movimiento —incluida una portación con otra agencia— es noticia.
  */
@@ -192,7 +198,11 @@ export function needsPortabilityRecross(
   // Ya es Movistar: el descarte lo aplica el cruce, no esta función.
   if (input.state === "PORTADO") return false;
 
-  if (input.state === "PROGRAMADO") return input.windowDate === null;
+  if (input.state === "PROGRAMADO") {
+    if (input.windowDate === null) return true;
+
+    return getLimaIsoDate(input.windowDate) < getLimaIsoDate(input.now);
+  }
 
   return true;
 }

@@ -7,6 +7,7 @@ import {
   type RecoveryTriageRow,
   type RecoveryTriageTeamOption,
 } from "@/features/recovery/components/recovery-triage-form";
+import { releaseWaitingBaseCases } from "@/features/recovery/server/release-waiting-base-cases";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -56,6 +57,9 @@ export default async function RecoveryTriagePage({
   if (!triageRoles.has(membership.role)) {
     redirect("/access-denied");
   }
+
+  // BR-024b: lo que ya no espera nada vuelve a revisión antes de contarlo.
+  await releaseWaitingBaseCases(membership.organization.id);
 
   const parameters = await searchParams;
   const view = parameters.view === "pendientes" ? "pendientes" : "listos";

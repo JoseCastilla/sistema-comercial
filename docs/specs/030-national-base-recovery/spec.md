@@ -239,6 +239,42 @@ construir un reporte a mano.
   el resultado `EN_ESPERA` o `LIBERADO`, registrando actor y fecha.
 - **BR-024:** un caso `EN_ESPERA` conserva su estado `WAITING`, no se asigna y
   reaparece en la revisión del día siguiente.
+- **BR-024b** (02/09/2026): **una espera no dura para siempre**. BR-024 ya
+  prometía que el caso «reaparece en la revisión del día siguiente» y el
+  triage se lo dice al supervisor cada vez, pero nada lo cumplía: solo el
+  cruce sacaba de `WAITING`, y solo las esperas que él mismo había puesto y
+  podía desmentir. El resto quedaba inmóvil —tampoco vence por BR-084,
+  porque sus líneas sí están consultadas— y con él la oportunidad. Dos
+  poblaciones vuelven a `TRIAGE`, cada una con su reloj:
+  - la **espera puesta a mano**, al día siguiente. No hay fecha de nada: el
+    supervisor vio un pedido que el reporte no ve, y esa observación caduca.
+    Un pedido que tarde en concretarse se volverá a marcar cada día; se
+    acepta esa repetición antes que perder al cliente, y en la práctica el
+    cruce diario responde antes;
+  - la **portación programada**, al día siguiente de su fecha de ventana.
+    Antes de esa fecha no podía cambiar nada; desde ella, o portó —y el cruce
+    la descarta— o se cayó y vuelve a ser oportunidad.
+
+  Queda fuera la espera de BR-085: el caso conserva a su asesor mientras se
+  verifica, y liberarla convertiría su palabra en un descarte. Se reconoce
+  por la marca de revalidación de sus líneas. El caso liberado **conserva su
+  equipo**: vuelve a la bandeja de su supervisor, no al reparto general.
+
+  Esto corrige BR-082b, que dejaba fuera del barrido a toda línea programada
+  con fecha: pasada la ventana vuelve a entrar, porque dar por hecho que
+  portó era una suposición, y era la que perdía las oportunidades.
+- **BR-009c** (02/09/2026): el punto de BR-009b sobre lotes superpuestos
+  —«un mismo pedido importado dos veces no duplica avistamientos»— solo se
+  cumplía **dentro de un caso**, que es donde la clave única puede actuar. Con
+  el caso cerrado el flujo crea uno nuevo, el identificador cambia y la guarda
+  nunca dispara: volver a subir la base de ayer resucitaba en triage a cada
+  cliente ya descartado por ser Movistar, desde un pedido que ya se resolvió.
+  La pregunta se hace ahora **antes de crear nada y sobre todos los casos del
+  cliente**: si cada uno de sus pedidos ya estaba registrado, no es un
+  reingreso y no se crea caso. Por el mismo motivo, el evento de avistamiento
+  se escribe solo cuando el avistamiento fue nuevo: anunciar un pedido nuevo
+  por cada fila repetida llenaría de hechos falsos un rastro que existe para
+  ser evidencia.
 - **BR-025:** un caso `WAITING` cuyos servicios aparecen luego portados a
   Movistar se cierra como `DISCARDED` y no vuelve a revisarse.
 - **BR-026:** un caso `LIBERADO` pasa a `OPEN` y queda disponible para asignar.

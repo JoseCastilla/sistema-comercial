@@ -184,6 +184,7 @@ describe("needsPortabilityRecross", () => {
       needsPortabilityRecross({
         state: "PROGRAMADO",
         receiverRaw: MOVISTAR,
+        now,
         windowDate: new Date("2026-09-01T10:00:00.000-05:00"),
       }),
       false,
@@ -192,6 +193,7 @@ describe("needsPortabilityRecross", () => {
       needsPortabilityRecross({
         state: "PROGRAMADO",
         receiverRaw: MOVISTAR,
+        now,
         windowDate: new Date("2026-09-30T10:00:00.000-05:00"),
       }),
       false,
@@ -203,6 +205,7 @@ describe("needsPortabilityRecross", () => {
       needsPortabilityRecross({
         state: "PORTADO",
         receiverRaw: MOVISTAR,
+        now,
         windowDate: new Date("2026-08-20T10:00:00.000-05:00"),
       }),
       false,
@@ -214,6 +217,7 @@ describe("needsPortabilityRecross", () => {
       needsPortabilityRecross({
         state: "PROGRAMADO",
         receiverRaw: MOVISTAR,
+        now,
         windowDate: null,
       }),
       true,
@@ -226,7 +230,8 @@ describe("needsPortabilityRecross", () => {
         needsPortabilityRecross({
           state,
           receiverRaw: CLARO,
-          windowDate: new Date("2026-08-20T10:00:00.000-05:00"),
+          now,
+        windowDate: new Date("2026-08-20T10:00:00.000-05:00"),
         }),
         true,
         `${state} hacia otro operador debe volver al filtro`,
@@ -239,7 +244,46 @@ describe("needsPortabilityRecross", () => {
       needsPortabilityRecross({
         state: null,
         receiverRaw: null,
+        now,
         windowDate: null,
+      }),
+      true,
+    );
+  });
+});
+
+describe("needsPortabilityRecross · la ventana manda", () => {
+  it("no vuelve al filtro mientras la ventana está por delante", () => {
+    assert.equal(
+      needsPortabilityRecross({
+        state: "PROGRAMADO",
+        receiverRaw: MOVISTAR,
+        windowDate: new Date("2026-08-30T10:00:00.000-05:00"),
+        now: new Date("2026-08-26T12:00:00.000-05:00"),
+      }),
+      false,
+    );
+  });
+
+  it("tampoco el mismo día de la ventana: el chip llega hoy", () => {
+    assert.equal(
+      needsPortabilityRecross({
+        state: "PROGRAMADO",
+        receiverRaw: MOVISTAR,
+        windowDate: new Date("2026-08-26T23:00:00.000-05:00"),
+        now: new Date("2026-08-26T08:00:00.000-05:00"),
+      }),
+      false,
+    );
+  });
+
+  it("vuelve al filtro al día siguiente de la ventana", () => {
+    assert.equal(
+      needsPortabilityRecross({
+        state: "PROGRAMADO",
+        receiverRaw: MOVISTAR,
+        windowDate: new Date("2026-08-25T23:00:00.000-05:00"),
+        now: new Date("2026-08-26T08:00:00.000-05:00"),
       }),
       true,
     );
