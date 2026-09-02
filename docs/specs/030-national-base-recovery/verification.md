@@ -476,12 +476,23 @@ en OSIPTEL, y la selección de filas era exclusivamente de ratón.
    ADMIN sobre 250 filas reales — cada fila expone su botón "Copiar Línea"
    junto al de "Copiar DNI", y al pulsarlo la fila **no** queda marcada (el
    control detiene la propagación del clic que selecciona al cliente).
-2. **Teclado**: 8 pruebas de componente en `triaje-teclado.test.tsx` —
-   orden de tabulación itinerante, Espacio marca, Espacio desmarca,
-   Shift + Espacio extiende el rango, las flechas mueven el foco sin marcar,
-   la flecha no salta fuera en los extremos, Espacio no desplaza la página,
-   y el clic conserva la misma semántica que el teclado. 34 pruebas en verde
-   en `apps/web`; lint y tipos limpios.
+2. **Teclado**: 17 pruebas de componente en `triaje-teclado.test.tsx` —
+   el cursor y su recorrido, Espacio copiando el dato bajo el cursor,
+   Shift + Espacio marcando al cliente, y el ratón conservando su
+   semántica. 43 pruebas en verde en `apps/web`; lint y tipos limpios.
+3. **Cursor visible** (02/09/2026, sobre el servidor de desarrollo): con
+   `data-focused="true"` las celdas pintan `rgb(122, 162, 255)` en sombras
+   internas —el token `--ui-accent` del tema oscuro— y sin el atributo el
+   `box-shadow` calculado es `none`. La regla vive en `.ui-table`, no en la
+   pantalla, porque es anatomía de tabla.
+
+**Corregido el 02/09/2026 con el supervisor delante**: la primera versión
+usaba Espacio para marcar y Shift + Espacio para extender el rango, y no
+dibujaba cursor. Ninguna de las dos cosas servía: sin marca visible las
+flechas navegaban a ciegas, y quien trabaja el triage necesita Espacio para
+llevarse el dato a la consulta externa, no para marcar. Es la asimetría de
+la hoja de cálculo: la tecla sola actúa sobre el dato, con Shift sobre la
+fila entera.
 
 **Limitación declarada**: el atajo no se ejerció con teclado real en la
 aplicación —el panel de navegador disponible estaba oculto y no recibe

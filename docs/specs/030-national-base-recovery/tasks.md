@@ -305,11 +305,20 @@
       ya ocurría con el DNI: la consulta en OSIPTEL se hace número por
       número y seleccionar texto dentro de una fila que además marca al
       cliente no era viable.
-- [x] AC-043 alcanzable con teclado: Espacio marca la fila enfocada,
-      Shift + Espacio extiende el rango —misma regla que el Shift + clic— y
-      las flechas mueven el foco. Foco itinerante: una sola fila entra en el
-      orden de tabulación, porque 250 filas tabulables dejarían la
-      paginación a 250 pulsaciones de distancia.
+- [x] AC-043 alcanzable con teclado, con el reparto de la hoja de cálculo
+      (corregido el 02/09/2026 con el supervisor delante): arriba y abajo
+      cambian de cliente, izquierda y derecha eligen el dato, **Espacio
+      copia ese dato** y **Shift + Espacio marca al cliente**. Sobre la fila,
+      sin dato elegido, Espacio copia el DNI. Marcar pasa por la misma regla
+      que el ratón, donde Shift + clic sigue extendiendo el rango.
+- [x] Foco itinerante: una sola fila entra en el orden de tabulación, porque
+      250 filas tabulables dejarían la paginación a 250 pulsaciones.
+- [x] El cursor se ve: `.ui-table tbody tr[data-focused]` marca las celdas
+      con sombras internas. Un `outline` sobre la fila no se pinta con
+      `border-collapse: collapse` —el mismo motivo por el que el hover tiñe
+      la celda—, y sin marca visible navegar con las flechas era a ciegas.
+      Solo el borde, sin fondo, para que una fila enfocada y marcada muestre
+      las dos cosas.
 
 ## Superficie y honestidad de datos (31/08/2026)
 

@@ -59,6 +59,11 @@ export function RecoveryTriageForm({
    * y las flechas mueven el foco dentro.
    */
   const [focusedIndex, setFocusedIndex] = useState(0);
+  /**
+   * El cursor solo se dibuja mientras el teclado está dentro de la tabla: si
+   * no, la primera fila parecería enfocada desde que carga la página.
+   */
+  const [cursorVisible, setCursorVisible] = useState(false);
 
   /**
    * Una acción aplicada saca casos de la tabla: la selección previa dejaría
@@ -100,19 +105,53 @@ export function RecoveryTriageForm({
   }
 
   /**
-   * El teclado marca igual que el ratón: Espacio alterna la fila enfocada y
-   * Shift + Espacio extiende el rango desde la última marcada, como el
-   * Shift + clic. Ambos pasan por la misma regla, así que no pueden
-   * divergir.
+   * El teclado reparte el trabajo igual que la hoja de cálculo: Espacio actúa
+   * sobre el dato bajo el cursor —lo copia— y Shift + Espacio sobre la fila
+   * entera —la marca—. Arriba y abajo cambian de cliente; izquierda y derecha
+   * eligen qué dato de ese cliente se va a copiar.
+   *
+   * Marcar pasa por la misma regla que el ratón, así que teclado y clic no
+   * pueden divergir.
    */
   function handleRowKeyDown(
     event: React.KeyboardEvent<HTMLTableRowElement>,
     index: number,
   ) {
+    const row = event.currentTarget;
+    const values = [...row.querySelectorAll<HTMLButtonElement>("button")];
+    const valueIndex = values.indexOf(event.target as HTMLButtonElement);
+
     if (event.key === " " || event.key === "Spacebar") {
-      // Espacio desplaza la página por defecto; aquí marca.
+      if (event.shiftKey) {
+        // Espacio desplaza la página por defecto; aquí marca al cliente.
+        event.preventDefault();
+        handleRowClick(index, false);
+        return;
+      }
+
+      // Sobre un dato copia el propio botón: interferir lo rompería.
+      if (valueIndex >= 0) return;
+
+      // Sobre la fila, sin haber elegido dato, copia el primero: el DNI.
       event.preventDefault();
-      handleRowClick(index, event.shiftKey);
+      values[0]?.click();
+      return;
+    }
+
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      if (values.length === 0) return;
+
+      event.preventDefault();
+
+      const target = event.key === "ArrowRight" ? valueIndex + 1 : valueIndex - 1;
+
+      // A la izquierda del primer dato está la fila, no el cliente anterior.
+      if (target < 0) {
+        row.focus();
+        return;
+      }
+
+      values[Math.min(target, values.length - 1)]?.focus();
       return;
     }
 
@@ -120,8 +159,8 @@ export function RecoveryTriageForm({
 
     const sibling =
       event.key === "ArrowDown"
-        ? event.currentTarget.nextElementSibling
-        : event.currentTarget.previousElementSibling;
+        ? row.nextElementSibling
+        : row.previousElementSibling;
 
     if (!(sibling instanceof HTMLElement)) return;
 
@@ -172,16 +211,22 @@ export function RecoveryTriageForm({
           </div>
         </label>
 
-        <span className="pb-2 text-xs text-ui-muted">
+        <span className="pb-2 text-xs leading-5 text-ui-muted">
           {formatCount(selected.size)} de {formatCount(rows.length)}{" "}
-          seleccionados · clic o{" "}
-          <kbd className="rounded border border-ui-border px-1">Espacio</kbd>{" "}
-          marca una fila,{" "}
-          <kbd className="rounded border border-ui-border px-1">Shift</kbd> +
-          clic o espacio marca el rango; con{" "}
+          seleccionados ·{" "}
           <kbd className="rounded border border-ui-border px-1">↑</kbd>{" "}
-          <kbd className="rounded border border-ui-border px-1">↓</kbd> te
-          mueves entre filas
+          <kbd className="rounded border border-ui-border px-1">↓</kbd> cambian
+          de cliente,{" "}
+          <kbd className="rounded border border-ui-border px-1">←</kbd>{" "}
+          <kbd className="rounded border border-ui-border px-1">→</kbd> eligen
+          DNI o línea,{" "}
+          <kbd className="rounded border border-ui-border px-1">Espacio</kbd>{" "}
+          copia ese dato y{" "}
+          <kbd className="rounded border border-ui-border px-1">Shift</kbd> +{" "}
+          <kbd className="rounded border border-ui-border px-1">Espacio</kbd>{" "}
+          marca al cliente. Con el ratón, la fila entera marca y{" "}
+          <kbd className="rounded border border-ui-border px-1">Shift</kbd> +
+          clic extiende el rango.
         </span>
       </div>
 
@@ -289,15 +334,33 @@ export function RecoveryTriageForm({
             {rows.map((row, index) => (
               <tr
                 aria-selected={selected.has(row.id)}
-                // `ring` no se dibuja sobre `border-collapse`; el contorno sí.
-                className={`cursor-pointer select-none focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ui-accent ${
+                className={`cursor-pointer select-none focus:outline-none ${
                   selected.has(row.id)
                     ? "bg-ui-accent-soft"
                     : "hover:bg-ui-subtle"
                 }`}
+                /* El marco lo pinta `.ui-table`: sobre `border-collapse` un
+                   contorno en la fila no se dibuja, hay que marcar las celdas. */
+                data-focused={
+                  cursorVisible && index === rovingIndex ? "true" : undefined
+                }
                 key={row.id}
+                onBlur={(event) => {
+                  // `focusout` burbujea: moverse a otro dato de la misma fila,
+                  // o a otra fila, no saca el cursor de la tabla.
+                  if (
+                    !event.currentTarget.parentElement?.contains(
+                      event.relatedTarget,
+                    )
+                  ) {
+                    setCursorVisible(false);
+                  }
+                }}
                 onClick={(event) => handleRowClick(index, event.shiftKey)}
-                onFocus={() => setFocusedIndex(index)}
+                onFocus={() => {
+                  setFocusedIndex(index);
+                  setCursorVisible(true);
+                }}
                 onKeyDown={(event) => handleRowKeyDown(event, index)}
                 tabIndex={index === rovingIndex ? 0 : -1}
               >

@@ -49,6 +49,34 @@
   }
 
   /*
+   * Fila bajo el cursor del teclado. Un `outline` sobre `tr` no se pinta con
+   * `border-collapse: collapse` —el mismo motivo por el que el hover de
+   * arriba tiñe la celda y no la fila—, así que el marco se compone con
+   * sombras internas en las celdas: filos arriba y abajo en todas, y los
+   * costados en la primera y la última. Se marca solo el borde, sin fondo,
+   * para que una fila enfocada y seleccionada muestre las dos cosas a la vez.
+   */
+  .ui-table tbody tr[data-focused="true"] td {
+    box-shadow:
+      inset 0 2px 0 var(--ui-accent),
+      inset 0 -2px 0 var(--ui-accent);
+  }
+
+  .ui-table tbody tr[data-focused="true"] td:first-child {
+    box-shadow:
+      inset 0 2px 0 var(--ui-accent),
+      inset 0 -2px 0 var(--ui-accent),
+      inset 2px 0 0 var(--ui-accent);
+  }
+
+  .ui-table tbody tr[data-focused="true"] td:last-child {
+    box-shadow:
+      inset 0 2px 0 var(--ui-accent),
+      inset 0 -2px 0 var(--ui-accent),
+      inset -2px 0 0 var(--ui-accent);
+  }
+
+  /*
    * Las columnas de cifras van a la derecha: es el borde por el que se
    * comparan magnitudes de distinto largo. Se marca por columna y no por
    * posición, porque la primera columna no siempre es la etiqueta.
