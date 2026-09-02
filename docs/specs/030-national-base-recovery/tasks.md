@@ -320,6 +320,22 @@
       Solo el borde, sin fondo, para que una fila enfocada y marcada muestre
       las dos cosas.
 
+## El triage dice por qué no cambió un caso (02/09/2026)
+
+- [x] El marcado en lote distingue las tres causas de un caso que no se
+      mueve —ya estaba en ese estado, ya está cerrado, o no pertenece a los
+      equipos de quien lo intenta— y las cuenta por separado. Antes las
+      tapaba una sola frase que culpaba al alcance: un supervisor que
+      marcaba «en espera» casos que el cruce ya había puesto en espera
+      recibía un mensaje sobre sus equipos y se iba a revisar permisos.
+- [x] La columna de estado aparece en cuanto hay una fila en espera, no solo
+      cuando conviven dos estados. Una bandeja entera en espera la escondía
+      justo cuando decía lo único que importaba.
+- [x] BR-022b/BR-029 cerrado en la lectura: un `?team=` en la barra de
+      direcciones ya no puede ampliar el alcance de un supervisor.
+      `assignedTeamId` pisaba la restricción a sus equipos; ahora el filtro
+      solo estrecha.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

@@ -502,6 +502,39 @@ portapapeles estaba denegado en ese panel, así que la confirmación visual
 "✓ copiado" no se pudo observar ni en el DNI ya existente ni en la línea
 nueva.
 
+### Por qué el supervisor no podía enviar a espera — 02/09/2026
+
+Reporte: «el supervisor vendedor no puede enviar datos a Espera; recibe
+"Ninguno de los casos seleccionados podía cambiar a ese estado en tus
+equipos"».
+
+**El alcance no era el problema.** `SELLING_SUPERVISOR` guarda
+`memberRole: SUPERVISOR` en `commercial_team_members`, así que
+`resolveSupervisedTeamIds` lo encuentra igual que a un supervisor que no
+vende, y la acción usa exactamente la misma consulta que la pantalla. Si ve
+el caso, lo alcanza.
+
+**El problema era el mensaje.** Una sola frase tapaba tres causas y
+señalaba la equivocada. Con 1 048 casos en espera contra 627 por revisar en
+producción, la bandeja de un equipo está dominada por casos que el cruce ya
+puso en espera por BR-019b; marcarlos «en espera» no cambia nada y devolvía
+un texto sobre permisos. Y la columna de estado, que lo habría revelado, se
+escondía precisamente porque todas las filas coincidían.
+
+1. **Pruebas**: 3 casos nuevos sobre la columna de estado —oculta con todo
+   por revisar, visible con todo en espera, visible mezclado—. 46 en verde
+   en `apps/web`; lint y tipos limpios.
+2. **Pendiente de confirmar en producción**: el recuento nuevo dirá cuál de
+   las tres causas es. Si responde «ya estaban en espera», era esto; si
+   responde «no pertenecen a tus equipos», el caso está fuera de su bloque y
+   hay que mirar la distribución, no los permisos.
+
+**Limitación declarada**: la hipótesis no se pudo reproducir contra datos
+—la base de desarrollo no tiene casos en espera— y el arreglo se apoya en
+la lectura del código y en las cifras de producción. El mensaje diferenciado
+es correcto en los tres casos, así que sirve tanto de arreglo como de
+diagnóstico.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de

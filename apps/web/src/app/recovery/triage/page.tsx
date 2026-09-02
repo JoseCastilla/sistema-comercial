@@ -105,11 +105,23 @@ export default async function RecoveryTriagePage({
     services: { some: { discardedAt: null, portabilityCheckedAt: null } },
   };
 
+  /**
+   * BR-022b/BR-029: `assignedTeamId` pisaría la restricción de `scopeWhere`,
+   * así que un `?team=` en la barra de direcciones —pegado de un enlace
+   * ajeno— le mostraría a un supervisor los casos de otro equipo. El filtro
+   * puede estrechar su alcance, nunca ampliarlo.
+   */
+  const teamScope = supervisedTeamIds
+    ? supervisedTeamIds.includes(teamFilter)
+      ? teamFilter
+      : ""
+    : teamFilter;
+
   const caseScope: Prisma.RecoveryCaseWhereInput = {
     ...scopeWhere,
     status: { in: ["TRIAGE", "WAITING"] },
     ...(view === "listos" ? readyWhere : pendingWhere),
-    ...(teamFilter ? { assignedTeamId: teamFilter } : {}),
+    ...(teamScope ? { assignedTeamId: teamScope } : {}),
     ...(departmentFilter
       ? { department: { equals: departmentFilter, mode: "insensitive" } }
       : {}),
@@ -217,7 +229,7 @@ export default async function RecoveryTriagePage({
 
   const baseQuery = new URLSearchParams();
   if (view !== "listos") baseQuery.set("view", view);
-  if (teamFilter) baseQuery.set("team", teamFilter);
+  if (teamScope) baseQuery.set("team", teamScope);
   if (departmentFilter) baseQuery.set("department", departmentFilter);
   if (planFilter) baseQuery.set("plan", planFilter);
   if (documentFilter) baseQuery.set("q", documentFilter);
