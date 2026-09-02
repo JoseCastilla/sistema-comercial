@@ -23,8 +23,9 @@ import type { Prisma } from "@repo/database";
  * servicio: ningún dato personal viaja en este archivo.
  *
  * BR-082b: `?scope=recross` recorta ese barrido a lo que todavía puede
- * cambiar — deja fuera las líneas cuyo pedido a Movistar ya tiene fecha de
- * ventana, porque su respuesta ya se conoce (`needsPortabilityRecross`).
+ * cambiar — deja fuera las líneas cuyo pedido a Movistar tiene una fecha de
+ * ventana **por delante**, porque hasta ese día nada puede cambiar. Pasada
+ * la ventana vuelven a entrar (`needsPortabilityRecross`).
  */
 export async function GET(request: Request) {
   const { membership } = await requireAdminAccess();
@@ -83,12 +84,14 @@ export async function GET(request: Request) {
     ...(take > 0 && !onlyRecrossable ? { take: take * 2 } : {}),
   });
 
+  const now = new Date();
   const selected = onlyRecrossable
     ? services.filter((service) =>
         needsPortabilityRecross({
           state: service.portabilityState,
           receiverRaw: service.portabilityReceiver,
           windowDate: service.portabilityWindowAt,
+          now,
         }),
       )
     : services;

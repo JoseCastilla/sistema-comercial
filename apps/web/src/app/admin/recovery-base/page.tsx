@@ -4,6 +4,7 @@ import { RecoveryBaseUploadForm } from "@/features/recovery/components/recovery-
 import { PortabilityCrossForm } from "@/features/recovery/components/portability-cross-form";
 import { RecoveryConfigForm } from "@/features/recovery/components/recovery-config-form";
 import { expireUnverifiedCases } from "@/features/recovery/server/expire-unverified-cases";
+import { releaseWaitingBaseCases } from "@/features/recovery/server/release-waiting-base-cases";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -76,8 +77,10 @@ export default async function RecoveryBaseAdminPage({
   const { membership } = await requireAdminAccess();
   const parameters = await searchParams;
 
-  // BR-084: lo vencido drena antes de mostrar el embudo.
+  // BR-084: lo vencido drena antes de mostrar el embudo. BR-024b: y lo que
+  // ya no espera nada vuelve a revisión, o el embudo miente.
   await expireUnverifiedCases(membership.organization.id);
+  await releaseWaitingBaseCases(membership.organization.id);
 
   // BR-082b: la ventana del barrido y la del contador que lo anuncia son la
   // misma; si una cambia, la otra miente.
@@ -272,6 +275,7 @@ export default async function RecoveryBaseAdminPage({
     }),
   ]);
 
+  const now = new Date();
   const recrossNumbers = new Set(
     sweepServices
       .filter((service) =>
@@ -279,6 +283,7 @@ export default async function RecoveryBaseAdminPage({
           state: service.portabilityState,
           receiverRaw: service.portabilityReceiver,
           windowDate: service.portabilityWindowAt,
+          now,
         }),
       )
       .map((service) => service.serviceNumber),

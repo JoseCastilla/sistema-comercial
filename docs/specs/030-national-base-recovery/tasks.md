@@ -336,6 +336,22 @@
       `assignedTeamId` pisaba la restricción a sus equipos; ahora el filtro
       solo estrecha.
 
+## Las esperas vuelven y los lotes se superponen (02/09/2026)
+
+- [x] BR-024b: `releaseWaitingBaseCases`, barrido perezoso e idempotente
+      como BR-077 y BR-084, devuelve a `TRIAGE` la espera manual al día
+      siguiente y la portación programada al día siguiente de su ventana,
+      conservando el equipo. Excluye las esperas con dueño y las marcadas
+      para revalidación (BR-085/BR-086).
+- [x] BR-082b corregido: `needsPortabilityRecross` compara la ventana con
+      el día de hoy en Lima. Con la fecha por delante la línea sigue fuera
+      del barrido; pasada la ventana vuelve a entrar, para que el reporte
+      responda lo que antes se daba por supuesto.
+- [x] BR-009c: la confirmación pregunta si ya vio esos pedidos **antes** de
+      crear un caso, mirando todos los casos del cliente y no solo el
+      abierto. El evento de avistamiento se escribe solo si hubo
+      avistamiento nuevo.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

@@ -535,6 +535,40 @@ la lectura del código y en las cifras de producción. El mensaje diferenciado
 es correcto en los tres casos, así que sirve tanto de arreglo como de
 diagnóstico.
 
+### Esperas que no volvían y lotes superpuestos — 02/09/2026
+
+Dos hallazgos de la operación, analizados antes de tocar código.
+
+**Las esperas eran perpetuas.** No eran tres días: era nunca. Rastreados
+todos los caminos de salida de `WAITING`, solo el cruce devolvía casos, y
+solo los que él mismo había puesto en espera y el reporte desmentía. Una
+espera manual no cumplía ninguna de las dos condiciones, y tampoco vencía por
+BR-084 porque sus líneas sí estaban consultadas. BR-082b, del día anterior,
+lo empeoró para la portación programada con fecha: quedó sin re-consultar,
+sin liberar y sin vencer.
+
+**Los lotes superpuestos resucitaban lo descartado.** Con 1 354 casos
+cerrados por ser Movistar, volver a subir la base completa —que repite las
+filas del día anterior— habría creado un caso nuevo por cada uno, desde
+pedidos ya resueltos, gastando además el cupo diario de la herramienta
+externa. La clave única de avistamientos no podía impedirlo: actúa por caso,
+y el caso nuevo tiene otro identificador.
+
+1. **Pruebas**: 10 casos nuevos —7 sobre `shouldReleaseWaitingBaseCase` y 3
+   sobre la ventana en `needsPortabilityRecross`, incluido el borde del
+   mismo día—. 254 en verde en `@repo/validation`; monorepo completo en
+   verde (pruebas, lint y tipos en los nueve paquetes).
+2. **Decisiones del negocio, tomadas el 02/09/2026**: se acepta que un
+   pedido lento se vuelva a marcar cada día antes que perder al cliente, y
+   el caso liberado conserva su equipo.
+
+**Limitación declarada**: ni la liberación ni la importación superpuesta se
+ejercieron contra datos —la base de desarrollo no tiene casos en espera ni
+lotes que se solapen—. Las reglas están cubiertas por pruebas puras; el
+comportamiento sobre datos se verá al subir la base completa. Señal a mirar:
+«clientes que ya estaban» debe absorber las filas repetidas y «casos nuevos»
+contar solo lo que no se había subido.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de

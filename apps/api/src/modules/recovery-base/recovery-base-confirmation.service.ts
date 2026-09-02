@@ -197,6 +197,29 @@ export class RecoveryBaseConfirmationService {
     group: RecoveryClientGroup,
     rawByRecordId: Map<string, Prisma.JsonValue>,
   ): Promise<'CREATED' | 'SIGHTED'> {
+    /**
+     * BR-009b: la identidad de un avistamiento es cliente, servicio y fecha
+     * de registro, «para que un mismo pedido importado dos veces por lotes
+     * superpuestos no duplique avistamientos». La clave única de la tabla lo
+     * garantiza **dentro de un caso**, y eso bastaba mientras el caso siguiera
+     * abierto. No basta cuando está cerrado: allí el flujo crea un caso nuevo,
+     * el id cambia y la guarda no puede dispararse — una base que repite las
+     * filas de ayer resucitaría en triage a cada cliente ya descartado por ser
+     * Movistar, desde un pedido que ya se resolvió. Por eso la pregunta se
+     * hace antes y sobre todos los casos del cliente.
+     */
+    const seenBefore = await this.findKnownSightings(
+      transaction,
+      input.organizationId,
+      group,
+    );
+    const totalSightings = group.services.reduce(
+      (count, service) => count + service.sightings.length,
+      0,
+    );
+    const alreadyApplied =
+      totalSightings > 0 && seenBefore.size === totalSightings;
+
     const openCase = await transaction.recoveryCase.findFirst({
       where: {
         organizationId: input.organizationId,
@@ -223,16 +246,20 @@ export class RecoveryBaseConfirmationService {
         });
       }
 
-      await transaction.recoveryCaseEvent.create({
-        data: {
-          organizationId: input.organizationId,
-          caseId: openCase.id,
-          type: 'SIGHTING_RECORDED',
-          observation:
-            'El cliente volvió a aparecer en la base nacional con un pedido nuevo.',
-          metadata: { batchId },
-        },
-      });
+      // El rastro es evidencia: anunciar un pedido nuevo por cada fila que ya
+      // habíamos visto llenaría el historial de hechos que no ocurrieron.
+      if (!alreadyApplied) {
+        await transaction.recoveryCaseEvent.create({
+          data: {
+            organizationId: input.organizationId,
+            caseId: openCase.id,
+            type: 'SIGHTING_RECORDED',
+            observation:
+              'El cliente volvió a aparecer en la base nacional con un pedido nuevo.',
+            metadata: { batchId },
+          },
+        });
+      }
 
       await this.markRecordsApplied(transaction, group, openCase.id);
 
@@ -248,6 +275,17 @@ export class RecoveryBaseConfirmationService {
       orderBy: { resolvedAt: 'desc' },
       select: { id: true },
     });
+
+    /**
+     * Todos sus pedidos ya estaban registrados y su caso está cerrado: esto
+     * es la misma base subida otra vez, no un reingreso. Los registros se
+     * marcan contra el caso que ya los explica y no se crea nada.
+     */
+    if (alreadyApplied && previousCase) {
+      await this.markRecordsApplied(transaction, group, previousCase.id);
+
+      return 'SIGHTED';
+    }
 
     const firstRawData = rawByRecordId.get(group.recordIds[0]) as
       Record<string, string | null> | undefined;
@@ -376,6 +414,45 @@ export class RecoveryBaseConfirmationService {
     }
   }
 
+  /**
+   * Los avistamientos del grupo que ya existen en cualquier caso del cliente,
+   * como claves `linea|fecha`.
+   */
+  private async findKnownSightings(
+    transaction: Prisma.TransactionClient,
+    organizationId: string,
+    group: RecoveryClientGroup,
+  ): Promise<Set<string>> {
+    const serviceNumbers = group.services.map(
+      (service) => service.serviceNumber,
+    );
+
+    if (serviceNumbers.length === 0) return new Set();
+
+    const known = await transaction.recoveryCaseSighting.findMany({
+      where: {
+        organizationId,
+        serviceNumber: { in: serviceNumbers },
+        case: { documentNumber: group.documentNumber },
+      },
+      select: { serviceNumber: true, registeredAt: true },
+    });
+
+    const seen = new Set(
+      known.map((item) => sightingKey(item.serviceNumber, item.registeredAt)),
+    );
+
+    return new Set(
+      group.services.flatMap((service) =>
+        service.sightings
+          .map((sighting) =>
+            sightingKey(service.serviceNumber, sighting.registeredAt),
+          )
+          .filter((key) => seen.has(key)),
+      ),
+    );
+  }
+
   private async markRecordsApplied(
     transaction: Prisma.TransactionClient,
     group: RecoveryClientGroup,
@@ -390,6 +467,10 @@ export class RecoveryBaseConfirmationService {
       },
     });
   }
+}
+
+function sightingKey(serviceNumber: string, registeredAt: Date): string {
+  return `${serviceNumber}|${registeredAt.toISOString()}`;
 }
 
 function buildContactSummary(
