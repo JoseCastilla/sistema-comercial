@@ -37,11 +37,16 @@ function buildRows(count: number): RecoveryTriageRow[] {
   }));
 }
 
-function renderTriage(count = 4) {
+function renderTriage(
+  count = 4,
+  transform: (row: RecoveryTriageRow, index: number) => RecoveryTriageRow = (
+    row,
+  ) => row,
+) {
   const view = render(
     <RecoveryTriageForm
       canAssignTeams={false}
-      rows={buildRows(count)}
+      rows={buildRows(count).map(transform)}
       teams={[]}
     />,
   );
@@ -50,6 +55,7 @@ function renderTriage(count = 4) {
   ];
 
   return {
+    view,
     rows,
     selectedIndexes: () =>
       rows
@@ -255,5 +261,43 @@ describe("Triage · el ratón conserva su semántica", () => {
     fireEvent.click(rows[3]!, { shiftKey: true });
 
     expect(selectedIndexes()).toEqual([1, 2, 3]);
+  });
+});
+
+/**
+ * Una bandeja entera en espera escondía la columna de estado justo cuando
+ * decía lo único que importaba: el supervisor volvía a marcarlos «en espera»
+ * y recibía un mensaje sobre sus equipos.
+ */
+describe("Triage · la columna de estado", () => {
+  const enEspera = (row: RecoveryTriageRow) => ({
+    ...row,
+    status: "WAITING" as const,
+  });
+
+  function encabezados(view: ReturnType<typeof renderTriage>["view"]) {
+    return [...view.container.querySelectorAll("thead th")].map((cell) =>
+      cell.textContent?.trim(),
+    );
+  }
+
+  it("no aparece cuando todo está por revisar: es lo esperado", () => {
+    const { view } = renderTriage(3);
+
+    expect(encabezados(view)).not.toContain("Estado");
+  });
+
+  it("aparece aunque todas las filas estén en espera", () => {
+    const { view } = renderTriage(3, enEspera);
+
+    expect(encabezados(view)).toContain("Estado");
+  });
+
+  it("aparece también cuando se mezclan", () => {
+    const { view } = renderTriage(3, (row, index) =>
+      index === 0 ? enEspera(row) : row,
+    );
+
+    expect(encabezados(view)).toContain("Estado");
   });
 });

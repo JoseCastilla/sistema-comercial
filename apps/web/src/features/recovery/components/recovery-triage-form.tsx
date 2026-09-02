@@ -83,14 +83,20 @@ export function RecoveryTriageForm({
    * obliga a leerla para descubrir que no aporta nada. Aparecen solas cuando
    * empiezan a distinguir — al entregar el primer bloque a un equipo, o
    * cuando convive un caso en espera con uno por revisar.
+   *
+   * El estado es la excepción, y costó descubrirlo: con esa regla, una
+   * bandeja entera en espera escondía la columna justo cuando decía lo único
+   * que importaba. El supervisor los marcaba «en espera» otra vez y recibía
+   * un mensaje sobre sus equipos. «Por revisar» es lo esperado y no necesita
+   * anunciarse; cualquier otra cosa, sí.
    */
+  const showTeamColumn = rows.some((row) => row.teamName !== null);
+  const showStatusColumn = rows.some((row) => row.status === "WAITING");
+  const columnCount = 6 + (showTeamColumn ? 1 : 0) + (showStatusColumn ? 1 : 0);
+
   // Una acción vacía la tabla o la acorta: el índice recordado podría apuntar
   // a una fila que ya no existe y dejar la tabla sin puerta de entrada.
   const rovingIndex = Math.min(focusedIndex, Math.max(0, rows.length - 1));
-
-  const showTeamColumn = rows.some((row) => row.teamName !== null);
-  const showStatusColumn = rows.some((row) => row.status !== rows[0]?.status);
-  const columnCount = 6 + (showTeamColumn ? 1 : 0) + (showStatusColumn ? 1 : 0);
 
   function toggleAll() {
     lastIndexRef.current = null;

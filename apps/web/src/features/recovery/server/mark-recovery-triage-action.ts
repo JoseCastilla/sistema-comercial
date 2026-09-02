@@ -81,12 +81,17 @@ export async function markRecoveryTriageAction(
   const eventType =
     decision === "EN_ESPERA" ? "TRIAGE_WAITING" : "TRIAGE_RELEASED";
 
-  const affected = await database.$transaction(async (transaction) => {
-    const updatable = await transaction.recoveryCase.findMany({
+  /**
+   * Tres cosas distintas dejan un caso sin mover, y confundirlas manda a
+   * buscar el problema donde no está: que ya estuviera en ese estado, que
+   * ya no admita el cambio, o que no pertenezca a los equipos de quien lo
+   * intenta. Solo la última es un asunto de permisos.
+   */
+  const outcome = await database.$transaction(async (transaction) => {
+    const reachable = await transaction.recoveryCase.findMany({
       where: {
         id: { in: caseIds },
         organizationId: membership.organization.id,
-        status: { in: ["TRIAGE", "WAITING", "OPEN"] },
         ...(supervisorTeamIds
           ? { assignedTeamId: { in: supervisorTeamIds } }
           : {}),
@@ -94,10 +99,20 @@ export async function markRecoveryTriageAction(
       select: { id: true, status: true },
     });
 
-    const changing = updatable.filter((item) => item.status !== targetStatus);
+    const actionable = reachable.filter((item) =>
+      ["TRIAGE", "WAITING", "OPEN"].includes(item.status),
+    );
+    const changing = actionable.filter((item) => item.status !== targetStatus);
+
+    const tally = {
+      changed: changing.length,
+      alreadyThere: actionable.length - changing.length,
+      closed: reachable.length - actionable.length,
+      outOfReach: caseIds.length - reachable.length,
+    };
 
     if (changing.length === 0) {
-      return 0;
+      return tally;
     }
 
     await transaction.recoveryCase.updateMany({
@@ -120,26 +135,76 @@ export async function markRecoveryTriageAction(
       })),
     });
 
-    return changing.length;
+    return tally;
   });
 
   revalidatePath("/recovery/triage");
   revalidatePath("/admin/recovery-base");
 
-  if (affected === 0) {
+  return describeTriageOutcome(decision, outcome);
+}
+
+interface TriageTally {
+  changed: number;
+  alreadyThere: number;
+  closed: number;
+  outOfReach: number;
+}
+
+/**
+ * Traduce el recuento a una frase que diga qué pasó de verdad. Sin esto, un
+ * supervisor que marca «en espera» casos que el cruce ya había puesto en
+ * espera recibía un mensaje sobre sus equipos y se iba a revisar permisos.
+ */
+function describeTriageOutcome(
+  decision: "EN_ESPERA" | "LIBERADO",
+  tally: TriageTally,
+): RecoveryTriageActionState {
+  const estado = decision === "EN_ESPERA" ? "en espera" : "listos para repartir";
+  const restos: string[] = [];
+
+  if (tally.alreadyThere > 0) {
+    restos.push(`${tally.alreadyThere} ya estaban ${estado}`);
+  }
+
+  if (tally.closed > 0) {
+    restos.push(`${tally.closed} ya están cerrados`);
+  }
+
+  if (tally.outOfReach > 0) {
+    restos.push(`${tally.outOfReach} no pertenecen a tus equipos`);
+  }
+
+  const cola = restos.length > 0 ? ` · ${restos.join(", ")}` : "";
+
+  if (tally.changed > 0) {
+    return {
+      type: "success",
+      message:
+        decision === "EN_ESPERA"
+          ? `${tally.changed} caso(s) quedaron en espera y reaparecerán en la revisión de mañana${cola}.`
+          : `${tally.changed} caso(s) quedaron listos para repartir${cola}.`,
+    };
+  }
+
+  // Nada cambió porque no hacía falta: es un aviso, no un error del usuario.
+  if (tally.alreadyThere > 0 && tally.closed === 0 && tally.outOfReach === 0) {
     return {
       type: "error",
-      message:
-        "Ninguno de los casos seleccionados podía cambiar a ese estado en tus equipos.",
+      message: `Los ${tally.alreadyThere} caso(s) seleccionados ya estaban ${estado}: no había nada que cambiar.`,
+    };
+  }
+
+  if (restos.length === 0) {
+    return {
+      type: "error",
+      message: "No encontramos esos casos. Recarga la página y vuelve a intentarlo.",
     };
   }
 
   return {
-    type: "success",
-    message:
-      decision === "EN_ESPERA"
-        ? `${affected} caso(s) quedaron en espera y reaparecerán en la revisión de mañana.`
-        : `${affected} caso(s) quedaron listos para repartir.`,
+    type: "error",
+    message: `Ningún caso cambió: ${restos.join(", ")}.`,
   };
 }
 
