@@ -284,6 +284,21 @@
       3 días completos" en la preparación. Verificado: incluye la línea
       consultada y viva que la exportación de pendientes excluye.
 
+## Recorte del barrido diario (02/09/2026)
+
+- [x] BR-082b: regla pura `needsPortabilityRecross` en `@repo/validation` —
+      vuelve al filtro externo la línea que está en otro operador o sin
+      consultar, y la programada hacia Movistar **sin fecha**; queda fuera
+      la programada con fecha (su respuesta ya se conoce) y la portada.
+      Cinco pruebas nuevas en `recovery-portability.test.mjs`.
+- [x] `?days=N&scope=recross` aplica el recorte en la exportación. El
+      receptor es texto libre, así que el filtro corre en memoria sobre la
+      regla pura y el `take` se corta después de filtrar, para no emitir
+      tandas cortas.
+- [x] La preparación anuncia cuántos números salen antes de gastarlos en la
+      herramienta externa y cuántos quedan fuera. El barrido sin recortar
+      queda disponible solo cuando hay algo excluido que auditar.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

@@ -7,7 +7,10 @@ import { expireUnverifiedCases } from "@/features/recovery/server/expire-unverif
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
-import { defaultRecoveryEligibilityConfig } from "@repo/validation";
+import {
+  defaultRecoveryEligibilityConfig,
+  needsPortabilityRecross,
+} from "@repo/validation";
 
 import { formatCount } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
@@ -76,6 +79,10 @@ export default async function RecoveryBaseAdminPage({
   // BR-084: lo vencido drena antes de mostrar el embudo.
   await expireUnverifiedCases(membership.organization.id);
 
+  // BR-082b: la ventana del barrido y la del contador que lo anuncia son la
+  // misma; si una cambia, la otra miente.
+  const sweepDays = 3;
+
   const [
     activeConfig,
     batches,
@@ -89,6 +96,7 @@ export default async function RecoveryBaseAdminPage({
     pendingLineCount,
     openLineCount,
     readyCaseCount,
+    sweepServices,
     portabilityBatches,
   ] = await Promise.all([
     database.recoveryEligibilityConfig.findFirst({
@@ -215,6 +223,37 @@ export default async function RecoveryBaseAdminPage({
         services: { none: { discardedAt: null, portabilityCheckedAt: null } },
       },
     }),
+    // BR-082b: el mismo universo que exporta el barrido, para anunciar
+    // cuántos números salen antes de gastarlos en la herramienta externa.
+    // El receptor es texto libre, así que el recorte no se puede pedir en
+    // SQL: se resuelve con la regla pura sobre estas cuatro columnas.
+    database.recoveryCaseService.findMany({
+      where: {
+        organizationId: membership.organization.id,
+        discardedAt: null,
+        case: {
+          status: {
+            in: [
+              "TRIAGE",
+              "WAITING",
+              "OPEN",
+              "ASSIGNED",
+              "IN_PROGRESS",
+              "SCHEDULED",
+            ],
+          },
+          createdAt: {
+            gte: new Date(Date.now() - sweepDays * 24 * 60 * 60 * 1000),
+          },
+        },
+      },
+      select: {
+        serviceNumber: true,
+        portabilityState: true,
+        portabilityReceiver: true,
+        portabilityWindowAt: true,
+      },
+    }),
     database.recoveryPortabilityBatch.findMany({
       where: { organizationId: membership.organization.id },
       orderBy: { uploadedAt: "desc" },
@@ -232,6 +271,22 @@ export default async function RecoveryBaseAdminPage({
       },
     }),
   ]);
+
+  const recrossNumbers = new Set(
+    sweepServices
+      .filter((service) =>
+        needsPortabilityRecross({
+          state: service.portabilityState,
+          receiverRaw: service.portabilityReceiver,
+          windowDate: service.portabilityWindowAt,
+        }),
+      )
+      .map((service) => service.serviceNumber),
+  ).size;
+  const sweepNumbers = new Set(
+    sweepServices.map((service) => service.serviceNumber),
+  ).size;
+  const settledNumbers = sweepNumbers - recrossNumbers;
 
   const totalCases =
     triageCount +
@@ -516,16 +571,39 @@ export default async function RecoveryBaseAdminPage({
           <div className="ui-form-row">
             <a
               className="ui-button ui-button--secondary"
-              href="/admin/recovery-base/numbers?days=3"
+              href={`/admin/recovery-base/numbers?days=${sweepDays}&scope=recross`}
             >
-              Revisión completa: últimos 3 días
+              Revisión diaria: {formatCount(recrossNumbers)} número(s)
             </a>
             <span className="pb-2 text-xs text-ui-muted">
-              Todas las líneas recientes, consultadas o no — para el filtro
-              rápido diario: detecta a quien portó después de su última
-              consulta.
+              Las líneas de los últimos {sweepDays} días que todavía pueden
+              cambiar: las que están en otro operador y las que tienen pedido a
+              Movistar sin fecha, que puede caerse.
+              {settledNumbers > 0 ? (
+                <>
+                  {" "}
+                  Quedan fuera {formatCount(settledNumbers)} con fecha de
+                  portación ya puesta: volver a consultarlas gasta el cupo del
+                  filtro en respuestas que ya conocemos.
+                </>
+              ) : null}
             </span>
           </div>
+
+          {settledNumbers > 0 ? (
+            <div className="ui-form-row">
+              <a
+                className="ui-button ui-button--quiet"
+                href={`/admin/recovery-base/numbers?days=${sweepDays}`}
+              >
+                Bajar también las que ya tienen fecha (
+                {formatCount(sweepNumbers)})
+              </a>
+              <span className="pb-2 text-xs text-ui-muted">
+                Solo si quieres auditar el barrido completo.
+              </span>
+            </div>
+          ) : null}
 
           <PortabilityCrossForm />
 

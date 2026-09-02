@@ -4,6 +4,8 @@ import { expireUnverifiedCases } from "@/features/recovery/server/expire-unverif
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
+import { needsPortabilityRecross } from "@repo/validation";
+
 import type { Prisma } from "@repo/database";
 
 /**
@@ -19,6 +21,10 @@ import type { Prisma } from "@repo/database";
  * herramienta rápida, que procesa 2 000 diarios sin problema: caza al
  * cliente que portó después de su consulta. Solo emite el número de
  * servicio: ningún dato personal viaja en este archivo.
+ *
+ * BR-082b: `?scope=recross` recorta ese barrido a lo que todavía puede
+ * cambiar — deja fuera las líneas cuyo pedido a Movistar ya tiene fecha de
+ * ventana, porque su respuesta ya se conoce (`needsPortabilityRecross`).
  */
 export async function GET(request: Request) {
   const { membership } = await requireAdminAccess();
@@ -35,6 +41,7 @@ export async function GET(request: Request) {
     30,
     Math.max(0, Number.parseInt(url.searchParams.get("days") ?? "0", 10) || 0),
   );
+  const onlyRecrossable = url.searchParams.get("scope") === "recross";
 
   const openCase: Prisma.RecoveryCaseWhereInput = {
     status: {
@@ -63,13 +70,30 @@ export async function GET(request: Request) {
             case: openCase,
           }),
     },
-    select: { serviceNumber: true },
+    select: {
+      serviceNumber: true,
+      portabilityState: true,
+      portabilityReceiver: true,
+      portabilityWindowAt: true,
+    },
     // Lo más reciente primero: un lead frío pierde valor con cada día.
     orderBy: { case: { lastSightingAt: "desc" } },
-    ...(take > 0 ? { take: take * 2 } : {}),
+    // El recorte de BR-082b descarta filas después de la consulta, así que
+    // pedir de más a la base dejaría tandas cortas: se corta en memoria.
+    ...(take > 0 && !onlyRecrossable ? { take: take * 2 } : {}),
   });
 
-  const unique = [...new Set(services.map((service) => service.serviceNumber))];
+  const selected = onlyRecrossable
+    ? services.filter((service) =>
+        needsPortabilityRecross({
+          state: service.portabilityState,
+          receiverRaw: service.portabilityReceiver,
+          windowDate: service.portabilityWindowAt,
+        }),
+      )
+    : services;
+
+  const unique = [...new Set(selected.map((service) => service.serviceNumber))];
   const batch = take > 0 ? unique.slice(0, take) : unique;
 
   const today = new Intl.DateTimeFormat("en-CA", {
@@ -77,7 +101,7 @@ export async function GET(request: Request) {
   }).format(new Date());
   const suffix =
     days > 0
-      ? `_barrido_${days}d`
+      ? `_barrido_${days}d${onlyRecrossable ? "_sin_movistar" : ""}`
       : take > 0
         ? `_tanda_${batch.length}`
         : "";

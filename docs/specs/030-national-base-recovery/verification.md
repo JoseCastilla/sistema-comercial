@@ -429,6 +429,44 @@ Sesión de Erika Lavado (SUPERVISOR de Huancayo, no vendedora):
    reasignaciones por Erika —, y el intento registrado sobrevivió a ambas
    reasignaciones (BR-051, BR-044).
 
+### Recorte del barrido diario — BR-082b, 02/09/2026
+
+Origen: la operación reportó que "Revisión completa: últimos 3 días"
+descargaba la base entera —2 179 líneas contra un cupo de 2 000 diarios en
+el filtro rápido— cuando lo que necesita re-consultar es solo lo que
+todavía puede cambiar.
+
+1. **Regla pura probada**: 5 casos nuevos sobre `needsPortabilityRecross`
+   —fecha pasada, fecha futura, portada a Movistar, programada sin fecha,
+   los cuatro estados hacia otro operador, y la línea sin consultar—.
+   244 pruebas en verde en `@repo/validation`.
+2. **Tipos y lint** en verde en `apps/web`.
+3. **Ruta ejercida en local (02/09/2026)** contra el servidor de
+   desarrollo, con sesión ADMIN:
+   - `?days=3&scope=recross` → 200, 2 050 números,
+     `numeros_recupero_2026-09-02_barrido_3d_sin_movistar.txt`.
+   - `?days=3` → 200, 2 050 números, nombre sin sufijo.
+   - `?days=3&scope=recross&take=200` → 200, exactamente 200 números: el
+     recorte no deja tandas cortas.
+4. **Pantalla verificada sobre el DOM**: el botón anuncia
+   "Revisión diaria: 2 050 número(s)" apuntando a `scope=recross`, y con
+   cero excluidas ni el segundo botón ni la frase sobrante aparecen.
+
+**Limitación declarada**: la base de desarrollo no tiene líneas en espera
+(0 casos `WAITING`), así que el recorte no se ejerció contra datos que lo
+activen — la exclusión está cubierta por la regla pura, no por el recorrido.
+Al desplegar, el número que anuncia el botón es la comprobación: sobre la
+base real de 2 179 líneas debe caer a ~1 280; si sigue en 2 179 significa
+que las esperas no tienen fecha de ventana guardada y hay que revisar por
+qué.
+
+**Cabo suelto para el tercer criterio**: una línea programada hacia
+Movistar con fecha **ya vencida** queda fuera de la descarga, pero su caso
+sigue contando como `WAITING` en la bandeja. Se la trata como Movistar para
+no consultarla y no se la cierra: si la portación se cayó el día de la
+ventana, ese caso se queda sin que nadie lo mire. Cerrarlo es una decisión
+de negocio pendiente, no un descuido de esta tarea.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de
