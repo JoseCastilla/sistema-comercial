@@ -179,7 +179,7 @@ export function SalesRecoveryCaseDetail({
           </div>
         </header>
         <div className="ui-table-wrap">
-          <table className="ui-table ui-table--figures">
+          <table className="ui-table">
             <thead>
               <tr>
                 <th>Momento</th>

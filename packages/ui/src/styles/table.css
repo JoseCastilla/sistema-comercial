@@ -73,7 +73,8 @@
   /*
    * Variante de cifras: la primera columna nombra la fila y todas las demas
    * son magnitudes, de modo que se alinean a la derecha en bloque en vez de
-   * marcarse una por una.
+   * marcarse una por una. Solo para tablas donde eso es cierto: aplicarla a
+   * columnas de texto las alinea mal y, por el nowrap, les impide quebrar.
    */
   .ui-table--figures th:not(:first-child),
   .ui-table--figures td:not(:first-child) {
@@ -81,13 +82,17 @@
     white-space: nowrap;
   }
 
-  /* Celda de dos alturas: el dato arriba y su aclaracion debajo. */
-  .ui-table--figures td strong,
-  .ui-table--figures td small {
+  /*
+   * Celda de dos alturas: el dato arriba y su aclaracion debajo. Se activa
+   * sola en las celdas que traen un <small>, de modo que no haga falta marcar
+   * la tabla entera ni mezclarlo con la alineacion.
+   */
+  .ui-table td:has(small) strong,
+  .ui-table td small {
     display: block;
   }
 
-  .ui-table--figures td small {
+  .ui-table td small {
     margin-top: 0.15rem;
     color: var(--ui-text-soft);
     font-size: var(--ui-text-3xs);

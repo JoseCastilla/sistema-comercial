@@ -171,7 +171,7 @@ export function PerformanceReconciliation({
           </div>
         </header>
         <div className="ui-table-wrap">
-          <table className="ui-table ui-table--figures ui-table--linked">
+          <table className="ui-table ui-table--linked">
             <thead>
               <tr>
                 <th>Orden</th>
@@ -179,7 +179,9 @@ export function PerformanceReconciliation({
                 <th>Asesor</th>
                 <th>Operación</th>
                 <th>Resultado</th>
-                {data.showLineAmounts ? <th>Comisión fija</th> : null}
+                {data.showLineAmounts ? (
+                  <th data-numeric>Comisión fija</th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -206,7 +208,7 @@ export function PerformanceReconciliation({
                     </span>
                   </td>
                   {data.showLineAmounts ? (
-                    <td>
+                    <td data-numeric>
                       <strong>{money(line.baseCommissionCents)}</strong>
                     </td>
                   ) : null}
