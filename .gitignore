@@ -61,3 +61,11 @@ apps/api/.env
 
 # Archivos reales para pruebas locales (contienen datos personales de clientes)
 fixtures/
+
+# Contenido de las skills instaladas. Se regenera desde skills-lock.json con
+# `npx skills experimental_install`, verificado byte a byte: se versiona el
+# manifiesto, no la carga, igual que con node_modules.
+.agents/
+
+# Ajustes personales de Claude Code; los compartidos van en settings.json.
+.claude/settings.local.json
