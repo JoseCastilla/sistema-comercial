@@ -99,6 +99,7 @@ export default async function RecoveryBaseAdminPage({
     pendingLineCount,
     openLineCount,
     readyCaseCount,
+    waitingServices,
     sweepServices,
     portabilityBatches,
   ] = await Promise.all([
@@ -226,6 +227,17 @@ export default async function RecoveryBaseAdminPage({
         services: { none: { discardedAt: null, portabilityCheckedAt: null } },
       },
     }),
+    // Las líneas de los pedidos en curso: lo que queda esperando de verdad
+    // tras BR-024b, y lo que hay que volver a filtrar para saber si el
+    // pedido se concretó.
+    database.recoveryCaseService.findMany({
+      where: {
+        organizationId: membership.organization.id,
+        discardedAt: null,
+        case: { status: "WAITING", source: "NATIONAL_BASE" },
+      },
+      select: { serviceNumber: true },
+    }),
     // BR-082b: el mismo universo que exporta el barrido, para anunciar
     // cuántos números salen antes de gastarlos en la herramienta externa.
     // El receptor es texto libre, así que el recorte no se puede pedir en
@@ -274,6 +286,10 @@ export default async function RecoveryBaseAdminPage({
       },
     }),
   ]);
+
+  const waitingNumbers = new Set(
+    waitingServices.map((service) => service.serviceNumber),
+  ).size;
 
   const now = new Date();
   const recrossNumbers = new Set(
@@ -584,7 +600,23 @@ export default async function RecoveryBaseAdminPage({
               Las líneas de los últimos {sweepDays} días que todavía pueden
               cambiar: las que están en otro operador y las que tienen pedido a
               Movistar sin fecha, que puede caerse.
-              {settledNumbers > 0 ? (
+              {waitingNumbers > 0 ? (
+            <div className="ui-form-row">
+              <a
+                className="ui-button ui-button--secondary"
+                href="/admin/recovery-base/numbers?scope=waiting"
+              >
+                Pedidos en curso: {formatCount(waitingNumbers)} número(s)
+              </a>
+              <span className="pb-2 text-xs text-ui-muted">
+                Las líneas de los clientes que están esperando: unas ya
+                portaron y otras se cayeron. Pásalas por el filtro para saber
+                cuáles siguen siendo oportunidad.
+              </span>
+            </div>
+          ) : null}
+
+          {settledNumbers > 0 ? (
                 <>
                   {" "}
                   Quedan fuera {formatCount(settledNumbers)} con fecha de

@@ -562,6 +562,17 @@ y el caso nuevo tiene otro identificador.
    pedido lento se vuelva a marcar cada día antes que perder al cliente, y
    el caso liberado conserva su equipo.
 
+**Confirmado en producción el 02/09/2026**, tras desplegar: los casos con
+pedido en curso pasaron de 1 048 a 211, y el barrido diario anuncia 870
+números dejando fuera solo 4 con fecha de portación por delante. La espera
+dejó de ser perpetua.
+
+**Descarga de los pedidos en curso** (`?scope=waiting`): ejercida en local
+con sesión ADMIN — 200, `numeros_recupero_2026-09-02_pedidos_en_curso.txt`.
+La base de desarrollo no tiene casos en espera, así que el archivo sale
+vacío y el botón se oculta, que es el comportamiento previsto; el contenido
+se verá en producción, donde debe traer las líneas de esos 211 casos.
+
 **Limitación declarada**: ni la liberación ni la importación superpuesta se
 ejercieron contra datos —la base de desarrollo no tiene casos en espera ni
 lotes que se solapen—. Las reglas están cubiertas por pruebas puras; el
