@@ -95,7 +95,20 @@ git add -A 2>/dev/null
   printf 'Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n'
 } >"$REDACCION"
 git commit -q -F "$REDACCION"
-git push -q -u origin "$RAMA"
+
+# Un push puede fallar informando "reference already exists" cuando en
+# realidad llegó: pasó una vez y cortó la entrega a mitad. Si el remoto ya
+# apunta a este commit, el trabajo está hecho y se sigue.
+if ! git push -q -u origin "$RAMA" 2>/dev/null; then
+  if [ "$(git ls-remote --heads origin "$RAMA" | cut -f1)" = "$(git rev-parse HEAD)" ]; then
+    echo "  (el remoto ya tenía este commit)"
+    git branch --set-upstream-to="origin/$RAMA" "$RAMA" >/dev/null 2>&1 || true
+  else
+    echo "✗ No se pudo publicar la rama $RAMA" >&2
+    git push -u origin "$RAMA" >&2
+    exit 1
+  fi
+fi
 
 if [ "$SOLO_RAMA" -eq 1 ]; then
   echo "✓ Rama publicada. main sin tocar."
