@@ -467,6 +467,30 @@ no consultarla y no se la cierra: si la portación se cayó el día de la
 ventana, ese caso se queda sin que nadie lo mire. Cerrarlo es una decisión
 de negocio pendiente, no un descuido de esta tarea.
 
+### Triage operable sin ratón — 02/09/2026
+
+Origen: un supervisor no podía tomar el número del cliente para consultarlo
+en OSIPTEL, y la selección de filas era exclusivamente de ratón.
+
+1. **Línea copiable**: verificado en el servidor de desarrollo con sesión
+   ADMIN sobre 250 filas reales — cada fila expone su botón "Copiar Línea"
+   junto al de "Copiar DNI", y al pulsarlo la fila **no** queda marcada (el
+   control detiene la propagación del clic que selecciona al cliente).
+2. **Teclado**: 8 pruebas de componente en `triaje-teclado.test.tsx` —
+   orden de tabulación itinerante, Espacio marca, Espacio desmarca,
+   Shift + Espacio extiende el rango, las flechas mueven el foco sin marcar,
+   la flecha no salta fuera en los extremos, Espacio no desplaza la página,
+   y el clic conserva la misma semántica que el teclado. 34 pruebas en verde
+   en `apps/web`; lint y tipos limpios.
+
+**Limitación declarada**: el atajo no se ejerció con teclado real en la
+aplicación —el panel de navegador disponible estaba oculto y no recibe
+eventos de entrada—, sino sobre los mismos manejadores mediante pruebas de
+componente. El copiado sí se ejerció con un clic real; el permiso de
+portapapeles estaba denegado en ese panel, así que la confirmación visual
+"✓ copiado" no se pudo observar ni en el DNI ya existente ni en la línea
+nueva.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de

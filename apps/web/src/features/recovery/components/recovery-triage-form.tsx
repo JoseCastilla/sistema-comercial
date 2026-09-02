@@ -53,6 +53,12 @@ export function RecoveryTriageForm({
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [takeCount, setTakeCount] = useState("200");
   const lastIndexRef = useRef<number | null>(null);
+  /**
+   * Foco itinerante: con 250 filas, hacerlas todas tabulables obligaría a 250
+   * pulsaciones para cruzar la tabla. Solo una entra en el orden de tabulación
+   * y las flechas mueven el foco dentro.
+   */
+  const [focusedIndex, setFocusedIndex] = useState(0);
 
   /**
    * Una acción aplicada saca casos de la tabla: la selección previa dejaría
@@ -73,6 +79,10 @@ export function RecoveryTriageForm({
    * empiezan a distinguir — al entregar el primer bloque a un equipo, o
    * cuando convive un caso en espera con uno por revisar.
    */
+  // Una acción vacía la tabla o la acorta: el índice recordado podría apuntar
+  // a una fila que ya no existe y dejar la tabla sin puerta de entrada.
+  const rovingIndex = Math.min(focusedIndex, Math.max(0, rows.length - 1));
+
   const showTeamColumn = rows.some((row) => row.teamName !== null);
   const showStatusColumn = rows.some((row) => row.status !== rows[0]?.status);
   const columnCount = 6 + (showTeamColumn ? 1 : 0) + (showStatusColumn ? 1 : 0);
@@ -87,6 +97,36 @@ export function RecoveryTriageForm({
 
     lastIndexRef.current = null;
     setSelected(new Set(rows.slice(0, count).map((row) => row.id)));
+  }
+
+  /**
+   * El teclado marca igual que el ratón: Espacio alterna la fila enfocada y
+   * Shift + Espacio extiende el rango desde la última marcada, como el
+   * Shift + clic. Ambos pasan por la misma regla, así que no pueden
+   * divergir.
+   */
+  function handleRowKeyDown(
+    event: React.KeyboardEvent<HTMLTableRowElement>,
+    index: number,
+  ) {
+    if (event.key === " " || event.key === "Spacebar") {
+      // Espacio desplaza la página por defecto; aquí marca.
+      event.preventDefault();
+      handleRowClick(index, event.shiftKey);
+      return;
+    }
+
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
+    const sibling =
+      event.key === "ArrowDown"
+        ? event.currentTarget.nextElementSibling
+        : event.currentTarget.previousElementSibling;
+
+    if (!(sibling instanceof HTMLElement)) return;
+
+    event.preventDefault();
+    sibling.focus();
   }
 
   function handleRowClick(index: number, shiftKey: boolean) {
@@ -134,9 +174,14 @@ export function RecoveryTriageForm({
 
         <span className="pb-2 text-xs text-ui-muted">
           {formatCount(selected.size)} de {formatCount(rows.length)}{" "}
-          seleccionados ·{" "}
-          <kbd className="rounded border border-ui-border px-1">Shift</kbd> para
-          un rango
+          seleccionados · clic o{" "}
+          <kbd className="rounded border border-ui-border px-1">Espacio</kbd>{" "}
+          marca una fila,{" "}
+          <kbd className="rounded border border-ui-border px-1">Shift</kbd> +
+          clic o espacio marca el rango; con{" "}
+          <kbd className="rounded border border-ui-border px-1">↑</kbd>{" "}
+          <kbd className="rounded border border-ui-border px-1">↓</kbd> te
+          mueves entre filas
         </span>
       </div>
 
@@ -239,18 +284,22 @@ export function RecoveryTriageForm({
              * Toda la fila selecciona: apuntar a una casilla de 13px por
              * cliente es el cuello de botella cuando hay que marcar decenas.
              * El clic con Shift sigue extendiendo el rango y los controles
-             * internos (copiar DNI) detienen la propagación.
+             * internos (copiar DNI o línea) detienen la propagación.
              */}
             {rows.map((row, index) => (
               <tr
                 aria-selected={selected.has(row.id)}
-                className={`cursor-pointer select-none ${
+                // `ring` no se dibuja sobre `border-collapse`; el contorno sí.
+                className={`cursor-pointer select-none focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ui-accent ${
                   selected.has(row.id)
                     ? "bg-ui-accent-soft"
                     : "hover:bg-ui-subtle"
                 }`}
                 key={row.id}
                 onClick={(event) => handleRowClick(index, event.shiftKey)}
+                onFocus={() => setFocusedIndex(index)}
+                onKeyDown={(event) => handleRowKeyDown(event, index)}
+                tabIndex={index === rovingIndex ? 0 : -1}
               >
                 <td>
                   <input
@@ -266,13 +315,26 @@ export function RecoveryTriageForm({
                 <td>
                   <CopyValue label="DNI" value={row.documentNumber} />
                 </td>
-                <td className="font-mono text-xs">
-                  {row.serviceNumbers.join(", ")}
-                  {row.sightingCount > 1 ? (
-                    <span className="ml-2 rounded-full bg-ui-subtle px-2 py-0.5 text-[11px] text-ui-muted">
-                      {row.sightingCount} apariciones
-                    </span>
-                  ) : null}
+                <td>
+                  {/*
+                   * Cada línea se copia sola: la consulta en OSIPTEL se hace
+                   * número por número, y seleccionar texto dentro de una fila
+                   * que además marca al cliente no es viable.
+                   */}
+                  <div className="flex flex-wrap items-center gap-1">
+                    {row.serviceNumbers.map((serviceNumber) => (
+                      <CopyValue
+                        key={serviceNumber}
+                        label="Línea"
+                        value={serviceNumber}
+                      />
+                    ))}
+                    {row.sightingCount > 1 ? (
+                      <span className="rounded-full bg-ui-subtle px-2 py-0.5 text-[11px] text-ui-muted">
+                        {row.sightingCount} apariciones
+                      </span>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="text-xs text-ui-muted">{row.planSummary}</td>
                 <td className="text-xs">{row.carrierSummary}</td>

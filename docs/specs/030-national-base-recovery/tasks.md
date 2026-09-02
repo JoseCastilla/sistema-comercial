@@ -299,6 +299,18 @@
       herramienta externa y cuántos quedan fuera. El barrido sin recortar
       queda disponible solo cuando hay algo excluido que auditar.
 
+## Triage operable sin ratón (02/09/2026)
+
+- [x] Cada línea del caso se copia con un clic en la tabla del triage, como
+      ya ocurría con el DNI: la consulta en OSIPTEL se hace número por
+      número y seleccionar texto dentro de una fila que además marca al
+      cliente no era viable.
+- [x] AC-043 alcanzable con teclado: Espacio marca la fila enfocada,
+      Shift + Espacio extiende el rango —misma regla que el Shift + clic— y
+      las flechas mueven el foco. Foco itinerante: una sola fila entra en el
+      orden de tabulación, porque 250 filas tabulables dejarían la
+      paginación a 250 pulsaciones de distancia.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en
