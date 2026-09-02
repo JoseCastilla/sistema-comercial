@@ -247,8 +247,8 @@ export default async function RecoveryTriagePage({
           }
           description={
             isSupervisor
-              ? "La base entregada a tus equipos. El DNI se copia con un clic."
-              : "Reparte bloques a los equipos o pon en espera a los que ya tienen pedido. El DNI se copia con un clic."
+              ? "La base entregada a tus equipos. El DNI y cada línea se copian con un clic."
+              : "Reparte bloques a los equipos o pon en espera a los que ya tienen pedido. El DNI y cada línea se copian con un clic."
           }
         />
 
