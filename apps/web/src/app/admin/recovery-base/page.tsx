@@ -415,27 +415,27 @@ export default async function RecoveryBaseAdminPage({
 
           {batches.length > 1 ? (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-ui-border text-sm">
-                <thead className="text-left text-xs uppercase tracking-wide text-ui-muted">
+              <table className="ui-table">
+                <thead>
                   <tr>
-                    <th className="px-3 py-1.5 font-semibold">Archivo</th>
-                    <th className="px-3 py-1.5 font-semibold">Estado</th>
-                    <th className="px-3 py-1.5 text-right font-semibold">
+                    <th className="font-semibold">Archivo</th>
+                    <th className="font-semibold">Estado</th>
+                    <th data-numeric className="font-semibold">
                       Filas del archivo
                     </th>
-                    <th className="px-3 py-1.5 text-right font-semibold">
+                    <th data-numeric className="font-semibold">
                       Entran a la campaña
                     </th>
-                    <th className="px-3 py-1.5 text-right font-semibold">
+                    <th data-numeric className="font-semibold">
                       Casos
                     </th>
-                    <th className="px-3 py-1.5 font-semibold">Subido</th>
+                    <th className="font-semibold">Subido</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-ui-border">
+                <tbody>
                   {batches.map((batch) => (
                     <tr key={batch.id}>
-                      <td className="px-3 py-1.5">
+                      <td>
                         <Link
                           className="text-ui-accent underline-offset-2 hover:underline"
                           href={`/admin/recovery-base?batch=${batch.id}`}
@@ -443,19 +443,19 @@ export default async function RecoveryBaseAdminPage({
                           {batch.fileName}
                         </Link>
                       </td>
-                      <td className="px-3 py-1.5 text-xs text-ui-muted">
+                      <td className="text-xs text-ui-muted">
                         {batchStatusLabels[batch.status] ?? batch.status}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {formatCount(batch.sourceRows)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {formatCount(batch.eligibleRows)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {formatCount(batch.newCases)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-ui-muted">
+                      <td className="ui-data text-ui-muted">
                         {dateTimeFormatter.format(batch.uploadedAt)}
                       </td>
                     </tr>
@@ -531,46 +531,46 @@ export default async function RecoveryBaseAdminPage({
 
           {portabilityBatches.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-ui-border text-sm">
-                <thead className="text-left text-xs uppercase tracking-wide text-ui-muted">
+              <table className="ui-table">
+                <thead>
                   <tr>
-                    <th className="px-3 py-1.5 font-semibold">Reporte</th>
-                    <th className="px-3 py-1.5 font-semibold">Tipo</th>
-                    <th className="px-3 py-1.5 text-right font-semibold">
+                    <th className="font-semibold">Reporte</th>
+                    <th className="font-semibold">Tipo</th>
+                    <th data-numeric className="font-semibold">
                       Consultadas
                     </th>
-                    <th className="px-3 py-1.5 text-right font-semibold">
+                    <th data-numeric className="font-semibold">
                       Encontradas en la base
                     </th>
-                    <th className="px-3 py-1.5 text-right font-semibold">
+                    <th data-numeric className="font-semibold">
                       Ya eran Movistar
                     </th>
-                    <th className="px-3 py-1.5 text-right font-semibold">
+                    <th data-numeric className="font-semibold">
                       Portando a Movistar
                     </th>
-                    <th className="px-3 py-1.5 font-semibold">Aplicado</th>
+                    <th className="font-semibold">Aplicado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-ui-border">
+                <tbody>
                   {portabilityBatches.map((cross) => (
                     <tr key={cross.id}>
-                      <td className="px-3 py-1.5">{cross.fileName}</td>
-                      <td className="px-3 py-1.5 text-xs text-ui-muted">
+                      <td>{cross.fileName}</td>
+                      <td className="text-xs text-ui-muted">
                         {cross.kind === "FULL" ? "Completo" : "Rápido"}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {formatCount(cross.totalRows)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {formatCount(cross.matchedServices)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {formatCount(cross.discardedCases)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {formatCount(cross.waitingCases)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-ui-muted">
+                      <td className="ui-data text-ui-muted">
                         {dateTimeFormatter.format(cross.uploadedAt)}
                       </td>
                     </tr>

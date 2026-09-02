@@ -84,8 +84,8 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
             </p>
           </div>
         </header>
-        <div className="performance-table-wrap">
-          <table className="performance-table">
+        <div className="ui-table-wrap">
+          <table className="ui-table ui-table--figures">
             <thead>
               <tr>
                 <th>Cliente</th>

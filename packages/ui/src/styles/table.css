@@ -1,0 +1,115 @@
+@layer components {
+  /*
+   * Anatomía única de tabla.
+   *
+   * Antes convivían tres: `.performance-table` (nombrada para un módulo pero
+   * sosteniendo las tablas de otros tres), una variante con utilidades de
+   * Tailwind repetida en ocho pantallas, y una tercera suelta. La de
+   * utilidades pintaba la cabecera con `bg-ui-surface-muted`, una clase que no
+   * existe —el token es `--color-ui-subtle`—, de modo que la cabecera salía
+   * transparente y se leía igual que una fila más.
+   */
+  .ui-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--ui-text-xs);
+    /* Las cifras deben alinearse en vertical para poder compararlas. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ui-table th,
+  .ui-table td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .ui-table thead th {
+    color: var(--ui-text-soft);
+    background: var(--ui-surface-subtle);
+    border-bottom: 1px solid var(--ui-border);
+    font-size: var(--ui-text-3xs);
+    font-weight: 700;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .ui-table tbody td {
+    border-bottom: 1px solid var(--ui-border);
+  }
+
+  /* La última línea duplicaría el borde del panel que contiene la tabla. */
+  .ui-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .ui-table tbody tr:hover td {
+    background: var(--ui-surface-subtle);
+  }
+
+  /*
+   * Las columnas de cifras van a la derecha: es el borde por el que se
+   * comparan magnitudes de distinto largo. Se marca por columna y no por
+   * posición, porque la primera columna no siempre es la etiqueta.
+   */
+  .ui-table [data-numeric] {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Columna de acciones al final de la fila. */
+  .ui-table [data-actions] {
+    width: 1%;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Contenedor con desplazamiento horizontal para tablas anchas. */
+  .ui-table-wrap {
+    overflow-x: auto;
+  }
+
+  /*
+   * Variante de cifras: la primera columna nombra la fila y todas las demas
+   * son magnitudes, de modo que se alinean a la derecha en bloque en vez de
+   * marcarse una por una.
+   */
+  .ui-table--figures th:not(:first-child),
+  .ui-table--figures td:not(:first-child) {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Celda de dos alturas: el dato arriba y su aclaracion debajo. */
+  .ui-table--figures td strong,
+  .ui-table--figures td small {
+    display: block;
+  }
+
+  .ui-table--figures td small {
+    margin-top: 0.15rem;
+    color: var(--ui-text-soft);
+    font-size: var(--ui-text-3xs);
+  }
+
+  /* Estados de fila que rendimiento y recupero ya marcan en el marcado. */
+  .ui-table tr[data-no-sales="true"] td,
+  .ui-table tr[data-unattributed="true"] td {
+    background: var(--ui-warning-soft);
+  }
+
+  .ui-table tr[data-unattributed="true"] td {
+    border-top: 1px solid var(--ui-border);
+  }
+
+  .ui-table td[data-quota-reached="true"] strong {
+    color: var(--ui-success);
+  }
+
+  /* En conciliacion la primera columna abre el pedido. */
+  .ui-table--linked td:first-child a {
+    color: var(--ui-accent);
+    font-weight: 750;
+  }
+}

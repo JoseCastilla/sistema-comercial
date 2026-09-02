@@ -501,35 +501,29 @@ export default async function DitoImportsPage({
                   title="Detalle por pedido"
                 >
                   <div className="overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                      <thead className="border-b border-ui-border text-xs uppercase tracking-wide text-ui-muted">
+                    <table className="ui-table">
+                      <thead>
                         <tr>
-                          <th className="px-3 py-3 font-medium">
-                            Línea del archivo
-                          </th>
-                          <th className="px-3 py-3 font-medium">Orden</th>
-                          <th className="px-3 py-3 font-medium">Cliente</th>
-                          <th className="px-3 py-3 font-medium">Operación</th>
-                          <th className="px-3 py-3 font-medium">
-                            Asesor / cuenta DITO
-                          </th>
-                          <th className="px-3 py-3 font-medium">Resultado</th>
+                          <th className="font-medium">Línea del archivo</th>
+                          <th className="font-medium">Orden</th>
+                          <th className="font-medium">Cliente</th>
+                          <th className="font-medium">Operación</th>
+                          <th className="font-medium">Asesor / cuenta DITO</th>
+                          <th className="font-medium">Resultado</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-neutral-100">
+                      <tbody>
                         {selectedBatch.rows.map((row) => (
                           <tr key={row.id}>
-                            <td className="px-3 py-3 text-ui-muted">
-                              {row.sourceRow}
-                            </td>
-                            <td className="px-3 py-3 font-mono text-xs font-semibold text-ui-text">
+                            <td className="text-ui-muted">{row.sourceRow}</td>
+                            <td className="font-mono text-xs font-semibold text-ui-text">
                               {row.displayedOrderCode ?? "Sin código"}
                             </td>
-                            <td className="max-w-56 truncate px-3 py-3 font-medium text-ui-text">
+                            <td className="max-w-56 truncate font-medium text-ui-text">
                               {readJsonText(row.parsedData, "holderName") ??
                                 "No registrado"}
                             </td>
-                            <td className="px-3 py-3 text-ui-text">
+                            <td className="text-ui-text">
                               <span className="block font-medium">
                                 {operationLabel(
                                   row.parsedData,
@@ -543,7 +537,7 @@ export default async function DitoImportsPage({
                                 )}
                               </span>
                             </td>
-                            <td className="px-3 py-3 text-ui-muted">
+                            <td className="text-ui-muted">
                               <span className="block font-medium text-ui-text">
                                 {readJsonText(
                                   row.parsedData,
@@ -566,7 +560,7 @@ export default async function DitoImportsPage({
                                 </span>
                               ) : null}
                             </td>
-                            <td className="px-3 py-3">
+                            <td>
                               <StatusBadge
                                 tone={
                                   row.manualAgentUserId ||

@@ -70,9 +70,7 @@ export function AssignTeamMemberForm({
           onChange={(event) => {
             setMemberRole(
               event.target.value as
-                | "AGENT"
-                | "SUPERVISOR"
-                | "SELLING_SUPERVISOR",
+                "AGENT" | "SUPERVISOR" | "SELLING_SUPERVISOR",
             );
             setUserId("");
           }}

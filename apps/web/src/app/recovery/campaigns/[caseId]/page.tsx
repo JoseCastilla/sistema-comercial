@@ -198,22 +198,22 @@ export default async function CampaignCasePage({
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-ui-border">
-            <table className="min-w-full divide-y divide-ui-border text-sm">
-              <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
+            <table className="ui-table">
+              <thead>
                 <tr>
-                  <th className="px-3 py-2">Línea a portar</th>
-                  <th className="px-3 py-2">Plan</th>
-                  <th className="px-3 py-2">Operador actual</th>
-                  <th className="px-3 py-2">Portabilidad</th>
+                  <th>Línea a portar</th>
+                  <th>Plan</th>
+                  <th>Operador actual</th>
+                  <th>Portabilidad</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ui-border bg-ui-surface">
+              <tbody>
                 {detail.services.map((service) => (
                   <tr
                     className={service.discarded ? "opacity-50" : undefined}
                     key={service.serviceNumber}
                   >
-                    <td className="px-3 py-2 font-mono text-xs">
+                    <td className="font-mono text-xs">
                       <CopyValue label="Línea" value={service.serviceNumber} />
                       {service.isPlantLine ? (
                         <span className="ml-2 text-[11px] text-ui-muted">
@@ -221,10 +221,10 @@ export default async function CampaignCasePage({
                         </span>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2 text-xs text-ui-muted">
+                    <td className="text-xs text-ui-muted">
                       {service.planRaw ?? "—"}
                     </td>
-                    <td className="px-3 py-2 text-xs">
+                    <td className="text-xs">
                       <span className="font-medium text-ui-text">
                         {service.originOperator}
                       </span>
@@ -234,7 +234,7 @@ export default async function CampaignCasePage({
                         </span>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2 text-xs text-ui-muted">
+                    <td className="text-xs text-ui-muted">
                       {service.discarded
                         ? "Descartada"
                         : (portabilityLabels[service.portabilityState ?? ""] ??

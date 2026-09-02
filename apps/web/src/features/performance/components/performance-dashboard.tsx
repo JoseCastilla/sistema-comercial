@@ -949,8 +949,8 @@ export function PerformanceDashboard({
               <b data-expanded>Ocultar detalle</b>
             </span>
           </summary>
-          <div className="performance-table-wrap">
-            <table className="performance-table">
+          <div className="ui-table-wrap">
+            <table className="ui-table ui-table--figures">
               <thead>
                 <tr>
                   <th>Asesor</th>

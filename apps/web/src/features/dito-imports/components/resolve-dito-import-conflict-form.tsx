@@ -75,7 +75,7 @@ export function ResolveDitoImportConflictForm({
       <div className="mt-4 space-y-4">
         {row.conflicts.map((conflict) => (
           <fieldset
-            className="rounded-lg border border-ui-border bg-ui-surface-muted p-3"
+            className="rounded-lg border border-ui-border bg-ui-subtle p-3"
             key={conflict.field}
           >
             <input name="conflictField" type="hidden" value={conflict.field} />

@@ -209,10 +209,10 @@ export function RecoveryTriageForm({
       />
 
       <div className="overflow-x-auto rounded-xl border border-ui-border">
-        <table className="min-w-full divide-y divide-ui-border text-sm">
-          <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
+        <table className="ui-table">
+          <thead>
             <tr>
-              <th className="px-3 py-1.5">
+              <th>
                 <input
                   aria-label="Seleccionar todos"
                   checked={allSelected}
@@ -220,21 +220,21 @@ export function RecoveryTriageForm({
                   type="checkbox"
                 />
               </th>
-              <th className="px-3 py-1.5 font-semibold">Cliente</th>
-              <th className="px-3 py-1.5 font-semibold">DNI</th>
-              <th className="px-3 py-1.5 font-semibold">Servicios</th>
-              <th className="px-3 py-1.5 font-semibold">Plan</th>
-              <th className="px-3 py-1.5 font-semibold">Cedente</th>
+              <th className="font-semibold">Cliente</th>
+              <th className="font-semibold">DNI</th>
+              <th className="font-semibold">Servicios</th>
+              <th className="font-semibold">Plan</th>
+              <th className="font-semibold">Cedente</th>
               {showTeamColumn ? (
-                <th className="px-3 py-1.5 font-semibold">Equipo</th>
+                <th className="font-semibold">Equipo</th>
               ) : null}
-              <th className="px-3 py-1.5 font-semibold">Último registro</th>
+              <th className="font-semibold">Último registro</th>
               {showStatusColumn ? (
-                <th className="px-3 py-1.5 font-semibold">Estado</th>
+                <th className="font-semibold">Estado</th>
               ) : null}
             </tr>
           </thead>
-          <tbody className="divide-y divide-ui-border bg-ui-surface">
+          <tbody>
             {/*
              * Toda la fila selecciona: apuntar a una casilla de 13px por
              * cliente es el cuello de botella cuando hay que marcar decenas.
@@ -247,12 +247,12 @@ export function RecoveryTriageForm({
                 className={`cursor-pointer select-none ${
                   selected.has(row.id)
                     ? "bg-ui-accent-soft"
-                    : "hover:bg-ui-surface-muted"
+                    : "hover:bg-ui-subtle"
                 }`}
                 key={row.id}
                 onClick={(event) => handleRowClick(index, event.shiftKey)}
               >
-                <td className="px-3 py-1.5">
+                <td>
                   <input
                     aria-label={`Seleccionar a ${row.holderName}`}
                     checked={selected.has(row.id)}
@@ -262,36 +262,32 @@ export function RecoveryTriageForm({
                     type="checkbox"
                   />
                 </td>
-                <td className="px-3 py-1.5 font-medium text-ui-text">
-                  {row.holderName}
-                </td>
-                <td className="px-3 py-1.5">
+                <td className="font-medium text-ui-text">{row.holderName}</td>
+                <td>
                   <CopyValue label="DNI" value={row.documentNumber} />
                 </td>
-                <td className="px-3 py-1.5 font-mono text-xs">
+                <td className="font-mono text-xs">
                   {row.serviceNumbers.join(", ")}
                   {row.sightingCount > 1 ? (
-                    <span className="ml-2 rounded-full bg-ui-surface-muted px-2 py-0.5 text-[11px] text-ui-muted">
+                    <span className="ml-2 rounded-full bg-ui-subtle px-2 py-0.5 text-[11px] text-ui-muted">
                       {row.sightingCount} apariciones
                     </span>
                   ) : null}
                 </td>
-                <td className="px-3 py-1.5 text-xs text-ui-muted">
-                  {row.planSummary}
-                </td>
-                <td className="px-3 py-1.5 text-xs">{row.carrierSummary}</td>
+                <td className="text-xs text-ui-muted">{row.planSummary}</td>
+                <td className="text-xs">{row.carrierSummary}</td>
                 {showTeamColumn ? (
-                  <td className="px-3 py-1.5 text-xs">
+                  <td className="text-xs">
                     {row.teamName ?? (
                       <span className="text-ui-muted">Sin equipo</span>
                     )}
                   </td>
                 ) : null}
-                <td className="ui-data px-3 py-1.5 text-ui-muted">
+                <td className="ui-data text-ui-muted">
                   {row.lastSightingLabel}
                 </td>
                 {showStatusColumn ? (
-                  <td className="px-3 py-1.5 text-xs">
+                  <td className="text-xs">
                     {row.status === "WAITING" ? "En espera" : "Por revisar"}
                   </td>
                 ) : null}

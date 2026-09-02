@@ -1008,11 +1008,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .reconciliation-table td:first-child a {
-    color: var(--ui-accent);
-    font-weight: 750;
-  }
-
   .reconciliation-reason {
     display: inline-flex;
     padding: 0.28rem 0.5rem;
@@ -1097,16 +1092,6 @@
     font-size: var(--ui-text-2xs);
   }
 
-  .performance-table-wrap {
-    overflow-x: auto;
-  }
-
-  .performance-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--ui-text-xs);
-  }
-
   .performance-breakdown__summary {
     display: flex;
     align-items: center;
@@ -1172,55 +1157,6 @@
     > span
     [data-expanded] {
     display: inline;
-  }
-
-  .performance-table th,
-  .performance-table td {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--ui-border);
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  .performance-table tbody tr:last-child td {
-    border-bottom: 0;
-  }
-
-  .performance-table th {
-    color: var(--ui-text-soft);
-    background: var(--ui-surface-subtle);
-    font-size: var(--ui-text-3xs);
-    letter-spacing: 0.045em;
-    text-transform: uppercase;
-  }
-
-  .performance-table th:first-child,
-  .performance-table td:first-child {
-    text-align: left;
-  }
-
-  .performance-table td strong,
-  .performance-table td small {
-    display: block;
-  }
-
-  .performance-table tr[data-no-sales="true"] td {
-    background: var(--ui-warning-soft);
-  }
-
-  .performance-table td[data-quota-reached="true"] strong {
-    color: var(--ui-success);
-  }
-
-  .performance-table tr[data-unattributed="true"] td {
-    background: var(--ui-warning-soft);
-    border-top: 1px solid var(--ui-border);
-  }
-
-  .performance-table td small {
-    margin-top: 0.15rem;
-    color: var(--ui-text-soft);
-    font-size: var(--ui-text-3xs);
   }
 
   @media (min-width: 48rem) {

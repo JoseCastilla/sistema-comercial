@@ -54,7 +54,8 @@ export function AssignAgentAliasForm({
         </div>
 
         <span className="rounded-full bg-ui-surface px-2.5 py-1 text-xs font-medium text-ui-muted shadow-sm">
-          {formatCount(aliases.length)} {aliases.length === 1 ? "nombre" : "nombres"}
+          {formatCount(aliases.length)}{" "}
+          {aliases.length === 1 ? "nombre" : "nombres"}
         </span>
       </div>
 

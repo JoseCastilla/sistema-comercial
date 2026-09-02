@@ -27,9 +27,7 @@ export function AssignSalesRecoveryForm({
     assignSalesRecoveryCaseAction,
     initialState,
   );
-  const options = advisors.filter(
-    (advisor) => advisor.id !== blockedAdvisorId,
-  );
+  const options = advisors.filter((advisor) => advisor.id !== blockedAdvisorId);
 
   if (options.length === 0) return null;
 

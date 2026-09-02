@@ -424,59 +424,55 @@ export default async function RecoveryBoardPage({
           description="Intentos y contactos de hoy; recuperos y pérdidas resueltos hoy."
         >
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-ui-border text-sm">
-              <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
+            <table className="ui-table">
+              <thead>
                 <tr>
-                  <th className="px-3 py-1.5 font-semibold">Asesor</th>
-                  <th className="px-3 py-1.5 font-semibold">Equipo</th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th className="font-semibold">Asesor</th>
+                  <th className="font-semibold">Equipo</th>
+                  <th data-numeric className="font-semibold">
                     Asignados
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Trabajados
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Intentos
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Contactados
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Cobertura
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Sin contacto
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Recuperados
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Perdidos
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ui-border bg-ui-surface">
+              <tbody>
                 {advisorRows.map((row) => (
                   <tr key={`${row.name}-${row.teamName}`}>
-                    <td className="px-3 py-1.5 font-medium text-ui-text">
-                      {row.name}
-                    </td>
-                    <td className="px-3 py-1.5 text-xs text-ui-muted">
-                      {row.teamName}
-                    </td>
-                    <td className="ui-data px-3 py-1.5 text-right">
+                    <td className="font-medium text-ui-text">{row.name}</td>
+                    <td className="text-xs text-ui-muted">{row.teamName}</td>
+                    <td data-numeric className="ui-data">
                       {row.assigned}
                     </td>
-                    <td className="ui-data px-3 py-1.5 text-right">
+                    <td data-numeric className="ui-data">
                       {row.worked}
                     </td>
-                    <td className="ui-data px-3 py-1.5 text-right">
+                    <td data-numeric className="ui-data">
                       {row.attempts}
                     </td>
-                    <td className="ui-data px-3 py-1.5 text-right">
+                    <td data-numeric className="ui-data">
                       {row.contacted}
                     </td>
-                    <td className="ui-data px-3 py-1.5 text-right">
+                    <td data-numeric className="ui-data">
                       {row.active > 0 ? `${row.covered}/${row.active}` : "—"}
                     </td>
                     <td
@@ -489,7 +485,7 @@ export default async function RecoveryBoardPage({
                     >
                       {row.recovered}
                     </td>
-                    <td className="ui-data px-3 py-1.5 text-right">
+                    <td data-numeric className="ui-data">
                       {row.lost}
                       {row.lostToOthers > 0 ? (
                         <span className="ml-1 text-[11px] text-ui-muted">
@@ -520,29 +516,29 @@ export default async function RecoveryBoardPage({
           description="Cada día de carga contra la meta del 3–6 %. Los que ya eran Movistar no cuentan: la conversión se mide sobre oportunidad real."
         >
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-ui-border text-sm">
-              <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
+            <table className="ui-table">
+              <thead>
                 <tr>
-                  <th className="px-3 py-1.5 font-semibold">Día de carga</th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th className="font-semibold">Día de carga</th>
+                  <th data-numeric className="font-semibold">
                     Casos
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Ya eran Movistar
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Oportunidad real
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Recuperados
                   </th>
-                  <th className="px-3 py-1.5 text-right font-semibold">
+                  <th data-numeric className="font-semibold">
                     Conversión
                   </th>
-                  <th className="px-3 py-1.5 font-semibold">Meta 3–6 %</th>
+                  <th className="font-semibold">Meta 3–6 %</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ui-border bg-ui-surface">
+              <tbody>
                 {cohortRows.map((row) => {
                   const denominator = row.total - row.discarded;
                   const rate =
@@ -551,23 +547,23 @@ export default async function RecoveryBoardPage({
                       : null;
                   return (
                     <tr key={row.key}>
-                      <td className="ui-data px-3 py-1.5">{row.key}</td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td className="ui-data">{row.key}</td>
+                      <td data-numeric className="ui-data">
                         {formatCount(row.total)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right text-ui-muted">
+                      <td data-numeric className="ui-data text-ui-muted">
                         {formatCount(row.discarded)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {formatCount(denominator)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {formatCount(row.recovered)}
                       </td>
-                      <td className="ui-data px-3 py-1.5 text-right">
+                      <td data-numeric className="ui-data">
                         {rate === null ? "—" : `${rate.toFixed(1)}%`}
                       </td>
-                      <td className="px-3 py-1.5 text-xs">
+                      <td className="text-xs">
                         {rate === null ? (
                           <span className="text-ui-muted">
                             Todavía sin casos

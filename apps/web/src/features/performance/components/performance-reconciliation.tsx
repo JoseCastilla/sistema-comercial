@@ -170,8 +170,8 @@ export function PerformanceReconciliation({
             <p>Toca la orden para abrir el pedido.</p>
           </div>
         </header>
-        <div className="performance-table-wrap">
-          <table className="performance-table reconciliation-table">
+        <div className="ui-table-wrap">
+          <table className="ui-table ui-table--figures ui-table--linked">
             <thead>
               <tr>
                 <th>Orden</th>

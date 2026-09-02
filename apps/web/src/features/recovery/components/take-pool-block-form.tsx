@@ -14,11 +14,7 @@ const initialState: RecoveryTriageActionState = {
   message: "",
 };
 
-export function TakePoolBlockForm({
-  departments,
-}: {
-  departments: string[];
-}) {
+export function TakePoolBlockForm({ departments }: { departments: string[] }) {
   const [state, formAction, pending] = useActionState(
     takeRecoveryPoolBlockAction,
     initialState,

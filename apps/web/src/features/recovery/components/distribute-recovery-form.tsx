@@ -329,10 +329,10 @@ export function DistributeRecoveryForm({
       />
 
       <div className="overflow-x-auto rounded-xl border border-ui-border">
-        <table className="min-w-full divide-y divide-ui-border text-sm">
-          <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
+        <table className="ui-table">
+          <thead>
             <tr>
-              <th className="px-3 py-2">
+              <th>
                 <input
                   aria-label="Seleccionar todos"
                   checked={allSelected}
@@ -340,16 +340,16 @@ export function DistributeRecoveryForm({
                   type="checkbox"
                 />
               </th>
-              <th className="px-3 py-2">Cliente</th>
-              <th className="px-3 py-2">DNI</th>
-              <th className="px-3 py-2">Departamento</th>
-              <th className="px-3 py-2">Plan</th>
-              <th className="px-3 py-2">Equipo</th>
-              <th className="px-3 py-2">Responsable</th>
-              <th className="px-3 py-2">Última vez en la base</th>
+              <th>Cliente</th>
+              <th>DNI</th>
+              <th>Departamento</th>
+              <th>Plan</th>
+              <th>Equipo</th>
+              <th>Responsable</th>
+              <th>Última vez en la base</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-ui-border bg-ui-surface">
+          <tbody>
             {/* Toda la fila selecciona, igual que en el triage. */}
             {rows.map((row, index) => (
               <tr
@@ -357,12 +357,12 @@ export function DistributeRecoveryForm({
                 className={`cursor-pointer select-none ${
                   selected.has(row.id)
                     ? "bg-ui-accent-soft"
-                    : "hover:bg-ui-surface-muted"
+                    : "hover:bg-ui-subtle"
                 }`}
                 key={row.id}
                 onClick={(event) => handleRowClick(index, event.shiftKey)}
               >
-                <td className="px-3 py-2">
+                <td>
                   <input
                     aria-label={`Seleccionar a ${row.holderName}`}
                     checked={selected.has(row.id)}
@@ -372,7 +372,7 @@ export function DistributeRecoveryForm({
                     type="checkbox"
                   />
                 </td>
-                <td className="px-3 py-2 font-medium text-ui-text">
+                <td className="font-medium text-ui-text">
                   {row.holderName}
                   {row.habilitationOverdue ? (
                     <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-[11px] text-ui-warning">
@@ -385,34 +385,34 @@ export function DistributeRecoveryForm({
                     </span>
                   ) : null}
                 </td>
-                <td className="px-3 py-2">
+                <td>
                   <CopyValue label="DNI" value={row.documentNumber} />
                 </td>
-                <td className="px-3 py-2 text-xs text-ui-muted">
+                <td className="text-xs text-ui-muted">
                   {row.department ?? "—"}
                 </td>
-                <td className="px-3 py-2 text-xs text-ui-muted">
+                <td className="text-xs text-ui-muted">
                   {row.planSummary}
                   {row.serviceCount > 1 ? ` · ${row.serviceCount} líneas` : ""}
                 </td>
-                <td className="px-3 py-2 text-xs">
+                <td className="text-xs">
                   {row.teamName ?? (
                     <span className="text-ui-muted">Sin equipo</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-xs">
+                <td className="text-xs">
                   {row.assignedToName ?? (
                     <span className="text-ui-muted">Sin asignar</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-xs text-ui-muted">
+                <td className="text-xs text-ui-muted">
                   {row.lastSightingLabel}
                 </td>
               </tr>
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-6 text-center text-ui-muted" colSpan={8}>
+                <td className="text-center text-ui-muted" colSpan={8}>
                   No hay casos que cumplan el filtro en esta vista.
                 </td>
               </tr>

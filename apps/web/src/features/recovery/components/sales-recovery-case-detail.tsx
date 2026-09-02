@@ -68,9 +68,7 @@ export function SalesRecoveryCaseDetail({
             : "Registra cada intento; el sistema te dice cuándo volver a llamar."
         }
         eyebrow={`Recupero de ventas · ${data.priority ? (priorityLabels[data.priority] ?? data.priority) : "Sin prioridad"}`}
-        meta={
-          <Link href="/recovery/sales">← Volver a la bandeja</Link>
-        }
+        meta={<Link href="/recovery/sales">← Volver a la bandeja</Link>}
         title={data.holderName}
       />
 
@@ -118,9 +116,9 @@ export function SalesRecoveryCaseDetail({
               ? "Caso cerrado"
               : data.nextActionOverdue
                 ? "Vencida: gestionar ahora"
-                : (data.firstContactAtLabel
+                : data.firstContactAtLabel
                   ? `Primer contacto ${data.firstContactAtLabel}`
-                  : "Aún sin primer contacto")}
+                  : "Aún sin primer contacto"}
           </small>
         </article>
       </section>
@@ -180,8 +178,8 @@ export function SalesRecoveryCaseDetail({
             </p>
           </div>
         </header>
-        <div className="performance-table-wrap">
-          <table className="performance-table">
+        <div className="ui-table-wrap">
+          <table className="ui-table ui-table--figures">
             <thead>
               <tr>
                 <th>Momento</th>

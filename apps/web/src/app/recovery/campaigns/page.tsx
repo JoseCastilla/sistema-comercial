@@ -364,24 +364,24 @@ export default async function RecoveryCampaignsPage({
           </Form>
 
           <div className="overflow-x-auto rounded-xl border border-ui-border">
-            <table className="min-w-full divide-y divide-ui-border text-sm">
-              <thead className="bg-ui-surface-muted text-left text-xs uppercase tracking-wide text-ui-muted">
+            <table className="ui-table">
+              <thead>
                 <tr>
-                  <th className="px-3 py-2">Cliente</th>
-                  <th className="px-3 py-2">Teléfono</th>
-                  <th className="px-3 py-2">DNI</th>
-                  <th className="px-3 py-2">Operador</th>
-                  <th className="px-3 py-2">Plan</th>
-                  <th className="px-3 py-2">Estado</th>
-                  <th className="px-3 py-2">Intentos hoy</th>
-                  <th className="px-3 py-2">Próxima acción</th>
-                  <th className="px-3 py-2" />
+                  <th>Cliente</th>
+                  <th>Teléfono</th>
+                  <th>DNI</th>
+                  <th>Operador</th>
+                  <th>Plan</th>
+                  <th>Estado</th>
+                  <th>Intentos hoy</th>
+                  <th>Próxima acción</th>
+                  <th data-actions />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ui-border bg-ui-surface">
+              <tbody>
                 {rows.map((row) => (
                   <tr key={row.id}>
-                    <td className="px-3 py-2 font-medium text-ui-text">
+                    <td className="font-medium text-ui-text">
                       {row.holderName}
                       {row.resolutionDue ? (
                         <span className="ml-2 rounded-full bg-ui-danger-soft px-2 py-0.5 text-[11px] text-ui-danger">
@@ -399,17 +399,17 @@ export default async function RecoveryCampaignsPage({
                         </span>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2">
+                    <td>
                       {row.phone ? (
                         <CopyValue label="Teléfono" value={row.phone} />
                       ) : (
                         <span className="text-xs text-ui-muted">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">
+                    <td>
                       <CopyValue label="DNI" value={row.documentNumber} />
                     </td>
-                    <td className="px-3 py-2 text-xs">
+                    <td className="text-xs">
                       {row.origin ? (
                         <>
                           <span className="font-medium text-ui-text">
@@ -425,16 +425,16 @@ export default async function RecoveryCampaignsPage({
                         <span className="text-ui-muted">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-xs text-ui-muted">
+                    <td className="text-xs text-ui-muted">
                       {row.planSummary}
                       {row.serviceCount > 1
                         ? ` · ${row.serviceCount} líneas`
                         : ""}
                     </td>
-                    <td className="px-3 py-2 text-xs">
+                    <td className="text-xs">
                       {statusLabels[row.status] ?? row.status}
                     </td>
-                    <td className="px-3 py-2 text-xs">
+                    <td className="text-xs">
                       <span
                         className={
                           row.status !== "SCHEDULED" &&
@@ -447,7 +447,7 @@ export default async function RecoveryCampaignsPage({
                         {row.attemptsToday} / {baseRecoveryMinimumDailyAttempts}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-xs">
+                    <td className="text-xs">
                       <span
                         className={
                           row.overdue
@@ -458,7 +458,7 @@ export default async function RecoveryCampaignsPage({
                         {row.nextActionAtLabel ?? "—"}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-xs">
+                    <td className="text-xs">
                       <Link
                         className="text-ui-accent underline-offset-2 hover:underline"
                         href={`/recovery/campaigns/${row.id}`}

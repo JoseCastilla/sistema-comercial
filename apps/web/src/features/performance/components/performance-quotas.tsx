@@ -113,8 +113,8 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
             </div>
           </header>
 
-          <div className="performance-table-wrap">
-            <table className="performance-table">
+          <div className="ui-table-wrap">
+            <table className="ui-table ui-table--figures">
               <thead>
                 <tr>
                   <th>Asesor</th>
