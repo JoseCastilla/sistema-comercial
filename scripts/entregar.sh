@@ -74,6 +74,12 @@ verificar() {
   return 1
 }
 
+# El mensaje viaja por archivo. `git merge -F -` no lee la entrada estándar
+# —lo aprendimos con una entrega a medio camino—, y usar el mismo camino en
+# el commit y en el merge evita volver a tropezar.
+REDACCION="$(mktemp)"
+trap 'rm -f "$REDACCION"' EXIT
+
 if [ "$VERIFICAR" -eq 1 ]; then
   verificar "Verificado el cambio (pruebas, lint, tipos)"
 else
@@ -82,9 +88,13 @@ fi
 
 echo "→ Rama $RAMA"
 git checkout -b "$RAMA" 2>/dev/null || git checkout "$RAMA"
-git add -A
-printf '%s\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n' "$MENSAJE" |
-  git commit -q -F -
+# `git add` avisa de cada final de línea convertido: ruido, no información.
+git add -A 2>/dev/null
+{
+  printf '%s\n\n' "$MENSAJE"
+  printf 'Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n'
+} >"$REDACCION"
+git commit -q -F "$REDACCION"
 git push -q -u origin "$RAMA"
 
 if [ "$SOLO_RAMA" -eq 1 ]; then
@@ -96,9 +106,11 @@ fi
 echo "→ Integrando en main"
 git checkout -q main
 git pull -q --ff-only
-TITULO="$(printf '%s' "$MENSAJE" | head -1)"
-printf 'Merge: %s\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n' "$TITULO" |
-  git merge --no-ff "$RAMA" -F - >/dev/null
+{
+  printf 'Merge: %s\n\n' "$(printf '%s' "$MENSAJE" | head -1)"
+  printf 'Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n'
+} >"$REDACCION"
+git merge --no-ff "$RAMA" -F "$REDACCION" >/dev/null
 
 if [ "$VERIFICAR" -eq 1 ]; then
   # Lo que se publica es main integrado, no la rama: es lo que hay que probar.
