@@ -8,7 +8,7 @@ import { ThemeControl } from "@repo/ui/theme-control";
 
 import { EscalationNotification } from "./escalation-notification";
 
-type ActiveSection =
+export type ActiveSection =
   | "performance"
   | "orders"
   | "dni"
@@ -40,7 +40,7 @@ const SECTION_BY_PATH_PREFIX: readonly (readonly [string, ActiveSection])[] = [
   ["/tools", "tools"],
 ];
 
-function sectionForPath(pathname: string): ActiveSection {
+export function sectionForPath(pathname: string): ActiveSection {
   const match = SECTION_BY_PATH_PREFIX.find(
     ([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

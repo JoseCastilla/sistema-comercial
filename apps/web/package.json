@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "check-types": "next typegen && tsc --noEmit",
     "auth:create-initial-admin": "pnpm --filter @repo/database run build && node scripts/create-initial-admin.mjs",
     "format": "prettier --write src scripts package.json tsconfig.json",
@@ -26,12 +28,16 @@
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "eslint": "^9.39.1",
+    "jsdom": "^30.0.1",
     "postcss": "^8.4.31",
     "tailwindcss": "^4.3.3",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^3.2.7"
   }
 }
