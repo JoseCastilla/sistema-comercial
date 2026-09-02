@@ -51,16 +51,31 @@ if [ -z "${MENSAJE// }" ]; then
   exit 2
 fi
 
+# La verificación de nueve paquetes escupe decenas de miles de caracteres.
+# Volcarlos sería gastar en ruido justo lo que este script viene a ahorrar:
+# en verde basta una línea, y solo si algo falla importa el detalle.
 verificar() {
-  echo "→ $1"
+  local etapa="$1"
+  local registro
+  registro="$(mktemp)"
+
   # Turbo cachea: repetir la verificación tras el merge cuesta segundos.
-  pnpm test
-  pnpm lint
-  pnpm check-types
+  if pnpm test >"$registro" 2>&1 &&
+    pnpm lint >>"$registro" 2>&1 &&
+    pnpm check-types >>"$registro" 2>&1; then
+    echo "✓ $etapa"
+    rm -f "$registro"
+    return 0
+  fi
+
+  echo "✗ $etapa" >&2
+  tail -n 40 "$registro" >&2
+  echo "  registro completo en $registro" >&2
+  return 1
 }
 
 if [ "$VERIFICAR" -eq 1 ]; then
-  verificar "Verificando el cambio (pruebas, lint, tipos)"
+  verificar "Verificado el cambio (pruebas, lint, tipos)"
 else
   echo "→ Verificación saltada por --sin-verificar"
 fi
@@ -87,7 +102,7 @@ printf 'Merge: %s\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n' "$
 
 if [ "$VERIFICAR" -eq 1 ]; then
   # Lo que se publica es main integrado, no la rama: es lo que hay que probar.
-  verificar "Verificando main ya integrado"
+  verificar "Verificado main ya integrado"
 fi
 
 git push -q origin main

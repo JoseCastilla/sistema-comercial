@@ -28,7 +28,12 @@ El porqué del cambio: qué no funcionaba y qué decide ahora.
 MSG
 ```
 
-El script verifica (`pnpm test`, `lint`, `check-types`), crea la rama,
+El script **no vuelca la salida de las herramientas**: en verde imprime una
+línea por etapa, y solo si algo falla enseña las últimas 40 líneas y dónde
+está el registro completo. Volcar los miles de caracteres de turbo gastaría
+en ruido justo lo que este script viene a ahorrar.
+
+Verifica (`pnpm test`, `lint`, `check-types`), crea la rama,
 commitea con el `Co-Authored-By`, publica la rama, integra en `main` con
 `--no-ff`, **vuelve a verificar sobre main ya integrado** y publica `main`.
 Si algo falla, se detiene: `set -e`.
