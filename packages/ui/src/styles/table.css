@@ -145,4 +145,62 @@
     color: var(--ui-accent);
     font-weight: 750;
   }
+
+  /*
+   * Color por resultado del ultimo intento.
+   *
+   * Solo el borde izquierdo, no el fondo de la fila: en una cola larga un
+   * fondo por fila convierte la tabla en un semaforo y deja de leerse. El
+   * borde marca el estado sin competir con el contenido, y el color sigue
+   * significando lo mismo que en el resto de la plataforma.
+   */
+  .ui-table tr[data-result-tone] td:first-child {
+    border-left: 3px solid transparent;
+  }
+
+  .ui-table tr[data-result-tone="success"] td:first-child {
+    border-left-color: var(--ui-success);
+  }
+
+  .ui-table tr[data-result-tone="warning"] td:first-child {
+    border-left-color: var(--ui-warning);
+  }
+
+  .ui-table tr[data-result-tone="danger"] td:first-child {
+    border-left-color: var(--ui-danger);
+  }
+
+  .ui-table tr[data-result-tone="info"] td:first-child {
+    border-left-color: var(--ui-info);
+  }
+
+  /* Boton que despliega la ficha del cliente sin salir de la cola. */
+  .ui-row-toggle {
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 999px;
+    color: var(--ui-text-muted);
+    background: transparent;
+    font-size: var(--ui-text-2xs);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .ui-row-toggle:hover {
+    color: var(--ui-text);
+    background: var(--ui-surface-subtle);
+  }
+
+  .ui-row-toggle:focus-visible {
+    outline: none;
+    box-shadow: var(--ui-focus);
+  }
+
+  /* Ficha desplegada: se distingue de las filas sin parecer otra tabla. */
+  .ui-row-panel {
+    padding: 0.85rem 0.75rem;
+    background: var(--ui-surface-subtle);
+    font-size: var(--ui-text-xs);
+    white-space: normal;
+  }
 }

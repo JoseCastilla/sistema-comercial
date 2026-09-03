@@ -91,9 +91,12 @@
 - [x] Prioridad al inicio de la cola al vencer la habilitación (BR-039): la
       toma del pool y el orden del reparto sirven primero las habilitaciones
       vencidas.
-- [x] Revelación auditada de datos sensibles (BR-045/BR-046, AC-021): solo el
-      asesor asignado, solo con `Validacion = false`, solo tras un intento
-      `INTERESADO`, mediante acción explícita que registra actor y momento.
+- [x] ~~Revelación auditada de datos sensibles (BR-045/BR-046, AC-021)~~
+      **Retirada el 03/09/2026** por decisión de producto: padre, madre y
+      nacimiento se muestran al asesor que gestiona el caso, en la cola y en
+      la ficha, sin acción previa. Las revelaciones ya auditadas se conservan
+      y se siguen mostrando donde ocurrieron. Ver la sección "Ficha del
+      cliente en la cola" y la spec (BR-045 revisada, BR-046 retirada).
 - [ ] Reasignación individual supervisada de un caso de base con gestión
       iniciada (BR-030); la redistribución masiva cubre solo los no
       trabajados.
@@ -355,6 +358,36 @@
       crear un caso, mirando todos los casos del cliente y no solo el
       abierto. El evento de avistamiento se escribe solo si hubo
       avistamiento nuevo.
+
+## Ficha del cliente en la cola (03/09/2026)
+
+Origen: el asesor tenía que entrar a la ficha completa para ver los datos del
+cliente, y eso lo sacaba de su cola —filtro, posición y el hilo de a quién
+venía llamando—.
+
+- [x] "Ver datos" despliega la ficha en la propia fila: identidad del titular,
+      todos los teléfonos de contacto, dónde entregar (dirección compuesta,
+      ubicación, referencia, indicaciones y enlace al mapa) y líneas a portar.
+      La cola trae esos campos en la misma lectura; sin viajes extra.
+- [x] "Abrir" sigue siendo la ficha completa: detalle, historial y registro
+      del intento.
+- [x] Al registrar un intento desde campañas el asesor vuelve a su cola con el
+      mensaje de éxito, que lleva información operativa (intentos del día,
+      cadencia agotada). El destino es un parámetro del formulario: en
+      recupero de ventas se queda donde está.
+- [x] `SIN_RESPUESTA` se muestra como «No contesta» y `RECHAZA` como «No
+      interesado»; el valor persistido no cambia, así que histórico y conteos
+      siguen cuadrando. Se agrega `CANCELADO`: pausa la cadencia como
+      `RECHAZA` y no cierra el caso. Migración
+      `20260903000000_add_cancelado_attempt_result`.
+- [x] Rótulos de resultado en un solo módulo (`attempt-result-labels.ts`);
+      vivían duplicados en tres pantallas.
+- [x] Color por resultado del último intento en el borde izquierdo de la fila,
+      no en el fondo.
+- [x] Composición de dirección y lectura de coordenadas en `contact-summary.ts`,
+      compartido entre la ficha y la cola.
+- [ ] Mapa embebido (OpenStreetMap) en la ficha completa; en la cola queda el
+      enlace para no enviar coordenadas a un tercero por cada fila abierta.
 
 ## Superficie y honestidad de datos (31/08/2026)
 

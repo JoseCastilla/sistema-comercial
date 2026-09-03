@@ -1,6 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { attemptResultChoiceLabels } from "../attempt-result-labels";
 
 import { registerRecoveryAttemptAction } from "../server/register-recovery-attempt-action";
 
@@ -19,25 +22,35 @@ const channelLabels: Record<string, string> = {
   OTRO: "Otro",
 };
 
-const resultLabels: Record<string, string> = {
-  SIN_RESPUESTA: "Sin respuesta",
-  INTERESADO: "Interesado",
-  INTERESADO_CON_PEDIDO: "Interesado · tiene pedido en curso",
-  RECHAZA: "Rechaza (pausa 1–2 días)",
-  AGENDA: "Agenda una próxima llamada",
-  NUMERO_ERRADO: "Número errado",
-  NO_CUMPLE_30D: "No cumple los 30 días de porta",
-  YA_ACTIVO: "Ya está activo en Movistar (pasa a verificación)",
-  DATOS_INVALIDOS: "Datos inválidos",
-  VENDIDO: "Vendido: aceptó de nuevo",
-};
+const resultLabels = attemptResultChoiceLabels;
 
-export function RegisterAttemptForm({ caseId }: { caseId: string }) {
+export function RegisterAttemptForm({
+  caseId,
+  returnTo,
+}: {
+  caseId: string;
+  /**
+   * Adónde vuelve el asesor al registrar el intento. En campañas es su cola:
+   * la llamada terminó y lo que sigue es el próximo caso, no quedarse en la
+   * ficha del que acaba de gestionar. Sin este dato el formulario se queda
+   * donde está, que es lo correcto en recupero de ventas.
+   */
+  returnTo?: string;
+}) {
+  const router = useRouter();
   const [state, action, pending] = useActionState(
     registerRecoveryAttemptAction,
     initialState,
   );
   const [result, setResult] = useState("SIN_RESPUESTA");
+
+  // El mensaje de éxito lleva información operativa —cuántos intentos van hoy,
+  // si la cadencia se agotó— así que viaja a la cola en vez de perderse con la
+  // navegación.
+  useEffect(() => {
+    if (!returnTo || state.type !== "success") return;
+    router.push(`${returnTo}?intento=${encodeURIComponent(state.message)}`);
+  }, [returnTo, router, state, state.message, state.type]);
 
   return (
     <form action={action} className="space-y-3">

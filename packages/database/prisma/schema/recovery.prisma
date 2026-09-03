@@ -45,6 +45,9 @@ enum RecoveryAttemptResult {
   YA_ACTIVO
   DATOS_INVALIDOS
   VENDIDO
+  /// El cliente cancela la gestión. Pausa la cadencia como RECHAZA; no cierra
+  /// el caso, de modo que un error se corrige sin perder el registro.
+  CANCELADO
 }
 
 enum RecoveryCaseStatus {

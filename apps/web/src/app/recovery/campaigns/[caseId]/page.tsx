@@ -4,26 +4,14 @@ import { notFound } from "next/navigation";
 import { CopyValue } from "@/features/recovery/components/copy-value";
 import { RegisterAttemptForm } from "@/features/recovery/components/register-attempt-form";
 import { ResolveCaseForm } from "@/features/recovery/components/resolve-case-form";
-import { RevealSensitiveForm } from "@/features/recovery/components/reveal-sensitive-form";
 import { VerifyReportedForm } from "@/features/recovery/components/verify-reported-form";
 import { getCampaignCase } from "@/features/recovery/server/get-campaign-case";
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import { formatCount } from "@repo/ui/format";
+import { attemptResultLabels } from "@/features/recovery/attempt-result-labels";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
-
-const attemptResultLabels: Record<string, string> = {
-  SIN_RESPUESTA: "Sin respuesta",
-  INTERESADO: "Interesado",
-  RECHAZA: "Rechaza",
-  AGENDA: "Agenda",
-  NUMERO_ERRADO: "Número errado",
-  NO_CUMPLE_30D: "No cumple los 30 días para portar",
-  YA_ACTIVO: "Ya activo",
-  DATOS_INVALIDOS: "Datos inválidos",
-  VENDIDO: "Vendido",
-};
 
 const portabilityLabels: Record<string, string> = {
   PORTADO: "Portado",
@@ -262,37 +250,41 @@ export default async function CampaignCasePage({
           ) : null}
         </SectionPanel>
 
-        {detail.sensitive.requiresValidation ? (
-          <SectionPanel
-            title="Validación de identidad"
-            description="Datos sensibles del titular: se muestran solo al asesor asignado y después de registrar un intento donde el cliente se muestre interesado."
-          >
-            {detail.sensitive.revealed ? (
-              <div className="space-y-1 text-sm">
-                <p>Padre: {detail.sensitive.fatherName ?? "—"}</p>
-                <p>Madre: {detail.sensitive.motherName ?? "—"}</p>
-                <p>Nacimiento: {detail.sensitive.birthPlace ?? "—"}</p>
-                <p className="text-xs text-ui-muted">
-                  Revelados el {detail.sensitive.revealedAtLabel}.
-                </p>
-              </div>
-            ) : detail.sensitive.canReveal ? (
-              <RevealSensitiveForm caseId={detail.id} />
-            ) : (
-              <p className="text-sm text-ui-muted">
-                {detail.sensitive.revealMissing ??
-                  "Los datos permanecen ocultos en este caso."}
-              </p>
-            )}
-          </SectionPanel>
-        ) : null}
+        <SectionPanel
+          title="Identidad del titular"
+          description="Datos de RENIEC para confirmar con quién estás hablando."
+        >
+          <dl className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <dt className="ui-label-eyebrow">Padre</dt>
+              <dd>{detail.sensitive.fatherName ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="ui-label-eyebrow">Madre</dt>
+              <dd>{detail.sensitive.motherName ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="ui-label-eyebrow">Nacimiento</dt>
+              <dd>{detail.sensitive.birthPlace ?? "—"}</dd>
+            </div>
+          </dl>
+          {detail.sensitive.revealedAtLabel ? (
+            <p className="mt-3 text-xs text-ui-muted">
+              Este caso registra una revelación auditada el{" "}
+              {detail.sensitive.revealedAtLabel}.
+            </p>
+          ) : null}
+        </SectionPanel>
 
         {detail.canManage && !detail.isResolved ? (
           <SectionPanel
             title="Registrar intento"
             description="Lo que registres no se puede editar después. Si no contesta, intenta 3 veces en el día; si agendas, se pausa hasta la fecha acordada."
           >
-            <RegisterAttemptForm caseId={detail.id} />
+            <RegisterAttemptForm
+              caseId={detail.id}
+              returnTo="/recovery/campaigns"
+            />
           </SectionPanel>
         ) : null}
 

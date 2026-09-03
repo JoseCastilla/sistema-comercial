@@ -7,7 +7,13 @@ import {
   isBaseRecoveryResolutionDue,
 } from "@repo/validation";
 
-import { CopyValue } from "@/features/recovery/components/copy-value";
+import { CampaignQueueRow } from "@/features/recovery/components/campaign-queue-row";
+import {
+  buildMapsUrl,
+  composeAddress,
+  readContactSummary,
+  readCoordinates,
+} from "@/features/recovery/contact-summary";
 import { TakePoolBlockForm } from "@/features/recovery/components/take-pool-block-form";
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -52,12 +58,20 @@ const pageSize = 100;
 export default async function RecoveryCampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ department?: string; plan?: string; page?: string }>;
+  searchParams: Promise<{
+    department?: string;
+    plan?: string;
+    page?: string;
+    intento?: string;
+  }>;
 }) {
   const { session, membership } = await requireCommercialAccess();
   const parameters = await searchParams;
   const departmentFilter = parameters.department ?? "";
   const planFilter = (parameters.plan ?? "").trim().slice(0, 100);
+  // Confirmación del intento que el asesor acaba de registrar: vuelve con él
+  // desde la ficha para que no pierda el dato de cuántos intentos lleva hoy.
+  const attemptNotice = (parameters.intento ?? "").trim().slice(0, 300);
   const page = Math.max(1, Number.parseInt(parameters.page ?? "1", 10) || 1);
 
   // BR-077: al abrir la cola, lo abandonado ya volvió al pool.
@@ -110,6 +124,12 @@ export default async function RecoveryCampaignsPage({
           claimedAt: true,
           nextActionAt: true,
           portabilityEligibleAt: true,
+          fatherName: true,
+          motherName: true,
+          birthPlace: true,
+          province: true,
+          district: true,
+          contactSummary: true,
           services: {
             where: { discardedAt: null },
             select: {
@@ -124,7 +144,6 @@ export default async function RecoveryCampaignsPage({
           },
           phones: {
             where: { kind: "CONTACT", invalidMarkedAt: null },
-            take: 1,
             select: { phoneNumber: true },
           },
           attempts: {
@@ -216,8 +235,29 @@ export default async function RecoveryCampaignsPage({
         lastResult === "INTERESADO_CON_PEDIDO" &&
         String(item.status) !== "WAITING",
       id: item.id,
+      lastResult,
       holderName: item.holderName,
       documentNumber: item.documentNumber,
+      fatherName: item.fatherName,
+      motherName: item.motherName,
+      birthPlace: item.birthPlace,
+      phones: item.phones.map((phone) => phone.phoneNumber),
+      location: [item.department, item.province, item.district]
+        .filter(Boolean)
+        .join(" · "),
+      address: composeAddress(readContactSummary(item.contactSummary)),
+      reference: readContactSummary(item.contactSummary).reference ?? null,
+      deliveryInstructions:
+        readContactSummary(item.contactSummary).shippingInstructions ?? null,
+      mapsUrl: buildMapsUrl(
+        readCoordinates(readContactSummary(item.contactSummary)),
+      ),
+      services: item.services.map((service) => ({
+        serviceNumber: service.serviceNumber,
+        planRaw: service.planRaw,
+        carrierRaw: service.carrierRaw,
+        isPlantLine: service.isPlantLine,
+      })),
       department: item.department,
       status: String(item.status),
       planSummary: summarizePlan(item.services[0]?.planRaw ?? null),
@@ -272,6 +312,15 @@ export default async function RecoveryCampaignsPage({
           title="Mi cola de campaña"
           description="Tus casos de base asignados y los casos libres de tu equipo. Un caso sin respuesta exige tres intentos en el día."
         />
+
+        {attemptNotice ? (
+          <p
+            className="rounded-lg border border-ui-success bg-ui-success-soft px-3 py-2 text-sm text-ui-success"
+            role="status"
+          >
+            {attemptNotice}
+          </p>
+        ) : null}
 
         <MetricGroup>
           <Metric emphasis="hero" label="Mis casos abiertos" value={myTotal} />
@@ -373,100 +422,19 @@ export default async function RecoveryCampaignsPage({
                   <th>Operador</th>
                   <th>Plan</th>
                   <th>Estado</th>
-                  <th>Intentos hoy</th>
+                  <th data-numeric>Intentos hoy</th>
                   <th>Próxima acción</th>
                   <th data-actions />
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="font-medium text-ui-text">
-                      {row.holderName}
-                      {row.resolutionDue ? (
-                        <span className="ml-2 rounded-full bg-ui-danger-soft px-2 py-0.5 text-[11px] text-ui-danger">
-                          Resolver hoy
-                        </span>
-                      ) : null}
-                      {row.habilitationOverdue ? (
-                        <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-[11px] text-ui-warning">
-                          Ya puede portar
-                        </span>
-                      ) : null}
-                      {row.interestedWithOrder ? (
-                        <span className="ml-2 rounded-full bg-ui-accent-soft px-2 py-0.5 text-[11px] text-ui-accent">
-                          Tenía pedido en curso: pregunta si se cayó
-                        </span>
-                      ) : null}
-                    </td>
-                    <td>
-                      {row.phone ? (
-                        <CopyValue label="Teléfono" value={row.phone} />
-                      ) : (
-                        <span className="text-xs text-ui-muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      <CopyValue label="DNI" value={row.documentNumber} />
-                    </td>
-                    <td className="text-xs">
-                      {row.origin ? (
-                        <>
-                          <span className="font-medium text-ui-text">
-                            {row.origin.operator}
-                          </span>
-                          {row.origin.detail ? (
-                            <span className="block text-[11px] text-ui-muted">
-                              {row.origin.detail}
-                            </span>
-                          ) : null}
-                        </>
-                      ) : (
-                        <span className="text-ui-muted">—</span>
-                      )}
-                    </td>
-                    <td className="text-xs text-ui-muted">
-                      {row.planSummary}
-                      {row.serviceCount > 1
-                        ? ` · ${row.serviceCount} líneas`
-                        : ""}
-                    </td>
-                    <td className="text-xs">
-                      {statusLabels[row.status] ?? row.status}
-                    </td>
-                    <td className="text-xs">
-                      <span
-                        className={
-                          row.status !== "SCHEDULED" &&
-                          row.status !== "WAITING" &&
-                          row.attemptsToday < baseRecoveryMinimumDailyAttempts
-                            ? "font-semibold text-ui-warning"
-                            : "text-ui-muted"
-                        }
-                      >
-                        {row.attemptsToday} / {baseRecoveryMinimumDailyAttempts}
-                      </span>
-                    </td>
-                    <td className="text-xs">
-                      <span
-                        className={
-                          row.overdue
-                            ? "font-semibold text-ui-danger"
-                            : "text-ui-muted"
-                        }
-                      >
-                        {row.nextActionAtLabel ?? "—"}
-                      </span>
-                    </td>
-                    <td className="text-xs">
-                      <Link
-                        className="text-ui-accent underline-offset-2 hover:underline"
-                        href={`/recovery/campaigns/${row.id}`}
-                      >
-                        Abrir
-                      </Link>
-                    </td>
-                  </tr>
+                  <CampaignQueueRow
+                    key={row.id}
+                    minimumDailyAttempts={baseRecoveryMinimumDailyAttempts}
+                    row={row}
+                    statusLabel={statusLabels[row.status] ?? row.status}
+                  />
                 ))}
                 {rows.length === 0 ? (
                   <tr>

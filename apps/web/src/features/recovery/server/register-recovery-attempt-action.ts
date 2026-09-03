@@ -40,6 +40,7 @@ const results = new Set([
   "YA_ACTIVO",
   "DATOS_INVALIDOS",
   "VENDIDO",
+  "CANCELADO",
 ]);
 
 const openStatuses = [
@@ -185,7 +186,10 @@ export async function registerRecoveryAttemptAction(
      * curso" agenda solo para mañana y también entra a revalidación diaria:
      * el cruce vigila si el pedido ajeno prospera o cae.
      */
-    if (isBaseCase && (result === "YA_ACTIVO" || result === "INTERESADO_CON_PEDIDO")) {
+    if (
+      isBaseCase &&
+      (result === "YA_ACTIVO" || result === "INTERESADO_CON_PEDIDO")
+    ) {
       await transaction.recoveryCaseService.updateMany({
         where: { caseId: recoveryCase.id, discardedAt: null },
         data: { needsRevalidation: true },
@@ -196,8 +200,7 @@ export async function registerRecoveryAttemptAction(
         data: {
           status: result === "YA_ACTIVO" ? "WAITING" : "SCHEDULED",
           firstContactAt: recoveryCase.firstContactAt ?? now,
-          nextActionAt:
-            result === "YA_ACTIVO" ? null : getNextLimaMorning(now),
+          nextActionAt: result === "YA_ACTIVO" ? null : getNextLimaMorning(now),
         },
       });
 
@@ -211,11 +214,13 @@ export async function registerRecoveryAttemptAction(
     }
 
     // BR-034: la agenda suspende la cadencia; BR-033: el rechazo pausa 1–2
-    // días; el resto sigue la cadencia de su fuente (BR-031).
+    // días; el resto sigue la cadencia de su fuente (BR-031). La cancelación
+    // pausa igual que el rechazo y no cierra el caso: si el resultado se
+    // registró por error se corrige sin perder el historial del intento.
     const nextActionAt =
       result === "AGENDA"
         ? scheduledAt
-        : result === "RECHAZA"
+        : result === "RECHAZA" || result === "CANCELADO"
           ? getInternalRecoveryPauseUntil(now, pauseDays)
           : isBaseCase
             ? getBaseRecoveryNextTouchAt(attemptsToday, now)
@@ -238,6 +243,7 @@ export async function registerRecoveryAttemptAction(
       mustResolve:
         result !== "AGENDA" &&
         result !== "RECHAZA" &&
+        result !== "CANCELADO" &&
         (isBaseCase
           ? isBaseRecoveryResolutionDue(managedSince, now)
           : getInternalRecoveryNextTouchAt(managedSince, now) === null),
@@ -247,7 +253,8 @@ export async function registerRecoveryAttemptAction(
   if (outcome.kind === "NOT_FOUND") {
     return {
       type: "error",
-      message: "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
+      message:
+        "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
     };
   }
 
