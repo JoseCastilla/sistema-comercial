@@ -171,6 +171,15 @@ export default async function CampaignCasePage({
                 Indicaciones: {detail.deliveryInstructions}
               </p>
             ) : null}
+            {detail.osmEmbedUrl ? (
+              <iframe
+                className="mt-2 h-64 w-full rounded-lg border border-ui-border"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                src={detail.osmEmbedUrl}
+                title={`Ubicación de entrega de ${detail.holderName}`}
+              />
+            ) : null}
             {detail.mapsUrl ? (
               <p className="mt-1">
                 <a

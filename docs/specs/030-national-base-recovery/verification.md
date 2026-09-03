@@ -623,6 +623,31 @@ interesado», y volver a la bandeja al registrar.
   `migrate deploy`, que no las afecta. Conviene confirmar si producción las
   tiene antes de cualquier `migrate dev` futuro.
 
+### Mapa embebido en la ficha del caso — 03/09/2026
+
+Origen: el asesor preguntó si el mapa podía verse dentro de la plataforma o
+si había que salir a Google Maps. Se eligió OpenStreetMap porque no exige
+clave ni cuenta, y se embebe solo en la ficha completa: en la cola queda el
+enlace, para no enviar las coordenadas de cada cliente a un tercero por cada
+fila que se despliegue.
+
+1. **Reglas puras**: 9 pruebas en `contact-summary.test.ts` sobre la
+   composición de la dirección, la lectura de coordenadas (descarta el `0,0`
+   con que la base marca la ausencia y los valores no numéricos) y las dos
+   URLs: el enlace a Google Maps y el embebido de OpenStreetMap con `bbox`,
+   `marker` y `layer=mapnik`, sin ningún parámetro de clave. 55 pruebas en
+   verde en `apps/web`; lint y tipos limpios.
+2. **Estructura**: el `<iframe>` lleva `title` con el nombre del titular,
+   `loading="lazy"` y `referrerPolicy="no-referrer"`, y solo se renderiza
+   cuando la base trae coordenadas válidas. El enlace externo se conserva.
+3. **Sin CSP** en la aplicación (`next.config` y `proxy` no fijan
+   `frame-src`), así que el embebido carga sin cambios de cabeceras.
+
+**Limitación declarada**: la ficha no se abrió en el navegador con el mapa
+puesto —al recrearse el panel se perdió la sesión y el asistente no puede
+iniciarla—. La URL y sus condiciones quedaron cubiertas por pruebas; la carga
+visual del mapa queda por confirmar con una sesión de asesor.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de

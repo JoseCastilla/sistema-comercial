@@ -51,3 +51,28 @@ export function buildMapsUrl(coordinates: Coordinates | null): string | null {
     ? `https://maps.google.com/?q=${coordinates.latitude},${coordinates.longitude}`
     : null;
 }
+
+/**
+ * Mapa embebido de OpenStreetMap: no necesita clave ni cuenta. Se usa solo en
+ * la ficha completa —un caso por vez, abierto a propósito—; en la cola queda
+ * el enlace, porque diez filas desplegadas cargarían diez mapas y enviarían
+ * las coordenadas de diez clientes a un tercero sin que nadie lo pidiera.
+ */
+export function buildOsmEmbedUrl(
+  coordinates: Coordinates | null,
+): string | null {
+  if (!coordinates) return null;
+
+  const { latitude, longitude } = coordinates;
+  const delta = 0.004;
+  const bbox = [
+    longitude - delta,
+    latitude - delta,
+    longitude + delta,
+    latitude + delta,
+  ]
+    .map((value) => value.toFixed(6))
+    .join(",");
+
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+}
