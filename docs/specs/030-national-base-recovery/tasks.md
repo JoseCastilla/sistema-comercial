@@ -386,8 +386,9 @@ venía llamando—.
       no en el fondo.
 - [x] Composición de dirección y lectura de coordenadas en `contact-summary.ts`,
       compartido entre la ficha y la cola.
-- [ ] Mapa embebido (OpenStreetMap) en la ficha completa; en la cola queda el
-      enlace para no enviar coordenadas a un tercero por cada fila abierta.
+- [x] Mapa embebido (OpenStreetMap) en la ficha completa, sin clave ni cuenta;
+      el enlace a Google Maps se conserva. En la cola queda solo el enlace
+      para no enviar coordenadas a un tercero por cada fila abierta.
 
 ## Superficie y honestidad de datos (31/08/2026)
 

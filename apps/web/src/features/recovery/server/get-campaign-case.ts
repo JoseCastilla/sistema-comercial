@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   buildMapsUrl,
+  buildOsmEmbedUrl,
   composeAddress,
   readContactSummary,
   readCoordinates,
@@ -47,6 +48,8 @@ export interface CampaignCaseDetail {
   deliveryInstructions: string | null;
   /** Enlace a mapas cuando la base trae coordenadas. */
   mapsUrl: string | null;
+  /** Mapa embebible (OpenStreetMap) cuando hay coordenadas. */
+  osmEmbedUrl: string | null;
   status: string;
   teamName: string | null;
   assignedToName: string | null;
@@ -264,6 +267,7 @@ export async function getCampaignCase(
     reference: summary.reference ?? null,
     deliveryInstructions: summary.shippingInstructions ?? null,
     mapsUrl: buildMapsUrl(coordinates),
+    osmEmbedUrl: buildOsmEmbedUrl(coordinates),
     status: String(recoveryCase.status),
     teamName: recoveryCase.assignedTeam?.name ?? null,
     assignedToName: recoveryCase.assignedUser?.name ?? null,
