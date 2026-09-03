@@ -92,7 +92,7 @@ git checkout -b "$RAMA" 2>/dev/null || git checkout "$RAMA"
 git add -A 2>/dev/null
 {
   printf '%s\n\n' "$MENSAJE"
-  printf 'Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n'
+  printf 'Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\n'
 } >"$REDACCION"
 git commit -q -F "$REDACCION"
 
@@ -121,7 +121,7 @@ git checkout -q main
 git pull -q --ff-only
 {
   printf 'Merge: %s\n\n' "$(printf '%s' "$MENSAJE" | head -1)"
-  printf 'Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n'
+  printf 'Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\n'
 } >"$REDACCION"
 git merge --no-ff "$RAMA" -F "$REDACCION" >/dev/null
 

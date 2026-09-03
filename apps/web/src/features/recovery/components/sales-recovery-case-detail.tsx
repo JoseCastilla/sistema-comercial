@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { PageHeader } from "@repo/ui/page-header";
+import { attemptResultLabels } from "../attempt-result-labels";
 
 import { RegisterAttemptForm } from "./register-attempt-form";
 import { ResolveCaseForm } from "./resolve-case-form";
@@ -42,17 +43,7 @@ const channelLabels: Record<string, string> = {
   OTRO: "Otro",
 };
 
-const resultLabels: Record<string, string> = {
-  SIN_RESPUESTA: "Sin respuesta",
-  INTERESADO: "Interesado",
-  RECHAZA: "Rechaza",
-  AGENDA: "Agenda",
-  NUMERO_ERRADO: "Número errado",
-  NO_CUMPLE_30D: "No cumple los 30 días para portar",
-  YA_ACTIVO: "Ya activo",
-  DATOS_INVALIDOS: "Datos inválidos",
-  VENDIDO: "Vendido",
-};
+const resultLabels = attemptResultLabels;
 
 export function SalesRecoveryCaseDetail({
   data,

@@ -12,20 +12,20 @@
 
 `C:\Users\NeuroHack\Desktop\Base\Base Diaria\Base_Consolidada_2026-08-26.xlsx`
 
-| Propiedad | Valor |
-|---|---|
-| Hoja | `Base Consolidada` |
-| Columnas | 42 (`A`–`AP`), encabezado en la fila 1 |
-| Filas de datos | 7 407 |
-| Origen | ~68 archivos por punto de venta, consolidados por `merge.py` |
+| Propiedad      | Valor                                                        |
+| -------------- | ------------------------------------------------------------ |
+| Hoja           | `Base Consolidada`                                           |
+| Columnas       | 42 (`A`–`AP`), encabezado en la fila 1                       |
+| Filas de datos | 7 407                                                        |
+| Origen         | ~68 archivos por punto de venta, consolidados por `merge.py` |
 
 ### Ventana de tres días confirmada
 
 `Fecha de Registro de Pedido` cubre exactamente tres días:
 
-| Fecha | Filas |
-|---|---|
-| 2026-08-23 | 664 |
+| Fecha      | Filas |
+| ---------- | ----- |
+| 2026-08-23 | 664   |
 | 2026-08-24 | 3 440 |
 | 2026-08-25 | 3 303 |
 
@@ -37,13 +37,13 @@ es de ~3 000 a 3 500 filas por día, no 7 400.
 
 Aplicando la configuración inicial de BR-011:
 
-| Paso | Filas |
-|---|---|
-| Base consolidada | 7 407 |
-| `Modalidad Origen` = `POST` | 6 047 |
-| + plan Máximo S/39.9 · 49.9 · 59.9 · 79.9 | 4 789 |
-| + `Equipo Móvil` = `Simcard` | 4 786 |
-| + con `Nro Servicio Móvil` presente | **4 786** |
+| Paso                                      | Filas     |
+| ----------------------------------------- | --------- |
+| Base consolidada                          | 7 407     |
+| `Modalidad Origen` = `POST`               | 6 047     |
+| + plan Máximo S/39.9 · 49.9 · 59.9 · 79.9 | 4 789     |
+| + `Equipo Móvil` = `Simcard`              | 4 786     |
+| + con `Nro Servicio Móvil` presente       | **4 786** |
 
 Este es el volumen diario que hoy se trabaja en Excel y que sustenta las
 decisiones de rendimiento del plan.
@@ -52,12 +52,12 @@ decisiones de rendimiento del plan.
 
 ### `Estado Pedido WC` — sustenta BR-027
 
-| Valor | Filas |
-|---|---|
-| APROBADO | 6 604 |
-| PENDIENTE | 441 |
-| RECHAZADO | 316 |
-| CAIDA | 46 |
+| Valor     | Filas |
+| --------- | ----- |
+| APROBADO  | 6 604 |
+| PENDIENTE | 441   |
+| RECHAZADO | 316   |
+| CAIDA     | 46    |
 
 Ninguno de estos valores indica si el pedido está enviado o cancelado. Confirma
 que el triage depende de una consulta externa manual, no de la base.
@@ -69,24 +69,24 @@ planes `Control` (1 487), `Movistar Total` y un `Máximo S/114.9` fuera de rango
 
 ### `Modalidad Origen` frente a tipo de plan — sustenta BR-012
 
-| Combinación | Filas |
-|---|---|
-| POST · Abierto | 4 796 |
-| POST · Control | 1 088 |
+| Combinación    | Filas   |
+| -------------- | ------- |
+| POST · Abierto | 4 796   |
+| POST · Control | 1 088   |
 | PREP · Abierto | **934** |
-| PREP · Control | 399 |
+| PREP · Control | 399     |
 
 Las 934 filas `PREP` con plan `Abierto` demuestran que los dos criterios son
 independientes y que filtrar por uno no implica el otro.
 
 ### `Equipo Móvil` — sustenta el carácter administrable de BR-010
 
-| Valor | Filas |
-|---|---|
-| Simcard | 7 404 |
-| XIAOMI REDMI NOTE 15 | 1 |
-| IPHONE AIR | 1 |
-| IPHONE 17 PRO MAX | 1 |
+| Valor                | Filas |
+| -------------------- | ----- |
+| Simcard              | 7 404 |
+| XIAOMI REDMI NOTE 15 | 1     |
+| IPHONE AIR           | 1     |
+| IPHONE 17 PRO MAX    | 1     |
 
 La presencia de equipos reales confirma que el filtro cambiará cuando el canal
 habilite la venta de equipos, prevista para septiembre de 2026.
@@ -107,12 +107,12 @@ Las 4 786 filas elegibles corresponden a **4 492 clientes distintos** por DNI
 normalizado:
 
 | Servicios por cliente | Clientes |
-|---|---|
-| 1 | 4 248 |
-| 2 | 208 |
-| 3 | 30 |
-| 4 | 4 |
-| 5 | 2 |
+| --------------------- | -------- |
+| 1                     | 4 248    |
+| 2                     | 208      |
+| 3                     | 30       |
+| 4                     | 4        |
+| 5                     | 2        |
 
 Un cliente puede traer dos o tres pedidos — hasta cinco servicios en esta base
 — y además teléfonos de contacto alternos que `merge.py` conserva como filas
@@ -126,15 +126,15 @@ siete columnas: `numero`, `receptor`, `cedente`, `asignatario_original`,
 `fecha_de_la_ventana`, `estado`, `numero_consultado`. Lo produce el script
 local `consulta_multiple.py` a partir de `numeros.txt`.
 
-| Clasificación | Números | Acción del sistema |
-|---|---|---|
-| Portado, receptor Movistar | 81 | Descarte `YA_ACTIVO` |
-| Portado, receptor otro operador | 521 | Oportunidad; habilitación = ventana + 30 días |
-| Programado → Movistar, con fecha | 280 | `WAITING`: chip entregado, portará sin problemas |
-| Programado → Movistar, sin fecha | 13 | `WAITING` con revalidación al día siguiente |
-| Programado → otro operador | 2 | Señal de competencia; agenda a ventana + 30 |
-| No portado, línea de planta (sin ventana) | 254 | Antigüedad indeterminable; cadencia normal |
-| No portado, con historial de ventana | 241 | Oportunidad con antigüedad conocida |
+| Clasificación                             | Números | Acción del sistema                               |
+| ----------------------------------------- | ------- | ------------------------------------------------ |
+| Portado, receptor Movistar                | 81      | Descarte `YA_ACTIVO`                             |
+| Portado, receptor otro operador           | 521     | Oportunidad; habilitación = ventana + 30 días    |
+| Programado → Movistar, con fecha          | 280     | `WAITING`: chip entregado, portará sin problemas |
+| Programado → Movistar, sin fecha          | 13      | `WAITING` con revalidación al día siguiente      |
+| Programado → otro operador                | 2       | Señal de competencia; agenda a ventana + 30      |
+| No portado, línea de planta (sin ventana) | 254     | Antigüedad indeterminable; cadencia normal       |
+| No portado, con historial de ventana      | 241     | Oportunidad con antigüedad conocida              |
 
 El hallazgo central: los 293 números programados hacia Movistar responden solos
 la pregunta del triage manual — ese cliente ya tiene un pedido avanzando y no
@@ -154,17 +154,17 @@ reporte completo sigue siendo el único que decide esperas y habilitaciones.
 de extremo a extremo por los servicios definitivos (API interna firmada con
 HMAC, no por scripts ad hoc).
 
-| Comprobación | Resultado |
-|---|---|
-| Migración `20260826204540_add_national_base_recovery_phase1` | Aplicada; 29 migraciones al día |
-| `@repo/validation test` | 145 pruebas, 16 nuevas del dominio de recupero |
-| `tsc --noEmit` api y web | Sin errores |
-| `eslint --max-warnings 0` validation, api y web | Sin errores |
-| Previsualización de `Base_Consolidada_2026-08-26.xlsx` | 7 407 leídas · 4 786 elegibles · 2 621 excluidas · 0 inválidas, en ~7 s — cumple AC-003 |
-| Confirmación del lote | **4 492 casos nuevos**, 4 786 filas aplicadas, ~104 s — cumple AC-004 |
-| Integridad | 4 780 servicios · 5 208 teléfonos · 4 786 avistamientos · 4 492 eventos · 244 casos multi-servicio (hasta 5 líneas por cliente) |
-| Reimportación del mismo archivo | `reused: true`, sin duplicados — cumple AC-002 |
-| Guinea Mobile (`27`) | Aceptado como cedente válido; 0 filas inválidas — cumple AC-006 |
+| Comprobación                                                 | Resultado                                                                                                                       |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| Migración `20260826204540_add_national_base_recovery_phase1` | Aplicada; 29 migraciones al día                                                                                                 |
+| `@repo/validation test`                                      | 145 pruebas, 16 nuevas del dominio de recupero                                                                                  |
+| `tsc --noEmit` api y web                                     | Sin errores                                                                                                                     |
+| `eslint --max-warnings 0` validation, api y web              | Sin errores                                                                                                                     |
+| Previsualización de `Base_Consolidada_2026-08-26.xlsx`       | 7 407 leídas · 4 786 elegibles · 2 621 excluidas · 0 inválidas, en ~7 s — cumple AC-003                                         |
+| Confirmación del lote                                        | **4 492 casos nuevos**, 4 786 filas aplicadas, ~104 s — cumple AC-004                                                           |
+| Integridad                                                   | 4 780 servicios · 5 208 teléfonos · 4 786 avistamientos · 4 492 eventos · 244 casos multi-servicio (hasta 5 líneas por cliente) |
+| Reimportación del mismo archivo                              | `reused: true`, sin duplicados — cumple AC-002                                                                                  |
+| Guinea Mobile (`27`)                                         | Aceptado como cedente válido; 0 filas inválidas — cumple AC-006                                                                 |
 
 Defectos encontrados y corregidos durante el uso real:
 
@@ -186,17 +186,17 @@ Migración `20260827044435_add_recovery_portability_cross` aplicada. El reporte
 real `resultado_portabilidad - ejemplo.csv` (1 392 filas, 1 255 números únicos)
 se cruzó contra los 4 492 casos cargados.
 
-| Comprobación | Resultado |
-|---|---|
-| `@repo/validation test` | 160 pruebas; 15 nuevas del dominio de portabilidad |
-| Cobertura del cruce | 997 de 1 255 números coincidieron con líneas de casos abiertos |
-| Duración | ~7 s |
-| Descartes `YA_ACTIVO` | 68 líneas → **61 casos cerrados** (7 clientes conservan otra línea viva) |
-| Esperas automáticas | **290 casos** a `WAITING` sin intervención del supervisor |
-| Revalidación sin fecha | 12 líneas marcadas para el reporte siguiente (BR-019e) |
-| Habilitaciones agendadas | 45 líneas con `ventana + 30 días` |
-| Líneas de planta | 150 marcadas, antigüedad indeterminable (BR-040) |
-| Reaplicar el mismo reporte | `reused: true`, sin volver a cruzar |
+| Comprobación               | Resultado                                                                |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `@repo/validation test`    | 160 pruebas; 15 nuevas del dominio de portabilidad                       |
+| Cobertura del cruce        | 997 de 1 255 números coincidieron con líneas de casos abiertos           |
+| Duración                   | ~7 s                                                                     |
+| Descartes `YA_ACTIVO`      | 68 líneas → **61 casos cerrados** (7 clientes conservan otra línea viva) |
+| Esperas automáticas        | **290 casos** a `WAITING` sin intervención del supervisor                |
+| Revalidación sin fecha     | 12 líneas marcadas para el reporte siguiente (BR-019e)                   |
+| Habilitaciones agendadas   | 45 líneas con `ventana + 30 días`                                        |
+| Líneas de planta           | 150 marcadas, antigüedad indeterminable (BR-040)                         |
+| Reaplicar el mismo reporte | `reused: true`, sin volver a cruzar                                      |
 
 Estado de la bandeja tras el cruce: 4 152 `TRIAGE`, 279 `WAITING`, 61
 `DISCARDED`. Los eventos registrados son coherentes: 4 492 `CASE_CREATED`,
@@ -375,10 +375,10 @@ Sobre el caso Crítico `1942469714A` creado en el recorrido anterior:
 Simulación de las mismas cláusulas de alcance que aplica el código, sobre los
 usuarios reales de la organización:
 
-| Usuario | Rol | Casos visibles | Puede asignar | Ve "Enviar a recupero" |
-|---|---|---|---|---|
-| Alexandra Huaranca | AGENT (Ayacucho - Magisterial) | 0 | No | No |
-| Erika Lavado | SUPERVISOR (Huancayo) | 1 (el caso Crítico) | Sí | Sí |
+| Usuario            | Rol                            | Casos visibles      | Puede asignar | Ve "Enviar a recupero" |
+| ------------------ | ------------------------------ | ------------------- | ------------- | ---------------------- |
+| Alexandra Huaranca | AGENT (Ayacucho - Magisterial) | 0                   | No            | No                     |
+| Erika Lavado       | SUPERVISOR (Huancayo)          | 1 (el caso Crítico) | Sí            | Sí                     |
 
 - **BR-049 / AC-023 confirmado:** la asesora no ve la acción de envío a
   recupero, no puede asignar, y **abrir la ficha del caso por URL directa le
@@ -397,8 +397,8 @@ usuarios reales de la organización:
 Sesión de Alexandra Huaranca (AGENT, Ayacucho - Magisterial):
 
 1. `/recovery/sales` muestra el alcance **"Mis casos"**, cero casos y el
-   estado vacío: *"No hay ventas en recuperación. Las nuevas caídas
-   aparecerán aquí solas."*
+   estado vacío: _"No hay ventas en recuperación. Las nuevas caídas
+   aparecerán aquí solas."_
 2. La navegación le ofrece **"Recupero de ventas"** y **no** "Base nacional"
    (BR-049), sin ítems administrativos.
 3. Cero controles de asignación en la página (`canAssign = false`).
@@ -422,7 +422,7 @@ Sesión de Erika Lavado (SUPERVISOR de Huancayo, no vendedora):
    Steven Lizarraga, originador de la venta, **no figura**, y tampoco ningún
    asesor de otros equipos (un ADMIN ve 14).
 4. Reasignación ejercida desde su sesión: el caso pasó a Francesco con el
-   mensaje *"Su primer contacto vence en 2 horas"* y el reloj reiniciado; se
+   mensaje _"Su primer contacto vence en 2 horas"_ y el reloj reiniciado; se
    devolvió luego a Christian para conservar el escenario de prueba.
 5. **Auditoría íntegra**: los cuatro eventos del caso conservan actor y
    transición — `CASE_CREATED` y la primera asignación por José, las dos
@@ -579,6 +579,49 @@ lotes que se solapen—. Las reglas están cubiertas por pruebas puras; el
 comportamiento sobre datos se verá al subir la base completa. Señal a mirar:
 «clientes que ya estaban» debe absorber las filas repetidas y «casos nuevos»
 contar solo lo que no se había subido.
+
+### Ficha del cliente en la cola y resultado Cancelado — 03/09/2026
+
+Origen: un asesor pidió ver los datos del lead sin salir de la cola, ver
+padre/madre/nacimiento, sumar los resultados «cancelado», «no contesta» y «no
+interesado», y volver a la bandeja al registrar.
+
+1. **Despliegue en la cola**: verificado en el servidor de desarrollo con la
+   sesión de un asesor sobre el caso real _CELIA ACEVEDO CHAMORRO_. "Ver
+   datos" abre en la misma fila cuatro bloques —identidad (LORENZO /
+   ADELAIDA / COLCABAMBA), teléfonos, dónde entregar (AV HUANCAVELICA 1380 ·
+   UR CERCADO, referencia, indicaciones, enlace al mapa) y líneas a portar—
+   con `location.pathname` sin cambiar. El botón alterna a "Ocultar datos" y
+   lleva `aria-expanded` y `aria-controls`.
+2. **Resultados**: el desplegable de la ficha ofrece los once valores con los
+   nombres nuevos; «Cancelado (pausa 1–2 días)» aparece entre ellos. La
+   migración `ALTER TYPE … ADD VALUE 'CANCELADO'` se aplicó en local con
+   `prisma migrate deploy`.
+3. **Color por resultado**: la fila del caso con último intento
+   `SIN_RESPUESTA` lleva `data-result-tone="warning"` y el borde izquierdo en
+   `--ui-warning`. El estado muestra «No contesta» debajo de «En gestión».
+4. **Vuelta a la bandeja**: la cola renderiza el aviso `role="status"` con el
+   texto recibido en `?intento=…` y las filas siguen visibles.
+
+**Limitaciones declaradas**:
+
+- **No se registró un intento real**: habría escrito en la base local, que
+  es copia de producción. El envío (`router.push` al éxito) se verificó por
+  tipos y lectura; en el navegador se verificó solo el lado receptor, con la
+  URL construida a mano.
+- **Dos de los tres resultados pedidos ya existían** con otro nombre
+  (`SIN_RESPUESTA`, `RECHAZA`). Se renombraron en vez de duplicarlos; solo
+  `CANCELADO` es un valor nuevo. Su semántica —pausar sin cerrar— es la
+  reversible; si la operación lo quiere terminal, cambia en un solo sitio de
+  `register-recovery-attempt-action.ts`.
+- **Control antifraude retirado**: BR-046 se elimina por decisión de
+  producto explícita tras exponer el riesgo. Lo que se pierde es la
+  trazabilidad de quién vio qué y cuándo.
+- **Deriva en la base local**: `prisma migrate dev` detectó tablas huérfanas
+  (`mobile_debt_integrations`, `mobile_debt_lookup_events`) que el esquema ya
+  no declara. No se tocaron; la migración se escribió a mano y se aplicó con
+  `migrate deploy`, que no las afecta. Conviene confirmar si producción las
+  tiene antes de cualquier `migrate dev` futuro.
 
 ### Pendiente de verificación
 

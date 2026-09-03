@@ -221,7 +221,8 @@ export interface RecoveryAttemptSummary {
     | "NO_CUMPLE_30D"
     | "YA_ACTIVO"
     | "DATOS_INVALIDOS"
-    | "VENDIDO";
+    | "VENDIDO"
+    | "CANCELADO";
   createdAt: Date;
 }
 

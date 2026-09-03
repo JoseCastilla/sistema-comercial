@@ -411,14 +411,20 @@ construir un reporte a mano.
 
 ### Datos sensibles
 
-- **BR-045:** `Papa`, `Mama` y `Nacimiento` son datos de validación de
-  identidad del titular y permanecen **ocultos** en la bandeja y en la ficha
-  del caso. La columna `Validacion` indica si la identidad ya fue validada:
-  solo un caso con `Validacion = false` requiere validarla con estos campos.
-- **BR-046:** se revelan al asesor asignado únicamente cuando el caso requiere
-  validación (`Validacion = false`) y después de registrar un intento con
-  resultado `INTERESADO`. Cada revelación queda auditada con actor, caso y
-  momento. En un caso ya validado, los campos no se muestran nunca.
+- **BR-045 (revisada):** `Papa`, `Mama` y `Nacimiento` son datos de validación
+  de identidad del titular y se muestran al asesor que gestiona el caso, tanto
+  en la cola como en la ficha. La columna `Validacion` sigue indicando si la
+  identidad ya fue validada.
+- **BR-046 (retirada):** la revelación por pasos —solo tras registrar un
+  intento `INTERESADO`, solo para el asesor asignado y con auditoría por
+  evento— se eliminó por decisión de producto: el asesor necesita estos datos
+  **durante** la llamada para confirmar con quién habla, no después de
+  clasificarla. Las revelaciones ya auditadas se conservan en la base y se
+  siguen mostrando en la ficha de los casos donde ocurrieron.
+
+  El control que se pierde es la trazabilidad de quién vio qué y cuándo: a
+  partir de ahora cualquier asesor con el caso en su cola ve los tres campos
+  sin dejar registro.
 - **BR-047:** estos campos nunca se incluyen en exportaciones, listados ni
   respuestas que no sean la ficha del caso ya revelado.
 - **BR-048:** la base nacional contiene datos personales de clientes que no son

@@ -1,6 +1,13 @@
 import "server-only";
 
 import {
+  buildMapsUrl,
+  composeAddress,
+  readContactSummary,
+  readCoordinates,
+} from "../contact-summary";
+
+import {
   baseRecoveryMinimumDailyAttempts,
   countOnSameLimaDay,
   describeRecoveryLineOrigin,
@@ -13,7 +20,10 @@ import { database } from "@/server/database";
 import { lossReasonLabels } from "../loss-reason-labels";
 
 import type { SalesRecoveryAccess } from "./get-sales-recovery-inbox";
-import type { LossReasonGate, RecoveryLossReasonOption } from "@repo/validation";
+import type {
+  LossReasonGate,
+  RecoveryLossReasonOption,
+} from "@repo/validation";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: "America/Lima",
@@ -72,9 +82,7 @@ export interface CampaignCaseDetail {
   contactPhones: string[];
   sensitive: {
     requiresValidation: boolean;
-    revealed: boolean;
-    canReveal: boolean;
-    revealMissing: string | null;
+
     fatherName: string | null;
     motherName: string | null;
     birthPlace: string | null;
@@ -209,35 +217,13 @@ export async function getCampaignCase(
     now,
   );
 
-  const hasInterestedAttempt = recoveryCase.attempts.some(
-    (attempt) =>
-      String(attempt.result) === "INTERESADO" ||
-      String(attempt.result) === "INTERESADO_CON_PEDIDO",
-  );
-
   /**
    * BR-003: las columnas N–AP son el material de trabajo comercial. La
    * dirección, la referencia y las coordenadas viven en el resumen de
    * contacto del caso y el asesor las necesita a la vista para la llamada.
    */
-  const summary = (recoveryCase.contactSummary ?? {}) as Record<
-    string,
-    string | undefined
-  >;
-  const addressParts = [
-    [summary.streetType, summary.streetName, summary.streetNumber]
-      .filter(Boolean)
-      .join(" "),
-    [summary.housingType, summary.housingName].filter(Boolean).join(" "),
-    summary.block ? `Mz. ${summary.block}` : "",
-    summary.lot ? `Lote ${summary.lot}` : "",
-  ].filter((part) => part.length > 0);
-  const latitude = Number(summary.latitude);
-  const longitude = Number(summary.longitude);
-  const hasCoordinates =
-    Number.isFinite(latitude) &&
-    Number.isFinite(longitude) &&
-    (latitude !== 0 || longitude !== 0);
+  const summary = readContactSummary(recoveryCase.contactSummary);
+  const coordinates = readCoordinates(summary);
 
   const lastAttemptResult = recoveryCase.attempts[0]
     ? String(recoveryCase.attempts[0].result)
@@ -247,19 +233,6 @@ export async function getCampaignCase(
     lastAttemptResult === "YA_ACTIVO";
   const interestedWithOrder =
     !isResolved && lastAttemptResult === "INTERESADO_CON_PEDIDO";
-
-  // BR-046: solo el asesor asignado, solo con validación pendiente y solo
-  // tras un intento INTERESADO. En un caso ya validado no se muestran nunca.
-  const revealed =
-    recoveryCase.requiresIdentityValidation &&
-    recoveryCase.sensitiveRevealedAt !== null &&
-    isAssignedToViewer;
-  const canReveal =
-    recoveryCase.requiresIdentityValidation &&
-    recoveryCase.sensitiveRevealedAt === null &&
-    isAssignedToViewer &&
-    hasInterestedAttempt &&
-    !isResolved;
 
   const suggestions = isResolved
     ? []
@@ -272,7 +245,12 @@ export async function getCampaignCase(
         },
         orderBy: { registeredAt: "desc" },
         take: 5,
-        select: { id: true, orderCodeRaw: true, registeredAt: true, status: true },
+        select: {
+          id: true,
+          orderCodeRaw: true,
+          registeredAt: true,
+          status: true,
+        },
       });
 
   return {
@@ -282,12 +260,10 @@ export async function getCampaignCase(
     department: recoveryCase.department,
     province: recoveryCase.province,
     district: recoveryCase.district,
-    address: addressParts.length > 0 ? addressParts.join(" · ") : null,
+    address: composeAddress(summary),
     reference: summary.reference ?? null,
     deliveryInstructions: summary.shippingInstructions ?? null,
-    mapsUrl: hasCoordinates
-      ? `https://maps.google.com/?q=${latitude},${longitude}`
-      : null,
+    mapsUrl: buildMapsUrl(coordinates),
     status: String(recoveryCase.status),
     teamName: recoveryCase.assignedTeam?.name ?? null,
     assignedToName: recoveryCase.assignedUser?.name ?? null,
@@ -354,21 +330,20 @@ export async function getCampaignCase(
       };
     }),
     contactPhones: recoveryCase.phones.map((phone) => phone.phoneNumber),
+    /*
+     * Los datos de identidad del titular se muestran sin compuerta.
+     *
+     * SPEC-030 BR-045/BR-046 los ocultaba hasta registrar un intento
+     * INTERESADO, como control antifraude. Se retira por decision de producto:
+     * el asesor los necesita durante la llamada, no despues. La marca de
+     * revelacion se conserva en la base y se sigue mostrando cuando existe,
+     * de modo que el historial auditado de los casos anteriores no se pierde.
+     */
     sensitive: {
       requiresValidation: recoveryCase.requiresIdentityValidation,
-      revealed,
-      canReveal,
-      revealMissing:
-        recoveryCase.requiresIdentityValidation &&
-        !revealed &&
-        !canReveal &&
-        isAssignedToViewer &&
-        !isResolved
-          ? "Se muestran tras registrar un intento donde el cliente se muestre interesado."
-          : null,
-      fatherName: revealed ? recoveryCase.fatherName : null,
-      motherName: revealed ? recoveryCase.motherName : null,
-      birthPlace: revealed ? recoveryCase.birthPlace : null,
+      fatherName: recoveryCase.fatherName,
+      motherName: recoveryCase.motherName,
+      birthPlace: recoveryCase.birthPlace,
       revealedAtLabel: recoveryCase.sensitiveRevealedAt
         ? dateTimeFormatter.format(recoveryCase.sensitiveRevealedAt)
         : null,
