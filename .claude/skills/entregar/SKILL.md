@@ -41,8 +41,13 @@ Si algo falla, se detiene: `set -e`.
 Opciones: `--solo-rama` para dejarlo en revisión sin tocar `main`;
 `--sin-verificar` solo para cambios que no son código.
 
-## Lo que el script no hace
+## Publicar en main **es** desplegar
 
-**No actualiza el servidor de producción.** El repositorio no tiene pipeline:
-publicar en `main` es hasta donde llega. Dilo así al terminar, sin dar por
-desplegado lo que solo está en GitHub.
+EasyPanel observa el repositorio y despliega `api` y `web` desde `main`. No
+hay `.github/workflows` porque el pipeline no vive aquí, y su ausencia se
+leyó una vez como que faltaba un paso manual: no falta. Al terminar, dilo
+como lo que es —el cambio va a producción— y no pidas un despliegue que
+nadie tiene que hacer.
+
+Lo que sí conviene decir es **qué mirar** para confirmar que llegó: la
+señal concreta en pantalla que prueba que el código nuevo está corriendo.
