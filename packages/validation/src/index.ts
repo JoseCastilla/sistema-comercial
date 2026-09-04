@@ -19,6 +19,7 @@ export * from "./commercial-team-rules.js";
 export * from "./recovery-base.js";
 export * from "./recovery-portability.js";
 export * from "./recovery-portability-report.js";
+export * from "./recovery-search.js";
 export * from "./recovery-selection.js";
 export * from "./recovery-internal-gate.js";
 export * from "./recovery-base-distribution.js";

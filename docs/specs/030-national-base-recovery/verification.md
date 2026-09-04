@@ -648,6 +648,29 @@ puesto —al recrearse el panel se perdió la sesión y el asistente no puede
 iniciarla—. La URL y sus condiciones quedaron cubiertas por pruebas; la carga
 visual del mapa queda por confirmar con una sesión de asesor.
 
+### Búsqueda en la bandeja del asesor — BR-088, 02/09/2026
+
+1. **Regla pura**: 9 pruebas sobre `parseRecoverySearchTerm` —término
+   vacío, palabras del nombre, letra suelta, DNI dictado con espacios,
+   teléfono con guiones y con prefijo, el corte en cuatro dígitos, término
+   mixto, tope de palabras y de longitud—. 263 en verde en
+   `@repo/validation`.
+2. **Ejercida contra datos reales** en el servidor de desarrollo, sobre una
+   bandeja de 38 casos, con sesión de asesor:
+   - `guevara juan` → 1 caso, JUAN CARLOS GUEVARA VELA. Las palabras en otro
+     orden y saltándose los nombres del medio encuentran igual.
+   - `61075760` (DNI) → 1 caso, el suyo.
+   - `968156201` (teléfono) → 1 caso, el suyo.
+   - `75 973 250` (DNI dictado con espacios) → 1 caso, el suyo.
+   - `zzzz nadie` → 0, con el mensaje de búsqueda sin resultados y no el de
+     bandeja vacía.
+3. Tipos y lint limpios en `apps/web`.
+
+**Limitación declarada**: la vía del número de línea (`serviceNumber`) no se
+pudo separar de la del teléfono de contacto con los datos disponibles —las
+filas de prueba mostraban el mismo número por ambos caminos—. La consulta es
+simétrica con las otras dos, ya verificadas.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de

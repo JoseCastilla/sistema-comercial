@@ -390,6 +390,16 @@ venía llamando—.
       el enlace a Google Maps se conserva. En la cola queda solo el enlace
       para no enviar coordenadas a un tercero por cada fila abierta.
 
+## Buscar al cliente en la bandeja del asesor (02/09/2026)
+
+- [x] BR-088: campo único «Buscar cliente» en `/recovery/campaigns`, contra
+      nombre, DNI, teléfono de contacto y número de línea. La lectura del
+      término vive en `parseRecoverySearchTerm`, aparte de la consulta.
+- [x] El estado vacío distingue «no tienes casos» de «tu búsqueda no
+      encontró nada»: lo primero, mientras filtra, le hace creer al asesor
+      que perdió su cartera.
+- [x] La búsqueda viaja en la paginación.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en
