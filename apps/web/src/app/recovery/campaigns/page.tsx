@@ -5,6 +5,7 @@ import {
   countOnSameLimaDay,
   describeRecoveryLineOrigin,
   isBaseRecoveryResolutionDue,
+  parseRecoverySearchTerm,
 } from "@repo/validation";
 
 import { CampaignQueueRow } from "@/features/recovery/components/campaign-queue-row";
@@ -59,6 +60,7 @@ export default async function RecoveryCampaignsPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    q?: string;
     department?: string;
     plan?: string;
     page?: string;
@@ -67,6 +69,8 @@ export default async function RecoveryCampaignsPage({
 }) {
   const { session, membership } = await requireCommercialAccess();
   const parameters = await searchParams;
+  const searchInput = (parameters.q ?? "").trim().slice(0, 80);
+  const search = parseRecoverySearchTerm(searchInput);
   const departmentFilter = parameters.department ?? "";
   const planFilter = (parameters.plan ?? "").trim().slice(0, 100);
   // Confirmación del intento que el asesor acaba de registrar: vuelve con él
@@ -93,6 +97,48 @@ export default async function RecoveryCampaignsPage({
     status: {
       in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
     },
+    /**
+     * El asesor busca con un dato suelto y el sistema lo prueba contra todo:
+     * nombre, DNI, teléfono de contacto y número de línea. Las palabras del
+     * nombre se exigen todas pero en cualquier orden — nadie dicta los cuatro
+     * apellidos seguidos—; los dígitos valen para los tres campos numéricos,
+     * porque quien llama no sabe cuál de ellos tiene en la mano.
+     *
+     * Busca solo en **sus** casos. El pool se reparte en bloques por
+     * BR-028: poder pescar en él por DNI convertiría un reparto equitativo
+     * en una elección.
+     */
+    ...(search
+      ? {
+          AND: [
+            ...search.words.map((word) => ({
+              holderName: { contains: word, mode: "insensitive" as const },
+            })),
+            ...(search.digits
+              ? [
+                  {
+                    OR: [
+                      { documentNumber: { contains: search.digits } },
+                      {
+                        phones: {
+                          some: { phoneNumber: { contains: search.digits } },
+                        },
+                      },
+                      {
+                        services: {
+                          some: {
+                            discardedAt: null,
+                            serviceNumber: { contains: search.digits },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                ]
+              : []),
+          ],
+        }
+      : {}),
     ...(departmentFilter
       ? { department: { equals: departmentFilter, mode: "insensitive" } }
       : {}),
@@ -297,6 +343,7 @@ export default async function RecoveryCampaignsPage({
 
   function pageHref(target: number): string {
     const query = new URLSearchParams();
+    if (searchInput) query.set("q", searchInput);
     if (departmentFilter) query.set("department", departmentFilter);
     if (planFilter) query.set("plan", planFilter);
     if (target > 1) query.set("page", String(target));
@@ -380,6 +427,16 @@ export default async function RecoveryCampaignsPage({
             className="flex flex-wrap items-end gap-3"
           >
             <label className="block">
+              <span className="ui-label-eyebrow">Buscar cliente</span>
+              <input
+                className="block w-56 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
+                defaultValue={searchInput}
+                maxLength={80}
+                name="q"
+                placeholder="Nombre, DNI o teléfono"
+              />
+            </label>
+            <label className="block">
               <span className="ui-label-eyebrow">Departamento</span>
               <select
                 className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
@@ -442,8 +499,11 @@ export default async function RecoveryCampaignsPage({
                       className="px-3 py-6 text-center text-ui-muted"
                       colSpan={9}
                     >
-                      No tienes casos de campaña asignados. Toma casos libres
-                      para empezar.
+                      {/* Decirle que no tiene casos mientras filtra le hace
+                          creer que los perdió. */}
+                      {search || departmentFilter || planFilter
+                        ? "Ningún caso tuyo coincide con lo que buscas. Prueba con menos datos o limpia el filtro."
+                        : "No tienes casos de campaña asignados. Toma casos libres para empezar."}
                     </td>
                   </tr>
                 ) : null}

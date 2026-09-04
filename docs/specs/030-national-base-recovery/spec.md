@@ -275,6 +275,16 @@ construir un reporte a mano.
   se escribe solo cuando el avistamiento fue nuevo: anunciar un pedido nuevo
   por cada fila repetida llenaría de hechos falsos un rastro que existe para
   ser evidencia.
+- **BR-088** (02/09/2026): la bandeja de campaña del asesor **se busca con
+  un solo campo**. Quien tiene al cliente al teléfono tiene un dato suelto
+  —un nombre a medias, el número desde el que llama, un DNI dictado— y
+  obligarle a elegir columna le añade una decisión que no le corresponde. El
+  término se prueba contra nombre, DNI, teléfono de contacto y número de
+  línea a la vez. Las palabras del nombre se exigen todas pero en cualquier
+  orden, porque nadie dicta los cuatro apellidos seguidos. Menos de cuatro
+  dígitos no se busca: encontraría media base. La búsqueda alcanza **solo
+  los casos del propio asesor**: poder pescar en el pool por DNI convertiría
+  el reparto equitativo de BR-028 en una elección.
 - **BR-025:** un caso `WAITING` cuyos servicios aparecen luego portados a
   Movistar se cierra como `DISCARDED` y no vuelve a revisarse.
 - **BR-026:** un caso `LIBERADO` pasa a `OPEN` y queda disponible para asignar.
