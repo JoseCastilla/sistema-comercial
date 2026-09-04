@@ -136,4 +136,4 @@ REMOTO="$(git remote get-url origin | sed -e 's/\.git$//' -e 's#^git@github\.com
 echo "✓ Entregado en main"
 echo "  $REMOTO/commit/$(git rev-parse --short HEAD)"
 echo
-echo "  El servidor de producción no se actualiza solo: falta ese paso."
+echo "  EasyPanel despliega api y web desde main: esto ya va a producción."
