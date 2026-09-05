@@ -205,6 +205,8 @@ export interface OrderInboxData {
   /** Solo en `LOGISTICS`; en cualquier otra vista es `null`. */
   actionFilter: OrderActionFilter | null;
   dueFilter: OrderDueFilter | null;
+  /** Ruta de Rendimiento desde la que se llegó, para volver con filtros. */
+  returnTo?: string | null;
   assignmentTeams: OrderAssignmentTeamOption[];
   showTeamFilter: boolean;
   showAdvisorColumn: boolean;

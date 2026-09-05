@@ -13,6 +13,14 @@ import { PageHeader } from "@repo/ui/page-header";
 
 import { OrderRealtimeStatus } from "@/features/orders/components/order-realtime-status";
 
+import {
+  advisorHref,
+  ordersHref,
+  performanceHref,
+  reconciliationHref,
+  recoveryCasesHref,
+} from "../performance-links";
+
 import type { PerformanceDashboardData } from "../performance.types";
 
 /*
@@ -51,50 +59,6 @@ function shortDelta(value: number | null): string {
   if (value === null) return "—";
   const sign = value > 0 ? "+" : "";
   return `${sign}${Math.round(value * 100)}%`;
-}
-
-function performanceHref(
-  data: PerformanceDashboardData,
-  month: string,
-): string {
-  const parameters = new URLSearchParams({ month });
-  if (data.canSwitchView) parameters.set("view", data.view);
-  if (data.teamFilter !== "ALL") parameters.set("team", data.teamFilter);
-  if (data.agentFilter !== "ALL") parameters.set("agent", data.agentFilter);
-  return `/performance?${parameters.toString()}`;
-}
-
-function advisorHref(data: PerformanceDashboardData, agentId: string): string {
-  const parameters = new URLSearchParams({ month: data.month });
-  if (data.canSwitchView) parameters.set("view", data.view);
-  if (data.teamFilter !== "ALL") parameters.set("team", data.teamFilter);
-  if (data.agentFilter !== agentId) parameters.set("agent", agentId);
-  return `/performance?${parameters.toString()}`;
-}
-
-function reconciliationHref(
-  data: PerformanceDashboardData,
-  reason: string,
-): string {
-  const parameters = new URLSearchParams({ month: data.month, reason });
-  if (data.teamFilter !== "ALL") parameters.set("team", data.teamFilter);
-  if (data.agentFilter !== "ALL") parameters.set("agent", data.agentFilter);
-  return `/performance/reconciliation?${parameters.toString()}`;
-}
-
-function ordersHref(
-  data: PerformanceDashboardData,
-  status: string,
-  team = data.teamFilter,
-): string {
-  const parameters = new URLSearchParams({
-    period: "RANGE",
-    from: data.from,
-    to: data.to,
-    status,
-  });
-  if (data.view !== "SELF" && team !== "ALL") parameters.set("team", team);
-  return `/orders?${parameters.toString()}`;
 }
 
 function Funnel({ data }: { data: PerformanceDashboardData }) {
@@ -810,12 +774,17 @@ export function PerformanceDashboard({
               <small>Revisar órdenes que aún no generan pago</small>
             </Link>
             <Link href={ordersHref(data, "RECOVERY")}>
-              <span>No entregadas o canceladas</span>
+              <span>Pedidos por recuperar</span>
               <strong>{data.metrics.recovery}</strong>
-              <small>Abrir la cola de recuperación</small>
+              <small>No entregados o cancelados del mes, en Pedidos</small>
+            </Link>
+            <Link href={recoveryCasesHref(data)}>
+              <span>Casos de recupero abiertos</span>
+              <strong>{data.openRecoveryCases}</strong>
+              <small>Con o sin responsable, en Recupero de ventas</small>
             </Link>
             {data.view !== "SELF" ? (
-              <Link href={ordersHref(data, "ALL", "UNASSIGNED")}>
+              <Link href={ordersHref(data, "ALL", { team: "UNASSIGNED" })}>
                 <span>Sin asesor ni equipo</span>
                 <strong>{data.metrics.unassigned}</strong>
                 <small>Asignar antes de medir desempeño</small>
@@ -973,8 +942,15 @@ export function PerformanceDashboard({
                     </th>
                   ) : null}
                   <th>Pagables</th>
-                  <th>Recuperar</th>
-                  <th>Por activar</th>
+                  <th title="Pedidos del mes no entregados o cancelados; abre Pedidos">
+                    Pedidos por recuperar
+                  </th>
+                  <th title="Casos abiertos a su cargo en Recupero de ventas; abre la bandeja">
+                    Casos de recupero
+                  </th>
+                  <th title="Entregadas sin cerrar: aún no generan pago; abre Pedidos">
+                    Por activar
+                  </th>
                   {data.showCommission && data.role !== "AGENT" ? (
                     <th>Estimado</th>
                   ) : null}
@@ -1019,8 +995,41 @@ export function PerformanceDashboard({
                       </td>
                     ) : null}
                     <td>{item.metrics.payable}</td>
-                    <td>{item.metrics.recovery}</td>
-                    <td>{item.metrics.deliveredPendingActivation}</td>
+                    <td>
+                      {item.metrics.recovery > 0 ? (
+                        <Link
+                          href={ordersHref(data, "RECOVERY", {
+                            advisor: item.id,
+                          })}
+                        >
+                          {item.metrics.recovery}
+                        </Link>
+                      ) : (
+                        0
+                      )}
+                    </td>
+                    <td>
+                      {item.openRecoveryCases > 0 ? (
+                        <Link href={recoveryCasesHref(data, item.id)}>
+                          {item.openRecoveryCases}
+                        </Link>
+                      ) : (
+                        0
+                      )}
+                    </td>
+                    <td>
+                      {item.metrics.deliveredPendingActivation > 0 ? (
+                        <Link
+                          href={ordersHref(data, "AWAITING_ACTIVATION", {
+                            advisor: item.id,
+                          })}
+                        >
+                          {item.metrics.deliveredPendingActivation}
+                        </Link>
+                      ) : (
+                        0
+                      )}
+                    </td>
                     {data.showCommission && data.role !== "AGENT" ? (
                       <td>{money(item.metrics.estimatedCommissionCents)}</td>
                     ) : null}
@@ -1039,9 +1048,33 @@ export function PerformanceDashboard({
                     </td>
                     {data.quotaWindow ? <td>—</td> : null}
                     <td>{data.unattributed.metrics.payable}</td>
-                    <td>{data.unattributed.metrics.recovery}</td>
                     <td>
-                      {data.unattributed.metrics.deliveredPendingActivation}
+                      {data.unattributed.metrics.recovery > 0 ? (
+                        <Link
+                          href={ordersHref(data, "RECOVERY", {
+                            team: "UNASSIGNED",
+                          })}
+                        >
+                          {data.unattributed.metrics.recovery}
+                        </Link>
+                      ) : (
+                        0
+                      )}
+                    </td>
+                    <td>—</td>
+                    <td>
+                      {data.unattributed.metrics.deliveredPendingActivation >
+                      0 ? (
+                        <Link
+                          href={ordersHref(data, "AWAITING_ACTIVATION", {
+                            team: "UNASSIGNED",
+                          })}
+                        >
+                          {data.unattributed.metrics.deliveredPendingActivation}
+                        </Link>
+                      ) : (
+                        0
+                      )}
                     </td>
                     {data.showCommission && data.role !== "AGENT" ? (
                       <td>—</td>

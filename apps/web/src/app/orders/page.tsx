@@ -56,6 +56,12 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const search = firstValue(parameters.q)?.trim().slice(0, 100) ?? "";
   const team = firstValue(parameters.team)?.trim().slice(0, 50);
   const advisor = firstValue(parameters.advisor)?.trim().slice(0, 50);
+  // SPEC-044 REN-01: camino de vuelta a Rendimiento con sus filtros. Solo se
+  // acepta una ruta interna de Rendimiento; cualquier otra cosa se ignora.
+  const requestedReturn = firstValue(parameters.volver) ?? "";
+  const returnTo = /^\/performance(\?[^\s]*)?$/.test(requestedReturn)
+    ? requestedReturn.slice(0, 500)
+    : null;
 
   after(async () => {
     await maybeRunScheduledAgrDeliverySync(membership.organization.id).catch(
@@ -83,5 +89,5 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     },
   );
 
-  return <OrderInbox data={inbox} />;
+  return <OrderInbox data={{ ...inbox, returnTo }} />;
 }

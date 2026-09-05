@@ -10,6 +10,8 @@ export interface PerformanceBreakdownItem {
   previousMetrics: PerformanceMetrics;
   enteredDelta: number | null;
   isActiveSeller: boolean;
+  /** Casos abiertos a su cargo en Recupero de ventas (SPEC-044 REN-03). */
+  openRecoveryCases: number;
   showCommission: boolean;
   dailyEntered: number[];
   quota: {
@@ -119,5 +121,7 @@ export interface PerformanceDashboardData {
     sellersWithoutSales: number;
     averageEnteredPerSeller: number | null;
   } | null;
+  /** Casos abiertos en Recupero de ventas dentro del alcance (REN-03). */
+  openRecoveryCases: number;
   breakdown: PerformanceBreakdownItem[];
 }
