@@ -10,6 +10,7 @@ import {
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
 import { QueueFilters } from "@/features/recovery/components/queue-filters";
 import { buildRecoverySearchWhere } from "@/features/recovery/server/recovery-search-where";
+import { CampaignNav } from "@/features/recovery/components/campaign-nav";
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import {
@@ -335,6 +336,7 @@ export default async function RecoveryDistributePage({
           title="Repartir la base"
           description="Reparte los casos listos entre asesores o envíalos a la cola del equipo. Los casos asignados sin gestión se pueden redistribuir."
         />
+        <CampaignNav current="repartir" role={membership.role} />
 
         <MetricGroup>
           <Metric label="Disponible" value={openCount} />

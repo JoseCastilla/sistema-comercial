@@ -9,6 +9,7 @@ import {
 import { QueueFilters } from "@/features/recovery/components/queue-filters";
 import { buildRecoverySearchWhere } from "@/features/recovery/server/recovery-search-where";
 import { releaseWaitingBaseCases } from "@/features/recovery/server/release-waiting-base-cases";
+import { CampaignNav } from "@/features/recovery/components/campaign-nav";
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import {
@@ -29,6 +30,12 @@ import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
 
 const triageRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
+
+const batchDateFormatter = new Intl.DateTimeFormat("es-PE", {
+  timeZone: "America/Lima",
+  day: "2-digit",
+  month: "2-digit",
+});
 
 const pageSize = 250;
 
@@ -52,6 +59,7 @@ export default async function RecoveryTriagePage({
     plan?: string;
     q?: string;
     age?: string;
+    batch?: string;
     page?: string;
   }>;
 }) {
@@ -82,6 +90,7 @@ export default async function RecoveryTriagePage({
   const planFilter = (parameters.plan ?? "").trim().slice(0, 100);
   const searchInput = (parameters.q ?? "").trim().slice(0, 80);
   const ageFilter = parseRecoveryAgeBucket(parameters.age);
+  const batchFilter = (parameters.batch ?? "").trim().slice(0, 40);
   const page = Math.max(1, Number.parseInt(parameters.page ?? "1", 10) || 1);
 
   const isSupervisor = membership.role === "SUPERVISOR";
@@ -197,6 +206,10 @@ export default async function RecoveryTriagePage({
         ? { lastSightingAt: recoveryAgeBucketRange(ageFilter, new Date()) }
         : null,
       // BR-088: un dato suelto —nombre, DNI, teléfono o línea— basta.
+      // Fase 4: clientes que aparecieron en un lote — cada cliente una vez
+      // aunque el archivo lo traiga en varias filas (BR-009b). Un cliente
+      // puede estar en varios lotes; esto responde «apareció en este».
+      batchFilter ? { sightings: { some: { batchId: batchFilter } } } : null,
       buildRecoverySearchWhere(searchInput),
     );
 
@@ -209,6 +222,7 @@ export default async function RecoveryTriagePage({
     cases,
     departmentGroups,
     teams,
+    recentBatches,
   ] = await Promise.all([
     database.recoveryCase.count({
       where: { ...scopeWhere, status: "TRIAGE", ...readyWhere },
@@ -260,6 +274,15 @@ export default async function RecoveryTriagePage({
           orderBy: { name: "asc" },
           select: { id: true, name: true },
         }),
+    database.recoveryBaseBatch.findMany({
+      where: {
+        organizationId: membership.organization.id,
+        status: "CONFIRMED",
+      },
+      orderBy: { uploadedAt: "desc" },
+      take: 10,
+      select: { id: true, fileName: true, uploadedAt: true },
+    }),
   ]);
 
   const rows: RecoveryTriageRow[] = cases.map((recoveryCase) => ({
@@ -298,6 +321,7 @@ export default async function RecoveryTriagePage({
   if (planFilter) baseQuery.set("plan", planFilter);
   if (searchInput) baseQuery.set("q", searchInput);
   if (ageFilter) baseQuery.set("age", ageFilter);
+  if (batchFilter) baseQuery.set("batch", batchFilter);
 
   function pageHref(target: number): string {
     const query = new URLSearchParams(baseQuery);
@@ -328,6 +352,7 @@ export default async function RecoveryTriagePage({
               : "Reparte bloques a los equipos o pon en espera a los que ya tienen pedido. El DNI y cada línea se copian con un clic."
           }
         />
+        <CampaignNav current="revisar" role={membership.role} />
 
         <MetricGroup>
           <Metric
@@ -374,18 +399,6 @@ export default async function RecoveryTriagePage({
           >
             Con pedido en curso ({formatCount(waitingTotal)})
           </Link>
-          <Link
-            className="ui-button ui-button--secondary"
-            href="/recovery/board"
-          >
-            Tablero del día
-          </Link>
-          <Link
-            className="ui-button ui-button--secondary"
-            href="/recovery/follow-up"
-          >
-            Seguimiento
-          </Link>
           <span className="pb-2 text-xs text-ui-muted">
             {view === "pendientes"
               ? "Aún sin verificar: si los repartes, el asesor llamará sin saber si el cliente ya es Movistar."
@@ -419,6 +432,17 @@ export default async function RecoveryTriagePage({
               departments,
               plans: planOptions,
               ages: recoveryAgeBuckets,
+              extras: [
+                {
+                  key: "batch",
+                  label: "Lote",
+                  emptyLabel: "Todos",
+                  options: recentBatches.map((batch) => ({
+                    value: batch.id,
+                    label: `${batch.fileName} · ${batchDateFormatter.format(batch.uploadedAt)}`,
+                  })),
+                },
+              ],
             }}
             resultLabel={`${formatCount(filteredTotal)} caso(s) cumplen el filtro.`}
             values={{
@@ -428,6 +452,7 @@ export default async function RecoveryTriagePage({
               department: departmentFilter,
               plan: planFilter,
               age: ageFilter ?? "",
+              extra: { batch: batchFilter },
             }}
           />
 

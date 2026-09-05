@@ -383,6 +383,27 @@ construir un reporte a mano.
   - **Los filtros activos se ven y se quitan uno a uno**, y «Limpiar
     filtros» conserva solo la vista. Un filtro que no se ve es un filtro que
     se olvida puesto.
+- **BR-093** (05/09/2026, fase 4 del plan de usabilidad de Campañas):
+  **el carril de Campañas se recorre igual desde cualquiera de sus
+  pantallas, y cada carga se identifica sin depender del nombre del
+  archivo.**
+  - **Un carril, no cinco botones.** Preparar, Revisar, Repartir, Seguimiento
+    y Tablero del día son pasos del mismo trabajo y aparecen en una barra
+    idéntica bajo la cabecera de las cinco pantallas, con el paso actual
+    marcado. Se muestran solo los que el rol puede abrir: una pestaña que
+    lleva a «acceso denegado» es peor que ninguna. Los botones sueltos que
+    hacían de atajo desaparecen.
+  - **Reglas de importación, no «filtros».** El botón que guarda qué ventas
+    entran a la campaña pasa a decir «Guardar reglas de importación»: afecta
+    a las próximas cargas, no a lo que se ve en pantalla, y llamarlo igual
+    que los filtros de las listas invitaba a confundirlos.
+  - **El historial de cargas se filtra** por archivo, estado del lote, quién
+    cargó y antigüedad de la carga (7 o 30 días), en vivo y en la URL, y
+    muestra hasta 50 cargas en vez de 10.
+  - **Cada lote confirmado abre sus clientes** en el triage, con el lote
+    como filtro propio: cada cliente aparece **una sola vez** aunque el
+    archivo lo traiga en varias filas (BR-009b), y un cliente puede estar en
+    varios lotes — el filtro responde «apareció en este», no «pertenece a».
 - **BR-025:** un caso `WAITING` cuyos servicios aparecen luego portados a
   Movistar se cierra como `DISCARDED` y no vuelve a revisarse.
 - **BR-026:** un caso `LIBERADO` pasa a `OPEN` y queda disponible para asignar.
