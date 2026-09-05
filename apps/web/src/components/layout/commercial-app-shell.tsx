@@ -18,7 +18,8 @@ export type ActiveSection =
   | "imports"
   | "logistics"
   | "people"
-  | "teams";
+  | "teams"
+  | "my-team";
 
 /**
  * La sección activa se deduce de la ruta en vez de viajar como prop.
@@ -33,6 +34,7 @@ const SECTION_BY_PATH_PREFIX: readonly (readonly [string, ActiveSection])[] = [
   ["/admin/recovery-base", "recovery"],
   ["/admin/users", "people"],
   ["/admin/teams", "teams"],
+  ["/team", "my-team"],
   ["/performance", "performance"],
   ["/recovery", "recovery"],
   ["/orders", "orders"],
@@ -344,6 +346,16 @@ export function CommercialAppShell({
             icon="campaigns"
             label="Campañas"
           />
+          {role === "SUPERVISOR" ? (
+            // SPEC-043 PE-07: la supervisión ve su equipo y da de alta asesores.
+            <NavigationItem
+              active={currentSection === "my-team"}
+              description="Tus equipos y alta de asesores"
+              href="/team"
+              icon="teams"
+              label="Mi equipo"
+            />
+          ) : null}
           {isAdmin ? (
             <>
               <NavigationItem
@@ -412,7 +424,7 @@ export function CommercialAppShell({
       <nav
         aria-label="Navegación móvil"
         className="app-shell__mobile-nav"
-        data-items={isAdmin ? "9" : "6"}
+        data-items={isAdmin ? "9" : role === "SUPERVISOR" ? "7" : "6"}
       >
         <MobileNavigationItem
           active={currentSection === "performance"}
@@ -450,6 +462,14 @@ export function CommercialAppShell({
           icon="campaigns"
           label="Campañas"
         />
+        {role === "SUPERVISOR" ? (
+          <MobileNavigationItem
+            active={currentSection === "my-team"}
+            href="/team"
+            icon="teams"
+            label="Mi equipo"
+          />
+        ) : null}
         {isAdmin ? (
           <>
             <MobileNavigationItem

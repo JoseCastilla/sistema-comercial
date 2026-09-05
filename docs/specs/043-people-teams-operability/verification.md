@@ -151,3 +151,22 @@ cerrar) se comprueba a mano escribiendo en un formulario del panel y cerrando.
    supervisores sin venta y un asesor sin equipo). La migración de auditoría
    corrió con el despliegue.
 
+## PE-07 · «Mi equipo» del supervisor (05/09/2026)
+
+1. **Pruebas** — `canCreateAgentForTeam` (2 casos: un supervisor solo en
+   equipos activos que supervisa; administración en cualquier activo; asesor
+   y back office en ninguno), 316 en verde en `@repo/validation`. Web: el
+   alta desde «Mi equipo» no ofrece rol, limita el equipo a los supervisados,
+   exige contraseña de 12 caracteres, preselecciona el único equipo y sin
+   equipos no deja crear; 143 en verde. Tipos y lint limpios.
+2. **Local con sesión de administrador**: `/team` redirige a
+   `/admin/teams` y la navegación del administrador no muestra «Mi equipo»
+   (es solo de supervisores). `createUserAction` pasó a usar `provisionUser`
+   sin cambiar su comportamiento.
+
+**Limitación declarada**: no dispongo de una sesión de supervisor, así que la
+página `/team` con equipos reales y el alta de un asesor quedan para que José
+las ejercite con la cuenta de un supervisor (con un asesor de prueba
+ficticio). El código está revisado y cubierto por las reglas puras y la prueba
+del formulario.
+

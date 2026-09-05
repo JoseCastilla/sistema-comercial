@@ -1,6 +1,6 @@
 # SPEC-043 — Personas y Equipos operativos
 
-Estado: **fases 1 a 3 desplegadas y verificadas en lectura; PE-07 pendiente de confirmación** (05/09/2026). Une dos planes revisados
+Estado: **fases 1 a 3 desplegadas; PE-07 («Mi equipo») construido** (05/09/2026). Une dos planes revisados
 con José el mismo día: «Plan actualizado de Personas y Equipos» (PE-01 a
 PE-07) y «Plan de mejora UX de Personas y Equipos» (UX-01 a UX-08). Se apoya
 en SPEC-001 (equipos), SPEC-017 (directorios), SPEC-019 (supervisor que
@@ -103,11 +103,17 @@ tres tipos de problema:
 - **BR-013** Renombrar equipos (SPEC-001 FR-001) con unicidad entre activos;
   retirar una supervisión avisa si el equipo queda sin supervisor (SPEC-017
   BR-009); reactivar un equipo lo devuelve vacío, sin restaurar membresías.
-- **BR-014** «Mi equipo» del supervisor: solo lectura de sus integrantes y
-  «Nuevo asesor» limitado a sus equipos activos con rol `AGENT` fijo
-  (SPEC-001 BR-011 a BR-013). **Queda fuera de esta entrega**: abre una
-  superficie nueva para otro rol y un alta de cuentas por supervisores;
-  merece su propia decisión y su propio incremento.
+- **BR-014 · «Mi equipo» del supervisor.** José eligió la opción A: una
+  página `/team` para `SUPERVISOR` con sus equipos activos y sus integrantes
+  en lectura, y una sola acción, «Nuevo asesor» (SPEC-001 BR-011 a BR-013):
+  rol `AGENT` fijo, equipo elegido solo entre los que supervisa, cuenta +
+  membresía de organización + membresía comercial primaria con venta en un
+  alta atómica (`provisionUser`; si una etapa falla, no queda cuenta a
+  medias), auditoría `MEMBER_ASSIGNED` con `createdBySupervisor`. El
+  administrador que entra a `/team` va a Equipos; asesor y back office, a
+  acceso denegado. La autorización vive en el servidor
+  (`canCreateAgentForTeam`). «Mi equipo» aparece en la navegación solo para
+  supervisores.
 - **BR-015 · Retirar una supervisión toca solo esa relación.** Si la persona
   vende en el equipo, su membresía sigue activa como asesora (sus ventas
   nuevas se le siguen asignando); si no, se cierra con fecha. El rol de la

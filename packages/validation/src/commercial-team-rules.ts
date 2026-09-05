@@ -441,3 +441,24 @@ export function canActivateAgentAlias(input: {
     input.primaryTeamStatus === "ACTIVE"
   );
 }
+
+/**
+ * SPEC-001 BR-011 a BR-013 (SPEC-043 PE-07): un supervisor solo da de alta
+ * asesores en equipos activos que supervisa; administración, en cualquier
+ * equipo activo. Nadie más crea cuentas desde «Mi equipo».
+ */
+export function canCreateAgentForTeam(input: {
+  actorRole: CommercialAccessRole;
+  supervisedTeamIds: readonly string[];
+  teamId: string;
+  teamStatus: CommercialTeamStatus;
+}): boolean {
+  if (input.teamStatus !== "ACTIVE") return false;
+  if (input.actorRole === "ADMIN") return true;
+
+  return (
+    input.actorRole === "SUPERVISOR" &&
+    input.supervisedTeamIds.includes(input.teamId)
+  );
+}
+
