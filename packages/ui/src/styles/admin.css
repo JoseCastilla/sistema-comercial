@@ -151,12 +151,14 @@
   }
 
   .ui-directory__identity p {
+    display: -webkit-box;
     overflow: hidden;
     color: var(--ui-text);
     font-size: var(--ui-text-sm);
     font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .ui-directory__identity span,
@@ -181,6 +183,135 @@
 
   .ui-directory__row > :last-child {
     justify-self: end;
+  }
+
+  .ui-directory__row[aria-current="true"] {
+    background: var(--ui-accent-soft);
+  }
+
+  .ui-directory__row:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: -2px;
+  }
+
+  .ui-directory__manage {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: var(--ui-radius-md);
+    color: var(--ui-text);
+    background: var(--ui-surface);
+    font-size: var(--ui-text-xs);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .ui-directory__manage:hover {
+    background: var(--ui-surface-subtle);
+  }
+
+  /* SPEC-043 UX-02: la lista compara, el panel administra. */
+  .ui-admin-workspace {
+    display: grid;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .ui-admin-workspace[data-open="true"] {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
+  }
+
+  .ui-admin-panel {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-lg);
+    background: var(--ui-surface);
+    position: sticky;
+    top: 1rem;
+  }
+
+  .ui-admin-panel__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .ui-admin-panel__eyebrow {
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-2xs);
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .ui-admin-panel__title {
+    color: var(--ui-text);
+    font-size: var(--ui-text-lg);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .ui-admin-panel__email {
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-xs);
+    overflow-wrap: anywhere;
+  }
+
+  .ui-admin-panel__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+  }
+
+  .ui-admin-panel__close {
+    flex: none;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: var(--ui-radius-md);
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-xs);
+    font-weight: 600;
+  }
+
+  .ui-admin-panel__section {
+    display: grid;
+    gap: 0.6rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--ui-border);
+  }
+
+  .ui-admin-panel__section > h3 {
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-2xs);
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .ui-admin-panel__section dl {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .ui-admin-panel__section dl > div {
+    display: grid;
+    grid-template-columns: 8rem minmax(0, 1fr);
+    gap: 0.5rem;
+    font-size: var(--ui-text-xs);
+  }
+
+  .ui-admin-panel__section dt {
+    color: var(--ui-text-muted);
+  }
+
+  .ui-admin-panel__section dd {
+    color: var(--ui-text);
+    overflow-wrap: anywhere;
   }
 
   .ui-team-list {
@@ -405,6 +536,17 @@
       grid-template-columns:
         minmax(14rem, 1.4fr) repeat(3, minmax(8rem, 0.7fr))
         auto;
+    }
+  }
+
+  @media (max-width: 64rem) {
+    .ui-admin-workspace[data-open="true"] {
+      grid-template-columns: 1fr;
+    }
+
+    .ui-admin-panel {
+      position: static;
+      order: -1;
     }
   }
 

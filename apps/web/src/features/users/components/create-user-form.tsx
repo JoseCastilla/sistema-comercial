@@ -56,12 +56,7 @@ export function CreateUserForm() {
       </Field>
 
       <Field error={state.fieldErrors?.role} label="Rol">
-        <SelectInput
-          defaultValue=""
-          disabled={pending}
-          name="role"
-          required
-        >
+        <SelectInput defaultValue="" disabled={pending} name="role" required>
           <option disabled value="">
             Seleccionar rol
           </option>
@@ -73,7 +68,11 @@ export function CreateUserForm() {
         </SelectInput>
       </Field>
 
-      <Field error={state.fieldErrors?.password} hint="Compártela por un canal seguro. No podrá consultarse posteriormente." label="Contraseña inicial">
+      <Field
+        error={state.fieldErrors?.password}
+        hint="Compártela por un canal seguro. No podrá consultarse posteriormente."
+        label="Contraseña inicial"
+      >
         <TextInput
           autoComplete="new-password"
           disabled={pending}
@@ -86,8 +85,13 @@ export function CreateUserForm() {
         />
       </Field>
 
-      <InlineFeedback message={state.message} tone={state.type === "error" ? "danger" : "success"} />
-      <Button disabled={pending} fullWidth type="submit">{pending ? "Creando usuario..." : "Crear usuario"}</Button>
+      <InlineFeedback
+        message={state.message}
+        tone={state.type === "error" ? "danger" : "success"}
+      />
+      <Button disabled={pending} fullWidth type="submit">
+        {pending ? "Creando usuario..." : "Crear usuario"}
+      </Button>
     </form>
   );
 }
