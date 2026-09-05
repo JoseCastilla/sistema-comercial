@@ -21,9 +21,9 @@
       indicadores logísticos y «Fuera de plazo» enlazados a su lista.
 - [x] Pruebas web: `pedidos-filtros.test.tsx` (7) y `bandeja-recupero`
       ampliada (9).
-- [ ] Verificación de solo lectura en producción tras el despliegue:
-      paridad indicador ↔ lista en logística y en «Fuera de plazo»; búsqueda
-      y filtros en Recupero con la cartera real.
+- [x] Verificación de solo lectura en producción tras el despliegue:
+      paridad indicador ↔ lista en logística (17/132/188) y en «Fuera de
+      plazo» (12); filtros en Recupero sobre 68 casos reales.
 
 ## Fase 3 del plan: gestionar sin salir (pendiente)
 
