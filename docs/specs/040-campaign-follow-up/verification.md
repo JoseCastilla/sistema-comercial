@@ -42,6 +42,24 @@ solo casos **agendados** con fecha pasada (BR-053). Es exactamente el fallo
 que BR-001 existe para impedir, y lo detectó esta comprobación: la cabecera
 pasa a usar la misma definición y el mismo enlace, y vuelve a dar 0 ↔ 0.
 
+## 2b. Paridad en producción — 05/09/2026
+
+Lectura de la pestaña de producción con sesión de administrador, sin
+acciones. Cartera de 1 594 casos y varios asesores: exactamente lo que la
+base de desarrollo no permitía.
+
+| Indicador del tablero | Cifra | Seguimiento |
+|---|---|---|
+| Asignados | 1 594 | 1 594 |
+| Trabajados hoy | 240 | 240 |
+| Sin primer contacto | 567 | 567 |
+| Agenda vencida | 15 | 15 |
+| Xiomara Ricra | 130 | 130 |
+| Franco Pariona | 117 | 117 |
+| Liz Pisco | 165 | 165 |
+
+BR-001 se cumple con población real y con «Agenda vencida» distinta de cero.
+
 ## 3. Limitaciones declaradas
 
 - El panel del navegador quedó oculto durante la sesión y no recibe entrada

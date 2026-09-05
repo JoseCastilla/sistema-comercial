@@ -899,6 +899,33 @@ base de desarrollo, así que agenda vencida, recuperados y perdidos se vieron
 en cero; el panel del navegador siguió oculto y no hubo clics reales. El
 rango libre de fechas queda fuera de esta versión, a propósito.
 
+### Verificación de solo lectura en producción — 05/09/2026
+
+El usuario abrió una pestaña de producción con su sesión de administrador;
+todo lo que sigue son lecturas de páginas servidas, sin ejecutar ninguna
+acción. Cierra las limitaciones que las fases 1 a 4 dejaron declaradas por
+la base de desarrollo vacía.
+
+- **COR-02 con números**: «Listos para repartir (231)» abre un listado de 231
+  con **cero** filas en espera dentro; «Falta consultar (159)» y «Con pedido
+  en curso (103)» son vistas propias.
+- **COR-01 con números**: con el plan «Máximo S/39.9», Listos 222 ≤ 231,
+  Con pedido en curso 101 ≤ 103, Falta consultar 151 ≤ 159 — cada subconjunto
+  se queda dentro de su vista. Antes de la corrección, elegir un plan habría
+  devuelto los casos por revisar y en espera juntos, verificados o no.
+- **Paridad tablero ↔ Seguimiento (SPEC-040 BR-001), población real**:
+  Asignados 1 594 ↔ 1 594; Trabajados hoy 240 ↔ 240; Sin primer contacto
+  567 ↔ 567; Agenda vencida 15 ↔ 15. Por asesor: Xiomara Ricra 130 ↔ 130,
+  Franco Pariona 117 ↔ 117, Liz Pisco 165 ↔ 165.
+- **Fase 4 en producción**: el carril aparece en las cinco pantallas con su
+  paso marcado; el historial muestra sus cuatro filtros y cuatro lotes con
+  «Ver clientes»; el lote `Base_Consolidada_2026-09-04.xlsx` abre 143
+  clientes en el triage; el botón dice «Guardar reglas de importación».
+- **Fase 5**: entregada durante esta verificación; el tablero de producción
+  aún mostraba la versión anterior («Tablero del día», sin bloques) mientras
+  EasyPanel construía. La señal al aterrizar: título «Tablero» y los bloques
+  «Cartera · ahora» y «Actividad · hoy».
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de
