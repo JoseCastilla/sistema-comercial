@@ -410,6 +410,12 @@ export default async function RecoveryBaseAdminPage({
             >
               Tablero del día
             </Link>
+            <Link
+              className="ui-button ui-button--secondary"
+              href="/recovery/follow-up"
+            >
+              Seguimiento
+            </Link>
           </div>
         </SectionPanel>
 
@@ -601,22 +607,21 @@ export default async function RecoveryBaseAdminPage({
               cambiar: las que están en otro operador y las que tienen pedido a
               Movistar sin fecha, que puede caerse.
               {waitingNumbers > 0 ? (
-            <div className="ui-form-row">
-              <a
-                className="ui-button ui-button--secondary"
-                href="/admin/recovery-base/numbers?scope=waiting"
-              >
-                Pedidos en curso: {formatCount(waitingNumbers)} número(s)
-              </a>
-              <span className="pb-2 text-xs text-ui-muted">
-                Las líneas de los clientes que están esperando: unas ya
-                portaron y otras se cayeron. Pásalas por el filtro para saber
-                cuáles siguen siendo oportunidad.
-              </span>
-            </div>
-          ) : null}
-
-          {settledNumbers > 0 ? (
+                <div className="ui-form-row">
+                  <a
+                    className="ui-button ui-button--secondary"
+                    href="/admin/recovery-base/numbers?scope=waiting"
+                  >
+                    Pedidos en curso: {formatCount(waitingNumbers)} número(s)
+                  </a>
+                  <span className="pb-2 text-xs text-ui-muted">
+                    Las líneas de los clientes que están esperando: unas ya
+                    portaron y otras se cayeron. Pásalas por el filtro para
+                    saber cuáles siguen siendo oportunidad.
+                  </span>
+                </div>
+              ) : null}
+              {settledNumbers > 0 ? (
                 <>
                   {" "}
                   Quedan fuera {formatCount(settledNumbers)} con fecha de

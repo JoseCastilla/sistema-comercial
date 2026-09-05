@@ -38,6 +38,14 @@ export default async function CampaignCasePage({
     department?: string;
     plan?: string;
     page?: string;
+    from?: string;
+    team?: string;
+    advisor?: string;
+    result?: string;
+    next?: string;
+    contact?: string;
+    worked?: string;
+    status?: string;
   }>;
 }) {
   const { session, membership } = await requireCommercialAccess();
@@ -56,8 +64,27 @@ export default async function CampaignCasePage({
   if (context.department) queue.set("department", context.department);
   if (context.plan) queue.set("plan", context.plan.slice(0, 100));
   if (context.page) queue.set("page", context.page);
+  // SPEC-040 BR-009: si vino de Seguimiento, vuelve a Seguimiento con sus
+  // filtros; la bandeja del asesor no es su sitio.
+  const fromFollowUp = context.from === "follow-up";
+  for (const key of [
+    "team",
+    "advisor",
+    "result",
+    "next",
+    "contact",
+    "worked",
+    "status",
+  ] as const) {
+    const value = context[key];
+    if (fromFollowUp && value) queue.set(key, value.slice(0, 40));
+  }
   queue.set("visto", caseId);
-  const backHref = `/recovery/campaigns?${queue.toString()}#caso-${caseId}`;
+  const backBase = fromFollowUp ? "/recovery/follow-up" : "/recovery/campaigns";
+  const backLabel = fromFollowUp
+    ? "← Volver a Seguimiento"
+    : "← Volver a mi cola";
+  const backHref = `${backBase}?${queue.toString()}#caso-${caseId}`;
 
   const detail = await getCampaignCase(
     membership.organization.id,
@@ -90,7 +117,7 @@ export default async function CampaignCasePage({
             className="text-ui-accent underline-offset-2 hover:underline"
             href={backHref}
           >
-            ← Volver a mi cola
+            {backLabel}
           </Link>
         </p>
 
