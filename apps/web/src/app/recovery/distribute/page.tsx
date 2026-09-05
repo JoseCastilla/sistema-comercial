@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Form from "next/form";
 import { redirect } from "next/navigation";
 
 import {
@@ -9,9 +8,18 @@ import {
   type DistributeTeamOption,
 } from "@/features/recovery/components/distribute-recovery-form";
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
+import { QueueFilters } from "@/features/recovery/components/queue-filters";
+import { buildRecoverySearchWhere } from "@/features/recovery/server/recovery-search-where";
 import { requireCommercialAccess } from "@/server/auth/access";
 
-import { allOf } from "@repo/validation";
+import {
+  parseRecoveryAgeBucket,
+  recoveryAgeBucketRange,
+  recoveryAgeBuckets,
+  recoveryTeamFilterNone,
+  summarizeRecoveryPlan,
+  allOf,
+} from "@repo/validation";
 import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
@@ -31,12 +39,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeStyle: "short",
 });
 
-function summarizePlan(planRaw: string | null): string {
-  if (!planRaw) return "—";
-  const match = planRaw.match(/S\/\s?\d+(?:\.\d+)?/);
-  return match ? `Máximo ${match[0]}` : planRaw;
-}
-
 export default async function RecoveryDistributePage({
   searchParams,
 }: {
@@ -46,6 +48,8 @@ export default async function RecoveryDistributePage({
     department?: string;
     plan?: string;
     q?: string;
+    advisor?: string;
+    age?: string;
     page?: string;
   }>;
 }) {
@@ -60,7 +64,9 @@ export default async function RecoveryDistributePage({
   const teamFilter = parameters.team ?? "";
   const departmentFilter = parameters.department ?? "";
   const planFilter = (parameters.plan ?? "").trim().slice(0, 100);
-  const documentFilter = (parameters.q ?? "").trim().slice(0, 20);
+  const searchInput = (parameters.q ?? "").trim().slice(0, 80);
+  const advisorFilter = (parameters.advisor ?? "").trim().slice(0, 40);
+  const ageFilter = parseRecoveryAgeBucket(parameters.age);
   const page = Math.max(1, Number.parseInt(parameters.page ?? "1", 10) || 1);
 
   // BR-077: lo abandonado vuelve al pool antes de mirar qué distribuir.
@@ -100,32 +106,71 @@ export default async function RecoveryDistributePage({
       : ""
     : teamFilter;
 
-  // COR-01: condiciones juntas con AND, para que ninguna pise a otra.
-  const filterWhere: Prisma.RecoveryCaseWhereInput = allOf<Prisma.RecoveryCaseWhereInput>(
-    scopeWhere,
-    teamScope ? { assignedTeamId: teamScope } : null,
-    departmentFilter
-      ? { department: { equals: departmentFilter, mode: "insensitive" } }
-      : null,
-    planFilter
-      ? {
-          services: {
-            some: {
-              discardedAt: null,
-              planRaw: { contains: planFilter, mode: "insensitive" },
-            },
-          },
-        }
-      : null,
-    documentFilter ? { documentNumber: { contains: documentFilter } } : null,
+  /**
+   * Fase 2: el plan se elige de una lista con las etiquetas comerciales
+   * presentes en la base dentro del alcance. Varias variantes crudas pueden
+   * compartir etiqueta; el filtro abarca todas las que la comparten.
+   */
+  const planGroups = await database.recoveryCaseService.groupBy({
+    by: ["planRaw"],
+    where: {
+      organizationId: membership.organization.id,
+      discardedAt: null,
+      case: { ...scopeWhere, status: view === "open" ? "OPEN" : "ASSIGNED" },
+    },
+  });
+  const planRaws = planGroups
+    .map((group) => group.planRaw)
+    .filter((plan): plan is string => plan !== null && plan.length > 0);
+  const planOptions = [...new Set(planRaws.map(summarizeRecoveryPlan))].sort();
+  const planRawsForFilter = planRaws.filter(
+    (plan) => summarizeRecoveryPlan(plan) === planFilter,
   );
 
-  const viewWhere: Prisma.RecoveryCaseWhereInput = allOf<Prisma.RecoveryCaseWhereInput>(
-    filterWhere,
-    view === "open"
-      ? { status: "OPEN" }
-      : { status: "ASSIGNED", attempts: { none: {} } },
-  );
+  // COR-01: condiciones juntas con AND, para que ninguna pise a otra.
+  const filterWhere: Prisma.RecoveryCaseWhereInput =
+    allOf<Prisma.RecoveryCaseWhereInput>(
+      scopeWhere,
+      // «Sin equipo» es un valor propio del filtro, no un equipo (fase 2).
+      teamScope === recoveryTeamFilterNone
+        ? { assignedTeamId: null }
+        : teamScope
+          ? { assignedTeamId: teamScope }
+          : null,
+      departmentFilter
+        ? { department: { equals: departmentFilter, mode: "insensitive" } }
+        : null,
+      planFilter
+        ? {
+            services: {
+              some: { discardedAt: null, planRaw: { in: planRawsForFilter } },
+            },
+          }
+        : null,
+      /**
+       * «Asesor actual» filtra por el dueño de hoy, no por el destino de una
+       * asignación. Solo aplica a los asignados; los casos por distribuir no
+       * tienen dueño. Un supervisor sigue acotado por `scopeWhere`: un asesor
+       * de otro equipo simplemente no devuelve filas.
+       */
+      view === "unworked" && advisorFilter
+        ? { assignedUserId: advisorFilter }
+        : null,
+      // BR-004: la antigüedad se mide desde el pedido, nunca desde la carga.
+      ageFilter
+        ? { lastSightingAt: recoveryAgeBucketRange(ageFilter, new Date()) }
+        : null,
+      // BR-088: un dato suelto —nombre, DNI, teléfono o línea— basta.
+      buildRecoverySearchWhere(searchInput),
+    );
+
+  const viewWhere: Prisma.RecoveryCaseWhereInput =
+    allOf<Prisma.RecoveryCaseWhereInput>(
+      filterWhere,
+      view === "open"
+        ? { status: "OPEN" }
+        : { status: "ASSIGNED", attempts: { none: {} } },
+    );
 
   const [
     openCount,
@@ -234,7 +279,7 @@ export default async function RecoveryDistributePage({
     holderName: item.holderName,
     documentNumber: item.documentNumber,
     department: item.department,
-    planSummary: summarizePlan(item.services[0]?.planRaw ?? null),
+    planSummary: summarizeRecoveryPlan(item.services[0]?.planRaw ?? null),
     serviceCount: item.services.length,
     // BR-083: distribuir sin verificar se advierte, no se bloquea.
     unverified: item.services.some(
@@ -270,7 +315,10 @@ export default async function RecoveryDistributePage({
   if (teamScope) baseQuery.set("team", teamScope);
   if (departmentFilter) baseQuery.set("department", departmentFilter);
   if (planFilter) baseQuery.set("plan", planFilter);
-  if (documentFilter) baseQuery.set("q", documentFilter);
+  if (searchInput) baseQuery.set("q", searchInput);
+  if (view === "unworked" && advisorFilter)
+    baseQuery.set("advisor", advisorFilter);
+  if (ageFilter) baseQuery.set("age", ageFilter);
 
   function pageHref(target: number): string {
     const query = new URLSearchParams(baseQuery);
@@ -315,85 +363,44 @@ export default async function RecoveryDistributePage({
           }
           description={`${formatCount(filteredTotal)} caso(s) cumplen el filtro; se muestran ${formatCount(rows.length)} por página, los más recientes primero.`}
         >
-          <Form
-            action="/recovery/distribute"
-            className="flex flex-wrap items-end gap-3"
-          >
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-ui-muted">
-                Vista
-              </span>
-              <select
-                className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={view}
-                name="view"
-              >
-                <option value="open">Por distribuir</option>
-                <option value="unworked">Asignados sin gestión</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-ui-muted">
-                Equipo
-              </span>
-              <select
-                className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={teamScope}
-                name="team"
-              >
-                <option value="">Todos</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-ui-muted">
-                Departamento
-              </span>
-              <select
-                className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={departmentFilter}
-                name="department"
-              >
-                <option value="">Todos</option>
-                {departments.map((department) => (
-                  <option key={department} value={department}>
-                    {department}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-ui-muted">
-                Plan contiene
-              </span>
-              <input
-                className="block w-32 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={planFilter}
-                maxLength={100}
-                name="plan"
-                placeholder="49.9"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-ui-muted">
-                DNI
-              </span>
-              <input
-                className="block w-32 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={documentFilter}
-                maxLength={20}
-                name="q"
-                placeholder="Buscar"
-              />
-            </label>
-            <button className="ui-button ui-button--secondary" type="submit">
-              Filtrar
-            </button>
-          </Form>
+          <QueueFilters
+            basePath="/recovery/distribute"
+            options={{
+              views: [
+                { value: "open", label: "Por distribuir" },
+                { value: "unworked", label: "Asignados sin gestión" },
+              ],
+              teams,
+              allowNoTeam: !isSupervisor,
+              advisors:
+                view === "unworked"
+                  ? [
+                      ...new Map(
+                        advisorMemberships.map((item) => [
+                          item.userId,
+                          {
+                            id: item.userId,
+                            name: `${item.user.name} · ${item.team.name}`,
+                          },
+                        ]),
+                      ).values(),
+                    ]
+                  : undefined,
+              departments,
+              plans: planOptions,
+              ages: recoveryAgeBuckets,
+            }}
+            resultLabel={`${formatCount(filteredTotal)} caso(s) cumplen el filtro.`}
+            values={{
+              q: searchInput,
+              view,
+              team: teamScope,
+              department: departmentFilter,
+              plan: planFilter,
+              advisor: view === "unworked" ? advisorFilter : "",
+              age: ageFilter ?? "",
+            }}
+          />
 
           <DistributeRecoveryForm
             advisors={advisorOptions}
