@@ -139,3 +139,15 @@ que «Reactivar» no se vio renderizado; su acción y su diálogo existen y el
 código está revisado. El aviso de borrador (`beforeunload` / confirmación al
 cerrar) se comprueba a mano escribiendo en un formulario del panel y cerrando.
 
+3. **Producción, solo lectura** (commit f27886d, sesión de administrador,
+   sin ejecutar ninguna acción): `/admin/teams?supervision=sin` muestra la
+   barra en vivo (Estado, Supervisión = sin, Supervisor), la ficha
+   «Supervisión: Sin supervisor» y «2 equipos»: AYACUCHO - EXTERNOS y
+   AYACUCHO - MAGISTERIAL 01, cada uno con «Asignar supervisor» abierto,
+   «Renombrar», sus integrantes enlazados a Personas (2 y 8) e «Historial (3)»
+   e «Historial (8)» de la auditoría existente. `/admin/users?venta=no` carga
+   la barra en vivo (ya sin formulario GET), la ficha «Capacidad de venta: No
+   vende» y 5 personas que no venden (administración, back office,
+   supervisores sin venta y un asesor sin equipo). La migración de auditoría
+   corrió con el despliegue.
+

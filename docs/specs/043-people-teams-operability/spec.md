@@ -1,6 +1,6 @@
 # SPEC-043 — Personas y Equipos operativos
 
-Estado: **fases 1 a 3 construidas; PE-07 pendiente de confirmación** (05/09/2026). Une dos planes revisados
+Estado: **fases 1 a 3 desplegadas y verificadas en lectura; PE-07 pendiente de confirmación** (05/09/2026). Une dos planes revisados
 con José el mismo día: «Plan actualizado de Personas y Equipos» (PE-01 a
 PE-07) y «Plan de mejora UX de Personas y Equipos» (UX-01 a UX-08). Se apoya
 en SPEC-001 (equipos), SPEC-017 (directorios), SPEC-019 (supervisor que

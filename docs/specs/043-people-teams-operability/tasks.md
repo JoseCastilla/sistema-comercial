@@ -60,6 +60,6 @@
       auditoría por equipo. Migración `add_team_audit_actions`
       (MEMBER_REMOVED, TEAM_RENAMED, TEAM_REACTIVATED).
 - [x] Recorrido local con sesión de administrador.
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción tras el despliegue.
 - [ ] PE-07 · «Mi equipo» del supervisor: queda para una entrega propia
       (superficie nueva + alta de asesores por supervisores).
