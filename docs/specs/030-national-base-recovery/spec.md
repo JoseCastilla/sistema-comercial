@@ -428,6 +428,36 @@ construir un reporte a mano.
   - El rango libre de fechas queda fuera de esta versión: los cuatro
     períodos cubren la revisión operativa y un selector de rango merece su
     propio componente.
+- **BR-095** (05/09/2026, fase 1 del plan de mejoras de Pedidos y Recupero
+  de ventas): **la bandeja de recupero dice qué venció, ordena toda la
+  cartera con la regla de negocio y abre la venta en su día.**
+  - **Tres vencimientos excluyentes**, calculados con las mismas funciones
+    que rigen la cadencia (SPEC-026): *primer contacto vencido* cuando nadie
+    ha llamado (`firstContactAt` vacío) y pasaron las dos horas desde la
+    novedad; *seguimiento vencido* cuando ya hubo contacto y la próxima
+    acción quedó atrás; *agenda vencida* cuando el caso está agendado y la
+    cita ya pasó. Una agenda futura no vence nada y un caso en espera de
+    confirmación tampoco: está en verificación. Antes, cualquier próxima
+    acción pasada se rotulaba «Primer contacto vencido», aunque el asesor
+    hubiera llamado tres veces.
+  - **Cada vencimiento es un indicador propio que abre su lista**
+    (`?vence=primer_contacto|seguimiento|agenda`), y la lista cuenta
+    exactamente lo mismo que el indicador (SPEC-040 BR-001). Un valor
+    desconocido muestra toda la cola.
+  - **El orden se aplica a toda la cartera del alcance antes de paginar**:
+    prioridad, luego lo vencido, luego lo más próximo a vencer, luego lo que
+    se cayó hace más tiempo, siempre con fechas reales. Antes se cortaba en
+    200 casos por fecha de creación y se ordenaba después, con un desempate
+    por la etiqueta «dd/mm» que ponía septiembre antes que agosto. La página
+    es de 100 casos y los totales se calculan sobre toda la cartera, no sobre
+    la página.
+  - **La venta se abre en su día**: el enlace a la orden lleva
+    `period=RANGE&from=&to=` con el día de Lima en que se registró, desde la
+    bandeja y desde la ficha. Antes abría el mes en curso y una venta de hace
+    dos meses no aparecía. Si el día no se conoce, el enlace queda como
+    estaba.
+  - Un caso con primer contacto vencido y sin próxima acción muestra «Llamar
+    ya» en vez de un guion: la consecuencia, no la ausencia de dato.
 - **BR-025:** un caso `WAITING` cuyos servicios aparecen luego portados a
   Movistar se cierra como `DISCARDED` y no vuelve a revisarse.
 - **BR-026:** un caso `LIBERADO` pasa a `OPEN` y queda disponible para asignar.

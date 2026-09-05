@@ -1,18 +1,33 @@
 import "server-only";
 
+import {
+  classifyInternalRecoveryDue,
+  compareInternalRecoveryCases,
+  getLimaIsoDate,
+} from "@repo/validation";
+
 import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
+import type { InternalRecoveryDue } from "@repo/validation";
 
 export interface SalesRecoveryAccess {
   userId: string;
   role: "ADMIN" | "SUPERVISOR" | "AGENT" | "BACKOFFICE";
 }
 
+export interface SalesRecoveryInboxOptions {
+  /** Ver solo los casos con este vencimiento (BR-095). */
+  due?: InternalRecoveryDue | null;
+  page?: number;
+}
+
 export interface SalesRecoveryCaseItem {
   id: string;
   originalAgentUserId: string | null;
   orderCode: string | null;
+  /** Día de Lima en que se registró la venta, para abrirla en su período. */
+  orderRegisteredDay: string | null;
   holderName: string;
   documentNumber: string;
   status: string;
@@ -24,7 +39,8 @@ export interface SalesRecoveryCaseItem {
   originalTeamName: string | null;
   noveltyAtLabel: string;
   nextActionAtLabel: string | null;
-  nextActionOverdue: boolean;
+  /** Qué venció, si algo venció: primer contacto, seguimiento o agenda. */
+  due: InternalRecoveryDue | null;
   isCritical: boolean;
 }
 
@@ -34,14 +50,21 @@ export interface SalesRecoveryInboxData {
   scopeLabel: string;
   canAssign: boolean;
   advisorOptions: Array<{ id: string; name: string; teamName: string }>;
+  /** Sobre toda la cartera del alcance, no sobre la página visible. */
   totals: {
     open: number;
-    overdue: number;
+    firstContactOverdue: number;
+    followUpOverdue: number;
+    agendaOverdue: number;
     criticalUnassigned: number;
     recoveredThisMonth: number;
   };
+  dueFilter: InternalRecoveryDue | null;
+  pagination: { page: number; totalPages: number; total: number };
   cases: SalesRecoveryCaseItem[];
 }
+
+export const salesRecoveryPageSize = 100;
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: "America/Lima",
@@ -51,13 +74,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   minute: "2-digit",
   hour12: false,
 });
-
-const priorityRank: Record<string, number> = {
-  CRITICA: 4,
-  ALTA: 3,
-  MEDIA: 2,
-  CONDICIONADA: 1,
-};
 
 const openStatuses = [
   "OPEN",
@@ -103,6 +119,7 @@ async function getAccessWhere(
 export async function getSalesRecoveryInbox(
   organizationId: string,
   access: SalesRecoveryAccess,
+  options: SalesRecoveryInboxOptions = {},
 ): Promise<SalesRecoveryInboxData> {
   const now = new Date();
   const accessWhere = await getAccessWhere(organizationId, access);
@@ -133,10 +150,11 @@ export async function getSalesRecoveryInbox(
       : null;
 
   const [cases, recoveredThisMonth, advisorMemberships] = await Promise.all([
+    // BR-095: se trae toda la cartera abierta del alcance y se ordena aquí con
+    // la regla de negocio. Antes se cortaba en 200 por fecha de creación y se
+    // ordenaba después: el orden solo valía dentro del recorte.
     database.recoveryCase.findMany({
       where: { ...baseWhere, status: { in: [...openStatuses] } },
-      orderBy: [{ createdAt: "desc" }],
-      take: 200,
       select: {
         id: true,
         status: true,
@@ -146,12 +164,13 @@ export async function getSalesRecoveryInbox(
         holderName: true,
         documentNumber: true,
         lastSightingAt: true,
+        firstContactAt: true,
         nextActionAt: true,
         originalAgentUserId: true,
         assignedUser: { select: { name: true } },
         originalAgent: { select: { name: true } },
         originalTeam: { select: { name: true } },
-        sourceDitoOrder: { select: { orderCodeRaw: true } },
+        sourceDitoOrder: { select: { orderCodeRaw: true, registeredAt: true } },
       },
     }),
     database.recoveryCase.count({
@@ -191,39 +210,66 @@ export async function getSalesRecoveryInbox(
     }))
     .sort((left, right) => left.name.localeCompare(right.name, "es"));
 
-  const items = cases
-    .map((item): SalesRecoveryCaseItem => {
-      const overdue =
-        item.nextActionAt !== null && item.nextActionAt.getTime() < now.getTime();
-      return {
-        id: item.id,
-        originalAgentUserId: item.originalAgentUserId,
-        orderCode: item.sourceDitoOrder?.orderCodeRaw ?? null,
-        holderName: item.holderName,
-        documentNumber: item.documentNumber,
-        status: String(item.status),
-        priority: item.priority ? String(item.priority) : null,
-        entryReason: item.entryReason ? String(item.entryReason) : null,
-        entryObservation: item.entryObservation,
-        assignedToName: item.assignedUser?.name ?? null,
-        originalAgentName: item.originalAgent?.name ?? null,
-        originalTeamName: item.originalTeam?.name ?? null,
-        noveltyAtLabel: dateTimeFormatter.format(item.lastSightingAt),
-        nextActionAtLabel: item.nextActionAt
-          ? dateTimeFormatter.format(item.nextActionAt)
-          : null,
-        nextActionOverdue: overdue,
-        isCritical: item.priority === "CRITICA",
-      };
-    })
-    // BR-064: primero la prioridad, luego lo más urgente por vencer.
-    .sort(
-      (left, right) =>
-        (priorityRank[right.priority ?? ""] ?? 0) -
-          (priorityRank[left.priority ?? ""] ?? 0) ||
-        Number(right.nextActionOverdue) - Number(left.nextActionOverdue) ||
-        left.noveltyAtLabel.localeCompare(right.noveltyAtLabel),
-    );
+  const ranked = cases
+    .map((item) => ({
+      row: item,
+      priority: item.priority ? String(item.priority) : null,
+      due: classifyInternalRecoveryDue(
+        {
+          status: String(item.status),
+          firstContactAt: item.firstContactAt,
+          nextActionAt: item.nextActionAt,
+          noveltyAt: item.lastSightingAt,
+        },
+        now,
+      ),
+      nextActionAt: item.nextActionAt,
+      noveltyAt: item.lastSightingAt,
+    }))
+    .sort(compareInternalRecoveryCases);
+
+  const dueFilter = options.due ?? null;
+  const scoped = dueFilter
+    ? ranked.filter((item) => item.due === dueFilter)
+    : ranked;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(scoped.length / salesRecoveryPageSize),
+  );
+  const requestedPage = Number.isFinite(options.page ?? 1)
+    ? Math.trunc(options.page ?? 1)
+    : 1;
+  const page = Math.min(Math.max(1, requestedPage), totalPages);
+  const start = (page - 1) * salesRecoveryPageSize;
+
+  const items = scoped
+    .slice(start, start + salesRecoveryPageSize)
+    .map(({ row, priority, due }): SalesRecoveryCaseItem => ({
+      id: row.id,
+      originalAgentUserId: row.originalAgentUserId,
+      orderCode: row.sourceDitoOrder?.orderCodeRaw ?? null,
+      orderRegisteredDay: row.sourceDitoOrder
+        ? getLimaIsoDate(row.sourceDitoOrder.registeredAt)
+        : null,
+      holderName: row.holderName,
+      documentNumber: row.documentNumber,
+      status: String(row.status),
+      priority,
+      entryReason: row.entryReason ? String(row.entryReason) : null,
+      entryObservation: row.entryObservation,
+      assignedToName: row.assignedUser?.name ?? null,
+      originalAgentName: row.originalAgent?.name ?? null,
+      originalTeamName: row.originalTeam?.name ?? null,
+      noveltyAtLabel: dateTimeFormatter.format(row.lastSightingAt),
+      nextActionAtLabel: row.nextActionAt
+        ? dateTimeFormatter.format(row.nextActionAt)
+        : null,
+      due,
+      isCritical: priority === "CRITICA",
+    }));
+
+  const countDue = (due: InternalRecoveryDue) =>
+    ranked.filter((item) => item.due === due).length;
 
   return {
     generatedAt: dateTimeFormatter.format(now),
@@ -237,13 +283,17 @@ export async function getSalesRecoveryInbox(
     canAssign,
     advisorOptions,
     totals: {
-      open: items.length,
-      overdue: items.filter((item) => item.nextActionOverdue).length,
-      criticalUnassigned: items.filter(
-        (item) => item.isCritical && item.assignedToName === null,
+      open: ranked.length,
+      firstContactOverdue: countDue("primer_contacto"),
+      followUpOverdue: countDue("seguimiento"),
+      agendaOverdue: countDue("agenda"),
+      criticalUnassigned: ranked.filter(
+        (item) => item.priority === "CRITICA" && item.row.assignedUser === null,
       ).length,
       recoveredThisMonth,
     },
+    dueFilter,
+    pagination: { page, totalPages, total: scoped.length },
     cases: items,
   };
 }

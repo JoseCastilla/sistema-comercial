@@ -1,13 +1,19 @@
 import "server-only";
 
-import { evaluateInternalLossReasonGates } from "@repo/validation";
+import {
+  evaluateInternalLossReasonGates,
+  getLimaIsoDate,
+} from "@repo/validation";
 
 import { database } from "@/server/database";
 
 import { lossReasonLabels } from "../loss-reason-labels";
 
 import type { SalesRecoveryAccess } from "./get-sales-recovery-inbox";
-import type { LossReasonGate, RecoveryLossReasonOption } from "@repo/validation";
+import type {
+  LossReasonGate,
+  RecoveryLossReasonOption,
+} from "@repo/validation";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: "America/Lima",
@@ -27,6 +33,8 @@ export interface SalesRecoveryCaseDetail {
   entryReason: string | null;
   entryObservation: string | null;
   orderCode: string | null;
+  /** Día de Lima en que se registró la venta, para abrirla en su período. */
+  orderRegisteredDay: string | null;
   contactPhone: string | null;
   assignedToName: string | null;
   isAssignedToViewer: boolean;
@@ -116,7 +124,11 @@ export async function getSalesRecoveryCase(
       originalAgent: { select: { name: true } },
       originalTeam: { select: { name: true } },
       sourceDitoOrder: {
-        select: { orderCodeRaw: true, deliveryContactPhone: true },
+        select: {
+          orderCodeRaw: true,
+          deliveryContactPhone: true,
+          registeredAt: true,
+        },
       },
       recoveredDitoOrder: { select: { orderCodeRaw: true } },
       attempts: {
@@ -175,6 +187,9 @@ export async function getSalesRecoveryCase(
       : null,
     entryObservation: recoveryCase.entryObservation,
     orderCode: recoveryCase.sourceDitoOrder?.orderCodeRaw ?? null,
+    orderRegisteredDay: recoveryCase.sourceDitoOrder
+      ? getLimaIsoDate(recoveryCase.sourceDitoOrder.registeredAt)
+      : null,
     contactPhone: recoveryCase.sourceDitoOrder?.deliveryContactPhone ?? null,
     assignedToName: recoveryCase.assignedUser?.name ?? null,
     isAssignedToViewer: recoveryCase.assignedUserId === access.userId,
