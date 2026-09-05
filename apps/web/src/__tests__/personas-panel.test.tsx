@@ -18,6 +18,9 @@ vi.mock("@/features/users/server/reenter-person-action", () => ({
 vi.mock("@/features/users/server/reset-user-password-action", () => ({
   resetUserPasswordAction: async () => ({ type: "idle", message: "" }),
 }));
+vi.mock("@/features/teams/server/team-actions", () => ({
+  assignTeamMemberAction: async () => ({ type: "idle", message: "" }),
+}));
 
 const persona = (
   extra: Partial<PersonAdminPanelPerson>,
@@ -33,6 +36,7 @@ const persona = (
   emailVerified: true,
   sinceLabel: "09/08/2026",
   supervisedTeamNames: ["Lima Centro", "Huancayo"],
+  needsTeam: false,
   ...extra,
 });
 
@@ -123,5 +127,29 @@ describe("Panel de administración de una persona", () => {
 
     expect(screen.getByText("No requiere equipo")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Ciclo de vida" })).toBeNull();
+  });
+
+  it("un asesor sin equipo operativo puede recibir uno desde el panel", () => {
+    renderPanel({
+      role: "AGENT",
+      primaryTeamId: null,
+      primaryTeamName: null,
+      supervisedTeamNames: [],
+      needsTeam: true,
+    });
+
+    expect(screen.getByText("Sin equipo operativo")).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Asignar equipo principal" }),
+    ).toBeRequired();
+    expect(
+      screen.getByRole("button", { name: "Asignar equipo" }),
+    ).toBeInTheDocument();
+  });
+
+  it("con equipo, el panel no ofrece asignar otro", () => {
+    renderPanel();
+
+    expect(screen.queryByRole("button", { name: "Asignar equipo" })).toBeNull();
   });
 });

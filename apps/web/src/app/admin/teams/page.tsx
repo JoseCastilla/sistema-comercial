@@ -10,6 +10,10 @@ import { StatusBadge } from "@repo/ui/status-badge";
 import { AssignTeamMemberForm } from "@/features/teams/components/assign-team-member-form";
 import { CreateTeamForm } from "@/features/teams/components/create-team-form";
 import { disableTeamAction } from "@/features/teams/server/team-actions";
+import {
+  describeTeamDisableImpact,
+  summarizeTeamMembers,
+} from "@/features/teams/team-roster";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -24,60 +28,95 @@ export default async function AdminTeamsPage({
     (Array.isArray(parameters.nuevo)
       ? parameters.nuevo[0]
       : parameters.nuevo) === "1";
+  // SPEC-043 UX-04: el indicador «Sin supervisor» abre exactamente esta lista.
+  const withoutSupervisorOnly =
+    (Array.isArray(parameters.sinSupervisor)
+      ? parameters.sinSupervisor[0]
+      : parameters.sinSupervisor) === "1";
   const organizationId = membership.organization.id;
-  const [teams, candidates] = await Promise.all([
-    database.commercialTeam.findMany({
-      where: { organizationId },
-      orderBy: [{ status: "asc" }, { name: "asc" }],
-      select: {
-        id: true,
-        name: true,
-        code: true,
-        status: true,
-        members: {
-          where: { isActive: true },
-          orderBy: [{ memberRole: "desc" }, { user: { name: "asc" } }],
-          select: {
-            memberRole: true,
-            salesEnabled: true,
-            isPrimary: true,
-            user: { select: { id: true, name: true, email: true } },
+  const [teams, candidates, openOrdersByTeam, openCasesByTeam] =
+    await Promise.all([
+      database.commercialTeam.findMany({
+        where: { organizationId },
+        orderBy: [{ status: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          status: true,
+          members: {
+            where: { isActive: true },
+            orderBy: [{ memberRole: "desc" }, { user: { name: "asc" } }],
+            select: {
+              memberRole: true,
+              salesEnabled: true,
+              isPrimary: true,
+              user: { select: { id: true, name: true, email: true } },
+            },
           },
         },
-      },
-    }),
-    database.organizationMember.findMany({
-      where: {
-        organizationId,
-        role: { in: ["AGENT", "SUPERVISOR"] },
-        user: { status: "ACTIVE" },
-      },
-      orderBy: { user: { name: "asc" } },
-      select: {
-        role: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            commercialTeamMemberships: {
-              where: {
-                isActive: true,
-                team: { organizationId },
-              },
-              select: {
-                teamId: true,
-                memberRole: true,
-                salesEnabled: true,
-                isPrimary: true,
-                team: { select: { name: true, status: true } },
+      }),
+      database.organizationMember.findMany({
+        where: {
+          organizationId,
+          role: { in: ["AGENT", "SUPERVISOR"] },
+          user: { status: "ACTIVE" },
+        },
+        orderBy: { user: { name: "asc" } },
+        select: {
+          role: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              commercialTeamMemberships: {
+                where: {
+                  isActive: true,
+                  team: { organizationId },
+                },
+                select: {
+                  teamId: true,
+                  memberRole: true,
+                  salesEnabled: true,
+                  isPrimary: true,
+                  team: { select: { name: true, status: true } },
+                },
               },
             },
           },
         },
-      },
-    }),
-  ]);
+      }),
+      // SPEC-043 PE-06: cuánto trabajo abierto conserva el equipo si se
+      // deshabilita. Se cuenta, no se mueve.
+      database.ditoOrder.groupBy({
+        by: ["assignedTeamId"],
+        where: {
+          organizationId,
+          assignedTeamId: { not: null },
+          status: { in: ["OPEN", "SENT", "UNKNOWN"] },
+        },
+        _count: { _all: true },
+      }),
+      database.recoveryCase.groupBy({
+        by: ["assignedTeamId"],
+        where: {
+          organizationId,
+          assignedTeamId: { not: null },
+          status: {
+            in: ["OPEN", "ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
+          },
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+  const openOrdersOf = new Map(
+    openOrdersByTeam.map((row) => [row.assignedTeamId, row._count._all]),
+  );
+  const openCasesOf = new Map(
+    openCasesByTeam.map((row) => [row.assignedTeamId, row._count._all]),
+  );
 
   const toCandidate = (item: (typeof candidates)[number]) => {
     const activeMemberships = item.user.commercialTeamMemberships.filter(
@@ -106,16 +145,26 @@ export default async function AdminTeamsPage({
     .filter((item) => item.role === "SUPERVISOR")
     .map(toCandidate);
   const activeTeams = teams.filter((team) => team.status === "ACTIVE");
-  const activeAgentIds = new Set(
+  // SPEC-043 UX-05: rol y capacidad de venta no son lo mismo. Esto cuenta a
+  // quien vende —asesores y supervisores vendedores—, sin repetir personas.
+  const sellerIds = new Set(
     activeTeams.flatMap((team) =>
-      team.members
-        .filter((member) => member.salesEnabled)
-        .map((member) => member.user.id),
+      summarizeTeamMembers(team.members, true).sellers.map(
+        (member) => member.user.id,
+      ),
     ),
   );
-  const teamsWithoutSupervisor = activeTeams.filter((team) =>
-    team.members.every((member) => member.memberRole !== "SUPERVISOR"),
-  ).length;
+  const activeSupervisorIds = new Set(
+    activeTeams.flatMap((team) =>
+      summarizeTeamMembers(team.members, true).supervisors.map(
+        (member) => member.user.id,
+      ),
+    ),
+  );
+  const teamsWithoutSupervisor = activeTeams.filter(
+    (team) => summarizeTeamMembers(team.members, true).needsSupervisor,
+  );
+  const visibleTeams = withoutSupervisorOnly ? teamsWithoutSupervisor : teams;
 
   return (
     <>
@@ -140,13 +189,23 @@ export default async function AdminTeamsPage({
             label="Equipos activos"
             value={activeTeams.length}
           />
-          <Metric label="Asesores asignados" value={activeAgentIds.size} />
-          <Metric label="Supervisores disponibles" value={supervisors.length} />
+          <Metric
+            hint="Asesores y supervisores que venden, en equipos activos"
+            label="Personas habilitadas para vender"
+            value={sellerIds.size}
+          />
+          <Metric
+            hint="Con al menos un equipo activo a cargo"
+            label="Supervisores"
+            value={activeSupervisorIds.size}
+          />
           <Metric
             hideWhenZero
+            hint="Equipos activos sin ningún supervisor; abre la lista"
+            href="/admin/teams?sinSupervisor=1"
             label="Sin supervisor"
             tone="danger"
-            value={teamsWithoutSupervisor}
+            value={teamsWithoutSupervisor.length}
           />
         </MetricGroup>
 
@@ -171,22 +230,48 @@ export default async function AdminTeamsPage({
           </section>
         ) : null}
 
-        {teams.length === 0 ? (
+        {withoutSupervisorOnly ? (
+          <p className="text-xs text-ui-muted">
+            Mostrando solo los {formatCount(visibleTeams.length)} equipo(s)
+            activos sin supervisor.{" "}
+            <Link
+              className="text-ui-accent underline-offset-2 hover:underline"
+              href="/admin/teams"
+            >
+              Ver todos los equipos
+            </Link>
+          </p>
+        ) : null}
+
+        {visibleTeams.length === 0 ? (
           <EmptyState
-            description="Crea el primer equipo para asignar supervisores y asesores."
-            title="Aún no hay equipos comerciales"
+            description={
+              withoutSupervisorOnly
+                ? "Todos los equipos activos tienen supervisor."
+                : "Crea el primer equipo para asignar supervisores y asesores."
+            }
+            title={
+              withoutSupervisorOnly
+                ? "Nada pendiente"
+                : "Aún no hay equipos comerciales"
+            }
           />
         ) : (
           <section className="ui-team-list" aria-label="Equipos comerciales">
-            {teams.map((team) => {
-              const teamSupervisors = team.members.filter(
-                (member) => member.memberRole === "SUPERVISOR",
-              );
-              const teamAgents = team.members.filter(
-                (member) => member.memberRole === "AGENT",
-              );
+            {visibleTeams.map((team) => {
               const active = team.status === "ACTIVE";
-              const needsSupervisor = active && teamSupervisors.length === 0;
+              const roster = summarizeTeamMembers(team.members, active);
+              const teamSupervisors = roster.supervisors;
+              const teamAgents = roster.agents;
+              const needsSupervisor = roster.needsSupervisor;
+              const disableImpact = describeTeamDisableImpact({
+                losingTeam: roster.sellers.map((member) => member.user.name),
+                supervisionsClosed: teamSupervisors
+                  .filter((member) => !member.salesEnabled)
+                  .map((member) => member.user.name),
+                openOrders: openOrdersOf.get(team.id) ?? 0,
+                openCases: openCasesOf.get(team.id) ?? 0,
+              });
 
               return (
                 <details className="ui-team-overview" key={team.id}>
@@ -212,7 +297,12 @@ export default async function AdminTeamsPage({
                     </span>
                     <span className="ui-team-overview__count">
                       <strong>{formatCount(teamAgents.length)}</strong>
-                      <small>asesores</small>
+                      <small>
+                        asesores
+                        {roster.sellingSupervisors.length > 0
+                          ? ` · ${formatCount(roster.sellingSupervisors.length)} supervisor(es) que venden`
+                          : ""}
+                      </small>
                     </span>
                     <StatusBadge tone={active ? "success" : "neutral"}>
                       {active ? "Activo" : "Deshabilitado"}
@@ -230,8 +320,8 @@ export default async function AdminTeamsPage({
                       <div className="ui-team-warning">
                         <strong>Este equipo necesita supervisión.</strong>
                         <span>
-                          Asigna un supervisor para habilitar correctamente su
-                          alcance operativo y seguimiento.
+                          Sin supervisor nadie ve ni gestiona sus ventas desde
+                          supervisión. Abajo el formulario ya pide uno.
                         </span>
                       </div>
                     ) : null}
@@ -280,11 +370,21 @@ export default async function AdminTeamsPage({
 
                     {active ? (
                       <div className="ui-team-overview__actions">
-                        <details className="ui-team-manage">
-                          <summary>Agregar o trasladar integrante</summary>
+                        <details
+                          className="ui-team-manage"
+                          open={needsSupervisor || undefined}
+                        >
+                          <summary>
+                            {needsSupervisor
+                              ? "Asignar supervisor"
+                              : "Agregar o trasladar integrante"}
+                          </summary>
                           <div>
                             <AssignTeamMemberForm
                               agents={agents}
+                              defaultMode={
+                                needsSupervisor ? "SUPERVISOR" : "AGENT"
+                              }
                               supervisors={supervisors}
                               teamId={team.id}
                               teamName={team.name}
@@ -295,7 +395,13 @@ export default async function AdminTeamsPage({
                           <input name="teamId" type="hidden" value={team.id} />
                           <ConfirmSubmitButton
                             confirmLabel="Deshabilitar equipo"
-                            description={`Se cerrarán ${formatCount(team.members.length)} membresías activas. Las órdenes y el historial existente se conservarán.`}
+                            description={
+                              <ul className="space-y-1">
+                                {disableImpact.map((line) => (
+                                  <li key={line}>{line}</li>
+                                ))}
+                              </ul>
+                            }
                             title={`¿Deshabilitar ${team.name}?`}
                             triggerLabel="Deshabilitar"
                           />

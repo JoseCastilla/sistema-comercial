@@ -17,20 +17,29 @@
 - [x] Pruebas web: panel (4) y ciclo de vida ampliado (7).
 - [x] Recorrido local con sesión de administrador (filas de 67 px sin
       botones, panel por URL, creación en panel en Personas y Equipos).
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción tras el despliegue (25 filas de
+      67 px sin botones, «Administrar» y «Nueva persona» por URL).
 - [ ] PE-02 · Reingreso real con una cuenta de prueba (lo ejecuta José); yo
       verifico en lectura identidad, historial, membresía y resolución de
       ventas por correo.
 
-## Fase 2 · Indicadores comprensibles
+## Fase 2 · Indicadores comprensibles (05/09/2026)
 
-- [ ] UX-04 · Indicadores que abren su filtro (Personas sin equipo; Equipos
-      sin supervisor); «Asignar equipo» / «Asignar supervisor» desde el
-      afectado.
-- [ ] UX-05 · Equipos: «Personas habilitadas para vender», desglose por rol
-      y capacidad, «Supervisores» con definición.
-- [ ] PE-06 · Vista previa de deshabilitar equipo con personas, supervisiones
-      y trabajo abierto; sin baja personal.
+- [x] UX-04 · «Asesores sin equipo» abre `?situacion=sin-equipo` (filtro nuevo
+      en la barra); «Sin supervisor» abre `?sinSupervisor=1`; el panel de una
+      persona incompleta ofrece «Asignar equipo» con la acción existente; el
+      equipo sin supervisor abre su formulario pidiendo un supervisor.
+- [x] UX-05 · Equipos: «Personas habilitadas para vender» (asesores +
+      supervisores que venden, sin repetir), «Supervisores» con definición,
+      tarjeta con «N asesores · M supervisor(es) que venden».
+- [x] PE-06 · Confirmación de deshabilitar con nombres de quien pierde su
+      equipo, supervisiones que se cierran y ventas y casos abiertos del
+      equipo; declara que no da de baja a nadie. `ConfirmSubmitButton`
+      admite contenido estructurado.
+- [x] `team-roster.ts` (plantilla y consecuencias) con 4 pruebas; panel con
+      2 pruebas más.
+- [x] Recorrido local con sesión de administrador.
+- [ ] Lectura de solo lectura en producción tras el despliegue.
 
 ## Fase 3 · Navegación y continuidad
 

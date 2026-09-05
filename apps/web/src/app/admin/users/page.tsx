@@ -48,6 +48,9 @@ export default async function AdminUsersPage({
   const teamFilter = firstValue(parameters.team);
   const openPersonId = firstValue(parameters.persona).trim().slice(0, 50);
   const creating = firstValue(parameters.nueva) === "1";
+  // SPEC-043 UX-04: «Asesores sin equipo» abre exactamente esta lista.
+  const situationFilter =
+    firstValue(parameters.situacion) === "sin-equipo" ? "sin-equipo" : "";
 
   const [members, teams, lifecycle] = await Promise.all([
     database.organizationMember.findMany({
@@ -130,8 +133,19 @@ export default async function AdminUsersPage({
       member.user.commercialTeamMemberships.some(
         (teamMembership) => teamMembership.teamId === teamFilter,
       );
+    const matchesSituation =
+      !situationFilter ||
+      (member.role === "AGENT" &&
+        member.user.status === "ACTIVE" &&
+        primaryTeamOf(member) === null);
 
-    return matchesQuery && matchesRole && matchesStatus && matchesTeam;
+    return (
+      matchesQuery &&
+      matchesRole &&
+      matchesStatus &&
+      matchesTeam &&
+      matchesSituation
+    );
   });
 
   const activeUsers = members.filter(
@@ -144,9 +158,12 @@ export default async function AdminUsersPage({
   // Un asesor sin equipo primario de venta está incompleto (SPEC-001 BR-007);
   // administración y back office no requieren equipo y no cuentan aquí.
   const agentsWithoutTeam = agents.filter(
-    (member) => primaryTeamOf(member) === null,
+    (member) =>
+      member.user.status === "ACTIVE" && primaryTeamOf(member) === null,
   ).length;
-  const hasFilters = Boolean(query || roleFilter || statusFilter || teamFilter);
+  const hasFilters = Boolean(
+    query || roleFilter || statusFilter || teamFilter || situationFilter,
+  );
 
   const dateFormatter = new Intl.DateTimeFormat("es-PE", {
     timeZone: membership.organization.timezone,
@@ -167,6 +184,7 @@ export default async function AdminUsersPage({
     if (roleFilter) next.set("role", roleFilter);
     if (teamFilter) next.set("team", teamFilter);
     if (statusFilter) next.set("status", statusFilter);
+    if (situationFilter) next.set("situacion", situationFilter);
     if (overrides.persona) next.set("persona", overrides.persona);
     if (overrides.nueva) next.set("nueva", "1");
     const search = next.toString();
@@ -208,6 +226,8 @@ export default async function AdminUsersPage({
         <Metric label="Supervisores" value={supervisors} />
         <Metric
           hideWhenZero
+          hint="Activos y sin equipo de venta: no reciben ventas; abre la lista"
+          href="/admin/users?situacion=sin-equipo"
           label="Asesores sin equipo"
           tone="danger"
           value={agentsWithoutTeam}
@@ -264,6 +284,15 @@ export default async function AdminUsersPage({
                 <option value="ACTIVE">Activos</option>
                 <option value="INVITED">Invitados</option>
                 <option value="DISABLED">Deshabilitados</option>
+              </select>
+            </label>
+            <label>
+              <span className="sr-only">Filtrar por situación</span>
+              <select defaultValue={situationFilter} name="situacion">
+                <option value="">Cualquier situación</option>
+                <option value="sin-equipo">
+                  Asesores sin equipo operativo
+                </option>
               </select>
             </label>
             <button className="ui-admin-toolbar__submit" type="submit">
@@ -439,6 +468,11 @@ export default async function AdminUsersPage({
                     )
                     .map((teamMembership) => teamMembership.team.name),
                   emailVerified: openMember.user.emailVerified,
+                  needsTeam:
+                    openMember.user.status === "ACTIVE" &&
+                    ((openMember.role === "AGENT" && primaryTeam === null) ||
+                      (openMember.role === "SUPERVISOR" &&
+                        supervisedTeams.length === 0)),
                   sinceLabel: dateFormatter.format(openMember.createdAt),
                   supervisedTeamNames: supervisedTeams.map(
                     (teamMembership) => teamMembership.team.name,

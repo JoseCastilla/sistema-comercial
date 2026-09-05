@@ -42,3 +42,44 @@
 acción; no se ejecutó en local porque exigiría promover a una persona con
 nombre real (regla: solo cuentas de prueba). El foco de vuelta a la fila
 (`ReturnFocus`) se comprueba a mano con teclado.
+
+3. **Producción, solo lectura** (commit f7b4ca8, sesión de administrador):
+   `/admin/users?q=a` → 25 filas, ninguna con botones, alturas 85/67 px,
+   «Administrar» → `?q=a&persona=<id>`, «Nueva persona» → `?q=a&nueva=1`,
+   sin bloque plegable.
+
+## Fase 2 · Indicadores comprensibles (05/09/2026)
+
+1. **Pruebas** — 138 en verde en `apps/web`, 6 nuevas: la plantilla separa
+   asesores, supervisores y supervisores que venden y cuenta vendedores sin
+   repetir; un equipo activo sin supervisor necesita supervisión y uno
+   deshabilitado no; la confirmación de deshabilitar nombra a quien pierde
+   equipo, cuenta supervisiones y trabajo abierto, y sin nada lo dice; el
+   panel de un asesor sin equipo ofrece «Asignar equipo principal» y con
+   equipo no. Tipos y lint limpios.
+2. **Recorrido local con sesión de administrador**:
+   - `/admin/teams`: métricas «Equipos activos 4», «Personas habilitadas para
+     vender 13 · Asesores y supervisores que venden, en equipos activos»,
+     «Supervisores 3 · Con al menos un equipo activo a cargo», «Sin
+     supervisor 1 → /admin/teams?sinSupervisor=1». La tarjeta de AYACUCHO -
+     MAGISTERIAL dice «6 asesores · 1 supervisor(es) que venden»; la de
+     AYACUCHO - EXTERNOS («Sin supervisor») abre su formulario con la función
+     «Supervisor» preseleccionada y el resumen «Asignar supervisor».
+   - Confirmación de deshabilitar, leída del diálogo sin abrirlo: para
+     Huancayo «3 persona(s) pierden su equipo operativo…: FRANCESCO…, SARAI…,
+     Steven Lizarraga», «1 supervisión(es) se cierran: Erika Lavado», «7
+     venta(s) abiertas y 1 caso(s) de recupero… conservan el equipo
+     registrado»; para MAGISTERIAL 02 «No hay ventas abiertas ni casos». La
+     primera línea siempre dice que no da de baja a nadie.
+   - `/admin/teams?sinSupervisor=1`: «Mostrando solo los 1 equipo(s) activos
+     sin supervisor · Ver todos los equipos», con AYACUCHO - EXTERNOS como
+     única tarjeta: el indicador y la lista cuentan lo mismo.
+   - `/admin/users?situacion=sin-equipo`: el selector «Situación» queda en
+     «Asesores sin equipo operativo», «0 resultados», «Limpiar» visible; la
+     métrica «Asesores sin equipo» se oculta en cero (la definición ahora
+     exige cuenta activa, así que Christian, de baja, ya no cuenta).
+   - Ninguna escritura: los diálogos no se confirmaron.
+
+**Limitación declarada**: en local no hay asesor activo sin equipo, así que
+«Asignar equipo» desde el panel se vio solo en la prueba automatizada.
+
