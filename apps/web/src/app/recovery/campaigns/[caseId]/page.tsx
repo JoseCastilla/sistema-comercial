@@ -30,11 +30,34 @@ const channelLabels: Record<string, string> = {
 
 export default async function CampaignCasePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ caseId: string }>;
+  searchParams: Promise<{
+    q?: string;
+    department?: string;
+    plan?: string;
+    page?: string;
+  }>;
 }) {
   const { session, membership } = await requireCommercialAccess();
   const { caseId } = await params;
+  const context = await searchParams;
+
+  /**
+   * La cola llega en el enlace para poder devolver al asesor a donde estaba:
+   * su búsqueda, sus filtros y su página. Llegar a la ficha por un enlace
+   * suelto no trae nada, y entonces «Volver a mi cola» abre la bandeja
+   * normal, que es lo correcto. `visto` marca este caso al volver, y el
+   * ancla lo pone en pantalla sin depender de una altura que ya cambió.
+   */
+  const queue = new URLSearchParams();
+  if (context.q) queue.set("q", context.q.slice(0, 80));
+  if (context.department) queue.set("department", context.department);
+  if (context.plan) queue.set("plan", context.plan.slice(0, 100));
+  if (context.page) queue.set("page", context.page);
+  queue.set("visto", caseId);
+  const backHref = `/recovery/campaigns?${queue.toString()}#caso-${caseId}`;
 
   const detail = await getCampaignCase(
     membership.organization.id,
@@ -65,7 +88,7 @@ export default async function CampaignCasePage({
         <p className="text-sm">
           <Link
             className="text-ui-accent underline-offset-2 hover:underline"
-            href="/recovery/campaigns"
+            href={backHref}
           >
             ← Volver a mi cola
           </Link>
