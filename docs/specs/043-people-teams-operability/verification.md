@@ -83,3 +83,19 @@ nombre real (regla: solo cuentas de prueba). El foco de vuelta a la fila
 **Limitación declarada**: en local no hay asesor activo sin equipo, así que
 «Asignar equipo» desde el panel se vio solo en la prueba automatizada.
 
+3. **Producción, solo lectura** (commit 8228d10, sesión de administrador,
+   sin confirmar ningún diálogo): `/admin/teams` muestra «Equipos activos 4»,
+   «Personas habilitadas para vender 20», «Supervisores 2» y **«Sin
+   supervisor 2 → ?sinSupervisor=1»**. Las tarjetas cuentan por separado
+   («3 asesores · 1 supervisor(es) que venden» en MAGISTERIAL 02). Las
+   confirmaciones de deshabilitar, leídas del diálogo, traen los datos
+   reales: MAGISTERIAL 01 «8 persona(s) pierden su equipo operativo… 53
+   venta(s) abiertas y 933 caso(s) de recupero»; HUANCAYO - EL TAMBO «1
+   supervisión(es) se cierran: Erika Lavado · 27 venta(s) y 274 caso(s)».
+
+**Hallazgo operativo para José**: en producción hay **dos equipos activos sin
+supervisor** —AYACUCHO - EXTERNOS (2 asesores, 1 venta abierta) y **AYACUCHO -
+MAGISTERIAL 01 (8 asesores, 53 ventas abiertas, 933 casos de recupero)**—;
+nadie los ve ni gestiona desde supervisión. El indicador ahora lo enseña y
+abre la lista con el formulario pidiendo un supervisor.
+
