@@ -2,9 +2,11 @@ import Link from "next/link";
 import { ConfirmRecoveryBatchForm } from "@/features/recovery/components/confirm-recovery-batch-form";
 import { RecoveryBaseUploadForm } from "@/features/recovery/components/recovery-base-upload-form";
 import { PortabilityCrossForm } from "@/features/recovery/components/portability-cross-form";
+import { QueueFilters } from "@/features/recovery/components/queue-filters";
 import { RecoveryConfigForm } from "@/features/recovery/components/recovery-config-form";
 import { expireUnverifiedCases } from "@/features/recovery/server/expire-unverified-cases";
 import { releaseWaitingBaseCases } from "@/features/recovery/server/release-waiting-base-cases";
+import { CampaignNav } from "@/features/recovery/components/campaign-nav";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -72,10 +74,38 @@ function BatchStat({
 export default async function RecoveryBaseAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ batch?: string }>;
+  searchParams: Promise<{
+    batch?: string;
+    q?: string;
+    estado?: string;
+    usuario?: string;
+    rango?: string;
+  }>;
 }) {
   const { membership } = await requireAdminAccess();
   const parameters = await searchParams;
+
+  /**
+   * Fase 4: el historial de cargas se filtra por archivo, estado, quién
+   * cargó y antigüedad de la carga. Un lote no debe identificarse solo por
+   * el nombre del archivo, que se repite de un día a otro.
+   */
+  const batchSearch = (parameters.q ?? "").trim().slice(0, 80);
+  const batchStatuses = [
+    "PREVIEW",
+    "CONFIRMING",
+    "CONFIRMED",
+    "FAILED",
+  ] as const;
+  const batchStatus = batchStatuses.find(
+    (status) => status === (parameters.estado ?? "").trim(),
+  );
+  const uploaderFilter = (parameters.usuario ?? "").trim().slice(0, 40);
+  const rangeDays =
+    parameters.rango === "7" ? 7 : parameters.rango === "30" ? 30 : null;
+  const rangeStart = rangeDays
+    ? new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000)
+    : null;
 
   // BR-084: lo vencido drena antes de mostrar el embudo. BR-024b: y lo que
   // ya no espera nada vuelve a revisión, o el embudo miente.
@@ -89,6 +119,7 @@ export default async function RecoveryBaseAdminPage({
   const [
     activeConfig,
     batches,
+    uploaders,
     triageCount,
     waitingCount,
     openCount,
@@ -108,9 +139,17 @@ export default async function RecoveryBaseAdminPage({
       orderBy: { createdAt: "desc" },
     }),
     database.recoveryBaseBatch.findMany({
-      where: { organizationId: membership.organization.id },
+      where: {
+        organizationId: membership.organization.id,
+        ...(batchSearch
+          ? { fileName: { contains: batchSearch, mode: "insensitive" } }
+          : {}),
+        ...(batchStatus ? { status: batchStatus } : {}),
+        ...(uploaderFilter ? { uploadedByUserId: uploaderFilter } : {}),
+        ...(rangeStart ? { uploadedAt: { gte: rangeStart } } : {}),
+      },
       orderBy: { uploadedAt: "desc" },
-      take: 10,
+      take: 50,
       select: {
         id: true,
         fileName: true,
@@ -125,6 +164,14 @@ export default async function RecoveryBaseAdminPage({
         registeredTo: true,
         uploadedAt: true,
         updatedAt: true,
+        uploadedBy: { select: { name: true } },
+      },
+    }),
+    database.recoveryBaseBatch.findMany({
+      where: { organizationId: membership.organization.id },
+      distinct: ["uploadedByUserId"],
+      select: {
+        uploadedByUserId: true,
         uploadedBy: { select: { name: true } },
       },
     }),
@@ -337,6 +384,7 @@ export default async function RecoveryBaseAdminPage({
           title="Preparar campaña"
           description="Cargar la base, cruzar portabilidad y crear los casos."
         />
+        <CampaignNav current="preparar" role={membership.role} />
 
         <SectionPanel
           title="Cómo va la campaña"
@@ -404,18 +452,6 @@ export default async function RecoveryBaseAdminPage({
                 Sin casos por revisar ni distribuir. Carga la base del día.
               </p>
             ) : null}
-            <Link
-              className="ui-button ui-button--secondary"
-              href="/recovery/board"
-            >
-              Tablero del día
-            </Link>
-            <Link
-              className="ui-button ui-button--secondary"
-              href="/recovery/follow-up"
-            >
-              Seguimiento
-            </Link>
           </div>
         </SectionPanel>
 
@@ -424,6 +460,53 @@ export default async function RecoveryBaseAdminPage({
           description="Reimportar un archivo idéntico no duplica casos."
         >
           <RecoveryBaseUploadForm />
+
+          <QueueFilters
+            basePath="/admin/recovery-base"
+            options={{
+              extras: [
+                {
+                  key: "estado",
+                  label: "Estado del lote",
+                  options: batchStatuses.map((status) => ({
+                    value: status,
+                    label: batchStatusLabels[status] ?? status,
+                  })),
+                },
+                {
+                  key: "usuario",
+                  label: "Quién cargó",
+                  options: uploaders.map((item) => ({
+                    value: item.uploadedByUserId,
+                    label: item.uploadedBy.name,
+                  })),
+                },
+                {
+                  key: "rango",
+                  label: "Cargado en",
+                  emptyLabel: "Cualquier fecha",
+                  options: [
+                    { value: "7", label: "Últimos 7 días" },
+                    { value: "30", label: "Últimos 30 días" },
+                  ],
+                },
+              ],
+            }}
+            resultLabel={`${formatCount(batches.length)} carga(s).`}
+            searchLabel="Buscar archivo"
+            searchPlaceholder="Nombre del archivo"
+            values={{
+              q: batchSearch,
+              team: "",
+              department: "",
+              plan: "",
+              extra: {
+                estado: batchStatus ?? "",
+                usuario: uploaderFilter,
+                rango: rangeDays ? String(rangeDays) : "",
+              },
+            }}
+          />
 
           {selectedBatch ? (
             <div className="rounded-xl border border-ui-border p-3">
@@ -495,7 +578,7 @@ export default async function RecoveryBaseAdminPage({
             </div>
           ) : null}
 
-          {batches.length > 1 ? (
+          {batches.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="ui-table">
                 <thead>
@@ -512,6 +595,7 @@ export default async function RecoveryBaseAdminPage({
                       Casos
                     </th>
                     <th className="font-semibold">Subido</th>
+                    <th data-actions />
                   </tr>
                 </thead>
                 <tbody>
@@ -539,6 +623,17 @@ export default async function RecoveryBaseAdminPage({
                       </td>
                       <td className="ui-data text-ui-muted">
                         {dateTimeFormatter.format(batch.uploadedAt)}
+                      </td>
+                      <td className="text-xs" data-actions>
+                        {batch.status === "CONFIRMED" ? (
+                          <Link
+                            className="text-ui-accent underline-offset-2 hover:underline"
+                            href={`/recovery/triage?batch=${batch.id}`}
+                            title="Los clientes que aparecieron en este archivo, cada uno una vez"
+                          >
+                            Ver clientes
+                          </Link>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

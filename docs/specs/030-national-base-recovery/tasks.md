@@ -457,6 +457,18 @@ venía llamando—.
 - [x] Distribución: lo mismo más «Asesor actual» en la vista de asignados y
       la vista dentro de la barra.
 
+## Fase 4 del plan de usabilidad: navegación e importaciones (05/09/2026)
+
+- [x] BR-093: `CampaignNav` bajo la cabecera de las cinco pantallas del
+      carril, por rol y con el paso actual marcado (4 pruebas); retirados
+      los botones sueltos «Tablero del día» y «Seguimiento».
+- [x] «Guardar reglas de importación» en lugar de «Guardar filtros».
+- [x] Historial de cargas con `QueueFilters` (buscador con rótulo
+      configurable: archivo, estado, quién cargó, cargado en), 50 cargas, y
+      «Ver clientes» por lote confirmado.
+- [x] Triage: filtro «Lote» por avistamiento (`sightings.some.batchId`),
+      opciones con los 10 lotes confirmados más recientes, ficha legible.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

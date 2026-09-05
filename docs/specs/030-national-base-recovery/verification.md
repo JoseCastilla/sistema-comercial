@@ -839,6 +839,36 @@ verificada con teclado real en la bandeja del asesor (BR-089). La base de
 desarrollo sigue sin casos por revisar, así que los filtros del triage se
 comprobaron solo por respuesta 200.
 
+### Fase 4 del plan de usabilidad — BR-093, 05/09/2026
+
+1. **Pruebas de componente**: 4 casos sobre `CampaignNav` — el
+   administrador ve los cinco pasos con el actual marcado, el supervisor no
+   ve Preparar, el asesor no tiene carril, cada paso lleva a su pantalla.
+   98 en verde en `apps/web`; tipos y lint limpios.
+2. **Recorrido por fetch con sesión de administrador**:
+   - Las cinco pantallas responden 200 con el carril completo y
+     `aria-current` en su propio paso; ninguna conserva botones sueltos de
+     «Tablero del día» o «Seguimiento».
+   - Preparar campaña: la barra del historial muestra Buscar archivo, Estado
+     del lote, Quién cargó y Cargado en; `?estado=CONFIRMED`, `?rango=7` y
+     `?q=Consolidada` devuelven la única carga de desarrollo y
+     `?estado=FAILED` ninguna; la fila muestra «Ver clientes» hacia
+     `/recovery/triage?batch=<id>`; el botón dice «Guardar reglas de
+     importación».
+   - Triage con `?batch=<id>`: 200, selector «Lote» presente y ficha
+     «Lote: Base_Consolidada_2026-09-01.xlsx · 1/9».
+3. **Un tropiezo del script de edición**: el cierre de `caseScope` cambió de
+   sangría con prettier en la fase 2 y el ancla del triage no coincidió; las
+   secciones anteriores ya estaban escritas, y el triage se completó con un
+   script aparte tras comprobar las anclas reales.
+
+**Limitación declarada**: la base de desarrollo tiene una sola carga y
+ningún caso por revisar, así que los filtros del historial se comprobaron
+sobre una fila y el filtro por lote del triage solo por respuesta y ficha,
+no por recuento de clientes. El panel del navegador siguió oculto: sin
+clics reales; el carril y los filtros están cubiertos por pruebas y por la
+misma mecánica ya verificada en vivo en fases anteriores.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de

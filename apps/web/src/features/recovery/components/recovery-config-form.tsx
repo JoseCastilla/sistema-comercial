@@ -95,7 +95,7 @@ export function RecoveryConfigForm({
 
       <div className="ui-form-row">
         <Button disabled={pending} type="submit" variant="secondary">
-          {pending ? "Guardando…" : "Guardar filtros"}
+          {pending ? "Guardando…" : "Guardar reglas de importación"}
         </Button>
         <InlineFeedback
           message={state.message}

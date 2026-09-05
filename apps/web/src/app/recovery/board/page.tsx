@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { formatAdvisorDisplayName } from "@repo/validation";
 
+import { CampaignNav } from "@/features/recovery/components/campaign-nav";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -392,6 +393,7 @@ export default async function RecoveryBoardPage({
           title="Tablero del día"
           description="Cuánto se avanzó, con qué cobertura y con qué efectividad."
         />
+        <CampaignNav current="tablero" role={membership.role} />
 
         {!isSupervisor && teams.length > 0 ? (
           <Form action="/recovery/board" className="ui-form-row">

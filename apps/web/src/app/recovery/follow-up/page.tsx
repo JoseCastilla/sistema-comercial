@@ -9,6 +9,7 @@ import { CopyValue } from "@/features/recovery/components/copy-value";
 import { QueueFilters } from "@/features/recovery/components/queue-filters";
 import { buildRecoverySearchWhere } from "@/features/recovery/server/recovery-search-where";
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
+import { CampaignNav } from "@/features/recovery/components/campaign-nav";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -327,6 +328,7 @@ export default async function RecoveryFollowUpPage({
         title="Seguimiento"
         description="La cartera asignada, cliente por cliente: quién la tiene, qué pasó en la última llamada y cuándo toca la siguiente."
       />
+      <CampaignNav current="seguimiento" role={membership.role} />
 
       <MetricGroup>
         <Metric

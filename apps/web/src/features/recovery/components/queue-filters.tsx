@@ -70,11 +70,16 @@ export function QueueFilters({
   values,
   options,
   resultLabel,
+  searchLabel = "Buscar cliente",
+  searchPlaceholder = "Nombre, DNI o teléfono",
 }: {
   basePath: string;
   values: QueueFilterValues;
   options: QueueFilterOptions;
   resultLabel: string;
+  /** Qué se busca aquí; por defecto, un cliente. */
+  searchLabel?: string;
+  searchPlaceholder?: string;
 }) {
   const router = useRouter();
   const [term, setTerm] = useState(values.q);
@@ -207,7 +212,7 @@ export function QueueFilters({
         ) : null}
 
         <label className="block">
-          <span className="ui-label-eyebrow">Buscar cliente</span>
+          <span className="ui-label-eyebrow">{searchLabel}</span>
           <div className="flex items-center gap-1">
             <input
               aria-busy={pending}
@@ -231,7 +236,7 @@ export function QueueFilters({
                 event.preventDefault();
                 navigate({ q: term });
               }}
-              placeholder="Nombre, DNI o teléfono"
+              placeholder={searchPlaceholder}
               type="search"
               value={term}
             />
