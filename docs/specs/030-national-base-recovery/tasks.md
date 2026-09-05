@@ -444,6 +444,19 @@ venía llamando—.
 - [x] COR-05: limpieza de selección al cambiar la lista, con aviso, en los
       formularios de triage y distribución (3 pruebas).
 
+## Fase 2 del plan de usabilidad: revisión y reparto (05/09/2026)
+
+- [x] BR-092: `QueueFilters`, barra en vivo compartida por triage y
+      distribución (9 pruebas de componente); `buildRecoverySearchWhere`
+      reutiliza `parseRecoverySearchTerm` en el servidor.
+- [x] `recovery-queue-filters.ts` en validation: `summarizeRecoveryPlan`
+      (antes triplicado), `recoveryTeamFilterNone`, tramos de antigüedad con
+      rangos en día de Lima (6 pruebas).
+- [x] Triage: búsqueda unificada, «Sin equipo», selector de plan por
+      etiqueta, antigüedad; `age` y `q` viajan en la paginación.
+- [x] Distribución: lo mismo más «Asesor actual» en la vista de asignados y
+      la vista dentro de la barra.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

@@ -359,6 +359,30 @@ construir un reporte a mano.
     viajando ocultos en el formulario: «aplicar» actuaba sobre clientes que
     nadie veía. Se limpia y se avisa, porque una selección que desaparece
     sin explicación parece un fallo.
+- **BR-092** (05/09/2026, fase 2 del plan de usabilidad de Campañas):
+  **las colas administrativas filtran en vivo, con estado en la URL, y
+  localizan a un cliente con un dato suelto.** Misma mecánica que la bandeja
+  del asesor (BR-089); el botón «Filtrar» desaparece porque ya no hace nada.
+  - **Búsqueda unificada** (BR-088 llevado a triage y distribución): nombre,
+    DNI, teléfono de contacto o número de línea con un solo término. Antes
+    `q` solo buscaba por DNI.
+  - **«Sin equipo»** como valor propio del filtro de equipo, para quien
+    reparte: los recién cargados no tienen equipo y no había cómo verlos
+    solos. Un supervisor no lo ve: su alcance ya está acotado.
+  - **«Asesor actual»** en «Asignados sin gestión»: filtra por el dueño de
+    hoy, no por el destino de una asignación. Un supervisor sigue acotado
+    por sus equipos; un asesor ajeno no devuelve filas.
+  - **El plan se elige de una lista**, con las etiquetas comerciales
+    presentes en la base dentro del alcance. Varias variantes crudas
+    comparten etiqueta y el filtro las abarca todas. `summarizeRecoveryPlan`
+    pasa a `@repo/validation`: estaba triplicado en tres pantallas.
+  - **Antigüedad comercial en tramos excluyentes** —hoy, ayer, 2 a 3 días,
+    más de 3— sobre la fecha del último registro del pedido (BR-004: nunca
+    desde la carga), cortados a medianoche de Lima. Más allá de tres días
+    casi no hay población porque BR-084 vence a los siete.
+  - **Los filtros activos se ven y se quitan uno a uno**, y «Limpiar
+    filtros» conserva solo la vista. Un filtro que no se ve es un filtro que
+    se olvida puesto.
 - **BR-025:** un caso `WAITING` cuyos servicios aparecen luego portados a
   Movistar se cierra como `DISCARDED` y no vuelve a revisarse.
 - **BR-026:** un caso `LIBERADO` pasa a `OPEN` y queda disponible para asignar.

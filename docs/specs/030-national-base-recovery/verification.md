@@ -806,6 +806,39 @@ lectura del código. En producción, con 416 por revisar y 211 en espera, la
 señal es que «Listos» y «Con pedido en curso» sumen lo que antes mostraba
 «Listos» solo.
 
+### Fase 2 del plan de usabilidad — BR-092, 05/09/2026
+
+1. **Pruebas puras**: 6 casos sobre plan y tramos —etiqueta por precio,
+   texto sin precio, tramos válidos, cortes a medianoche de Lima (no UTC),
+   tramos excluyentes que cubren la recta, 23:30 de Lima sigue siendo el
+   día de Lima—. 273 en verde en `@repo/validation`.
+2. **Pruebas de componente**: 9 casos sobre `QueueFilters` — rebote de la
+   búsqueda conservando la vista, selectores inmediatos, «Sin equipo» como
+   valor, asesor y antigüedad, cambio de vista sin arrastrar página, chips
+   con nombre legible, quitar uno deja los demás, «Limpiar filtros» conserva
+   solo la vista, sin activos no hay botón. 90 en verde en `apps/web`; tipos
+   y lint limpios.
+3. **Filtros del servidor con datos reales**, sesión de administrador sobre
+   la vista «Asignados sin gestión» (36 casos), por fetch:
+   - Barra con siete controles y sin «Filtrar»; el selector de plan ofrece
+     las etiquetas reales de la base («Máximo S/39.9», «Máximo S/49.9»);
+     «Sin equipo» presente; asesores con equipo.
+   - `q=espinoza` → 3; `plan=Máximo S/39.9` → 34 de 36; `advisor=<Jimena>`
+     → 36 (todos suyos); `team=none` → 0 (todos asignados tienen equipo);
+     `age=hoy` → 0 y `age=mas` → 36, coherente con una base del 01/09 y con
+     BR-004; triage con `view=espera&age=ayer&team=none&q=ramos` → 200.
+4. **Un tropiezo transitorio**: el triage se editó antes de recompilar
+   `@repo/validation` y durante ese intervalo el servidor de desarrollo
+   registró «Export parseRecoveryAgeBucket doesn't exist»; tras la
+   compilación todas las rutas volvieron a 200 sin pantalla de error.
+
+**Limitación declarada**: el tecleo en vivo en las colas administrativas no
+se ejerció con teclado real —el panel del navegador quedó oculto y no recibe
+entrada—; lo cubren las 9 pruebas de componente y es la misma mecánica ya
+verificada con teclado real en la bandeja del asesor (BR-089). La base de
+desarrollo sigue sin casos por revisar, así que los filtros del triage se
+comprobaron solo por respuesta 200.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de
