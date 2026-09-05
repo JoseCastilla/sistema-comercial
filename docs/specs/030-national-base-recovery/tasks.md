@@ -400,6 +400,18 @@ venía llamando—.
       que perdió su cartera.
 - [x] La búsqueda viaja en la paginación.
 
+## Filtrar sin botón y volver al mismo sitio (05/09/2026)
+
+- [x] BR-089: `CampaignInboxFilters`, cliente, con rebote de 300 ms sobre
+      búsqueda y plan, departamento inmediato, Enter sin espera y acción de
+      limpiar. Desaparece el botón «Filtrar»: con todo en vivo no hace nada.
+      Se extendió a departamento y plan porque dejarlos tras el botón habría
+      creado el fallo contrario —teclear en la búsqueda descartaría un
+      departamento elegido y sin enviar—.
+- [x] Un término por debajo del umbral no navega, y el indicador lo dice.
+- [x] La página pedida se acota al total real; el contexto de la cola viaja
+      a la ficha y vuelve anclado al caso, que aparece señalado.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

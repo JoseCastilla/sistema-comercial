@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Form from "next/form";
 import {
   baseRecoveryMinimumDailyAttempts,
   countOnSameLimaDay,
@@ -15,6 +14,7 @@ import {
   readContactSummary,
   readCoordinates,
 } from "@/features/recovery/contact-summary";
+import { CampaignInboxFilters } from "@/features/recovery/components/campaign-inbox-filters";
 import { TakePoolBlockForm } from "@/features/recovery/components/take-pool-block-form";
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -61,6 +61,7 @@ export default async function RecoveryCampaignsPage({
 }: {
   searchParams: Promise<{
     q?: string;
+    visto?: string;
     department?: string;
     plan?: string;
     page?: string;
@@ -76,7 +77,12 @@ export default async function RecoveryCampaignsPage({
   // Confirmación del intento que el asesor acaba de registrar: vuelve con él
   // desde la ficha para que no pierda el dato de cuántos intentos lleva hoy.
   const attemptNotice = (parameters.intento ?? "").trim().slice(0, 300);
-  const page = Math.max(1, Number.parseInt(parameters.page ?? "1", 10) || 1);
+  const requestedPage = Math.max(
+    1,
+    Number.parseInt(parameters.page ?? "1", 10) || 1,
+  );
+  // El caso que acaba de consultar, para que lo reconozca al volver.
+  const justVisited = (parameters.visto ?? "").trim().slice(0, 40);
 
   // BR-077: al abrir la cola, lo abandonado ya volvió al pool.
   await returnStaleBaseCasesToPool(membership.organization.id);
@@ -154,7 +160,18 @@ export default async function RecoveryCampaignsPage({
       : {}),
   };
 
-  const [myCases, myTotal, myDepartments, sellingMembership] =
+  /**
+   * El total manda sobre la página pedida. Un caso resuelto o descartado
+   * mientras el asesor estaba en la ficha puede dejar sin contenido la
+   * página tres, y volver a ella mostraría una bandeja vacía con el mensaje
+   * de «nada coincide»: parecería que perdió su cartera. Se muestra la
+   * última página que sí existe.
+   */
+  const myTotal = await database.recoveryCase.count({ where: myCasesWhere });
+  const totalPages = Math.max(1, Math.ceil(myTotal / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+
+  const [myCases, myDepartments, sellingMembership] =
     await Promise.all([
       database.recoveryCase.findMany({
         where: myCasesWhere,
@@ -199,7 +216,6 @@ export default async function RecoveryCampaignsPage({
           },
         },
       }),
-      database.recoveryCase.count({ where: myCasesWhere }),
       database.recoveryCase.groupBy({
         by: ["department"],
         where: {
@@ -339,7 +355,16 @@ export default async function RecoveryCampaignsPage({
     .map((group) => group.department)
     .filter((value): value is string => value !== null && value.length > 0);
 
-  const totalPages = Math.max(1, Math.ceil(myTotal / pageSize));
+  /**
+   * El contexto de la cola viaja a la ficha para que «Volver a mi cola»
+   * devuelva al asesor donde estaba, y no a una bandeja recién barajada.
+   */
+  const queueContext = new URLSearchParams();
+  if (searchInput) queueContext.set("q", searchInput);
+  if (departmentFilter) queueContext.set("department", departmentFilter);
+  if (planFilter) queueContext.set("plan", planFilter);
+  if (page > 1) queueContext.set("page", String(page));
+  const queueContextQuery = queueContext.toString();
 
   function pageHref(target: number): string {
     const query = new URLSearchParams();
@@ -422,52 +447,13 @@ export default async function RecoveryCampaignsPage({
           title="Mis casos"
           description="Vencidos primero, luego lo de hoy, después los agendados; lo que espera confirmación queda al fondo."
         >
-          <Form
-            action="/recovery/campaigns"
-            className="flex flex-wrap items-end gap-3"
-          >
-            <label className="block">
-              <span className="ui-label-eyebrow">Buscar cliente</span>
-              <input
-                className="block w-56 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={searchInput}
-                maxLength={80}
-                name="q"
-                placeholder="Nombre, DNI o teléfono"
-              />
-            </label>
-            <label className="block">
-              <span className="ui-label-eyebrow">Departamento</span>
-              <select
-                className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={departmentFilter}
-                name="department"
-              >
-                <option value="">Todos</option>
-                {myDepartmentOptions.map((department) => (
-                  <option key={department} value={department}>
-                    {department}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="ui-label-eyebrow">Plan contiene</span>
-              <input
-                className="block w-32 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={planFilter}
-                maxLength={100}
-                name="plan"
-                placeholder="49.9"
-              />
-            </label>
-            <button className="ui-button ui-button--secondary" type="submit">
-              Filtrar
-            </button>
-            <span className="pb-2 text-xs text-ui-muted">
-              {formatCount(myTotal)} caso(s) cumplen el filtro.
-            </span>
-          </Form>
+          <CampaignInboxFilters
+            department={departmentFilter}
+            departments={myDepartmentOptions}
+            plan={planFilter}
+            resultLabel={`${formatCount(myTotal)} caso(s) cumplen el filtro.`}
+            search={searchInput}
+          />
 
           <div className="overflow-x-auto rounded-xl border border-ui-border">
             <table className="ui-table">
@@ -487,8 +473,10 @@ export default async function RecoveryCampaignsPage({
               <tbody>
                 {rows.map((row) => (
                   <CampaignQueueRow
+                    justVisited={row.id === justVisited}
                     key={row.id}
                     minimumDailyAttempts={baseRecoveryMinimumDailyAttempts}
+                    queueContext={queueContextQuery}
                     row={row}
                     statusLabel={statusLabels[row.status] ?? row.status}
                   />

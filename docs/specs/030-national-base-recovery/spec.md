@@ -285,6 +285,28 @@ construir un reporte a mano.
   dígitos no se busca: encontraría media base. La búsqueda alcanza **solo
   los casos del propio asesor**: poder pescar en el pool por DNI convertiría
   el reparto equitativo de BR-028 en una elección.
+- **BR-089** (05/09/2026): la bandeja del asesor **filtra en vivo y conserva
+  el sitio**. Con el cliente al teléfono, pulsar «Filtrar» es un paso de
+  más; y salir a la ficha para volver a una bandeja recién barajada le hace
+  perder el hilo de a quién venía llamando.
+  - La lista se recarga cambiando la URL, no pidiendo datos aparte. De ahí
+    salen gratis el enlace compartible, el botón Atrás y la imposibilidad de
+    que una respuesta vieja pise a una nueva: el enrutador descarta la
+    navegación que quedó atrás, sin mecanismo que mantener.
+  - Un término que la consulta descartaría —menos de cuatro dígitos, una
+    inicial— **no se consulta**: devolvería la bandeja entera y la haría
+    parpadear entre dígito y dígito.
+  - Cambiar cualquier filtro vuelve a la primera página: la página tres del
+    filtro anterior no significa nada en el nuevo.
+  - La página pedida se acota a las que existen. Un caso resuelto mientras
+    el asesor estaba en la ficha puede vaciar la última página, y volver a
+    ella mostraría «nada coincide»: parecería que perdió su cartera.
+  - El contexto viaja en el enlace de la ficha y vuelve con «Volver a mi
+    cola», igual que con el botón Atrás. Se ancla **al caso**, no a una
+    altura de desplazamiento: entre la visita y la vuelta la lista cambia, y
+    un número de píxeles apuntaría a otra fila. El caso vuelve señalado.
+  - Llegar a una ficha por un enlace suelto no trae contexto, y entonces
+    «Volver a mi cola» abre la bandeja normal.
 - **BR-025:** un caso `WAITING` cuyos servicios aparecen luego portados a
   Movistar se cierra como `DISCARDED` y no vuelve a revisarse.
 - **BR-026:** un caso `LIBERADO` pasa a `OPEN` y queda disponible para asignar.

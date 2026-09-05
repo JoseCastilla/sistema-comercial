@@ -55,9 +55,15 @@ export function CampaignQueueRow({
   row,
   statusLabel,
   minimumDailyAttempts,
+  queueContext,
+  justVisited,
 }: {
   row: CampaignQueueRowData;
   statusLabel: string;
+  /** Filtros y página de la cola, para volver aquí desde la ficha. */
+  queueContext?: string;
+  /** El asesor acaba de consultar esta ficha y vuelve buscándola. */
+  justVisited?: boolean;
   minimumDailyAttempts: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -66,9 +72,20 @@ export function CampaignQueueRow({
 
   return (
     <>
-      <tr data-result-tone={tone}>
+      {/*
+       * El ancla es el caso, no una altura de desplazamiento: la lista cambia
+       * entre una visita y la vuelta —un caso se resuelve, otro entra— y un
+       * número de píxeles apuntaría a otra fila. `scroll-mt` deja aire para
+       * que la cabecera no la tape al saltar.
+       */}
+      <tr data-result-tone={tone} id={`caso-${row.id}`} className="scroll-mt-24">
         <td className="font-medium text-ui-text">
           {row.holderName}
+          {justVisited ? (
+            <span className="ml-2 rounded-full bg-ui-subtle px-2 py-0.5 text-2xs text-ui-muted">
+              Lo acabas de ver
+            </span>
+          ) : null}
           {row.resolutionDue ? (
             <span className="ml-2 rounded-full bg-ui-danger-soft px-2 py-0.5 text-2xs text-ui-danger">
               Resolver hoy
@@ -157,7 +174,9 @@ export function CampaignQueueRow({
           </button>
           <Link
             className="ml-3 text-ui-accent underline-offset-2 hover:underline"
-            href={`/recovery/campaigns/${row.id}`}
+            href={`/recovery/campaigns/${row.id}${
+              queueContext ? `?${queueContext}` : ""
+            }`}
           >
             Abrir
           </Link>

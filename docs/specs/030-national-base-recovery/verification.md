@@ -671,6 +671,26 @@ pudo separar de la del teléfono de contacto con los datos disponibles —las
 filas de prueba mostraban el mismo número por ambos caminos—. La consulta es
 simétrica con las otras dos, ya verificadas.
 
+### Bandeja en vivo y contexto al volver — BR-089, 05/09/2026
+
+1. **Pruebas de componente**: 11 casos en `campanas-filtros.test.tsx` —
+   rebote, el último término gana al teclear rápido, Enter sin espera, el
+   término corto no consulta, limpiar conserva departamento y plan, ningún
+   filtro arrastra `page`, el campo conserva el foco, departamento y plan en
+   vivo, y el servidor sincroniza el campo sin pisar lo que se está
+   tecleando. 66 en verde en `apps/web`.
+2. **Recorrido real** con sesión de asesor sobre una bandeja de 38 casos:
+   - Tecleado `guevara` con teclado real → la URL pasa a `?q=guevara`, la
+     lista baja a 1 caso y **el campo conserva el foco**, sin pulsar nada.
+   - Limpiar → vuelve a 38 y la URL queda sin parámetros.
+   - «Abrir» lleva `?q=guevara`; «Volver a mi cola» reconstruye
+     `?q=guevara&visto=<id>#caso-<id>`; al volver, el campo trae `guevara`,
+     la fila aparece con «Lo acabas de ver» y **está en pantalla**.
+   - El botón **Atrás** del navegador deja exactamente el mismo estado.
+   - Una ficha abierta sin contexto vuelve a la bandeja normal.
+   - `?page=99` sobre una sola página devuelve los 38 casos, no una lista
+     vacía.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de
