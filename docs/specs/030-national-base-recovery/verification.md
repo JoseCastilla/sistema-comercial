@@ -776,13 +776,35 @@ Evidencia:
    veces el bloque de COR-05 en el triage (redeclaraciones); se dejó una y
    se verificó por conteo antes de volver a correr las pruebas.
 
-**Limitación declarada**: las tres pantallas afectadas (triage, distribución,
-tablero) exigen rol supervisor o administrador y la sesión disponible en el
-navegador era de asesor, que es redirigido. La composición con AND y la
-limpieza de selección quedan cubiertas por pruebas; el estrechamiento por
-`?team=` repite exactamente el patrón ya verificado en el triage en BR-089.
-Al desplegar, la señal es que el triage muestre **tres** botones de vista y
-que «Listos» deje de incluir casos en espera.
+4. **Recorrido con sesión de administrador** (05/09/2026, servidor de
+   desarrollo), tras cambiar la sesión del navegador:
+   - **Triage**: tres botones de vista —Listos (0), Falta consultar (0), Con
+     pedido en curso (0)— y las tres tarjetas enlazan a su vista
+     (`/recovery/triage`, `?view=pendientes`, `?view=espera`).
+   - **Consultas compuestas con AND**: `?view=espera&plan=49.9`,
+     `?plan=39.9&department=Lima` en triage y `?view=unworked&plan=49.9` en
+     distribución responden 200 sin pantalla de error. Prisma acepta `AND: []`
+     cuando ningún filtro aplica.
+   - **`?team=` estrecha**: distribución «Asignados sin gestión» pasa de 36
+     filas a 0 con dos equipos distintos.
+   - **COR-05 de punta a punta**: en distribución, «Seleccionar» los primeros
+     N marca los 36; filtrar por plan con el formulario `next/form`
+     (navegación suave, el componente conserva estado) deja 2 filas, **0
+     marcados** y el aviso «La selección se limpió porque cambió la lista».
+     Antes de la corrección, esos 36 IDs habrían viajado ocultos con
+     «Asignar» o «Repartir».
+   - Registros del servidor: solo los fallos de HMR del momento en que el
+     triage tuvo el bloque duplicado (ya corregido); ningún error en tiempo
+     de ejecución.
+
+**Limitación declarada**: la base de desarrollo no tenía casos por revisar,
+en espera ni disponibles (los 38 estaban en gestión), así que la partición
+de COR-01/COR-02 —que Listos + Con pedido en curso + Falta consultar sumen
+el total con un plan dado, y que Listos no incluya casos en espera— no se
+ejercitó con números. Queda cubierta por la prueba pura de `allOf` y por la
+lectura del código. En producción, con 416 por revisar y 211 en espera, la
+señal es que «Listos» y «Con pedido en curso» sumen lo que antes mostraba
+«Listos» solo.
 
 ### Pendiente de verificación
 
