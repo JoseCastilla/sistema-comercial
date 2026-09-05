@@ -103,6 +103,25 @@ automatizada, no a mano.
    - Pedido `1942469714A`: el panel dice «En recuperación» y enlaza a
      `/recovery/sales/a77c4588-…`, el caso correcto.
 
+4. **Producción tras el despliegue, solo lectura** (commit 5d1baf1, minutos
+   después; sesión de administrador, sin ejecutar ninguna acción, sobre el
+   DOM hidratado):
+   - Bandeja: 69 casos abiertos (61 primer contacto + 3 seguimiento + 0
+     agenda), ocho columnas, **cero** formularios de reasignación abiertos y
+     69 botones «Reasignar» y 69 «Registrar gestión»; cada fila con DNI y
+     teléfono copiables. Etapas presentes: «Primer contacto vencido»,
+     «Primer contacto» y «Seguimiento vencido».
+   - Ficha de un caso sin contacto (venta 1956917271A): «Primer contacto ·
+     5/9, 14:24 · Hay que llamar antes de las 14:24: son dos horas desde que
+     la venta se cayó» y el panel «Plazo del recupero».
+   - Ficha de un caso con contacto (venta 1954471228A): «Toque D1 · 2/9,
+     19:26 · El toque del día 1 de la cadencia quedó atrás»; en la fila el
+     mismo caso se rotula «Seguimiento vencido» (el vencimiento de BR-095
+     manda en la fila; la ficha nombra la etapa).
+   - Pedido 1954471228A, abierto en su día (`period=RANGE&from=2026-08-30`):
+     el panel dice «En recuperación» y enlaza a `/recovery/sales/c544f891-…`,
+     el mismo caso que la bandeja.
+
 **Limitación declarada**: sin casos resueltos en local, «Recupero cerrado»
 solo se vio en la prueba automatizada; el editor en fila se abrió y se
 comprobó su contenido, pero no se guardó ninguna gestión real (sería una
