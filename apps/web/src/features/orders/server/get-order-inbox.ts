@@ -568,9 +568,13 @@ function getStatusFilter(
         ],
       };
     case "AWAITING_ACTIVATION":
+      // SPEC-044 REN-01: la misma definición que «Entregadas por activar» en
+      // Rendimiento (`performance-metrics`): entregada con fecha y no cerrada
+      // con fecha. Así el indicador y la lista que abre cuentan lo mismo.
       return {
         deliveryStatus: "DELIVERED",
-        status: { notIn: ["CLOSED", "CANCELLED"] },
+        deliveredAt: { not: null },
+        NOT: { status: "CLOSED", closedAt: { not: null } },
       };
     case "DELIVERED":
       return {

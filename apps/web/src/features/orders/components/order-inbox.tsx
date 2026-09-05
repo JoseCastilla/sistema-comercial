@@ -131,6 +131,7 @@ function ordersHref(
   if (advisor !== "ALL") parameters.set("advisor", advisor);
   if (action) parameters.set("accion", action);
   if (due) parameters.set("plazo", due);
+  if (data.returnTo) parameters.set("volver", data.returnTo);
   if (page > 1) parameters.set("page", String(page));
   return `/orders?${parameters.toString()}`;
 }
@@ -1246,6 +1247,11 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         eyebrow="Operación comercial"
         meta={
           <span className="flex flex-wrap items-center justify-end gap-2">
+            {data.returnTo ? (
+              <Link className="ui-directory__manage" href={data.returnTo}>
+                ← Volver a Rendimiento
+              </Link>
+            ) : null}
             <OrderRealtimeStatus />
             <span>Actualizado: {data.generatedAt}</span>
           </span>

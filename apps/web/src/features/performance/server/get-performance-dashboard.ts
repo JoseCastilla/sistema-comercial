@@ -133,6 +133,7 @@ function groupByAgent(
   monthDayKeys: readonly string[],
   quotaWindowKey: "ONE" | "TWO" | null,
   quotaTargets: ReadonlyMap<string, number>,
+  openRecoveryCases: ReadonlyMap<string, number>,
 ) {
   const showsIndividualCommission = role === "ADMIN" || role === "SUPERVISOR";
   const groups = new Map<string, PerformanceOrderRecord[]>();
@@ -189,7 +190,8 @@ function groupByAgent(
         dailyCounts.set(key, (dailyCounts.get(key) ?? 0) + 1);
       }
 
-      const agentRecord = agentOrders[0]?.agent ?? previousAgentOrders[0]?.agent;
+      const agentRecord =
+        agentOrders[0]?.agent ?? previousAgentOrders[0]?.agent;
       const rawName = agentRecord?.name ?? activeSeller?.name ?? "";
       const email = agentRecord?.email ?? activeSeller?.email ?? "";
 
@@ -211,6 +213,7 @@ function groupByAgent(
           previousAgentMetrics.entered,
         ),
         isActiveSeller: activeSeller !== undefined,
+        openRecoveryCases: openRecoveryCases.get(id) ?? 0,
         showCommission: showsIndividualCommission,
         dailyEntered: monthDayKeys.map((key) => dailyCounts.get(key) ?? 0),
         // Avance de cuota de la ventana relevante: entregadas frente al
@@ -652,6 +655,49 @@ export async function getPerformanceDashboard(
       }),
     ]);
 
+  /*
+   * SPEC-044 REN-03: los casos de Recupero de ventas no son pedidos. Se
+   * cuentan aparte, con el mismo alcance del tablero (asesor, equipo o
+   * cartera propia), y se abren en su bandeja, no en Pedidos.
+   */
+  const openRecoveryCasesRows = await database.recoveryCase.groupBy({
+    by: ["assignedUserId"],
+    where: {
+      organizationId,
+      source: { in: ["INTERNAL_ORDER_STATE", "MANUAL"] },
+      status: {
+        in: ["OPEN", "ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
+      },
+      // Sin responsable también cuenta: es justo lo que hay que atender.
+      AND: [
+        isIndividualScope
+          ? { assignedUserId: access.userId }
+          : selectedAdvisor
+            ? { assignedUserId: selectedAdvisor.id }
+            : teamFilter !== "ALL"
+              ? { assignedTeamId: teamFilter }
+              : access.role === "SUPERVISOR"
+                ? {
+                    OR: [
+                      { assignedTeamId: { in: supervisedTeamIds } },
+                      { assignedUserId: access.userId },
+                    ],
+                  }
+                : {},
+      ],
+    },
+    _count: { _all: true },
+  });
+  const openRecoveryCasesByAgent = new Map<string, number>(
+    openRecoveryCasesRows.flatMap((row) =>
+      row.assignedUserId ? [[row.assignedUserId, row._count._all]] : [],
+    ),
+  );
+  const openRecoveryCases = openRecoveryCasesRows.reduce(
+    (total, row) => total + row._count._all,
+    0,
+  );
+
   const primaryTeamMemberships = isIndividualScope
     ? []
     : await database.commercialTeamMember.findMany({
@@ -861,22 +907,22 @@ export async function getPerformanceDashboard(
       isIndividualScope || selectedAdvisor
         ? null
         : {
-          activeSellers: activeSellers.size,
-          sellersWithSales: [...activeSellers.keys()].filter((userId) =>
-            orders.some((order) => order.agentUserId === userId),
-          ).length,
-          sellersWithoutSales: [...activeSellers.keys()].filter(
-            (userId) => !orders.some((order) => order.agentUserId === userId),
-          ).length,
-          averageEnteredPerSeller:
-            activeSellers.size > 0
-              ? orders.filter(
-                  (order) =>
-                    order.agentUserId !== null &&
-                    activeSellers.has(order.agentUserId),
-                ).length / activeSellers.size
-              : null,
-        },
+            activeSellers: activeSellers.size,
+            sellersWithSales: [...activeSellers.keys()].filter((userId) =>
+              orders.some((order) => order.agentUserId === userId),
+            ).length,
+            sellersWithoutSales: [...activeSellers.keys()].filter(
+              (userId) => !orders.some((order) => order.agentUserId === userId),
+            ).length,
+            averageEnteredPerSeller:
+              activeSellers.size > 0
+                ? orders.filter(
+                    (order) =>
+                      order.agentUserId !== null &&
+                      activeSellers.has(order.agentUserId),
+                  ).length / activeSellers.size
+                : null,
+          },
     quotaWindow: relevantWindow
       ? {
           key: relevantWindow.key,
@@ -884,6 +930,7 @@ export async function getPerformanceDashboard(
           isActive: currentWindow !== null,
         }
       : null,
+    openRecoveryCases,
     breakdown: isIndividualScope
       ? []
       : groupByAgent(
@@ -895,6 +942,7 @@ export async function getPerformanceDashboard(
           monthProgress.days.map((day) => day.key),
           relevantWindow?.key ?? null,
           quotaTargets,
+          openRecoveryCasesByAgent,
         ),
   };
 }
