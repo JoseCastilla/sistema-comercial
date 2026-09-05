@@ -18,7 +18,7 @@ describe("Carril de Campañas", () => {
       "Revisar",
       "Repartir",
       "Seguimiento",
-      "Tablero del día",
+      "Tablero",
     ]);
     expect(screen.getByRole("link", { name: "Repartir" })).toHaveAttribute(
       "aria-current",

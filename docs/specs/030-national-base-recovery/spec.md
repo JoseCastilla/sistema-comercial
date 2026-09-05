@@ -404,6 +404,30 @@ construir un reporte a mano.
     como filtro propio: cada cliente aparece **una sola vez** aunque el
     archivo lo traiga en varias filas (BR-009b), y un cliente puede estar en
     varios lotes — el filtro responde «apareció en este», no «pertenece a».
+- **BR-094** (05/09/2026, fase 5 del plan de usabilidad de Campañas):
+  **el tablero separa tres fechas que no son la misma y no mezcla dos en una
+  cifra.**
+  - **Cartera · ahora**: asignados, sin primer contacto y agenda vencida son
+    el estado de este momento y no tienen período. Un caso sin primer
+    contacto lo sigue estando aunque se mire la semana pasada.
+  - **Actividad · período**: intentos hechos y casos resueltos entre dos
+    fechas de Lima, elegibles como Hoy (por defecto), Ayer, últimos 7 días o
+    últimos 30 días. Un período desconocido cae en Hoy: el tablero siempre
+    responde el día. La **cobertura** (BR-054) exige tres intentos en un
+    mismo día, así que solo se muestra para períodos de un día; en los demás
+    se declara «se mide por día» en vez de inventar una cifra.
+  - **Cohorte · fecha de carga**: la conversión por día en que el caso entró,
+    con lo recuperado hasta hoy; cubre al menos siete días y, si el período
+    es más largo, todo el período. Es independiente de la actividad.
+  - **Filtro por asesor**: acota cartera, actividad y resoluciones al mismo
+    asesor y viaja a Seguimiento en cada enlace. Un supervisor sigue acotado
+    por sus equipos: un asesor ajeno devuelve ceros.
+  - **Definiciones visibles**: cada cifra lleva su definición al lado y un
+    panel «Cómo se calcula» explica las tres fechas. Los intentos se
+    atribuyen al dueño actual del caso, y se dice.
+  - El rango libre de fechas queda fuera de esta versión: los cuatro
+    períodos cubren la revisión operativa y un selector de rango merece su
+    propio componente.
 - **BR-025:** un caso `WAITING` cuyos servicios aparecen luego portados a
   Movistar se cierra como `DISCARDED` y no vuelve a revisarse.
 - **BR-026:** un caso `LIBERADO` pasa a `OPEN` y queda disponible para asignar.

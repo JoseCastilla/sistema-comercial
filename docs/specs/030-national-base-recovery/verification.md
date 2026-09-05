@@ -869,6 +869,36 @@ no por recuento de clientes. El panel del navegador siguió oculto: sin
 clics reales; el carril y los filtros están cubiertos por pruebas y por la
 misma mecánica ya verificada en vivo en fases anteriores.
 
+### Fase 5 del plan de usabilidad — BR-094, 05/09/2026
+
+1. **Pruebas puras**: 5 casos sobre el período — desconocido cae en Hoy;
+   hoy y ayer son un día de Lima de medianoche a medianoche; semana y mes
+   incluyen hoy y cierran mañana; ayer termina donde empieza hoy; a las 23:30
+   de Lima el día sigue siendo el de Lima. 286 en verde en
+   `@repo/validation`; 98 en `apps/web`; tipos y lint limpios.
+2. **Recorrido por fetch con sesión de administrador** (cartera de
+   desarrollo: 38 casos de una asesora, 2 gestionados hoy):
+   - Barra sin buscador: Equipo, Asesor actual, Período de actividad. Dos
+     bloques: «Cartera · ahora» y «Actividad · hoy»; paneles «Cartera y
+     actividad», «Efectividad por asesor», «Cómo se calcula» y «Conversión
+     por fecha de carga».
+   - **La cartera no cambia con el período y la actividad sí**: con
+     `?periodo=ayer` la cartera sigue 38 / 36 / 0 y los trabajados pasan de 2
+     a 0; los descartes pasan de 1 386 (hoy: el vencimiento de BR-084 barrió
+     la base al abrir las pantallas) a 500 (ayer).
+   - Con `?periodo=semana` la cobertura muestra «—» y «Se mide por día;
+     elige Hoy o Ayer»; «Trabajados» solo enlaza a Seguimiento cuando el
+     período es Hoy.
+   - `?advisor=<asesora>` conserva los 38 y la ficha «Asesor: Jimena Cuya ·
+     AYACUCHO - MAGISTERIAL»; un asesor sin cartera devuelve 0 asignados y 0
+     trabajados con 200.
+   - Cada cifra muestra su definición debajo.
+
+**Limitación declarada**: una sola asesora, sin agendados ni recuperos en la
+base de desarrollo, así que agenda vencida, recuperados y perdidos se vieron
+en cero; el panel del navegador siguió oculto y no hubo clics reales. El
+rango libre de fechas queda fuera de esta versión, a propósito.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de

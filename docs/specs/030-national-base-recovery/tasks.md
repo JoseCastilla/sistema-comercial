@@ -469,6 +469,18 @@ venía llamando—.
 - [x] Triage: filtro «Lote» por avistamiento (`sightings.some.batchId`),
       opciones con los 10 lotes confirmados más recientes, ficha legible.
 
+## Fase 5 del plan de usabilidad: análisis histórico (05/09/2026)
+
+- [x] BR-094: `recovery-board-period.ts` en validation — cuatro períodos
+      sobre días de Lima, con desconocido → Hoy (5 pruebas).
+- [x] Tablero: cartera de ahora y actividad del período en bloques
+      separados, cada cifra con su definición; cobertura solo por día;
+      filtro por asesor que acota todo y viaja a Seguimiento; cohortes por
+      fecha de carga cubriendo el período; panel «Cómo se calcula».
+- [x] `QueueFilters` con `hideSearch`; la pestaña pasa de «Tablero del día» a
+      «Tablero».
+- [ ] Rango libre de fechas: fuera de esta versión.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

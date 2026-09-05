@@ -1,10 +1,14 @@
 import Link from "next/link";
-import Form from "next/form";
 import { redirect } from "next/navigation";
 
-import { formatAdvisorDisplayName } from "@repo/validation";
+import {
+  formatAdvisorDisplayName,
+  recoveryBoardPeriods,
+  resolveRecoveryBoardPeriod,
+} from "@repo/validation";
 
 import { CampaignNav } from "@/features/recovery/components/campaign-nav";
+import { QueueFilters } from "@/features/recovery/components/queue-filters";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -98,7 +102,7 @@ function Stat({
 export default async function RecoveryBoardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ team?: string }>;
+  searchParams: Promise<{ team?: string; advisor?: string; periodo?: string }>;
 }) {
   const { session, membership } = await requireCommercialAccess();
 
@@ -108,9 +112,26 @@ export default async function RecoveryBoardPage({
 
   const parameters = await searchParams;
   const teamFilter = parameters.team ?? "";
+  const advisorFilter = (parameters.advisor ?? "").trim().slice(0, 40);
   const now = new Date();
-  const dayStart = getLimaDayStart(now);
-  const cohortStart = new Date(dayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  /**
+   * Fase 5 (BR-094): el tablero deja de ser solo «del día». La **actividad**
+   * —intentos, contactos, recuperos, pérdidas, descartes— se mide en un
+   * período de días de Lima; la **cartera** —asignados, sin primer
+   * contacto, agenda vencida— es el estado de ahora y no tiene período.
+   * Confundir las dos es lo que este tablero existe para evitar.
+   */
+  const period = resolveRecoveryBoardPeriod(parameters.periodo, now);
+  const todayStart = getLimaDayStart(now);
+  // Las cohortes van por fecha de carga: al menos siete días y, si el
+  // período es más largo, todo el período.
+  const cohortStart = new Date(
+    Math.min(
+      period.start.getTime(),
+      todayStart.getTime() - 7 * 24 * 60 * 60 * 1000,
+    ),
+  );
 
   const isSupervisor = membership.role === "SUPERVISOR";
   const supervisedTeamIds = isSupervisor
@@ -146,6 +167,7 @@ export default async function RecoveryBoardPage({
   function followUpHref(filters: Record<string, string>): string {
     const query = new URLSearchParams();
     if (teamScope) query.set("team", teamScope);
+    if (advisorFilter) query.set("advisor", advisorFilter);
     for (const [key, value] of Object.entries(filters)) query.set(key, value);
     const suffix = query.toString();
     return `/recovery/follow-up${suffix ? `?${suffix}` : ""}`;
@@ -160,60 +182,87 @@ export default async function RecoveryBoardPage({
     ...(teamScope ? { assignedTeamId: teamScope } : {}),
   };
 
-  const [assignedCases, attemptsToday, resolvedToday, cohortCases, teams] =
-    await Promise.all([
-      database.recoveryCase.findMany({
-        where: {
-          ...scopeWhere,
-          status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"] },
-          assignedUserId: { not: null },
-        },
-        select: {
-          id: true,
-          status: true,
-          assignedUserId: true,
-          firstContactAt: true,
-          nextActionAt: true,
-          assignedUser: { select: { name: true, email: true } },
-          assignedTeam: { select: { name: true } },
-        },
-      }),
-      database.recoveryCaseAttempt.findMany({
-        where: {
+  const [
+    assignedCases,
+    attemptsToday,
+    resolvedToday,
+    cohortCases,
+    teams,
+    advisorMemberships,
+  ] = await Promise.all([
+    database.recoveryCase.findMany({
+      where: {
+        ...scopeWhere,
+        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"] },
+        assignedUserId: { not: null },
+        ...(advisorFilter ? { assignedUserId: advisorFilter } : {}),
+      },
+      select: {
+        id: true,
+        status: true,
+        assignedUserId: true,
+        firstContactAt: true,
+        nextActionAt: true,
+        assignedUser: { select: { name: true, email: true } },
+        assignedTeam: { select: { name: true } },
+      },
+    }),
+    database.recoveryCaseAttempt.findMany({
+      where: {
+        organizationId: membership.organization.id,
+        createdAt: { gte: period.start, lt: period.end },
+        ...(advisorFilter ? { actorUserId: advisorFilter } : {}),
+        case: { ...scopeWhere },
+      },
+      select: { caseId: true, actorUserId: true, result: true },
+    }),
+    database.recoveryCase.findMany({
+      where: {
+        ...scopeWhere,
+        status: { in: ["RECOVERED", "LOST", "DISCARDED"] },
+        resolvedAt: { gte: period.start, lt: period.end },
+        ...(advisorFilter ? { assignedUserId: advisorFilter } : {}),
+      },
+      select: {
+        status: true,
+        lossReason: true,
+        discardReason: true,
+        assignedUserId: true,
+      },
+    }),
+    database.recoveryCase.findMany({
+      where: { ...scopeWhere, createdAt: { gte: cohortStart } },
+      select: { createdAt: true, status: true },
+    }),
+    isSupervisor
+      ? Promise.resolve([])
+      : database.commercialTeam.findMany({
+          where: {
+            organizationId: membership.organization.id,
+            status: "ACTIVE",
+          },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        }),
+    database.commercialTeamMember.findMany({
+      where: {
+        salesEnabled: true,
+        isActive: true,
+        isPrimary: true,
+        team: {
           organizationId: membership.organization.id,
-          createdAt: { gte: dayStart },
-          case: { ...scopeWhere },
+          status: "ACTIVE",
+          ...(supervisedTeamIds ? { id: { in: supervisedTeamIds } } : {}),
         },
-        select: { caseId: true, actorUserId: true, result: true },
-      }),
-      database.recoveryCase.findMany({
-        where: {
-          ...scopeWhere,
-          status: { in: ["RECOVERED", "LOST", "DISCARDED"] },
-          resolvedAt: { gte: dayStart },
-        },
-        select: {
-          status: true,
-          lossReason: true,
-          discardReason: true,
-          assignedUserId: true,
-        },
-      }),
-      database.recoveryCase.findMany({
-        where: { ...scopeWhere, createdAt: { gte: cohortStart } },
-        select: { createdAt: true, status: true },
-      }),
-      isSupervisor
-        ? Promise.resolve([])
-        : database.commercialTeam.findMany({
-            where: {
-              organizationId: membership.organization.id,
-              status: "ACTIVE",
-            },
-            orderBy: { name: "asc" },
-            select: { id: true, name: true },
-          }),
-    ]);
+        user: { status: "ACTIVE" },
+      },
+      select: {
+        userId: true,
+        user: { select: { name: true, email: true } },
+        team: { select: { name: true } },
+      },
+    }),
+  ]);
 
   // ── Avance del día (BR-053) ────────────────────────────────────────────
   const attemptsByCase = new Map<string, number>();
@@ -390,33 +439,49 @@ export default async function RecoveryBoardPage({
       <div className="ui-page-stack">
         <PageHeader
           eyebrow="Campañas"
-          title="Tablero del día"
-          description="Cuánto se avanzó, con qué cobertura y con qué efectividad."
+          title="Tablero"
+          description={`La cartera de ahora y la actividad de ${period.label.toLowerCase()}: cuánto se avanzó, con qué cobertura y con qué efectividad.`}
         />
         <CampaignNav current="tablero" role={membership.role} />
 
-        {!isSupervisor && teams.length > 0 ? (
-          <Form action="/recovery/board" className="ui-form-row">
-            <label>
-              <span className="ui-label-eyebrow">Equipo</span>
-              <select
-                className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={teamScope}
-                name="team"
-              >
-                <option value="">Todos</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button className="ui-button ui-button--secondary" type="submit">
-              Filtrar
-            </button>
-          </Form>
-        ) : null}
+        <QueueFilters
+          basePath="/recovery/board"
+          hideSearch
+          options={{
+            teams: isSupervisor ? undefined : teams,
+            allowNoTeam: false,
+            advisors: [
+              ...new Map(
+                advisorMemberships.map((item) => [
+                  item.userId,
+                  {
+                    id: item.userId,
+                    name: `${formatAdvisorDisplayName(item.user.name, item.user.email)} · ${item.team.name}`,
+                  },
+                ]),
+              ).values(),
+            ],
+            extras: [
+              {
+                key: "periodo",
+                label: "Período de actividad",
+                emptyLabel: "Hoy",
+                options: recoveryBoardPeriods.filter(
+                  (option) => option.value !== "hoy",
+                ),
+              },
+            ],
+          }}
+          resultLabel={`Actividad: ${period.label.toLowerCase()} · cartera: ahora.`}
+          values={{
+            q: "",
+            team: teamScope,
+            department: "",
+            plan: "",
+            advisor: advisorFilter,
+            extra: { periodo: period.key === "hoy" ? "" : period.key },
+          }}
+        />
 
         <div className="ui-form-row">
           <Link
@@ -431,61 +496,95 @@ export default async function RecoveryBoardPage({
         </div>
 
         <SectionPanel
-          title="Avance"
-          description="Los plazos corren desde la asignación: los casos sin repartir no generan alertas."
+          title="Cartera y actividad"
+          description="La cartera es el estado de ahora; la actividad, lo ocurrido en el período elegido. Los plazos corren desde la asignación: los casos sin repartir no generan alertas."
         >
-          <dl className="flex flex-wrap gap-x-10 gap-y-3">
-            <Stat
-              href={followUpHref({})}
-              label="Asignados"
-              value={formatCount(assignedCases.length)}
-            />
-            <Stat
-              href={followUpHref({ worked: "hoy" })}
-              label="Trabajados hoy"
-              value={formatCount(workedToday.length)}
-            />
-            <Stat
-              href={followUpHref({ contact: "sin" })}
-              label="Sin primer contacto"
-              tone={noFirstContact.length > 0 ? "warning" : undefined}
-              value={formatCount(noFirstContact.length)}
-            />
-            <Stat
-              href={followUpHref({ next: "vencida", status: "SCHEDULED" })}
-              label="Agenda vencida"
-              tone={overdueAgenda.length > 0 ? "danger" : undefined}
-              value={formatCount(overdueAgenda.length)}
-            />
-            <Stat
-              label="Cobertura · 3+ intentos"
-              detail={`${formatCount(coveredToday.length)} de ${formatCount(activeToday.length)} activos hoy`}
-              tone={
-                coverage === null
-                  ? undefined
-                  : coverage >= 70
-                    ? "success"
-                    : "warning"
-              }
-              value={coverage === null ? "—" : `${coverage}%`}
-            />
-            <Stat
-              label="Recuperados hoy"
-              tone={recoveredToday > 0 ? "success" : undefined}
-              value={formatCount(recoveredToday)}
-            />
-            <Stat label="Perdidos hoy" value={formatCount(lostToday)} />
-            <Stat
-              label="Descartes del día"
-              detail="portabilidad y vencidos; no son pérdidas"
-              value={formatCount(discardedTodayCount)}
-            />
-          </dl>
+          <div className="space-y-4">
+            <div>
+              <p className="ui-label-eyebrow">Cartera · ahora</p>
+              <dl className="mt-2 flex flex-wrap gap-x-10 gap-y-3">
+                <Stat
+                  detail="Casos con asesor en este momento"
+                  href={followUpHref({})}
+                  label="Asignados"
+                  value={formatCount(assignedCases.length)}
+                />
+                <Stat
+                  detail="Asignados que nadie ha llamado aún; los en espera no cuentan"
+                  href={followUpHref({ contact: "sin" })}
+                  label="Sin primer contacto"
+                  tone={noFirstContact.length > 0 ? "warning" : undefined}
+                  value={formatCount(noFirstContact.length)}
+                />
+                <Stat
+                  detail="Citas agendadas cuya fecha ya pasó"
+                  href={followUpHref({ next: "vencida", status: "SCHEDULED" })}
+                  label="Agenda vencida"
+                  tone={overdueAgenda.length > 0 ? "danger" : undefined}
+                  value={formatCount(overdueAgenda.length)}
+                />
+              </dl>
+            </div>
+
+            <div>
+              <p className="ui-label-eyebrow">
+                Actividad · {period.label.toLowerCase()}
+              </p>
+              <dl className="mt-2 flex flex-wrap gap-x-10 gap-y-3">
+                <Stat
+                  detail="Casos de la cartera con al menos un intento en el período"
+                  href={
+                    period.key === "hoy"
+                      ? followUpHref({ worked: "hoy" })
+                      : undefined
+                  }
+                  label="Trabajados"
+                  value={formatCount(workedToday.length)}
+                />
+                <Stat
+                  detail={
+                    period.days === 1
+                      ? `${formatCount(coveredToday.length)} de ${formatCount(activeToday.length)} activos con 3+ intentos en el día`
+                      : "Se mide por día; elige Hoy o Ayer"
+                  }
+                  label="Cobertura · 3+ intentos"
+                  tone={
+                    period.days !== 1 || coverage === null
+                      ? undefined
+                      : coverage >= 70
+                        ? "success"
+                        : "warning"
+                  }
+                  value={
+                    period.days !== 1 || coverage === null
+                      ? "—"
+                      : `${coverage}%`
+                  }
+                />
+                <Stat
+                  detail="Resueltos como recuperados en el período"
+                  label="Recuperados"
+                  tone={recoveredToday > 0 ? "success" : undefined}
+                  value={formatCount(recoveredToday)}
+                />
+                <Stat
+                  detail="Resueltos como perdidos en el período"
+                  label="Perdidos"
+                  value={formatCount(lostToday)}
+                />
+                <Stat
+                  detail="Portabilidad y vencidos; no son pérdidas de nadie"
+                  label="Descartes"
+                  value={formatCount(discardedTodayCount)}
+                />
+              </dl>
+            </div>
+          </div>
         </SectionPanel>
 
         <SectionPanel
           title="Efectividad por asesor"
-          description="Intentos y contactos de hoy; recuperos y pérdidas resueltos hoy."
+          description={`Intentos y contactos de ${period.label.toLowerCase()}; recuperos y pérdidas resueltos en el mismo período. Los intentos se atribuyen al dueño actual del caso.`}
         >
           <div className="overflow-x-auto">
             <table className="ui-table">
@@ -596,8 +695,46 @@ export default async function RecoveryBoardPage({
         </SectionPanel>
 
         <SectionPanel
-          title="Conversión por día de carga"
-          description="Cada día de carga contra la meta del 3–6 %. Los que ya eran Movistar no cuentan: la conversión se mide sobre oportunidad real."
+          title="Cómo se calcula"
+          description="Tres fechas distintas, tres preguntas distintas. Ninguna cifra mezcla dos."
+        >
+          <dl className="grid gap-3 text-xs sm:grid-cols-3">
+            <div>
+              <dt className="font-semibold text-ui-text">Cartera · ahora</dt>
+              <dd className="text-ui-muted">
+                Lo que hay asignado en este momento. No depende del período: un
+                caso sin primer contacto lo sigue estando aunque mires la semana
+                pasada.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-ui-text">
+                Actividad · período
+              </dt>
+              <dd className="text-ui-muted">
+                Intentos hechos entre las fechas elegidas (día de Lima) y casos
+                resueltos en esas fechas. «Trabajado» es un caso con al menos un
+                intento; «contactado», uno cuyo intento terminó en respuesta del
+                cliente. La cobertura exige tres intentos en un mismo día, así
+                que solo se muestra para Hoy y Ayer.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-ui-text">
+                Cohorte · fecha de carga
+              </dt>
+              <dd className="text-ui-muted">
+                El día en que el caso entró al sistema, con lo recuperado hasta
+                hoy. Mide si esa base rinde, no qué se hizo un día. Los
+                descartes por portabilidad salen del denominador.
+              </dd>
+            </div>
+          </dl>
+        </SectionPanel>
+
+        <SectionPanel
+          title="Conversión por fecha de carga"
+          description="Cada fecha de carga —el día en que el caso entró— contra la meta del 3–6 %, con lo recuperado hasta hoy. Es independiente del período de actividad. Los que ya eran Movistar no cuentan: la conversión se mide sobre oportunidad real."
         >
           <div className="overflow-x-auto">
             <table className="ui-table">
@@ -671,7 +808,7 @@ export default async function RecoveryBoardPage({
                       className="px-3 py-6 text-center text-ui-muted"
                       colSpan={7}
                     >
-                      Sin cargas en los últimos 7 días.
+                      Sin cargas en el período.
                     </td>
                   </tr>
                 ) : null}
