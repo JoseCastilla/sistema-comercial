@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { sendOrderToRecoveryAction } from "@/features/recovery/server/send-order-to-recovery-action";
@@ -28,6 +29,9 @@ const statusLabels: Record<string, string> = {
   SCHEDULED: "Agendado",
   TRIAGE: "Por revisar",
   WAITING: "En espera",
+  RECOVERED: "Recuperada",
+  LOST: "Perdida",
+  DISCARDED: "Cerrada: ya era Movistar",
 };
 
 const priorityLabels: Record<string, string> = {
@@ -37,97 +41,130 @@ const priorityLabels: Record<string, string> = {
   CONDICIONADA: "Condicionada",
 };
 
+/**
+ * Relación del pedido con su recupero — SPEC-030 BR-061 y SPEC-041 NAV-02.
+ *
+ * El pedido es un pedido; el caso de recupero es otra cosa, con su
+ * responsable y su cadencia. Aquí se muestra si existe uno —abierto o ya
+ * resuelto— y se abre sin volver a buscarlo. La orden original conserva su
+ * historial y su atribución: el caso vive aparte.
+ */
 export function SendOrderToRecoveryPanel({ order }: { order: OrderInboxItem }) {
   const [state, action, pending] = useActionState(
     sendOrderToRecoveryAction,
     initialState,
   );
 
-  if (order.recoveryCase) {
-    return (
-      <section
-        aria-label="Caso de recuperación"
-        className="rounded-lg border border-ui-info-border bg-ui-info-soft p-3 text-sm"
-      >
-        <p className="font-semibold text-ui-info">En recuperación</p>
-        <p className="mt-1 text-ui-text">
-          {statusLabels[order.recoveryCase.status] ?? order.recoveryCase.status}
-          {order.recoveryCase.priority
-            ? ` · Prioridad ${priorityLabels[order.recoveryCase.priority] ?? order.recoveryCase.priority}`
-            : ""}
-          {order.recoveryCase.assignedToName
-            ? ` · ${order.recoveryCase.assignedToName}`
-            : ""}
-        </p>
-        {order.recoveryCase.entryReason ? (
-          <p className="mt-1 text-xs text-ui-muted">
-            {reasonLabels[order.recoveryCase.entryReason] ??
-              order.recoveryCase.entryReason}
-          </p>
-        ) : null}
-      </section>
-    );
-  }
-
-  if (!order.canSendToRecovery) return null;
+  const recoveryCase = order.recoveryCase;
 
   return (
-    <details className="rounded-lg border border-ui-border bg-ui-surface p-3">
-      <summary className="cursor-pointer text-sm font-semibold text-ui-text">
-        Enviar a recupero
-      </summary>
-      <form action={action} className="mt-4 space-y-3">
-        <input name="orderId" type="hidden" value={order.id} />
-        <label className="block text-sm font-medium text-ui-text">
-          Motivo comercial
-          <select
-            className="mt-1 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2"
-            defaultValue="NO_ENTREGADO"
-            name="entryReason"
-          >
-            {Object.entries(reasonLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm font-medium text-ui-text">
-          ¿Qué ocurrió con esta venta?
-          <textarea
-            className="mt-1 min-h-24 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2"
-            maxLength={2000}
-            minLength={10}
-            name="observation"
-            placeholder="Conserva el mensaje del operador o lo que dijo el cliente."
-            required
-          />
-        </label>
-        {state.type !== "idle" ? (
+    <>
+      {recoveryCase ? (
+        <section
+          aria-label={
+            recoveryCase.isOpen ? "Caso de recuperación" : "Recupero cerrado"
+          }
+          className={
+            recoveryCase.isOpen
+              ? "rounded-lg border border-ui-info-border bg-ui-info-soft p-3 text-sm"
+              : "rounded-lg border border-ui-border bg-ui-subtle p-3 text-sm"
+          }
+        >
           <p
-            aria-live="polite"
             className={
-              state.type === "success"
-                ? "text-sm font-medium text-ui-success"
-                : "text-sm font-medium text-ui-danger"
+              recoveryCase.isOpen
+                ? "font-semibold text-ui-info"
+                : "font-semibold text-ui-text"
             }
           >
-            {state.message}
+            {recoveryCase.isOpen ? "En recuperación" : "Recupero cerrado"}
           </p>
-        ) : null}
-        <button
-          className="rounded-lg bg-ui-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          disabled={pending}
-          type="submit"
-        >
-          {pending ? "Enviando…" : "Abrir caso de recuperación"}
-        </button>
-        <p className="text-xs text-ui-muted">
-          La orden conserva a su asesor y equipo. Una promesa comercial
-          incorrecta entra como Crítica y nunca vuelve a quien originó la
-          venta.
-        </p>
-      </form>
-    </details>
+          <p className="mt-1 text-ui-text">
+            {statusLabels[recoveryCase.status] ?? recoveryCase.status}
+            {recoveryCase.priority
+              ? ` · Prioridad ${priorityLabels[recoveryCase.priority] ?? recoveryCase.priority}`
+              : ""}
+            {recoveryCase.isOpen && recoveryCase.assignedToName
+              ? ` · ${recoveryCase.assignedToName}`
+              : ""}
+            {!recoveryCase.isOpen && recoveryCase.resolvedAtLabel
+              ? ` · ${recoveryCase.resolvedAtLabel}`
+              : ""}
+          </p>
+          {recoveryCase.entryReason ? (
+            <p className="mt-1 text-xs text-ui-muted">
+              {reasonLabels[recoveryCase.entryReason] ??
+                recoveryCase.entryReason}
+            </p>
+          ) : null}
+          <Link
+            className="mt-2 inline-block text-sm font-semibold text-ui-accent underline-offset-2 hover:underline"
+            href={`/recovery/sales/${recoveryCase.id}`}
+          >
+            Abrir el caso →
+          </Link>
+        </section>
+      ) : null}
+
+      {order.canSendToRecovery ? (
+        <details className="rounded-lg border border-ui-border bg-ui-surface p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-ui-text">
+            {recoveryCase ? "Enviar a recupero otra vez" : "Enviar a recupero"}
+          </summary>
+          <form action={action} className="mt-4 space-y-3">
+            <input name="orderId" type="hidden" value={order.id} />
+            <label className="block text-sm font-medium text-ui-text">
+              Motivo comercial
+              <select
+                className="mt-1 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2"
+                defaultValue="NO_ENTREGADO"
+                name="entryReason"
+              >
+                {Object.entries(reasonLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm font-medium text-ui-text">
+              ¿Qué ocurrió con esta venta?
+              <textarea
+                className="mt-1 min-h-24 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2"
+                maxLength={2000}
+                minLength={10}
+                name="observation"
+                placeholder="Conserva el mensaje del operador o lo que dijo el cliente."
+                required
+              />
+            </label>
+            {state.type !== "idle" ? (
+              <p
+                aria-live="polite"
+                className={
+                  state.type === "success"
+                    ? "text-sm font-medium text-ui-success"
+                    : "text-sm font-medium text-ui-danger"
+                }
+              >
+                {state.message}
+              </p>
+            ) : null}
+            <button
+              className="rounded-lg bg-ui-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              disabled={pending}
+              type="submit"
+            >
+              {pending ? "Enviando…" : "Abrir caso de recuperación"}
+            </button>
+            <p className="text-xs text-ui-muted">
+              La orden conserva a su asesor y equipo. Una promesa comercial
+              incorrecta entra como Crítica y nunca vuelve a quien originó la
+              venta.
+            </p>
+          </form>
+        </details>
+      ) : null}
+    </>
   );
 }

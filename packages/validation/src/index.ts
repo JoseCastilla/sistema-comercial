@@ -29,6 +29,7 @@ export * from "./recovery-board-period.js";
 export * from "./recovery-selection.js";
 export * from "./recovery-internal-due.js";
 export * from "./recovery-internal-gate.js";
+export * from "./recovery-internal-stage.js";
 export * from "./recovery-base-distribution.js";
 export * from "./recovery-line-origin.js";
 export * from "./performance-metrics.js";

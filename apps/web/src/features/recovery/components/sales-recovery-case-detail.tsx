@@ -103,19 +103,39 @@ export function SalesRecoveryCaseDetail({
             data.nextActionOverdue && !data.isResolved ? "attention" : undefined
           }
         >
-          <span>Próxima acción</span>
-          <strong>{data.nextActionAtLabel ?? "—"}</strong>
+          <span>{data.stage ? data.stage.label : "Próxima acción"}</span>
+          <strong>
+            {data.nextActionAtLabel ??
+              (data.stage?.key === "primer_contacto" ? "Llamar ya" : "—")}
+          </strong>
           <small>
-            {data.isResolved
-              ? "Caso cerrado"
-              : data.nextActionOverdue
-                ? "Vencida: gestionar ahora"
-                : data.firstContactAtLabel
-                  ? `Primer contacto ${data.firstContactAtLabel}`
-                  : "Aún sin primer contacto"}
+            {data.isResolved ? "Caso cerrado" : (data.stage?.detail ?? "")}
           </small>
         </article>
       </section>
+
+      {data.isResolved ? null : (
+        <section className="performance-panel">
+          <header className="performance-panel__header">
+            <div>
+              <p className="performance-panel__eyebrow">Cómo se calcula</p>
+              <h2>Plazo del recupero</h2>
+              <p>
+                Es independiente del plazo de entrega de la venta. El primer
+                contacto vence dos horas después de que la venta se cayó; luego
+                la cadencia toca los días 1, 3 y 7 desde que se tomó el caso.
+                Una agenda acordada con el cliente la suspende; un rechazo la
+                pausa uno o dos días; al séptimo día el caso entra en resolución
+                obligatoria. No aplica la regla de tres intentos al día de
+                Campañas.
+                {data.claimedAtLabel
+                  ? ` Este caso se tomó el ${data.claimedAtLabel}.`
+                  : ""}
+              </p>
+            </div>
+          </header>
+        </section>
+      )}
 
       <section className="performance-panel">
         <header className="performance-panel__header">

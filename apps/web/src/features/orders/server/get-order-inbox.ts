@@ -90,9 +90,8 @@ const shortDateFormatter = new Intl.DateTimeFormat("es-PE", {
   month: "2-digit",
 });
 
-const openRecoveryCaseWhere = {
-  status: { notIn: ["RECOVERED", "LOST", "DISCARDED"] },
-} satisfies Prisma.RecoveryCaseWhereInput;
+/** SPEC-041 NAV-02: el pedido muestra su último caso, abierto o resuelto. */
+const resolvedRecoveryStatuses = ["RECOVERED", "LOST", "DISCARDED"];
 
 const orderSelect = {
   id: true,
@@ -198,13 +197,14 @@ const orderSelect = {
     },
   },
   recoveryCasesOriginated: {
-    where: openRecoveryCaseWhere,
+    orderBy: { createdAt: "desc" as const },
     take: 1,
     select: {
       id: true,
       status: true,
       priority: true,
       entryReason: true,
+      resolvedAt: true,
       assignedUser: { select: { name: true } },
     },
   },
@@ -1545,7 +1545,10 @@ export async function getOrderInbox(
           access.role === "BACKOFFICE" ||
           access.role === "SUPERVISOR") &&
         !isOwnOrder &&
-        order.recoveryCasesOriginated.length === 0 &&
+        !order.recoveryCasesOriginated.some(
+          (recoveryCase) =>
+            !resolvedRecoveryStatuses.includes(String(recoveryCase.status)),
+        ) &&
         status !== "CLOSED" &&
         String(order.deliveryStatus) !== "DELIVERED",
       recoveryCase: order.recoveryCasesOriginated[0]
@@ -1560,6 +1563,12 @@ export async function getOrderInbox(
               : null,
             assignedToName:
               order.recoveryCasesOriginated[0].assignedUser?.name ?? null,
+            isOpen: !resolvedRecoveryStatuses.includes(
+              String(order.recoveryCasesOriginated[0].status),
+            ),
+            resolvedAtLabel: order.recoveryCasesOriginated[0].resolvedAt
+              ? formatDateTime(order.recoveryCasesOriginated[0].resolvedAt)
+              : null,
           }
         : null,
       canResolveAssignment:

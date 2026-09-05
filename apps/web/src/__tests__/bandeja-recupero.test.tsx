@@ -1,4 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { webcrypto } from "node:crypto";
+
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { SalesRecoveryInbox } from "@/features/recovery/components/sales-recovery-inbox";
@@ -17,6 +19,16 @@ vi.mock("@/features/recovery/server/assign-sales-recovery-case-action", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
+vi.mock("@/features/recovery/server/register-recovery-attempt-action", () => ({
+  registerCampaignAttemptInlineAction: async () => ({
+    type: "idle",
+    message: "",
+  }),
+}));
+
+if (!globalThis.crypto?.randomUUID) {
+  Object.defineProperty(globalThis, "crypto", { value: webcrypto });
+}
 
 const caso = (
   extra: Partial<SalesRecoveryCaseItem>,
@@ -38,6 +50,13 @@ const caso = (
   nextActionAtLabel: null,
   due: null,
   isCritical: false,
+  contactPhone: "999111222",
+  phoneOptions: ["999111222", "987654321"],
+  stage: null,
+  lastResult: null,
+  lastObservation: null,
+  lastAttemptAtLabel: null,
+  canManage: true,
   resolvedAtLabel: null,
   resolutionLabel: null,
   ...extra,
@@ -263,5 +282,89 @@ describe("Bandeja de recupero de ventas", () => {
       "href",
       "/recovery/sales?prioridad=ALTA&vence=primer_contacto&page=3",
     );
+  });
+
+  it("reasignar solo se abre al pedirlo: la lista se compara sin formularios", () => {
+    render(
+      <SalesRecoveryInbox
+        data={datos({
+          canAssign: true,
+          advisorOptions: [{ id: "u-2", name: "Rosa", teamName: "Lima" }],
+        })}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("combobox", { name: "Asesor destino" }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reasignar" }));
+    expect(
+      screen.getByRole("combobox", { name: "Asesor destino" }),
+    ).toBeInTheDocument();
+  });
+
+  it("la fila enseña el teléfono, la última gestión y la etapa de la cadencia", () => {
+    render(
+      <SalesRecoveryInbox
+        data={datos({
+          cases: [
+            caso({
+              status: "IN_PROGRESS",
+              nextActionAtLabel: "07/09 10:00",
+              lastResult: "INTERESADO",
+              lastObservation: "Quiere el plan, llamar el lunes",
+              lastAttemptAtLabel: "04/09 10:00",
+              stage: {
+                key: "toque",
+                label: "Toque D3",
+                detail: "Cadencia D1 / D3 / D7 desde que se tomó el caso.",
+                due: null,
+                touchDay: 3,
+              },
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /999111222/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Interesado")).toBeInTheDocument();
+    expect(
+      screen.getByText("Quiere el plan, llamar el lunes"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Toque D3")).toHaveAttribute(
+      "title",
+      "Cadencia D1 / D3 / D7 desde que se tomó el caso.",
+    );
+  });
+
+  it("registrar gestión abre el editor en la fila, con los teléfonos del caso", () => {
+    render(<SalesRecoveryInbox data={datos({})} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Registrar gestión" }));
+
+    expect(
+      screen.getByRole("button", { name: "Guardar gestión" }),
+    ).toBeInTheDocument();
+    const telefono = screen.getByRole("combobox", {
+      name: "Teléfono utilizado",
+    });
+    expect(
+      Array.from(telefono.querySelectorAll("option")).map((o) => o.textContent),
+    ).toEqual(["999111222", "987654321", "Otro número…"]);
+  });
+
+  it("quien no puede gestionar no ve el botón", () => {
+    render(
+      <SalesRecoveryInbox
+        data={datos({ cases: [caso({ canManage: false })] })}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Registrar gestión" }),
+    ).toBeNull();
   });
 });

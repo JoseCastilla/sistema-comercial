@@ -12,9 +12,12 @@ import {
   salesRecoveryViewOptions,
 } from "@repo/validation";
 
-import { buildOrderHref } from "../order-link";
-import { AssignSalesRecoveryForm } from "./assign-sales-recovery-form";
+import { CampaignDraftProvider, GuardedLink } from "./campaign-draft-context";
 import { QueueFilters } from "./queue-filters";
+import {
+  SalesRecoveryRow,
+  salesRecoveryColumnCount,
+} from "./sales-recovery-row";
 
 import type {
   SalesRecoveryInboxData,
@@ -22,21 +25,9 @@ import type {
 } from "../server/get-sales-recovery-inbox";
 import type { InternalRecoveryDue } from "@repo/validation";
 
-const toLabels = (
-  options: ReadonlyArray<{ value: string; label: string }>,
-): Record<string, string> =>
-  Object.fromEntries(options.map((option) => [option.value, option.label]));
-
-const reasonLabels = toLabels(salesRecoveryReasonOptions);
-const statusLabels = {
-  ...toLabels(salesRecoveryOpenStatusOptions),
-  ...toLabels(salesRecoveryResolvedStatusOptions),
-};
-const priorityLabels = toLabels(salesRecoveryPriorityOptions);
-const dueLabels = toLabels(internalRecoveryDueOptions) as Record<
-  InternalRecoveryDue,
-  string
->;
+const dueLabels = Object.fromEntries(
+  internalRecoveryDueOptions.map((option) => [option.value, option.label]),
+) as Record<InternalRecoveryDue, string>;
 const dueHints = Object.fromEntries(
   internalRecoveryDueOptions.map((option) => [option.value, option.hint]),
 ) as Record<InternalRecoveryDue, string>;
@@ -74,6 +65,13 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
   const resolvedView = filters.view === "resueltos";
   const narrowed =
     resolvedView || filters.due !== null || filters.status !== null;
+  const anyFilter =
+    narrowed ||
+    filters.priority !== null ||
+    filters.reason !== null ||
+    filters.q !== "" ||
+    filters.team !== "" ||
+    filters.advisor !== "";
 
   return (
     <div className="ui-page-stack">
@@ -182,7 +180,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
                   </Link>
                 </>
               ) : (
-                "Crítica nunca vuelve a quien originó la venta; el resto se queda con su asesor el primer día. Lo vencido va primero dentro de cada prioridad."
+                "Crítica nunca vuelve a quien originó la venta; el resto se queda con su asesor el primer día. Lo vencido va primero dentro de cada prioridad. La gestión se registra desde la fila."
               )}
             </p>
           </div>
@@ -250,152 +248,83 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
           }}
         />
 
-        <div className="ui-table-wrap">
-          <table className="ui-table">
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Venta</th>
-                <th>Motivo</th>
-                <th>Prioridad</th>
-                <th>Estado</th>
-                <th>Responsable</th>
-                <th>{resolvedView ? "Resultado" : "Próxima acción"}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.cases.map((item) => (
-                <tr data-no-sales={item.due ? "true" : undefined} key={item.id}>
-                  <td>
-                    <Link href={`/recovery/sales/${item.id}`}>
-                      <strong>{item.holderName}</strong>
-                    </Link>
-                    <small>DNI {item.documentNumber}</small>
-                  </td>
-                  <td>
-                    {item.orderCode ? (
-                      <Link
-                        href={buildOrderHref(
-                          item.orderCode,
-                          item.orderRegisteredDay,
-                        )}
-                      >
-                        {item.orderCode}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                    <small>Se cayó el {item.noveltyAtLabel}</small>
-                  </td>
-                  <td>
-                    {item.entryReason
-                      ? (reasonLabels[item.entryReason] ?? item.entryReason)
-                      : "—"}
-                    {item.entryObservation ? (
-                      <small title={item.entryObservation}>
-                        {item.entryObservation.length > 60
-                          ? `${item.entryObservation.slice(0, 60)}…`
-                          : item.entryObservation}
-                      </small>
-                    ) : null}
-                  </td>
-                  <td>
-                    {item.priority
-                      ? (priorityLabels[item.priority] ?? item.priority)
-                      : "—"}
-                  </td>
-                  <td>{statusLabels[item.status] ?? item.status}</td>
-                  <td>
-                    {item.assignedToName ?? <strong>Sin responsable</strong>}
-                    {item.originalAgentName ? (
-                      <small>
-                        Venta de {item.originalAgentName}
-                        {item.originalTeamName
-                          ? ` · ${item.originalTeamName}`
-                          : ""}
-                      </small>
-                    ) : null}
-                    {data.canAssign && !resolvedView ? (
-                      <AssignSalesRecoveryForm
-                        advisors={data.advisorOptions}
-                        blockedAdvisorId={
-                          item.isCritical ? item.originalAgentUserId : null
-                        }
-                        caseId={item.id}
-                        hasAssignee={item.assignedToName !== null}
-                      />
-                    ) : null}
-                  </td>
-                  <td>
-                    {resolvedView ? (
-                      <>
-                        {item.resolutionLabel ?? "—"}
-                        {item.resolvedAtLabel ? (
-                          <small>El {item.resolvedAtLabel}</small>
-                        ) : null}
-                      </>
-                    ) : (
-                      <>
-                        {item.nextActionAtLabel ??
-                          (item.due === "primer_contacto" ? "Llamar ya" : "—")}
-                        {item.due ? <small>{dueLabels[item.due]}</small> : null}
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {data.cases.length === 0 ? (
+        {/* BR-090: una sola gestión abierta a la vez; el borrador vive por
+            encima de las filas y la paginación pregunta antes de perderlo. */}
+        <CampaignDraftProvider>
+          <div className="ui-table-wrap">
+            <table className="ui-table">
+              <thead>
                 <tr>
-                  <td className="reconciliation-empty" colSpan={7}>
-                    {resolvedView
-                      ? "Ningún caso resuelto coincide con estos filtros."
-                      : filters.due ||
-                          filters.status ||
-                          filters.priority ||
-                          filters.reason ||
-                          filters.q ||
-                          filters.team ||
-                          filters.advisor
-                        ? "Ningún caso abierto coincide con estos filtros. Prueba con menos o límpialos."
-                        : "No hay ventas en recuperación. Las nuevas caídas aparecerán aquí solas."}
-                  </td>
+                  <th>Cliente</th>
+                  <th>Venta</th>
+                  <th>Motivo</th>
+                  <th>Prioridad</th>
+                  <th>Estado</th>
+                  <th>Responsable</th>
+                  <th>Última gestión</th>
+                  <th>{resolvedView ? "Resultado" : "Próxima acción"}</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {data.cases.map((item) => (
+                  <SalesRecoveryRow
+                    advisors={data.advisorOptions}
+                    canAssign={data.canAssign}
+                    item={item}
+                    key={item.id}
+                    resolvedView={resolvedView}
+                  />
+                ))}
+                {data.cases.length === 0 ? (
+                  <tr>
+                    <td
+                      className="reconciliation-empty"
+                      colSpan={salesRecoveryColumnCount}
+                    >
+                      {resolvedView
+                        ? "Ningún caso resuelto coincide con estos filtros."
+                        : anyFilter
+                          ? "Ningún caso abierto coincide con estos filtros. Prueba con menos o límpialos."
+                          : "No hay ventas en recuperación. Las nuevas caídas aparecerán aquí solas."}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          {pagination.totalPages > 1 ? (
+            <nav aria-label="Páginas de casos" className="ui-pagination">
+              {pagination.page > 1 ? (
+                <GuardedLink
+                  className="ui-pagination__link"
+                  href={inboxHref(filters, { page: pagination.page - 1 })}
+                >
+                  Anterior
+                </GuardedLink>
+              ) : (
+                <span />
+              )}
+
+              <span className="ui-pagination__status">
+                Página {pagination.page} de {pagination.totalPages} ·{" "}
+                {formatCount(pagination.total)} casos
+              </span>
+
+              {pagination.page < pagination.totalPages ? (
+                <GuardedLink
+                  className="ui-pagination__link"
+                  href={inboxHref(filters, { page: pagination.page + 1 })}
+                >
+                  Siguiente
+                </GuardedLink>
+              ) : (
+                <span />
+              )}
+            </nav>
+          ) : null}
+        </CampaignDraftProvider>
       </section>
-
-      {pagination.totalPages > 1 ? (
-        <nav aria-label="Páginas de casos" className="ui-pagination">
-          {pagination.page > 1 ? (
-            <Link
-              className="ui-pagination__link"
-              href={inboxHref(filters, { page: pagination.page - 1 })}
-            >
-              Anterior
-            </Link>
-          ) : (
-            <span />
-          )}
-
-          <span className="ui-pagination__status">
-            Página {pagination.page} de {pagination.totalPages} ·{" "}
-            {formatCount(pagination.total)} casos
-          </span>
-
-          {pagination.page < pagination.totalPages ? (
-            <Link
-              className="ui-pagination__link"
-              href={inboxHref(filters, { page: pagination.page + 1 })}
-            >
-              Siguiente
-            </Link>
-          ) : (
-            <span />
-          )}
-        </nav>
-      ) : null}
     </div>
   );
 }

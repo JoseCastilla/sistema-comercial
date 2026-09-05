@@ -1395,7 +1395,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             </p>
             <p className="ui-recovery-queue__description">
               Reúne pedidos no entregados y cancelados que todavía pueden
-              convertirse en una nueva venta.
+              convertirse en una nueva venta. Son pedidos, no casos: los casos
+              de recupero abiertos, con su responsable y su cadencia, viven en{" "}
+              <Link href="/recovery/sales">Recupero de ventas</Link>.
             </p>
           </div>
           {data.filter === "RECOVERY" ? (

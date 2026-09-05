@@ -72,3 +72,40 @@ entregas fallidas por reagendar, así que esas listas se vieron vacías; la
 paginación de resueltos no se ejerció. El panel del navegador siguió en modo
 lectura, sin clics: la pausa de 300 ms y Enter se verificaron con la prueba
 automatizada, no a mano.
+
+## Fase 3 — NAV-02, REC-04, REC-05 (05/09/2026)
+
+1. **Pruebas puras** — 309 en verde en `@repo/validation`, 6 nuevas sobre la
+   etapa de la cadencia: sin contacto manda el plazo de dos horas y se dice
+   la hora límite; la próxima acción se reconoce como toque D1/D3/D7 desde la
+   toma, vencido incluido; una agenda futura suspende y una pasada vence; un
+   rechazo es pausa, no toque; en espera de confirmación nada vence; siete
+   días cumplidos sin acción futura es «Cadencia agotada» (un D7 exacto
+   pasado sigue siendo un toque vencido, a propósito).
+2. **Pruebas web** — 121 en verde en `apps/web`, 7 nuevas: el panel del
+   pedido muestra el caso abierto con responsable y enlace, el resuelto con
+   fecha, enlace y «Enviar a recupero otra vez», y nada sin caso ni permiso;
+   en la bandeja, reasignar solo se abre al pulsarlo, la fila enseña
+   teléfono, última gestión y «Toque D3» con su explicación, «Registrar
+   gestión» abre el editor con los teléfonos del caso, y quien no puede
+   gestionar no ve el botón. Tipos y lint limpios.
+3. **Recorrido por fetch en local, sesión de administrador** (1 caso de
+   recupero, asignado, con un intento registrado):
+   - Bandeja: ocho columnas (se suma «Última gestión»); la fila trae DNI y
+     teléfono copiables (`72179861 ⧉`, `946944307 ⧉`), los botones
+     «Reasignar» y «Registrar gestión» y ningún formulario abierto; la
+     próxima acción dice «31/8, 00:56 · Seguimiento vencido»; la última
+     gestión «Vendido: aceptó de nuevo · 30/8, 19:29».
+   - Ficha: el indicador pasa de «Próxima acción» a «Seguimiento vencido ·
+     31/8, 00:56 · La próxima acción quedó atrás»; nuevo panel «Plazo del
+     recupero» con la cadencia del carril interno y la aclaración de que es
+     independiente del plazo de entrega.
+   - Pedido `1942469714A`: el panel dice «En recuperación» y enlaza a
+     `/recovery/sales/a77c4588-…`, el caso correcto.
+
+**Limitación declarada**: sin casos resueltos en local, «Recupero cerrado»
+solo se vio en la prueba automatizada; el editor en fila se abrió y se
+comprobó su contenido, pero no se guardó ninguna gestión real (sería una
+escritura). La cola «Por recuperar» con su aclaración no apareció porque el
+rango consultado no tenía candidatos.
+

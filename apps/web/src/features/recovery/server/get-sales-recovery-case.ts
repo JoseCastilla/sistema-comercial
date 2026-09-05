@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  describeInternalRecoveryStage,
   evaluateInternalLossReasonGates,
   getLimaIsoDate,
 } from "@repo/validation";
@@ -11,6 +12,7 @@ import { lossReasonLabels } from "../loss-reason-labels";
 
 import type { SalesRecoveryAccess } from "./get-sales-recovery-inbox";
 import type {
+  InternalRecoveryStage,
   LossReasonGate,
   RecoveryLossReasonOption,
 } from "@repo/validation";
@@ -45,6 +47,8 @@ export interface SalesRecoveryCaseDetail {
   firstContactAtLabel: string | null;
   nextActionAtLabel: string | null;
   nextActionOverdue: boolean;
+  /** Etapa de la cadencia (REC-05); `null` cuando el caso está resuelto. */
+  stage: InternalRecoveryStage | null;
   isResolved: boolean;
   resolutionLabel: string | null;
   canManage: boolean;
@@ -208,6 +212,21 @@ export async function getSalesRecoveryCase(
     nextActionOverdue:
       recoveryCase.nextActionAt !== null &&
       recoveryCase.nextActionAt.getTime() < now.getTime(),
+    stage: isResolved
+      ? null
+      : describeInternalRecoveryStage(
+          {
+            status: String(recoveryCase.status),
+            firstContactAt: recoveryCase.firstContactAt,
+            nextActionAt: recoveryCase.nextActionAt,
+            noveltyAt: recoveryCase.lastSightingAt,
+            claimedAt: recoveryCase.claimedAt,
+            lastResult: recoveryCase.attempts[0]
+              ? String(recoveryCase.attempts[0].result)
+              : null,
+          },
+          now,
+        ),
     isResolved,
     resolutionLabel: isResolved
       ? recoveryCase.status === "RECOVERED"
