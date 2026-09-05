@@ -36,7 +36,7 @@ const surfaces: ReadonlyArray<{
   },
   {
     key: "tablero",
-    label: "Tablero del día",
+    label: "Tablero",
     href: "/recovery/board",
     roles: new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]),
   },

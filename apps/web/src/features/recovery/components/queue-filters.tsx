@@ -72,6 +72,7 @@ export function QueueFilters({
   resultLabel,
   searchLabel = "Buscar cliente",
   searchPlaceholder = "Nombre, DNI o teléfono",
+  hideSearch = false,
 }: {
   basePath: string;
   values: QueueFilterValues;
@@ -80,6 +81,8 @@ export function QueueFilters({
   /** Qué se busca aquí; por defecto, un cliente. */
   searchLabel?: string;
   searchPlaceholder?: string;
+  /** El tablero filtra por período y asesor; no tiene nada que buscar. */
+  hideSearch?: boolean;
 }) {
   const router = useRouter();
   const [term, setTerm] = useState(values.q);
@@ -211,50 +214,52 @@ export function QueueFilters({
           </label>
         ) : null}
 
-        <label className="block">
-          <span className="ui-label-eyebrow">{searchLabel}</span>
-          <div className="flex items-center gap-1">
-            <input
-              aria-busy={pending}
-              className="block w-56 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
-              maxLength={80}
-              name="q"
-              onChange={(event) => {
-                const value = event.target.value;
-                setTerm(value);
+        {hideSearch ? null : (
+          <label className="block">
+            <span className="ui-label-eyebrow">{searchLabel}</span>
+            <div className="flex items-center gap-1">
+              <input
+                aria-busy={pending}
+                className="block w-56 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
+                maxLength={80}
+                name="q"
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setTerm(value);
 
-                // Un término a medias devolvería la lista entera y la haría
-                // parpadear entre dígito y dígito: se espera a que acote.
-                if (value.length === 0 || parseRecoverySearchTerm(value)) {
-                  scheduleSearch(value);
-                } else {
-                  clearTimer(timer);
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter") return;
-                event.preventDefault();
-                navigate({ q: term });
-              }}
-              placeholder={searchPlaceholder}
-              type="search"
-              value={term}
-            />
-            {term.length > 0 ? (
-              <button
-                className="ui-button ui-button--quiet px-2 py-2"
-                onClick={() => {
-                  setTerm("");
-                  navigate({ q: "" });
+                  // Un término a medias devolvería la lista entera y la haría
+                  // parpadear entre dígito y dígito: se espera a que acote.
+                  if (value.length === 0 || parseRecoverySearchTerm(value)) {
+                    scheduleSearch(value);
+                  } else {
+                    clearTimer(timer);
+                  }
                 }}
-                title="Limpiar la búsqueda"
-                type="button"
-              >
-                ✕
-              </button>
-            ) : null}
-          </div>
-        </label>
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  navigate({ q: term });
+                }}
+                placeholder={searchPlaceholder}
+                type="search"
+                value={term}
+              />
+              {term.length > 0 ? (
+                <button
+                  className="ui-button ui-button--quiet px-2 py-2"
+                  onClick={() => {
+                    setTerm("");
+                    navigate({ q: "" });
+                  }}
+                  title="Limpiar la búsqueda"
+                  type="button"
+                >
+                  ✕
+                </button>
+              ) : null}
+            </div>
+          </label>
+        )}
 
         {options.teams ? (
           <label className="block">
