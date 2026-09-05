@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Form from "next/form";
 import { redirect } from "next/navigation";
 
@@ -48,11 +49,14 @@ function Stat({
   value,
   detail,
   tone,
+  href,
 }: {
   label: string;
   value: string;
   detail?: string;
   tone?: "warning" | "danger" | "success";
+  /** La lista que explica la cifra (SPEC-040 BR-008). */
+  href?: string;
 }) {
   const valueClass =
     tone === "danger"
@@ -65,7 +69,19 @@ function Stat({
   return (
     <div>
       <dt className="ui-label-eyebrow">{label}</dt>
-      <dd className={`ui-data text-lg font-semibold ${valueClass}`}>{value}</dd>
+      <dd className={`ui-data text-lg font-semibold ${valueClass}`}>
+        {href ? (
+          <Link
+            className="underline-offset-4 hover:underline"
+            href={href}
+            title="Ver los clientes de esta cifra"
+          >
+            {value}
+          </Link>
+        ) : (
+          value
+        )}
+      </dd>
       {detail ? <dd className="text-xs text-ui-muted">{detail}</dd> : null}
     </div>
   );
@@ -121,6 +137,18 @@ export default async function RecoveryBoardPage({
       ? teamFilter
       : ""
     : teamFilter;
+
+  /**
+   * SPEC-040 BR-001/BR-008: cada indicador de cartera viva abre en
+   * Seguimiento exactamente la población que cuenta, con el mismo equipo.
+   */
+  function followUpHref(filters: Record<string, string>): string {
+    const query = new URLSearchParams();
+    if (teamScope) query.set("team", teamScope);
+    for (const [key, value] of Object.entries(filters)) query.set(key, value);
+    const suffix = query.toString();
+    return `/recovery/follow-up${suffix ? `?${suffix}` : ""}`;
+  }
 
   const scopeWhere: Prisma.RecoveryCaseWhereInput = {
     organizationId: membership.organization.id,
@@ -231,6 +259,7 @@ export default async function RecoveryBoardPage({
 
   // ── Efectividad por asesor (BR-055) ────────────────────────────────────
   interface AdvisorRow {
+    userId: string;
     name: string;
     teamName: string;
     assigned: number;
@@ -254,6 +283,7 @@ export default async function RecoveryBoardPage({
     let row = byAdvisor.get(userId);
     if (!row) {
       row = {
+        userId,
         name: user
           ? formatAdvisorDisplayName(user.name, user.email)
           : "Sin asesor",
@@ -386,22 +416,41 @@ export default async function RecoveryBoardPage({
           </Form>
         ) : null}
 
+        <div className="ui-form-row">
+          <Link
+            className="ui-button ui-button--secondary"
+            href={followUpHref({})}
+          >
+            Seguimiento: la cartera cliente por cliente
+          </Link>
+          <span className="pb-2 text-xs text-ui-muted">
+            Cada cifra de abajo abre los clientes que la explican.
+          </span>
+        </div>
+
         <SectionPanel
           title="Avance"
           description="Los plazos corren desde la asignación: los casos sin repartir no generan alertas."
         >
           <dl className="flex flex-wrap gap-x-10 gap-y-3">
-            <Stat label="Asignados" value={formatCount(assignedCases.length)} />
             <Stat
+              href={followUpHref({})}
+              label="Asignados"
+              value={formatCount(assignedCases.length)}
+            />
+            <Stat
+              href={followUpHref({ worked: "hoy" })}
               label="Trabajados hoy"
               value={formatCount(workedToday.length)}
             />
             <Stat
+              href={followUpHref({ contact: "sin" })}
               label="Sin primer contacto"
               tone={noFirstContact.length > 0 ? "warning" : undefined}
               value={formatCount(noFirstContact.length)}
             />
             <Stat
+              href={followUpHref({ next: "vencida", status: "SCHEDULED" })}
               label="Agenda vencida"
               tone={overdueAgenda.length > 0 ? "danger" : undefined}
               value={formatCount(overdueAgenda.length)}
@@ -471,7 +520,15 @@ export default async function RecoveryBoardPage({
               <tbody>
                 {advisorRows.map((row) => (
                   <tr key={`${row.name}-${row.teamName}`}>
-                    <td className="font-medium text-ui-text">{row.name}</td>
+                    <td className="font-medium text-ui-text">
+                      <Link
+                        className="text-ui-accent underline-offset-2 hover:underline"
+                        href={followUpHref({ advisor: row.userId })}
+                        title="Ver su cartera"
+                      >
+                        {row.name}
+                      </Link>
+                    </td>
                     <td className="text-xs text-ui-muted">{row.teamName}</td>
                     <td data-numeric className="ui-data">
                       {row.assigned}
@@ -491,7 +548,19 @@ export default async function RecoveryBoardPage({
                     <td
                       className={`ui-data px-3 py-1.5 text-right ${row.noContact > 0 ? "font-semibold text-ui-warning" : ""}`}
                     >
-                      {row.noContact}
+                      {row.noContact > 0 ? (
+                        <Link
+                          className="underline-offset-2 hover:underline"
+                          href={followUpHref({
+                            advisor: row.userId,
+                            contact: "sin",
+                          })}
+                        >
+                          {row.noContact}
+                        </Link>
+                      ) : (
+                        row.noContact
+                      )}
                     </td>
                     <td
                       className={`ui-data px-3 py-1.5 text-right ${row.recovered > 0 ? "font-semibold text-ui-success" : ""}`}

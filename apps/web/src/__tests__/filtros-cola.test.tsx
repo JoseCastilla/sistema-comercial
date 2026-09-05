@@ -187,3 +187,88 @@ describe("Filtros de cola · los activos se ven y se quitan", () => {
     ).toBeNull();
   });
 });
+
+describe("Filtros de cola · selectores propios de una pantalla", () => {
+  const conExtras = {
+    ...opciones,
+    extras: [
+      {
+        key: "result",
+        label: "Última tipificación",
+        options: [
+          { value: "SIN_RESPUESTA", label: "No contesta" },
+          { value: "SIN_GESTION", label: "Sin gestión" },
+        ],
+      },
+      {
+        key: "next",
+        label: "Próxima acción",
+        emptyLabel: "Cualquiera",
+        options: [{ value: "vencida", label: "Vencida" }],
+      },
+    ],
+  };
+
+  function renderConExtras(extra: Record<string, string> = {}) {
+    render(
+      <QueueFilters
+        basePath="/recovery/follow-up"
+        options={conExtras}
+        resultLabel="12 caso(s)."
+        values={{
+          q: "",
+          team: "",
+          department: "",
+          plan: "",
+          advisor: "",
+          age: "",
+          extra,
+        }}
+      />,
+    );
+  }
+
+  it("un extra navega por su propio parámetro", () => {
+    renderConExtras();
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Última tipificación" }),
+      { target: { value: "SIN_RESPUESTA" } },
+    );
+
+    expect(ultimaUrl()).toBe("/recovery/follow-up?result=SIN_RESPUESTA");
+  });
+
+  it("los extras conviven con los demás y se quitan uno a uno", () => {
+    renderConExtras({ result: "SIN_GESTION", next: "vencida" });
+
+    expect(
+      screen.getByText("Última tipificación: Sin gestión", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Próxima acción: Vencida", { exact: false }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTitle("Quitar Próxima acción: Vencida"));
+
+    expect(ultimaUrl()).toBe("/recovery/follow-up?result=SIN_GESTION");
+  });
+
+  it("«Limpiar filtros» también borra los extras", () => {
+    renderConExtras({ result: "SIN_GESTION" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
+
+    expect(ultimaUrl()).toBe("/recovery/follow-up");
+  });
+
+  it("el rótulo vacío de un extra es configurable", () => {
+    renderConExtras();
+
+    const proxima = screen.getByRole("combobox", {
+      name: "Próxima acción",
+    }) as HTMLSelectElement;
+
+    expect(proxima.options[0]!.textContent).toBe("Cualquiera");
+  });
+});

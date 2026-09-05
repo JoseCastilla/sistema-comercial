@@ -380,6 +380,12 @@ export default async function RecoveryTriagePage({
           >
             Tablero del día
           </Link>
+          <Link
+            className="ui-button ui-button--secondary"
+            href="/recovery/follow-up"
+          >
+            Seguimiento
+          </Link>
           <span className="pb-2 text-xs text-ui-muted">
             {view === "pendientes"
               ? "Aún sin verificar: si los repartes, el asesor llamará sin saber si el cliente ya es Movistar."

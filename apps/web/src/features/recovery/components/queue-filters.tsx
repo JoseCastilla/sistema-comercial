@@ -18,7 +18,17 @@ export interface QueueFilterValues {
   department: string;
   plan: string;
   advisor?: string;
-  age: string;
+  age?: string;
+  /** Selectores propios de una pantalla, declarados en `options.extras`. */
+  extra?: Record<string, string>;
+}
+
+export interface QueueFilterExtra {
+  /** Nombre del parámetro en la URL. */
+  key: string;
+  label: string;
+  emptyLabel?: string;
+  options: ReadonlyArray<{ value: string; label: string }>;
 }
 
 export interface QueueFilterOptions {
@@ -27,11 +37,18 @@ export interface QueueFilterOptions {
   teams?: Array<{ id: string; name: string }>;
   /** Ofrecer «Sin equipo»: solo tiene sentido para quien reparte. */
   allowNoTeam?: boolean;
-  departments: string[];
+  departments?: string[];
   /** Etiquetas comerciales presentes en la base dentro del alcance. */
-  plans: string[];
+  plans?: string[];
   advisors?: Array<{ id: string; name: string }>;
-  ages: ReadonlyArray<{ value: string; label: string }>;
+  ages?: ReadonlyArray<{ value: string; label: string }>;
+  /**
+   * Selectores que solo existen en una pantalla —última tipificación,
+   * próxima acción— sin acoplar la barra a ninguna: cada uno declara su
+   * parámetro, su rótulo y sus opciones, y la barra los trata como a los
+   * demás: aplican al cambiar, viajan en la URL y se quitan uno a uno.
+   */
+  extras?: QueueFilterExtra[];
 }
 
 const selectClass =
@@ -78,7 +95,12 @@ export function QueueFilters({
   function navigate(next: Partial<QueueFilterValues>) {
     clearTimer(timer);
 
-    const merged: QueueFilterValues = { ...values, q: term, ...next };
+    const merged: QueueFilterValues = {
+      ...values,
+      q: term,
+      ...next,
+      extra: { ...values.extra, ...next.extra },
+    };
     const query = new URLSearchParams();
 
     if (merged.view) query.set("view", merged.view);
@@ -88,6 +110,9 @@ export function QueueFilters({
     if (merged.plan) query.set("plan", merged.plan);
     if (merged.advisor) query.set("advisor", merged.advisor);
     if (merged.age) query.set("age", merged.age);
+    for (const [key, value] of Object.entries(merged.extra ?? {})) {
+      if (value) query.set(key, value);
+    }
 
     // Sin `page`: la página tres del filtro anterior no existe en el nuevo.
     sentSearch.current = merged.q;
@@ -116,7 +141,17 @@ export function QueueFilters({
   const advisorLabel = (id: string) =>
     options.advisors?.find((advisor) => advisor.id === id)?.name ?? id;
   const ageLabel = (value: string) =>
-    options.ages.find((age) => age.value === value)?.label ?? value;
+    options.ages?.find((age) => age.value === value)?.label ?? value;
+  const extraChips = (options.extras ?? []).flatMap((extra) => {
+    const value = values.extra?.[extra.key];
+
+    if (!value) return [];
+
+    const optionLabel =
+      extra.options.find((option) => option.value === value)?.label ?? value;
+
+    return [{ key: extra.key, label: `${extra.label}: ${optionLabel}` }];
+  });
 
   const active: Array<{ key: keyof QueueFilterValues; label: string }> = [
     ...(values.q ? [{ key: "q" as const, label: `Busca «${values.q}»` }] : []),
@@ -145,6 +180,10 @@ export function QueueFilters({
     ...(values.age
       ? [{ key: "age" as const, label: `Antigüedad: ${ageLabel(values.age)}` }]
       : []),
+  ];
+  const chips: Array<{ key: string; label: string; extra: boolean }> = [
+    ...active.map((filter) => ({ ...filter, extra: false })),
+    ...extraChips.map((filter) => ({ ...filter, extra: true })),
   ];
 
   return (
@@ -251,53 +290,79 @@ export function QueueFilters({
           </label>
         ) : null}
 
-        <label className="block">
-          <span className="ui-label-eyebrow">Departamento</span>
-          <select
-            className={selectClass}
-            onChange={(event) => navigate({ department: event.target.value })}
-            value={values.department}
-          >
-            <option value="">Todos</option>
-            {options.departments.map((department) => (
-              <option key={department} value={department}>
-                {department}
-              </option>
-            ))}
-          </select>
-        </label>
+        {(options.extras ?? []).map((extra) => (
+          <label className="block" key={extra.key}>
+            <span className="ui-label-eyebrow">{extra.label}</span>
+            <select
+              className={selectClass}
+              onChange={(event) =>
+                navigate({ extra: { [extra.key]: event.target.value } })
+              }
+              value={values.extra?.[extra.key] ?? ""}
+            >
+              <option value="">{extra.emptyLabel ?? "Todos"}</option>
+              {extra.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
 
-        <label className="block">
-          <span className="ui-label-eyebrow">Plan</span>
-          <select
-            className={selectClass}
-            onChange={(event) => navigate({ plan: event.target.value })}
-            value={values.plan}
-          >
-            <option value="">Todos</option>
-            {options.plans.map((plan) => (
-              <option key={plan} value={plan}>
-                {plan}
-              </option>
-            ))}
-          </select>
-        </label>
+        {options.departments ? (
+          <label className="block">
+            <span className="ui-label-eyebrow">Departamento</span>
+            <select
+              className={selectClass}
+              onChange={(event) => navigate({ department: event.target.value })}
+              value={values.department}
+            >
+              <option value="">Todos</option>
+              {options.departments.map((department) => (
+                <option key={department} value={department}>
+                  {department}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
-        <label className="block">
-          <span className="ui-label-eyebrow">Antigüedad</span>
-          <select
-            className={selectClass}
-            onChange={(event) => navigate({ age: event.target.value })}
-            value={values.age}
-          >
-            <option value="">Toda</option>
-            {options.ages.map((age) => (
-              <option key={age.value} value={age.value}>
-                {age.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {options.plans ? (
+          <label className="block">
+            <span className="ui-label-eyebrow">Plan</span>
+            <select
+              className={selectClass}
+              onChange={(event) => navigate({ plan: event.target.value })}
+              value={values.plan}
+            >
+              <option value="">Todos</option>
+              {options.plans.map((plan) => (
+                <option key={plan} value={plan}>
+                  {plan}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        {options.ages ? (
+          <label className="block">
+            <span className="ui-label-eyebrow">Antigüedad</span>
+            <select
+              className={selectClass}
+              onChange={(event) => navigate({ age: event.target.value })}
+              value={values.age ?? ""}
+            >
+              <option value="">Toda</option>
+              {options.ages.map((age) => (
+                <option key={age.value} value={age.value}>
+                  {age.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <span aria-live="polite" className="pb-2 text-xs text-ui-muted">
           {pending
@@ -308,15 +373,19 @@ export function QueueFilters({
         </span>
       </div>
 
-      {active.length > 0 ? (
+      {chips.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          {active.map((filter) => (
+          {chips.map((filter) => (
             <button
               className="inline-flex items-center gap-1 rounded-full border border-ui-border-strong px-2 py-0.5 text-ui-text hover:bg-ui-subtle"
               key={filter.key}
               onClick={() => {
                 if (filter.key === "q") setTerm("");
-                navigate({ [filter.key]: "" });
+                navigate(
+                  filter.extra
+                    ? { extra: { [filter.key]: "" } }
+                    : { [filter.key]: "" },
+                );
               }}
               title={`Quitar ${filter.label}`}
               type="button"
@@ -335,6 +404,9 @@ export function QueueFilters({
                 plan: "",
                 advisor: "",
                 age: "",
+                extra: Object.fromEntries(
+                  (options.extras ?? []).map((extra) => [extra.key, ""]),
+                ),
               });
             }}
             type="button"
