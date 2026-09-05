@@ -39,4 +39,6 @@
 - [x] REC-05 · Etapa en la fila (rótulo con explicación) y en la ficha
       (indicador + panel «Plazo del recupero»).
 - [x] Pruebas web: panel del pedido (3) y bandeja ampliada (13).
-- [ ] Verificación de solo lectura en producción tras el despliegue.
+- [x] Verificación de solo lectura en producción tras el despliegue: 69
+      filas sin formularios abiertos, etapas visibles, fichas con «Plazo del
+      recupero», pedido enlazado a su caso.
