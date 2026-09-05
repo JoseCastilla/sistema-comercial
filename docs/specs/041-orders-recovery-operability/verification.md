@@ -44,6 +44,29 @@
      propio con invitación a limpiar; `view=resueltos` → «Resueltos: 0
      casos», sin selector de vencimiento.
 
+4. **Producción tras el despliegue, solo lectura** (commit 94da5f1, minutos
+   después; sesión de administrador, sin ejecutar ninguna acción):
+   - **Pedidos**: la barra muestra Equipo, Asesor y Plazo (y Acción solo en
+     logística); 256 ventas del mes; «Fuera de plazo = 12» → `status=ACTIVE&
+     plazo=vencido` lista **12**.
+   - **Logística, paridad indicador ↔ lista** sobre 337 entregas fallidas:
+     «Visita por coordinar = 17» → `accion=coordinar` **17**; «Contactar y
+     validar = 132» → **132**; «Por volver a ingresar = 188» → **188**. La
+     suma (337) coincide con «Casos por revisar».
+   - **Recupero** (68 abiertos, 61 primer contacto + 3 seguimiento + 0
+     agenda): barra con Vista, Equipo, Asesor actual, Prioridad, Motivo,
+     Estado y Vencimiento; `?prioridad=MEDIA` lista 25 filas, todas «Media»,
+     con la ficha «Prioridad: Media», «25 caso(s) cumplen el filtro» y los
+     indicadores intactos en 68/61/3 (acotan por alcance, no por prioridad;
+     sus enlaces conservan `prioridad=MEDIA`). `?view=resueltos` →
+     «Resueltos: 0 casos» sin selector de vencimiento: todavía no hay casos
+     resueltos en el carril interno.
+
+   Nota de método: la página se sirve con filas en streaming (React las
+   emite en fragmentos que el cliente recoloca), así que el HTML crudo no
+   sirve para contar filas; el conteo de Recupero se hizo sobre el DOM ya
+   hidratado.
+
 **Limitación declarada**: la base de desarrollo no tiene casos resueltos ni
 entregas fallidas por reagendar, así que esas listas se vieron vacías; la
 paginación de resueltos no se ejerció. El panel del navegador siguió en modo
