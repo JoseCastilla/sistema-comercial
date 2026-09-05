@@ -175,6 +175,9 @@ export interface OrderInboxItem {
     priority: string | null;
     entryReason: string | null;
     assignedToName: string | null;
+    /** Abierto (en gestión) o ya resuelto; el pedido enseña ambos (NAV-02). */
+    isOpen: boolean;
+    resolvedAtLabel: string | null;
   } | null;
   canResolveAssignment: boolean;
   canClaimAssignment: boolean;

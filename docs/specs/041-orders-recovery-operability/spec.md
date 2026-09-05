@@ -32,8 +32,11 @@ las dos bandejas, sin inventar una segunda.
 - **PED-01** — Búsqueda en vivo y selector de asesor en Pedidos.
 - **PED-02** — Filtros por acción derivada y por plazo en Pedidos, con
   indicadores que abren la lista que explican.
-- Fase 3 (NAV-02, REC-04, REC-05), pendiente: se registrará aquí cuando se
-  construya.
+- **NAV-02** — El pedido enseña su caso de recupero, abierto o resuelto, y
+  lo abre.
+- **REC-04** — Gestión desde la fila de Recupero: teléfono copiable, última
+  gestión, registro con el editor de Campañas; reasignar bajo demanda.
+- **REC-05** — Etapa de la cadencia visible en la fila y en la ficha.
 
 Fuera de alcance: acciones nuevas sobre los casos o los pedidos; cambios en
 las reglas de negocio que deciden la acción derivada (SPEC-029 BR-019) o el
@@ -121,6 +124,50 @@ plazo; métricas nuevas.
 - **BR-016 · Filtrar no cambia nada.** Ningún filtro escribe en la orden ni
   en la escalación: son lecturas.
 
+### Pedidos ↔ Recupero (NAV-02)
+
+- **BR-017 · El pedido enseña su último caso, abierto o resuelto.** Antes
+  solo mostraba el abierto; un pedido cuyo recupero terminó parecía no haber
+  pasado por recupero. Ahora dice «En recuperación» con estado, prioridad y
+  responsable, o «Recupero cerrado» con el resultado y la fecha, y en ambos
+  casos enlaza al caso. Reenviar a recupero sigue posible solo cuando no hay
+  caso abierto (índice parcial de un abierto por venta).
+- **BR-018 · Pedidos no son casos.** La cola «Por recuperar» de Pedidos son
+  pedidos del mes no entregados o cancelados; los casos de recupero viven en
+  Recupero de ventas, y la cola lo dice y enlaza. La orden conserva su
+  historial y su atribución: el caso vive aparte.
+
+### Gestión desde la fila (REC-04)
+
+- **BR-019 · La fila trae lo que hace falta para llamar.** Teléfono de
+  entrega y DNI copiables con un clic; la última gestión con su resultado,
+  observación y hora, como referencia antes de registrar la siguiente.
+- **BR-020 · Registrar sin salir, con las reglas de BR-090.** «Registrar
+  gestión» abre en la fila el mismo editor de Campañas: una sola gestión
+  abierta a la vez, clave de idempotencia por borrador, la fila se actualiza
+  con lo que el servidor confirmó y no se reordena bajo las manos del asesor;
+  la paginación pregunta antes de perder un borrador. El servidor aplica la
+  cadencia del carril interno (BR-066), no la de Campañas. Solo quien puede
+  gestionar el caso (BR-029b: el asesor lo suyo, la supervisión su alcance) ve
+  el botón; en resueltos no existe.
+- **BR-021 · Reasignar se abre al pedirlo.** El formulario de reasignación
+  deja de estar abierto en todas las filas: aparece al pulsar «Reasignar» (o
+  «Asignar» si no hay responsable). La lista se compara sin formularios.
+
+### Cadencia visible (REC-05)
+
+- **BR-022 · La etapa se nombra con las reglas que la fijan.** Verificación
+  (WAITING), agenda acordada o vencida (SCHEDULED), primer contacto con su
+  hora límite (sin `firstContactAt`), pausa por rechazo (último resultado
+  RECHAZA o CANCELADO), toque D1/D3/D7 (próxima acción a menos de un minuto
+  del día exacto desde la toma), cadencia agotada (siete días cumplidos sin
+  próxima acción futura) o seguimiento. La fila muestra la etiqueta y la
+  ficha la explica; el vencimiento (BR-095) sigue siendo la misma función.
+- **BR-023 · Plazo del recupero, no plazo de entrega.** La ficha explica la
+  cadencia del carril interno (dos horas, D1/D3/D7, agenda suspende, rechazo
+  pausa, séptimo día resuelve) y declara que es independiente del plazo de
+  entrega de la venta y de la regla de tres intentos al día de Campañas.
+
 ## 4. Criterios de aceptación
 
 - **AC-001:** en Recupero, «1942469714A», «71-6», «diego león» y el
@@ -144,3 +191,15 @@ plazo; métricas nuevas.
   filtros» los retira todos conservando período y vista.
 - **AC-009:** tipos, lint y pruebas en verde; reglas puras probadas en
   `@repo/validation`.
+- **AC-010:** un pedido con caso abierto muestra «En recuperación» y un
+  enlace a `/recovery/sales/<id>`; con caso resuelto muestra «Recupero
+  cerrado» con fecha, el mismo enlace y permite enviar otra vez.
+- **AC-011:** en Recupero, ninguna fila trae el formulario de reasignación
+  abierto; «Reasignar» lo abre solo en esa fila.
+- **AC-012:** «Registrar gestión» abre el editor en la fila con los
+  teléfonos del caso; tras guardar, la fila muestra el resultado confirmado
+  y deja de estar vencida; quien no puede gestionar no ve el botón.
+- **AC-013:** una próxima acción a exactamente 3 días de la toma se rotula
+  «Toque D3»; un rechazo se rotula pausa y no toque; una agenda futura
+  suspende y una pasada vence; siete días cumplidos sin acción futura se
+  rotulan «Cadencia agotada».

@@ -25,9 +25,18 @@
       paridad indicador ↔ lista en logística (17/132/188) y en «Fuera de
       plazo» (12); filtros en Recupero sobre 68 casos reales.
 
-## Fase 3 del plan: gestionar sin salir (pendiente)
+## Fase 3 del plan: gestionar sin salir (05/09/2026)
 
-- [ ] NAV-02 · Enlace del panel «Enviar a recupero» al caso ya abierto.
-- [ ] REC-04 · Gestión en fila desde la bandeja de recupero, reutilizando el
-      editor de BR-090.
-- [ ] REC-05 · Cadencia D1/D3/D7 visible en la fila y en la ficha.
+- [x] `recovery-internal-stage.ts` en validation — etapa de la cadencia con
+      las reglas de SPEC-026 / BR-066 (6 pruebas).
+- [x] NAV-02 · El pedido muestra su último caso, abierto o resuelto, con
+      enlace a la ficha; reenviar solo sin caso abierto; la cola «Por
+      recuperar» aclara que son pedidos y enlaza a Recupero de ventas.
+- [x] REC-04 · `SalesRecoveryRow`: DNI y teléfono copiables, última gestión,
+      «Registrar gestión» con `CampaignAttemptEditor` y `CampaignDraftProvider`
+      (una sola abierta, idempotencia, fila actualizada con lo confirmado,
+      paginación con `GuardedLink`); «Reasignar» bajo demanda.
+- [x] REC-05 · Etapa en la fila (rótulo con explicación) y en la ficha
+      (indicador + panel «Plazo del recupero»).
+- [x] Pruebas web: panel del pedido (3) y bandeja ampliada (13).
+- [ ] Verificación de solo lectura en producción tras el despliegue.

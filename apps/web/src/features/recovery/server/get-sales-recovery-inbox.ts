@@ -4,6 +4,7 @@ import {
   allOf,
   classifyInternalRecoveryDue,
   compareInternalRecoveryCases,
+  describeInternalRecoveryStage,
   getLimaIsoDate,
   parseRecoverySearchTerm,
   pickFilterOption,
@@ -22,6 +23,7 @@ import { lossReasonLabels } from "../loss-reason-labels";
 import type { Prisma } from "@repo/database";
 import type {
   InternalRecoveryDue,
+  InternalRecoveryStage,
   SalesRecoveryOpenStatus,
   SalesRecoveryPriority,
   SalesRecoveryReason,
@@ -70,6 +72,10 @@ export interface SalesRecoveryCaseItem {
   orderRegisteredDay: string | null;
   holderName: string;
   documentNumber: string;
+  /** Teléfono de entrega de la venta, copiable desde la fila (REC-04). */
+  contactPhone: string | null;
+  /** Teléfono de entrega y línea, sin repetir, para el editor de gestión. */
+  phoneOptions: string[];
   status: string;
   priority: string | null;
   entryReason: string | null;
@@ -81,7 +87,15 @@ export interface SalesRecoveryCaseItem {
   nextActionAtLabel: string | null;
   /** Qué venció, si algo venció: primer contacto, seguimiento o agenda. */
   due: InternalRecoveryDue | null;
+  /** Etapa de la cadencia (REC-05); `null` en resueltos. */
+  stage: InternalRecoveryStage | null;
   isCritical: boolean;
+  /** Última gestión registrada, como referencia antes de la siguiente. */
+  lastResult: string | null;
+  lastObservation: string | null;
+  lastAttemptAtLabel: string | null;
+  /** Quien mira puede registrar una gestión desde la fila (BR-029b). */
+  canManage: boolean;
   /** Solo en resueltos: cuándo y cómo terminó. */
   resolvedAtLabel: string | null;
   resolutionLabel: string | null;
@@ -138,16 +152,30 @@ const caseSelect = {
   holderName: true,
   documentNumber: true,
   lastSightingAt: true,
+  claimedAt: true,
   firstContactAt: true,
   nextActionAt: true,
   resolvedAt: true,
   lossReason: true,
   originalAgentUserId: true,
+  assignedUserId: true,
   assignedUser: { select: { name: true } },
   originalAgent: { select: { name: true } },
   originalTeam: { select: { name: true } },
-  sourceDitoOrder: { select: { orderCodeRaw: true, registeredAt: true } },
+  sourceDitoOrder: {
+    select: {
+      orderCodeRaw: true,
+      registeredAt: true,
+      deliveryContactPhone: true,
+      serviceNumber: true,
+    },
+  },
   recoveredDitoOrder: { select: { orderCodeRaw: true } },
+  attempts: {
+    orderBy: { createdAt: "desc" as const },
+    take: 1,
+    select: { result: true, observation: true, createdAt: true },
+  },
 } satisfies Prisma.RecoveryCaseSelect;
 
 type CaseRow = Prisma.RecoveryCaseGetPayload<{ select: typeof caseSelect }>;
@@ -228,9 +256,13 @@ function buildSalesRecoverySearchWhere(
 function mapCase(
   row: CaseRow,
   priority: string | null,
-  due: InternalRecoveryDue | null,
+  stage: InternalRecoveryStage | null,
+  access: SalesRecoveryAccess,
 ): SalesRecoveryCaseItem {
   const status = String(row.status);
+  const lastAttempt = row.attempts[0] ?? null;
+  const isResolved = stage === null;
+  const contactPhone = row.sourceDitoOrder?.deliveryContactPhone ?? null;
 
   return {
     id: row.id,
@@ -241,6 +273,14 @@ function mapCase(
       : null,
     holderName: row.holderName,
     documentNumber: row.documentNumber,
+    contactPhone,
+    phoneOptions: [
+      ...new Set(
+        [contactPhone, row.sourceDitoOrder?.serviceNumber ?? null].filter(
+          (phone): phone is string => Boolean(phone),
+        ),
+      ),
+    ],
     status,
     priority,
     entryReason: row.entryReason ? String(row.entryReason) : null,
@@ -252,8 +292,18 @@ function mapCase(
     nextActionAtLabel: row.nextActionAt
       ? dateTimeFormatter.format(row.nextActionAt)
       : null,
-    due,
+    due: stage?.due ?? null,
+    stage,
     isCritical: priority === "CRITICA",
+    lastResult: lastAttempt ? String(lastAttempt.result) : null,
+    lastObservation: lastAttempt?.observation ?? null,
+    lastAttemptAtLabel: lastAttempt
+      ? dateTimeFormatter.format(lastAttempt.createdAt)
+      : null,
+    // BR-029b: el asesor solo gestiona lo suyo; la supervisión, su alcance.
+    canManage:
+      !isResolved &&
+      (access.role !== "AGENT" || row.assignedUserId === access.userId),
     resolvedAtLabel: row.resolvedAt
       ? dateTimeFormatter.format(row.resolvedAt)
       : null,
@@ -398,21 +448,36 @@ export async function getSalesRecoveryInbox(
   ]);
 
   const ranked = openCases
-    .map((row) => ({
-      row,
-      priority: row.priority ? String(row.priority) : null,
-      due: classifyInternalRecoveryDue(
+    .map((row) => {
+      const stage = describeInternalRecoveryStage(
         {
           status: String(row.status),
           firstContactAt: row.firstContactAt,
           nextActionAt: row.nextActionAt,
           noveltyAt: row.lastSightingAt,
+          claimedAt: row.claimedAt,
+          lastResult: row.attempts[0] ? String(row.attempts[0].result) : null,
         },
         now,
-      ),
-      nextActionAt: row.nextActionAt,
-      noveltyAt: row.lastSightingAt,
-    }))
+      );
+
+      return {
+        row,
+        priority: row.priority ? String(row.priority) : null,
+        stage,
+        due: classifyInternalRecoveryDue(
+          {
+            status: String(row.status),
+            firstContactAt: row.firstContactAt,
+            nextActionAt: row.nextActionAt,
+            noveltyAt: row.lastSightingAt,
+          },
+          now,
+        ),
+        nextActionAt: row.nextActionAt,
+        noveltyAt: row.lastSightingAt,
+      };
+    })
     .sort(compareInternalRecoveryCases);
 
   const requestedPage = Number.isFinite(options.page ?? 1)
@@ -440,7 +505,7 @@ export async function getSalesRecoveryInbox(
     pagination = { page, totalPages, total: selected.length };
     items = selected
       .slice(start, start + salesRecoveryPageSize)
-      .map((item) => mapCase(item.row, item.priority, item.due));
+      .map((item) => mapCase(item.row, item.priority, item.stage, access));
   } else {
     // Resueltos: lo más reciente primero. Aquí sí pagina la base, porque el
     // histórico crece sin tope y no hay nada que ordenar en memoria.
@@ -469,7 +534,7 @@ export async function getSalesRecoveryInbox(
 
     pagination = { page, totalPages, total };
     items = rows.map((row) =>
-      mapCase(row, row.priority ? String(row.priority) : null, null),
+      mapCase(row, row.priority ? String(row.priority) : null, null, access),
     );
   }
 
