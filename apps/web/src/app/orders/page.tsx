@@ -55,6 +55,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   );
   const search = firstValue(parameters.q)?.trim().slice(0, 100) ?? "";
   const team = firstValue(parameters.team)?.trim().slice(0, 50);
+  const advisor = firstValue(parameters.advisor)?.trim().slice(0, 50);
 
   after(async () => {
     await maybeRunScheduledAgrDeliverySync(membership.organization.id).catch(
@@ -76,6 +77,9 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
       filter,
       search,
       team,
+      advisor,
+      action: firstValue(parameters.accion),
+      due: firstValue(parameters.plazo),
     },
   );
 

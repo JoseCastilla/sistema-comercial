@@ -1,55 +1,68 @@
 import Link from "next/link";
 
+import { formatCount } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
-import { internalRecoveryDueOptions } from "@repo/validation";
+import {
+  internalRecoveryDueOptions,
+  salesRecoveryOpenStatusOptions,
+  salesRecoveryPriorityOptions,
+  salesRecoveryReasonOptions,
+  salesRecoveryResolvedStatusOptions,
+  salesRecoveryViewOptions,
+} from "@repo/validation";
 
 import { buildOrderHref } from "../order-link";
 import { AssignSalesRecoveryForm } from "./assign-sales-recovery-form";
+import { QueueFilters } from "./queue-filters";
 
-import type { SalesRecoveryInboxData } from "../server/get-sales-recovery-inbox";
+import type {
+  SalesRecoveryInboxData,
+  SalesRecoveryInboxFilters,
+} from "../server/get-sales-recovery-inbox";
 import type { InternalRecoveryDue } from "@repo/validation";
 
-const reasonLabels: Record<string, string> = {
-  NO_ENTREGADO: "No recibió",
-  INCIDENCIA_LOGISTICA: "Incidencia logística",
-  PROMESA_COMERCIAL_INCORRECTA: "Promesa incorrecta",
-  DEUDA: "Deuda",
-  ANTIGUEDAD_PORTA: "Antigüedad de porta",
-  OTRO: "Otro",
+const toLabels = (
+  options: ReadonlyArray<{ value: string; label: string }>,
+): Record<string, string> =>
+  Object.fromEntries(options.map((option) => [option.value, option.label]));
+
+const reasonLabels = toLabels(salesRecoveryReasonOptions);
+const statusLabels = {
+  ...toLabels(salesRecoveryOpenStatusOptions),
+  ...toLabels(salesRecoveryResolvedStatusOptions),
 };
-
-const statusLabels: Record<string, string> = {
-  OPEN: "Sin responsable",
-  ASSIGNED: "Asignado",
-  IN_PROGRESS: "En gestión",
-  SCHEDULED: "Agendado",
-  WAITING: "Esperando confirmación",
-};
-
-const priorityLabels: Record<string, string> = {
-  CRITICA: "Crítica",
-  ALTA: "Alta",
-  MEDIA: "Media",
-  CONDICIONADA: "Condicionada",
-};
-
-const dueLabels = Object.fromEntries(
-  internalRecoveryDueOptions.map((option) => [option.value, option.label]),
-) as Record<InternalRecoveryDue, string>;
-
+const priorityLabels = toLabels(salesRecoveryPriorityOptions);
+const dueLabels = toLabels(internalRecoveryDueOptions) as Record<
+  InternalRecoveryDue,
+  string
+>;
 const dueHints = Object.fromEntries(
   internalRecoveryDueOptions.map((option) => [option.value, option.hint]),
 ) as Record<InternalRecoveryDue, string>;
 
+/**
+ * Enlace a la bandeja con los filtros vigentes y lo que cambie. Los nombres
+ * de los parámetros son los que emite la barra de filtros.
+ */
 function inboxHref(
-  due: InternalRecoveryDue | null,
-  page: number | null = null,
+  filters: SalesRecoveryInboxFilters,
+  overrides: Partial<SalesRecoveryInboxFilters> & { page?: number } = {},
 ): string {
+  const next = { ...filters, ...overrides };
   const parameters = new URLSearchParams();
 
-  if (due) parameters.set("vence", due);
-  if (page && page > 1) parameters.set("page", String(page));
+  if (next.view === "resueltos") parameters.set("view", "resueltos");
+  if (next.q) parameters.set("q", next.q);
+  if (next.team) parameters.set("team", next.team);
+  if (next.advisor) parameters.set("advisor", next.advisor);
+  if (next.priority) parameters.set("prioridad", next.priority);
+  if (next.reason) parameters.set("motivo", next.reason);
+  if (next.status) parameters.set("estado", next.status);
+  if (next.due) parameters.set("vence", next.due);
+  if (overrides.page && overrides.page > 1) {
+    parameters.set("page", String(overrides.page));
+  }
 
   const query = parameters.toString();
 
@@ -57,7 +70,10 @@ function inboxHref(
 }
 
 export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
-  const { totals, dueFilter, pagination } = data;
+  const { totals, filters, pagination } = data;
+  const resolvedView = filters.view === "resueltos";
+  const narrowed =
+    resolvedView || filters.due !== null || filters.status !== null;
 
   return (
     <div className="ui-page-stack">
@@ -72,27 +88,47 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
         <Metric
           emphasis="hero"
           hint="De nuestras propias ventas"
-          href={dueFilter ? inboxHref(null) : undefined}
+          href={
+            narrowed
+              ? inboxHref(filters, {
+                  view: "abiertos",
+                  due: null,
+                  status: null,
+                })
+              : undefined
+          }
           label="Casos abiertos"
           value={totals.open}
         />
         <Metric
           hint={dueHints.primer_contacto}
-          href={inboxHref("primer_contacto")}
+          href={inboxHref(filters, {
+            view: "abiertos",
+            due: "primer_contacto",
+            status: null,
+          })}
           label={dueLabels.primer_contacto}
           tone={totals.firstContactOverdue > 0 ? "warning" : "neutral"}
           value={totals.firstContactOverdue}
         />
         <Metric
           hint={dueHints.seguimiento}
-          href={inboxHref("seguimiento")}
+          href={inboxHref(filters, {
+            view: "abiertos",
+            due: "seguimiento",
+            status: null,
+          })}
           label={dueLabels.seguimiento}
           tone={totals.followUpOverdue > 0 ? "warning" : "neutral"}
           value={totals.followUpOverdue}
         />
         <Metric
           hint={dueHints.agenda}
-          href={inboxHref("agenda")}
+          href={inboxHref(filters, {
+            view: "abiertos",
+            due: "agenda",
+            status: null,
+          })}
           label={dueLabels.agenda}
           tone={totals.agendaOverdue > 0 ? "warning" : "neutral"}
           value={totals.agendaOverdue}
@@ -114,17 +150,36 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
       <section className="performance-panel">
         <header className="performance-panel__header">
           <div>
-            <p className="performance-panel__eyebrow">Cola de trabajo</p>
+            <p className="performance-panel__eyebrow">
+              {resolvedView ? "Historial" : "Cola de trabajo"}
+            </p>
             <h2>
-              {dueFilter
-                ? `${dueLabels[dueFilter]}: ${pagination.total} ${pagination.total === 1 ? "caso" : "casos"}`
-                : "Casos por prioridad"}
+              {resolvedView
+                ? `Resueltos: ${formatCount(pagination.total)} ${pagination.total === 1 ? "caso" : "casos"}`
+                : filters.due
+                  ? `${dueLabels[filters.due]}: ${formatCount(pagination.total)} ${pagination.total === 1 ? "caso" : "casos"}`
+                  : "Casos por prioridad"}
             </h2>
             <p>
-              {dueFilter ? (
+              {resolvedView ? (
+                <>
+                  Recuperadas y perdidas del alcance actual, lo más reciente
+                  primero.{" "}
+                  <Link
+                    href={inboxHref(filters, {
+                      view: "abiertos",
+                      status: null,
+                    })}
+                  >
+                    Volver a los abiertos
+                  </Link>
+                </>
+              ) : filters.due ? (
                 <>
                   Solo los casos con este vencimiento, en el orden de la cola.{" "}
-                  <Link href={inboxHref(null)}>Ver todos los casos</Link>
+                  <Link href={inboxHref(filters, { due: null })}>
+                    Ver todos los casos
+                  </Link>
                 </>
               ) : (
                 "Crítica nunca vuelve a quien originó la venta; el resto se queda con su asesor el primer día. Lo vencido va primero dentro de cada prioridad."
@@ -132,6 +187,69 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
             </p>
           </div>
         </header>
+
+        <QueueFilters
+          basePath="/recovery/sales"
+          options={{
+            views: [...salesRecoveryViewOptions],
+            teams: data.teamOptions ?? undefined,
+            allowNoTeam: false,
+            advisors:
+              data.advisorFilterOptions.length > 0
+                ? data.advisorFilterOptions
+                : undefined,
+            extras: [
+              {
+                key: "prioridad",
+                label: "Prioridad",
+                emptyLabel: "Todas",
+                options: salesRecoveryPriorityOptions,
+              },
+              {
+                key: "motivo",
+                label: "Motivo",
+                emptyLabel: "Todos",
+                options: salesRecoveryReasonOptions,
+              },
+              {
+                key: "estado",
+                label: "Estado",
+                emptyLabel: "Todos",
+                options: resolvedView
+                  ? salesRecoveryResolvedStatusOptions
+                  : salesRecoveryOpenStatusOptions,
+              },
+              ...(resolvedView
+                ? []
+                : [
+                    {
+                      key: "vence",
+                      label: "Vencimiento",
+                      emptyLabel: "Cualquiera",
+                      options: internalRecoveryDueOptions,
+                    },
+                  ]),
+            ],
+          }}
+          resultLabel={`${formatCount(pagination.total)} caso(s) cumplen el filtro.`}
+          searchLabel="Buscar cliente o venta"
+          searchPlaceholder="Nombre, DNI, teléfono o código de venta"
+          values={{
+            q: filters.q,
+            view: filters.view,
+            team: filters.team,
+            department: "",
+            plan: "",
+            advisor: filters.advisor,
+            extra: {
+              prioridad: filters.priority ?? "",
+              motivo: filters.reason ?? "",
+              estado: filters.status ?? "",
+              vence: filters.due ?? "",
+            },
+          }}
+        />
+
         <div className="ui-table-wrap">
           <table className="ui-table">
             <thead>
@@ -142,7 +260,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
                 <th>Prioridad</th>
                 <th>Estado</th>
                 <th>Responsable</th>
-                <th>Próxima acción</th>
+                <th>{resolvedView ? "Resultado" : "Próxima acción"}</th>
               </tr>
             </thead>
             <tbody>
@@ -197,7 +315,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
                           : ""}
                       </small>
                     ) : null}
-                    {data.canAssign ? (
+                    {data.canAssign && !resolvedView ? (
                       <AssignSalesRecoveryForm
                         advisors={data.advisorOptions}
                         blockedAdvisorId={
@@ -209,18 +327,37 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
                     ) : null}
                   </td>
                   <td>
-                    {item.nextActionAtLabel ??
-                      (item.due === "primer_contacto" ? "Llamar ya" : "—")}
-                    {item.due ? <small>{dueLabels[item.due]}</small> : null}
+                    {resolvedView ? (
+                      <>
+                        {item.resolutionLabel ?? "—"}
+                        {item.resolvedAtLabel ? (
+                          <small>El {item.resolvedAtLabel}</small>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        {item.nextActionAtLabel ??
+                          (item.due === "primer_contacto" ? "Llamar ya" : "—")}
+                        {item.due ? <small>{dueLabels[item.due]}</small> : null}
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
               {data.cases.length === 0 ? (
                 <tr>
                   <td className="reconciliation-empty" colSpan={7}>
-                    {dueFilter
-                      ? "Ningún caso tiene este vencimiento ahora."
-                      : "No hay ventas en recuperación. Las nuevas caídas aparecerán aquí solas."}
+                    {resolvedView
+                      ? "Ningún caso resuelto coincide con estos filtros."
+                      : filters.due ||
+                          filters.status ||
+                          filters.priority ||
+                          filters.reason ||
+                          filters.q ||
+                          filters.team ||
+                          filters.advisor
+                        ? "Ningún caso abierto coincide con estos filtros. Prueba con menos o límpialos."
+                        : "No hay ventas en recuperación. Las nuevas caídas aparecerán aquí solas."}
                   </td>
                 </tr>
               ) : null}
@@ -234,7 +371,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
           {pagination.page > 1 ? (
             <Link
               className="ui-pagination__link"
-              href={inboxHref(dueFilter, pagination.page - 1)}
+              href={inboxHref(filters, { page: pagination.page - 1 })}
             >
               Anterior
             </Link>
@@ -244,13 +381,13 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
 
           <span className="ui-pagination__status">
             Página {pagination.page} de {pagination.totalPages} ·{" "}
-            {pagination.total} casos
+            {formatCount(pagination.total)} casos
           </span>
 
           {pagination.page < pagination.totalPages ? (
             <Link
               className="ui-pagination__link"
-              href={inboxHref(dueFilter, pagination.page + 1)}
+              href={inboxHref(filters, { page: pagination.page + 1 })}
             >
               Siguiente
             </Link>

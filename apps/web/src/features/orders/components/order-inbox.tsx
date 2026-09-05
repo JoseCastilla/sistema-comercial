@@ -17,6 +17,7 @@ import { OrderCorrectionForm } from "./order-correction-form";
 import { OrderRealtimeStatus } from "./order-realtime-status";
 import { OrderEscalationPanel } from "./order-escalation-panel";
 import { SendOrderToRecoveryPanel } from "./send-order-to-recovery-panel";
+import { OrderScopeFilters } from "./order-scope-filters";
 
 import type {
   OrderAssignmentTeamOption,
@@ -25,6 +26,7 @@ import type {
   OrderInboxItem,
   OrderSlaState,
 } from "../order-inbox.types";
+import type { OrderActionFilter, OrderDueFilter } from "@repo/validation";
 
 const filterOptions: Array<{
   value: OrderFilter;
@@ -85,6 +87,9 @@ function ordersHref(
     filter?: OrderFilter;
     search?: string;
     team?: string;
+    advisor?: string;
+    action?: OrderActionFilter | null;
+    due?: OrderDueFilter | null;
     page?: number;
   } = {},
 ): string {
@@ -104,6 +109,16 @@ function ordersHref(
   }
   const search = overrides.search ?? data.search;
   const team = overrides.team ?? data.teamFilter;
+  const advisor = overrides.advisor ?? data.advisorFilter;
+  // La acción derivada solo existe en la vista logística: al salir de ella
+  // no viaja.
+  const action =
+    filter === "LOGISTICS"
+      ? overrides.action === undefined
+        ? data.actionFilter
+        : overrides.action
+      : null;
+  const due = overrides.due === undefined ? data.dueFilter : overrides.due;
   const page = overrides.page ?? 1;
   const parameters = new URLSearchParams({ period });
   if (period === "RANGE") {
@@ -113,6 +128,9 @@ function ordersHref(
   if (filter !== "ALL") parameters.set("status", filter);
   if (search) parameters.set("q", search);
   if (team !== "ALL") parameters.set("team", team);
+  if (advisor !== "ALL") parameters.set("advisor", advisor);
+  if (action) parameters.set("accion", action);
+  if (due) parameters.set("plazo", due);
   if (page > 1) parameters.set("page", String(page));
   return `/orders?${parameters.toString()}`;
 }
@@ -205,6 +223,16 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
               ) : null}
               {data.teamFilter !== "ALL" ? (
                 <input name="team" type="hidden" value={data.teamFilter} />
+              ) : null}
+              {data.advisorFilter !== "ALL" ? (
+                <input
+                  name="advisor"
+                  type="hidden"
+                  value={data.advisorFilter}
+                />
+              ) : null}
+              {data.dueFilter ? (
+                <input name="plazo" type="hidden" value={data.dueFilter} />
               ) : null}
               <label className="ui-period-range__field">
                 <span>Desde</span>
@@ -1231,19 +1259,25 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         <MetricGroup>
           <Metric
             emphasis="hero"
+            href={
+              data.actionFilter ? ordersHref(data, { action: null }) : undefined
+            }
             label="Casos por revisar"
             tone={data.logisticsSummary.total > 0 ? "warning" : "neutral"}
             value={data.logisticsSummary.total}
           />
           <Metric
+            href={ordersHref(data, { action: "coordinar" })}
             label="Visita por coordinar"
             value={data.logisticsSummary.reschedule}
           />
           <Metric
+            href={ordersHref(data, { action: "contactar" })}
             label="Contactar y validar"
             value={data.logisticsSummary.contact}
           />
           <Metric
+            href={ordersHref(data, { action: "reingresar" })}
             label="Por volver a ingresar"
             value={data.logisticsSummary.review}
           />
@@ -1274,6 +1308,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           />
           <Metric
             hideWhenZero
+            href={ordersHref(data, { filter: "ACTIVE", due: "vencido" })}
             label="Fuera de plazo"
             tone="danger"
             value={data.totals.overdue}
@@ -1414,6 +1449,12 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           {data.teamFilter !== "ALL" ? (
             <input name="team" type="hidden" value={data.teamFilter} />
           ) : null}
+          {data.advisorFilter !== "ALL" ? (
+            <input name="advisor" type="hidden" value={data.advisorFilter} />
+          ) : null}
+          {data.dueFilter ? (
+            <input name="plazo" type="hidden" value={data.dueFilter} />
+          ) : null}
           <label className="min-w-0 flex-1">
             <span className="sr-only">Filtrar pedidos</span>
             <select
@@ -1453,79 +1494,21 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           </div>
         </nav>
 
-        {data.showTeamFilter ? (
-          <Form action="/orders" className="ui-team-filter">
-            <input name="period" type="hidden" value={data.period} />
-            {data.from ? (
-              <input name="from" type="hidden" value={data.from} />
-            ) : null}
-            {data.to ? <input name="to" type="hidden" value={data.to} /> : null}
-            {data.filter !== "ALL" ? (
-              <input name="status" type="hidden" value={data.filter} />
-            ) : null}
-            {data.search ? (
-              <input name="q" type="hidden" value={data.search} />
-            ) : null}
-            <label className="ui-team-filter__field">
-              <span>Equipo</span>
-              <select
-                className="ui-filter-select"
-                defaultValue={data.teamFilter}
-                name="team"
-                onChange={(event) => event.currentTarget.form?.requestSubmit()}
-              >
-                <option value="ALL">{data.teamAllLabel}</option>
-                <option value="UNASSIGNED">Sin asignar</option>
-                {data.teamOptions.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </Form>
-        ) : null}
-
-        <Form action="/orders" className="ui-order-search">
-          <input name="period" type="hidden" value={data.period} />
-          {data.from ? (
-            <input name="from" type="hidden" value={data.from} />
-          ) : null}
-          {data.to ? <input name="to" type="hidden" value={data.to} /> : null}
-          {data.filter !== "ALL" ? (
-            <input name="status" type="hidden" value={data.filter} />
-          ) : null}
-          {data.teamFilter !== "ALL" ? (
-            <input name="team" type="hidden" value={data.teamFilter} />
-          ) : null}
-          <label className="min-w-0 flex-1">
-            <span className="sr-only">Buscar pedidos</span>
-
-            <input
-              className="ui-search-input"
-              defaultValue={data.search}
-              maxLength={100}
-              name="q"
-              placeholder="Buscar orden, cliente, teléfono o asesor"
-              type="search"
-            />
-          </label>
-          <button
-            aria-label="Buscar pedidos"
-            className="ui-filter-submit ui-order-search__submit"
-            type="submit"
-          >
-            <span>Buscar</span>
-            <svg aria-hidden="true" fill="none" viewBox="0 0 20 20">
-              <circle cx="8.5" cy="8.5" r="5.25" stroke="currentColor" />
-              <path
-                d="m12.4 12.4 4.1 4.1"
-                stroke="currentColor"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </Form>
+        <OrderScopeFilters
+          advisorOptions={data.advisorOptions}
+          buildHref={(overrides) => ordersHref(data, overrides)}
+          showActionFilter={data.filter === "LOGISTICS"}
+          showTeamFilter={data.showTeamFilter}
+          teamAllLabel={data.teamAllLabel}
+          teamOptions={data.teamOptions}
+          values={{
+            search: data.search,
+            team: data.teamFilter,
+            advisor: data.advisorFilter,
+            action: data.actionFilter,
+            due: data.dueFilter,
+          }}
+        />
 
         <p className="text-xs text-ui-muted md:basis-full">
           {formatCount(data.items.length)} órdenes en esta página

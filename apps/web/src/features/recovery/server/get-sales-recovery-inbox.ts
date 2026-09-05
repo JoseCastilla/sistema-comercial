@@ -1,23 +1,63 @@
 import "server-only";
 
 import {
+  allOf,
   classifyInternalRecoveryDue,
   compareInternalRecoveryCases,
   getLimaIsoDate,
+  parseRecoverySearchTerm,
+  pickFilterOption,
+  salesRecoveryOpenStatusOptions,
+  salesRecoveryOpenStatuses,
+  salesRecoveryPriorityOptions,
+  salesRecoveryReasonOptions,
+  salesRecoveryResolvedStatusOptions,
+  salesRecoveryResolvedStatuses,
 } from "@repo/validation";
 
 import { database } from "@/server/database";
 
+import { lossReasonLabels } from "../loss-reason-labels";
+
 import type { Prisma } from "@repo/database";
-import type { InternalRecoveryDue } from "@repo/validation";
+import type {
+  InternalRecoveryDue,
+  SalesRecoveryOpenStatus,
+  SalesRecoveryPriority,
+  SalesRecoveryReason,
+  SalesRecoveryResolvedStatus,
+  SalesRecoveryView,
+} from "@repo/validation";
 
 export interface SalesRecoveryAccess {
   userId: string;
   role: "ADMIN" | "SUPERVISOR" | "AGENT" | "BACKOFFICE";
 }
 
+/** Filtros vigentes, ya validados; viajan en la URL (SPEC-041). */
+export interface SalesRecoveryInboxFilters {
+  view: SalesRecoveryView;
+  /** Un dato suelto del cliente o el código de la venta. */
+  q: string;
+  /** Equipo a cargo: el del responsable o, sin responsable, el de la venta. */
+  team: string;
+  /** Responsable actual del recupero (no el vendedor original). */
+  advisor: string;
+  priority: SalesRecoveryPriority | null;
+  reason: SalesRecoveryReason | null;
+  status: SalesRecoveryOpenStatus | SalesRecoveryResolvedStatus | null;
+  /** Solo en abiertos (BR-095). */
+  due: InternalRecoveryDue | null;
+}
+
 export interface SalesRecoveryInboxOptions {
-  /** Ver solo los casos con este vencimiento (BR-095). */
+  view?: SalesRecoveryView;
+  q?: string;
+  team?: string;
+  advisor?: string;
+  priority?: string | null;
+  reason?: string | null;
+  status?: string | null;
   due?: InternalRecoveryDue | null;
   page?: number;
 }
@@ -42,6 +82,9 @@ export interface SalesRecoveryCaseItem {
   /** Qué venció, si algo venció: primer contacto, seguimiento o agenda. */
   due: InternalRecoveryDue | null;
   isCritical: boolean;
+  /** Solo en resueltos: cuándo y cómo terminó. */
+  resolvedAtLabel: string | null;
+  resolutionLabel: string | null;
 }
 
 export interface SalesRecoveryInboxData {
@@ -50,7 +93,15 @@ export interface SalesRecoveryInboxData {
   scopeLabel: string;
   canAssign: boolean;
   advisorOptions: Array<{ id: string; name: string; teamName: string }>;
-  /** Sobre toda la cartera del alcance, no sobre la página visible. */
+  /** Equipos elegibles como filtro; `null` cuando el rol ya viene acotado. */
+  teamOptions: Array<{ id: string; name: string }> | null;
+  /** Responsables elegibles como filtro, con su equipo en el nombre. */
+  advisorFilterOptions: Array<{ id: string; name: string }>;
+  filters: SalesRecoveryInboxFilters;
+  /**
+   * Sobre toda la cartera abierta del alcance —acotada por búsqueda, equipo y
+   * responsable—, no sobre la página visible ni sobre los demás filtros.
+   */
   totals: {
     open: number;
     firstContactOverdue: number;
@@ -59,7 +110,6 @@ export interface SalesRecoveryInboxData {
     criticalUnassigned: number;
     recoveredThisMonth: number;
   };
-  dueFilter: InternalRecoveryDue | null;
   pagination: { page: number; totalPages: number; total: number };
   cases: SalesRecoveryCaseItem[];
 }
@@ -75,17 +125,32 @@ const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
   hour12: false,
 });
 
-const openStatuses = [
-  "OPEN",
-  "ASSIGNED",
-  "IN_PROGRESS",
-  "SCHEDULED",
-  "WAITING",
-] as const;
-
 // BR-074: esta bandeja habla solo del carril interno; la base nacional tiene
 // su propia superficie.
 const internalSources = ["INTERNAL_ORDER_STATE", "MANUAL"] as const;
+
+const caseSelect = {
+  id: true,
+  status: true,
+  priority: true,
+  entryReason: true,
+  entryObservation: true,
+  holderName: true,
+  documentNumber: true,
+  lastSightingAt: true,
+  firstContactAt: true,
+  nextActionAt: true,
+  resolvedAt: true,
+  lossReason: true,
+  originalAgentUserId: true,
+  assignedUser: { select: { name: true } },
+  originalAgent: { select: { name: true } },
+  originalTeam: { select: { name: true } },
+  sourceDitoOrder: { select: { orderCodeRaw: true, registeredAt: true } },
+  recoveredDitoOrder: { select: { orderCodeRaw: true } },
+} satisfies Prisma.RecoveryCaseSelect;
+
+type CaseRow = Prisma.RecoveryCaseGetPayload<{ select: typeof caseSelect }>;
 
 async function getAccessWhere(
   organizationId: string,
@@ -116,12 +181,99 @@ async function getAccessWhere(
   };
 }
 
+/**
+ * Búsqueda unificada (BR-088 aplicado al carril interno): las palabras
+ * buscan en el nombre del titular y en el código de la venta; los dígitos, en
+ * el DNI, el teléfono de entrega, el número de línea y el código de la venta.
+ * Quien tiene el dato en la mano no sabe cuál de ellos es.
+ */
+function buildSalesRecoverySearchWhere(
+  term: string,
+): Prisma.RecoveryCaseWhereInput | null {
+  const search = parseRecoverySearchTerm(term);
+
+  if (!search) return null;
+
+  return allOf<Prisma.RecoveryCaseWhereInput>(
+    ...search.words.map((word) => ({
+      OR: [
+        { holderName: { contains: word, mode: "insensitive" as const } },
+        {
+          sourceDitoOrder: {
+            orderCodeRaw: { contains: word, mode: "insensitive" as const },
+          },
+        },
+      ],
+    })),
+    search.digits
+      ? {
+          OR: [
+            { documentNumber: { contains: search.digits } },
+            {
+              sourceDitoOrder: {
+                OR: [
+                  { deliveryContactPhone: { contains: search.digits } },
+                  { serviceNumber: { contains: search.digits } },
+                  { orderCodeRaw: { contains: search.digits } },
+                ],
+              },
+            },
+            { phones: { some: { phoneNumber: { contains: search.digits } } } },
+          ],
+        }
+      : null,
+  );
+}
+
+function mapCase(
+  row: CaseRow,
+  priority: string | null,
+  due: InternalRecoveryDue | null,
+): SalesRecoveryCaseItem {
+  const status = String(row.status);
+
+  return {
+    id: row.id,
+    originalAgentUserId: row.originalAgentUserId,
+    orderCode: row.sourceDitoOrder?.orderCodeRaw ?? null,
+    orderRegisteredDay: row.sourceDitoOrder
+      ? getLimaIsoDate(row.sourceDitoOrder.registeredAt)
+      : null,
+    holderName: row.holderName,
+    documentNumber: row.documentNumber,
+    status,
+    priority,
+    entryReason: row.entryReason ? String(row.entryReason) : null,
+    entryObservation: row.entryObservation,
+    assignedToName: row.assignedUser?.name ?? null,
+    originalAgentName: row.originalAgent?.name ?? null,
+    originalTeamName: row.originalTeam?.name ?? null,
+    noveltyAtLabel: dateTimeFormatter.format(row.lastSightingAt),
+    nextActionAtLabel: row.nextActionAt
+      ? dateTimeFormatter.format(row.nextActionAt)
+      : null,
+    due,
+    isCritical: priority === "CRITICA",
+    resolvedAtLabel: row.resolvedAt
+      ? dateTimeFormatter.format(row.resolvedAt)
+      : null,
+    resolutionLabel:
+      status === "RECOVERED"
+        ? `Recuperada${row.recoveredDitoOrder ? ` con ${row.recoveredDitoOrder.orderCodeRaw}` : ""}`
+        : status === "LOST"
+          ? `Perdida${row.lossReason ? ` · ${lossReasonLabels[String(row.lossReason)] ?? String(row.lossReason)}` : ""}`
+          : null,
+  };
+}
+
 export async function getSalesRecoveryInbox(
   organizationId: string,
   access: SalesRecoveryAccess,
   options: SalesRecoveryInboxOptions = {},
 ): Promise<SalesRecoveryInboxData> {
   const now = new Date();
+  const view = options.view ?? "abiertos";
+  const search = (options.q ?? "").trim().slice(0, 80);
   const accessWhere = await getAccessWhere(organizationId, access);
   const baseWhere: Prisma.RecoveryCaseWhereInput = {
     organizationId,
@@ -134,6 +286,8 @@ export async function getSalesRecoveryInbox(
   monthStart.setUTCHours(5, 0, 0, 0);
 
   const canAssign = access.role !== "AGENT";
+  // El supervisor ya viene acotado a sus equipos; el asesor, a sus casos.
+  const canFilterTeam = access.role === "ADMIN" || access.role === "BACKOFFICE";
   const supervisedTeamIds =
     access.role === "SUPERVISOR"
       ? (
@@ -149,37 +303,7 @@ export async function getSalesRecoveryInbox(
         ).map((item) => item.teamId)
       : null;
 
-  const [cases, recoveredThisMonth, advisorMemberships] = await Promise.all([
-    // BR-095: se trae toda la cartera abierta del alcance y se ordena aquí con
-    // la regla de negocio. Antes se cortaba en 200 por fecha de creación y se
-    // ordenaba después: el orden solo valía dentro del recorte.
-    database.recoveryCase.findMany({
-      where: { ...baseWhere, status: { in: [...openStatuses] } },
-      select: {
-        id: true,
-        status: true,
-        priority: true,
-        entryReason: true,
-        entryObservation: true,
-        holderName: true,
-        documentNumber: true,
-        lastSightingAt: true,
-        firstContactAt: true,
-        nextActionAt: true,
-        originalAgentUserId: true,
-        assignedUser: { select: { name: true } },
-        originalAgent: { select: { name: true } },
-        originalTeam: { select: { name: true } },
-        sourceDitoOrder: { select: { orderCodeRaw: true, registeredAt: true } },
-      },
-    }),
-    database.recoveryCase.count({
-      where: {
-        ...baseWhere,
-        status: "RECOVERED",
-        resolvedAt: { gte: monthStart },
-      },
-    }),
+  const [advisorMemberships, teams] = await Promise.all([
     canAssign
       ? database.commercialTeamMember.findMany({
           where: {
@@ -200,6 +324,13 @@ export async function getSalesRecoveryInbox(
           },
         })
       : Promise.resolve([]),
+    canFilterTeam
+      ? database.commercialTeam.findMany({
+          where: { organizationId, status: "ACTIVE" },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve(null),
   ]);
 
   const advisorOptions = advisorMemberships
@@ -210,63 +341,137 @@ export async function getSalesRecoveryInbox(
     }))
     .sort((left, right) => left.name.localeCompare(right.name, "es"));
 
-  const ranked = cases
-    .map((item) => ({
-      row: item,
-      priority: item.priority ? String(item.priority) : null,
+  // La URL solo estrecha: un equipo o responsable fuera del alcance se ignora.
+  const teamFilter =
+    teams?.some((team) => team.id === options.team) && options.team
+      ? options.team
+      : "";
+  const advisorFilter =
+    advisorOptions.some((advisor) => advisor.id === options.advisor) &&
+    options.advisor
+      ? options.advisor
+      : "";
+  const filters: SalesRecoveryInboxFilters = {
+    view,
+    q: search,
+    team: teamFilter,
+    advisor: advisorFilter,
+    priority: pickFilterOption(options.priority, salesRecoveryPriorityOptions),
+    reason: pickFilterOption(options.reason, salesRecoveryReasonOptions),
+    status:
+      view === "abiertos"
+        ? pickFilterOption(options.status, salesRecoveryOpenStatusOptions)
+        : pickFilterOption(options.status, salesRecoveryResolvedStatusOptions),
+    due: view === "abiertos" ? (options.due ?? null) : null,
+  };
+
+  const scopeWhere = allOf<Prisma.RecoveryCaseWhereInput>(
+    baseWhere,
+    teamFilter
+      ? {
+          OR: [
+            { assignedTeamId: teamFilter },
+            { assignedTeamId: null, originalTeamId: teamFilter },
+          ],
+        }
+      : null,
+    advisorFilter ? { assignedUserId: advisorFilter } : null,
+    buildSalesRecoverySearchWhere(search),
+  );
+
+  const [openCases, recoveredThisMonth] = await Promise.all([
+    // BR-095: toda la cartera abierta del alcance, ordenada aquí con la regla
+    // de negocio antes de paginar. También alimenta los indicadores.
+    database.recoveryCase.findMany({
+      where: allOf<Prisma.RecoveryCaseWhereInput>(scopeWhere, {
+        status: { in: [...salesRecoveryOpenStatuses] },
+      }),
+      select: caseSelect,
+    }),
+    database.recoveryCase.count({
+      where: {
+        ...baseWhere,
+        status: "RECOVERED",
+        resolvedAt: { gte: monthStart },
+      },
+    }),
+  ]);
+
+  const ranked = openCases
+    .map((row) => ({
+      row,
+      priority: row.priority ? String(row.priority) : null,
       due: classifyInternalRecoveryDue(
         {
-          status: String(item.status),
-          firstContactAt: item.firstContactAt,
-          nextActionAt: item.nextActionAt,
-          noveltyAt: item.lastSightingAt,
+          status: String(row.status),
+          firstContactAt: row.firstContactAt,
+          nextActionAt: row.nextActionAt,
+          noveltyAt: row.lastSightingAt,
         },
         now,
       ),
-      nextActionAt: item.nextActionAt,
-      noveltyAt: item.lastSightingAt,
+      nextActionAt: row.nextActionAt,
+      noveltyAt: row.lastSightingAt,
     }))
     .sort(compareInternalRecoveryCases);
 
-  const dueFilter = options.due ?? null;
-  const scoped = dueFilter
-    ? ranked.filter((item) => item.due === dueFilter)
-    : ranked;
-  const totalPages = Math.max(
-    1,
-    Math.ceil(scoped.length / salesRecoveryPageSize),
-  );
   const requestedPage = Number.isFinite(options.page ?? 1)
-    ? Math.trunc(options.page ?? 1)
+    ? Math.max(1, Math.trunc(options.page ?? 1))
     : 1;
-  const page = Math.min(Math.max(1, requestedPage), totalPages);
-  const start = (page - 1) * salesRecoveryPageSize;
 
-  const items = scoped
-    .slice(start, start + salesRecoveryPageSize)
-    .map(({ row, priority, due }): SalesRecoveryCaseItem => ({
-      id: row.id,
-      originalAgentUserId: row.originalAgentUserId,
-      orderCode: row.sourceDitoOrder?.orderCodeRaw ?? null,
-      orderRegisteredDay: row.sourceDitoOrder
-        ? getLimaIsoDate(row.sourceDitoOrder.registeredAt)
-        : null,
-      holderName: row.holderName,
-      documentNumber: row.documentNumber,
-      status: String(row.status),
-      priority,
-      entryReason: row.entryReason ? String(row.entryReason) : null,
-      entryObservation: row.entryObservation,
-      assignedToName: row.assignedUser?.name ?? null,
-      originalAgentName: row.originalAgent?.name ?? null,
-      originalTeamName: row.originalTeam?.name ?? null,
-      noveltyAtLabel: dateTimeFormatter.format(row.lastSightingAt),
-      nextActionAtLabel: row.nextActionAt
-        ? dateTimeFormatter.format(row.nextActionAt)
-        : null,
-      due,
-      isCritical: priority === "CRITICA",
-    }));
+  let pagination: SalesRecoveryInboxData["pagination"];
+  let items: SalesRecoveryCaseItem[];
+
+  if (view === "abiertos") {
+    const selected = ranked.filter(
+      (item) =>
+        (!filters.priority || item.priority === filters.priority) &&
+        (!filters.reason || item.row.entryReason === filters.reason) &&
+        (!filters.status || String(item.row.status) === filters.status) &&
+        (!filters.due || item.due === filters.due),
+    );
+    const totalPages = Math.max(
+      1,
+      Math.ceil(selected.length / salesRecoveryPageSize),
+    );
+    const page = Math.min(requestedPage, totalPages);
+    const start = (page - 1) * salesRecoveryPageSize;
+
+    pagination = { page, totalPages, total: selected.length };
+    items = selected
+      .slice(start, start + salesRecoveryPageSize)
+      .map((item) => mapCase(item.row, item.priority, item.due));
+  } else {
+    // Resueltos: lo más reciente primero. Aquí sí pagina la base, porque el
+    // histórico crece sin tope y no hay nada que ordenar en memoria.
+    const resolvedWhere = allOf<Prisma.RecoveryCaseWhereInput>(
+      scopeWhere,
+      {
+        status: {
+          in: filters.status
+            ? [filters.status as SalesRecoveryResolvedStatus]
+            : [...salesRecoveryResolvedStatuses],
+        },
+      },
+      filters.priority ? { priority: filters.priority } : null,
+      filters.reason ? { entryReason: filters.reason } : null,
+    );
+    const total = await database.recoveryCase.count({ where: resolvedWhere });
+    const totalPages = Math.max(1, Math.ceil(total / salesRecoveryPageSize));
+    const page = Math.min(requestedPage, totalPages);
+    const rows = await database.recoveryCase.findMany({
+      where: resolvedWhere,
+      orderBy: [{ resolvedAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * salesRecoveryPageSize,
+      take: salesRecoveryPageSize,
+      select: caseSelect,
+    });
+
+    pagination = { page, totalPages, total };
+    items = rows.map((row) =>
+      mapCase(row, row.priority ? String(row.priority) : null, null),
+    );
+  }
 
   const countDue = (due: InternalRecoveryDue) =>
     ranked.filter((item) => item.due === due).length;
@@ -282,6 +487,12 @@ export async function getSalesRecoveryInbox(
           : "Organización",
     canAssign,
     advisorOptions,
+    teamOptions: teams,
+    advisorFilterOptions: advisorOptions.map((advisor) => ({
+      id: advisor.id,
+      name: `${advisor.name} · ${advisor.teamName}`,
+    })),
+    filters,
     totals: {
       open: ranked.length,
       firstContactOverdue: countDue("primer_contacto"),
@@ -292,8 +503,7 @@ export async function getSalesRecoveryInbox(
       ).length,
       recoveredThisMonth,
     },
-    dueFilter,
-    pagination: { page, totalPages, total: scoped.length },
+    pagination,
     cases: items,
   };
 }
