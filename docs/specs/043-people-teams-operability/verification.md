@@ -169,4 +169,7 @@ página `/team` con equipos reales y el alta de un asesor quedan para que José
 las ejercite con la cuenta de un supervisor (con un asesor de prueba
 ficticio). El código está revisado y cubierto por las reglas puras y la prueba
 del formulario.
+3. **Producción, solo lectura** (commit c18d911): `/team` con sesión de
+   administrador redirige a `/admin/teams` y la navegación no muestra «Mi
+   equipo». La página del supervisor queda para José.
 

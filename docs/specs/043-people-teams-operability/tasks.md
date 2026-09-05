@@ -66,5 +66,7 @@
       (`createAgentForTeamAction`, `canCreateAgentForTeam`, `provisionUser`
       compartido con Personas), enlace en la navegación solo para
       supervisores; 2 pruebas puras y 2 web.
+- [x] Producción (commit c18d911): `/team` redirige al administrador a Equipos
+      y su navegación no muestra «Mi equipo».
 - [ ] Verificación de «Mi equipo» con una sesión de supervisor (yo no tengo
-      una; en local se comprobó la redirección del administrador a Equipos).
+      una): la hace José con un asesor de prueba ficticio.
