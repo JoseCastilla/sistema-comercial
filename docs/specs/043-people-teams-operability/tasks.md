@@ -61,5 +61,10 @@
       (MEMBER_REMOVED, TEAM_RENAMED, TEAM_REACTIVATED).
 - [x] Recorrido local con sesión de administrador.
 - [x] Lectura de solo lectura en producción tras el despliegue.
-- [ ] PE-07 · «Mi equipo» del supervisor: queda para una entrega propia
-      (superficie nueva + alta de asesores por supervisores).
+- [x] PE-07 · «Mi equipo» (`/team`) para supervisores: equipos e integrantes
+      en lectura, «Nuevo asesor» con rol fijo y equipo limitado
+      (`createAgentForTeamAction`, `canCreateAgentForTeam`, `provisionUser`
+      compartido con Personas), enlace en la navegación solo para
+      supervisores; 2 pruebas puras y 2 web.
+- [ ] Verificación de «Mi equipo» con una sesión de supervisor (yo no tengo
+      una; en local se comprobó la redirección del administrador a Equipos).

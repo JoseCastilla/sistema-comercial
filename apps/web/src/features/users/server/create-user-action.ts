@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { provisioningAuth } from "@/server/auth/provisioning";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
+
+import { provisionUser } from "./provision-user";
 
 import type { CreateUserActionState } from "./user-action.types";
 
@@ -97,58 +98,15 @@ export async function createUserAction(
     };
   }
 
-  let createdUserId: string | null = null;
-
   try {
-    const signUpResult = await provisioningAuth.api.signUpEmail({
-      body: {
-        name,
-        email,
-        password,
-      },
+    // SPEC-001 BR-013: cuenta y membresía nacen juntas o no nace ninguna.
+    await provisionUser({
+      organizationId: membership.organization.id,
+      name,
+      email,
+      password,
+      role,
     });
-
-    createdUserId = signUpResult.user.id;
-
-    try {
-      await database.$transaction([
-        database.user.update({
-          where: {
-            id: createdUserId,
-          },
-
-          data: {
-            name,
-            emailVerified: true,
-            status: "ACTIVE",
-          },
-        }),
-
-        database.organizationMember.create({
-          data: {
-            organizationId: membership.organization.id,
-            userId: createdUserId,
-            role,
-          },
-        }),
-      ]);
-    } catch (error) {
-      /*
-       * Better Auth crea User y Account antes
-       * de que podamos crear la membresía.
-       *
-       * Si falla esa segunda etapa, eliminamos
-       * la cuenta recién creada para no dejar
-       * un usuario huérfano.
-       */
-      await database.user.deleteMany({
-        where: {
-          id: createdUserId,
-        },
-      });
-
-      throw error;
-    }
   } catch (error) {
     console.error("No se pudo crear el usuario", {
       error,
