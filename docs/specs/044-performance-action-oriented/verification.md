@@ -33,3 +33,22 @@
 **Limitación declarada**: la base local no tiene entregadas por activar en
 agosto, así que la paridad de esa cifra se comprobó en cero y por lectura de
 las dos definiciones; producción la confirma con datos.
+
+3. **Lectura de producción** (solo lectura, sesión de administrador, tras el
+   despliegue de `f688248`, septiembre 2026):
+   - «Entregadas por activar = 21» abre Pedidos con **21** órdenes: la paridad
+     de `AWAITING_ACTIVATION` queda confirmada con datos reales (AC-002).
+   - «Pedidos por recuperar = 80» abre Pedidos con «50 en esta página de **80**
+     encontradas».
+   - «Casos de recupero abiertos = 70» abre Recupero de ventas con «Casos
+     abiertos **70**» y «70 caso(s) cumplen el filtro» (AC-004).
+   - «Sin asesor ni equipo = 0» enlaza a `team=UNASSIGNED`.
+   - Todos los accesos llevan `period=RANGE&from=2026-09-01&to=2026-09-30` y
+     `volver=/performance?month=2026-09`; Pedidos muestra «← Volver a
+     Rendimiento».
+   - Fila individual (Jimena Cuya): «7» → **7** órdenes por recuperar; «8» →
+     **8** casos abiertos en su bandeja; «2» → **2** por activar. Los ceros
+     del desglose no enlazan (AC-001, BR-005).
+
+La limitación declarada en la fase local (paridad de «por activar» observada
+en cero) queda cerrada con la lectura de producción.

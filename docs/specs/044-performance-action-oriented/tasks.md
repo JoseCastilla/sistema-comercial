@@ -13,7 +13,8 @@
       con el alcance del tablero.
 - [x] Recorrido local con sesión de administrador (paridad 17/17, 4/4, 0/0;
       vuelta con filtros; casos 1/1).
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción tras el despliegue (21/21,
+      80/80, 70/70; fila individual 7/7, 8/8, 2/2).
 
 ## Fase 2 · Equipos, cuotas y gestión
 
