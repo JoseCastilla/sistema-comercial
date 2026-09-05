@@ -11,9 +11,14 @@ import {
   getLimaIsoDate,
   getOrderPeriodRange,
   getOrderRange,
+  orderDueFilterWindow,
+  orderRegularDeliveryMethods,
+  parseOrderActionFilter,
+  parseOrderDueFilter,
   parseOrderRange,
   resolveDitoOrderScope,
   resolveDitoOrderVisibility,
+  resolveOrderActionKinds,
 } from "@repo/validation";
 
 import { database } from "@/server/database";
@@ -30,6 +35,7 @@ import type {
   OrderSlaState,
   OrderStatusValue,
 } from "../order-inbox.types";
+import type { OrderDueFilter } from "@repo/validation";
 
 const businessTimeZone = "America/Lima";
 const pageSize = 50;
@@ -42,6 +48,12 @@ export interface OrderInboxQuery {
   filter: OrderFilter;
   search?: string;
   team?: string;
+  /** Asesor (`agentUserId`) dentro del alcance; SPEC-041. */
+  advisor?: string;
+  /** Acción derivada (SPEC-029 BR-019); solo en `LOGISTICS`. */
+  action?: string;
+  /** Tramo del plazo de entrega. */
+  due?: string;
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
@@ -368,7 +380,8 @@ function getSlaState(
 
   const remainingMilliseconds = deliveryDueAt.getTime() - now.getTime();
 
-  const sameDay = dateFormatter.format(deliveryDueAt) === dateFormatter.format(now);
+  const sameDay =
+    dateFormatter.format(deliveryDueAt) === dateFormatter.format(now);
   const dueLabel = sameDay
     ? timeFormatter.format(deliveryDueAt)
     : `${shortDateFormatter.format(deliveryDueAt)} ${timeFormatter.format(deliveryDueAt)}`;
@@ -463,7 +476,10 @@ function getIncidentRank(input: OrderPriorityInput): number | null {
     return 2;
   }
 
-  if (input.agrActionKind !== null && input.agrActionKind !== "WAIT_PORTABILITY") {
+  if (
+    input.agrActionKind !== null &&
+    input.agrActionKind !== "WAIT_PORTABILITY"
+  ) {
     return 2;
   }
 
@@ -567,6 +583,35 @@ function getStatusFilter(
   }
 }
 
+/*
+ * SPEC-041: el tramo del plazo con la misma regla que rotula la fila
+ * (`getSlaState`): lo entregado y lo cancelado no tiene plazo; «sin horario»
+ * es una entrega regular sin turno; «sin plazo» es todo lo demas sin fecha.
+ */
+function getDueFilterWhere(
+  filter: OrderDueFilter | null,
+  now: Date,
+): Prisma.DitoOrderWhereInput {
+  if (!filter) return {};
+
+  const alive: Prisma.DitoOrderWhereInput = {
+    status: { notIn: ["CLOSED", "CANCELLED"] },
+    deliveryStatus: { notIn: ["DELIVERED", "CANCELLED"] },
+  };
+  const window = orderDueFilterWindow(filter, now);
+
+  if (window) return { ...alive, deliveryDueAt: window };
+
+  return {
+    ...alive,
+    deliveryDueAt: null,
+    deliveryMethod:
+      filter === "sin_horario"
+        ? { in: [...orderRegularDeliveryMethods] as never[] }
+        : { notIn: [...orderRegularDeliveryMethods] as never[] },
+  };
+}
+
 function getSearchFilter(search: string): Prisma.DitoOrderWhereInput {
   if (!search) return {};
 
@@ -667,7 +712,9 @@ function getAgrAction(input: {
   const terminal = TERMINAL_EXTERNAL_STATES.includes(estado);
 
   // El problema es el lugar de entrega, no el cliente ni la portabilidad.
-  if (/FUERA DE COBERTURA|ZONA PELIGROSA|DIRECCION NO RECUPERABLE/.test(motivo)) {
+  if (
+    /FUERA DE COBERTURA|ZONA PELIGROSA|DIRECCION NO RECUPERABLE/.test(motivo)
+  ) {
     return {
       kind: "MEETING_POINT",
       label: "Acordar otro punto de entrega con el cliente, trabajo o casa",
@@ -717,7 +764,8 @@ function getAgrAction(input: {
   if (/SERVICIO SUSPENDIDO/.test(motivo)) {
     return {
       kind: "CONTACT",
-      label: "Contactar al cliente y validar por que su servicio esta suspendido",
+      label:
+        "Contactar al cliente y validar por que su servicio esta suspendido",
       shortLabel: "Contactar",
     };
   }
@@ -726,7 +774,8 @@ function getAgrAction(input: {
   if (/OTRA PORTA EN CURSO/.test(motivo)) {
     return {
       kind: "CONTACT",
-      label: "Contactar al cliente y validar si hay otra portabilidad real en curso",
+      label:
+        "Contactar al cliente y validar si hay otra portabilidad real en curso",
       shortLabel: "Contactar",
     };
   }
@@ -735,16 +784,22 @@ function getAgrAction(input: {
    * Huella desgastada o datos que no cuadran. El OL lo reporta tanto como
    * cliente no identificado como telefono que no corresponde al DNI.
    */
-  if (/HUELLA NO CORRESPONDE|NO CORRESPONDE AL DNI|CLIENTE NO IDENTIFICADO/.test(motivo)) {
+  if (
+    /HUELLA NO CORRESPONDE|NO CORRESPONDE AL DNI|CLIENTE NO IDENTIFICADO/.test(
+      motivo,
+    )
+  ) {
     return terminal
       ? {
           kind: "REENTER",
-          label: "Reingresar la venta despues de resolver la validacion biometrica",
+          label:
+            "Reingresar la venta despues de resolver la validacion biometrica",
           shortLabel: "Reingresar",
         }
       : {
           kind: "CONTACT",
-          label: "Contactar al cliente por un problema de validacion biometrica",
+          label:
+            "Contactar al cliente por un problema de validacion biometrica",
           shortLabel: "Contactar",
         };
   }
@@ -761,12 +816,14 @@ function getAgrAction(input: {
     return terminal
       ? {
           kind: "REENTER",
-          label: "Reingresar la venta: el cliente excedio las visitas permitidas",
+          label:
+            "Reingresar la venta: el cliente excedio las visitas permitidas",
           shortLabel: "Reingresar",
         }
       : {
           kind: "RESCHEDULE",
-          label: "Contactar al cliente y reagendar la visita en un horario que pueda atender",
+          label:
+            "Contactar al cliente y reagendar la visita en un horario que pueda atender",
           shortLabel: "Reagendar",
         };
   }
@@ -917,6 +974,33 @@ export async function getOrderInbox(
       ? requestedTeam
       : "ALL";
 
+  /*
+   * SPEC-041: el selector de asesor ofrece —y solo acepta— a los asesores del
+   * alcance, los mismos que se pueden asignar. Un id ajeno cae en «Todos».
+   */
+  const advisorOptions = assignmentTeams
+    .flatMap((team) =>
+      team.agents.map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+        teamId: team.id,
+        teamName: team.name,
+      })),
+    )
+    .sort((left, right) => left.name.localeCompare(right.name, "es"));
+  const requestedAdvisor = query.advisor?.trim() ?? "";
+  const advisorFilter =
+    access.role !== "AGENT" &&
+    advisorOptions.some((advisor) => advisor.id === requestedAdvisor)
+      ? requestedAdvisor
+      : "ALL";
+  const advisorFilterWhere: Prisma.DitoOrderWhereInput =
+    advisorFilter === "ALL" ? {} : { agentUserId: advisorFilter };
+  const actionFilter =
+    query.filter === "LOGISTICS" ? parseOrderActionFilter(query.action) : null;
+  const dueFilter = parseOrderDueFilter(query.due);
+  const dueFilterWhere = getDueFilterWhere(dueFilter, now);
+
   const orderScope = resolveDitoOrderScope({
     role: access.role,
     userId: access.userId,
@@ -966,15 +1050,62 @@ export async function getOrderInbox(
       : {};
   const baseWhere: Prisma.DitoOrderWhereInput = {
     organizationId,
-    AND: [accessFilter, teamFilterWhere, periodFilter],
+    AND: [accessFilter, teamFilterWhere, advisorFilterWhere, periodFilter],
   };
+  /*
+   * SPEC-041: la acción derivada se calcula en código (BR-019), no vive en la
+   * base. El conjunto logístico es pequeño y ya se cargaba para los
+   * indicadores, así que el filtro por acción se traduce a una lista de ids.
+   */
+  const logisticsRecords = await database.ditoOrder.findMany({
+    where: {
+      organizationId,
+      AND: [accessFilter, teamFilterWhere, advisorFilterWhere],
+      status: { not: "CLOSED" },
+      deliveryStatus: { not: "DELIVERED" },
+      agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } },
+    },
+    select: {
+      id: true,
+      agrDeliverySnapshot: {
+        select: {
+          estadoPedido: true,
+          motivoRechazo: true,
+          submotivoRechazo: true,
+          fetchedAt: true,
+        },
+      },
+    },
+  });
+  const actionKinds = actionFilter
+    ? resolveOrderActionKinds(actionFilter)
+    : null;
+  const actionFilterWhere: Prisma.DitoOrderWhereInput = actionKinds
+    ? {
+        id: {
+          in: logisticsRecords
+            .filter(
+              (record) =>
+                record.agrDeliverySnapshot !== null &&
+                actionKinds.includes(
+                  getAgrAction(record.agrDeliverySnapshot).kind,
+                ),
+            )
+            .map((record) => record.id),
+        },
+      }
+    : {};
+
   const filteredWhere: Prisma.DitoOrderWhereInput = {
     organizationId,
     AND: [
       accessFilter,
       teamFilterWhere,
+      advisorFilterWhere,
       periodFilter,
       getStatusFilter(query.filter, now, incidentThreshold),
+      dueFilterWhere,
+      actionFilterWhere,
       access.role === "SUPERVISOR"
         ? getSupervisorSearchFilter(
             search,
@@ -996,14 +1127,13 @@ export async function getOrderInbox(
     deliveredCount,
     overdueCount,
     pendingBeforeMonth,
-    logisticsRecords,
   ] = await database.$transaction([
     database.ditoOrder.count({ where: baseWhere }),
     database.ditoOrder.count({ where: filteredWhere }),
     database.ditoOrder.count({
       where: {
         organizationId,
-        AND: [accessFilter, teamFilterWhere],
+        AND: [accessFilter, teamFilterWhere, advisorFilterWhere],
         escalations: {
           some: { status: { in: ["OPEN", "ACKNOWLEDGED"] } },
         },
@@ -1012,7 +1142,7 @@ export async function getOrderInbox(
     database.ditoOrder.count({
       where: {
         organizationId,
-        AND: [accessFilter, teamFilterWhere],
+        AND: [accessFilter, teamFilterWhere, advisorFilterWhere],
         status: { not: "CLOSED" },
         deliveryStatus: { not: "DELIVERED" },
         agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } },
@@ -1040,6 +1170,7 @@ export async function getOrderInbox(
         AND: [
           accessFilter,
           teamFilterWhere,
+          advisorFilterWhere,
           {
             registeredAt: {
               gte: range.monthStart,
@@ -1072,28 +1203,9 @@ export async function getOrderInbox(
     database.ditoOrder.count({
       where: {
         organizationId,
-        AND: [accessFilter, teamFilterWhere],
+        AND: [accessFilter, teamFilterWhere, advisorFilterWhere],
         registeredAt: { lt: range.monthStart },
         status: { in: ["OPEN", "SENT", "UNKNOWN"] },
-      },
-    }),
-    database.ditoOrder.findMany({
-      where: {
-        organizationId,
-        AND: [accessFilter, teamFilterWhere],
-        status: { not: "CLOSED" },
-        deliveryStatus: { not: "DELIVERED" },
-        agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } },
-      },
-      select: {
-        agrDeliverySnapshot: {
-          select: {
-            estadoPedido: true,
-            motivoRechazo: true,
-            submotivoRechazo: true,
-            fetchedAt: true,
-          },
-        },
       },
     }),
   ]);
@@ -1164,8 +1276,7 @@ export async function getOrderInbox(
             rowStatus === "SENT" &&
             rowSubstatus === "NO_STATUS" &&
             row.noStatusDetectedAt !== null &&
-            now.getTime() - row.noStatusDetectedAt.getTime() >=
-              10 * 60 * 1000,
+            now.getTime() - row.noStatusDetectedAt.getTime() >= 10 * 60 * 1000,
           slaState: getSlaState(
             rowStatus,
             rowMethod,
@@ -1504,6 +1615,10 @@ export async function getOrderInbox(
         ? "Mis equipos + sin asignar"
         : "Todos los equipos",
     teamOptions,
+    advisorFilter,
+    advisorOptions,
+    actionFilter,
+    dueFilter,
     assignmentTeams,
     showTeamFilter:
       access.role !== "AGENT" &&

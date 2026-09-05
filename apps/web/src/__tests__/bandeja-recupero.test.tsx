@@ -10,9 +10,12 @@ import type {
 } from "@/features/recovery/server/get-sales-recovery-inbox";
 
 // La bandeja monta el formulario de asignación, que importa una acción de
-// servidor; aquí no se ejecuta.
+// servidor; aquí no se ejecuta. La barra de filtros navega con el router.
 vi.mock("@/features/recovery/server/assign-sales-recovery-case-action", () => ({
   assignSalesRecoveryCaseAction: async () => ({ type: "idle", message: "" }),
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn() }),
 }));
 
 const caso = (
@@ -35,8 +38,21 @@ const caso = (
   nextActionAtLabel: null,
   due: null,
   isCritical: false,
+  resolvedAtLabel: null,
+  resolutionLabel: null,
   ...extra,
 });
+
+const filtrosBase: SalesRecoveryInboxData["filters"] = {
+  view: "abiertos",
+  q: "",
+  team: "",
+  advisor: "",
+  priority: null,
+  reason: null,
+  status: null,
+  due: null,
+};
 
 const datos = (
   extra: Partial<SalesRecoveryInboxData>,
@@ -46,6 +62,9 @@ const datos = (
   scopeLabel: "Mis casos",
   canAssign: false,
   advisorOptions: [],
+  teamOptions: null,
+  advisorFilterOptions: [],
+  filters: filtrosBase,
   totals: {
     open: 240,
     firstContactOverdue: 12,
@@ -54,7 +73,6 @@ const datos = (
     criticalUnassigned: 0,
     recoveredThisMonth: 5,
   },
-  dueFilter: null,
   pagination: { page: 1, totalPages: 1, total: 240 },
   cases: [caso({})],
   ...extra,
@@ -63,6 +81,7 @@ const datos = (
 /**
  * BR-095: la bandeja de recupero separa los tres vencimientos, abre cada uno
  * como lista, y lleva a la venta de origen en el día en que se registró.
+ * SPEC-041: tiene buscador, filtros y una vista de resueltos.
  */
 describe("Bandeja de recupero de ventas", () => {
   it("cada vencimiento es un indicador propio y abre su lista", () => {
@@ -81,11 +100,28 @@ describe("Bandeja de recupero de ventas", () => {
     expect(screen.getByText("30")).toBeInTheDocument();
   });
 
+  it("los indicadores conservan la búsqueda y el responsable elegidos", () => {
+    render(
+      <SalesRecoveryInbox
+        data={datos({
+          filters: { ...filtrosBase, q: "quispe", advisor: "u-luis" },
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: /Seguimiento vencido/ }),
+    ).toHaveAttribute(
+      "href",
+      "/recovery/sales?q=quispe&advisor=u-luis&vence=seguimiento",
+    );
+  });
+
   it("con un vencimiento elegido, el título dice cuántos son y cómo volver", () => {
     render(
       <SalesRecoveryInbox
         data={datos({
-          dueFilter: "seguimiento",
+          filters: { ...filtrosBase, due: "seguimiento" },
           pagination: { page: 1, totalPages: 1, total: 30 },
         })}
       />,
@@ -96,6 +132,75 @@ describe("Bandeja de recupero de ventas", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Ver todos los casos" }),
+    ).toHaveAttribute("href", "/recovery/sales");
+  });
+
+  it("la barra de filtros ofrece vista, prioridad, motivo, estado y vencimiento", () => {
+    render(
+      <SalesRecoveryInbox
+        data={datos({
+          teamOptions: [{ id: "t-1", name: "Lima Centro" }],
+          advisorFilterOptions: [{ id: "u-1", name: "Luis · Lima Centro" }],
+        })}
+      />,
+    );
+
+    expect(screen.getByRole("combobox", { name: "Vista" })).toHaveValue(
+      "abiertos",
+    );
+    for (const nombre of [
+      "Equipo",
+      "Asesor actual",
+      "Prioridad",
+      "Motivo",
+      "Estado",
+      "Vencimiento",
+    ]) {
+      expect(
+        screen.getByRole("combobox", { name: nombre }),
+      ).toBeInTheDocument();
+    }
+    expect(
+      screen.getByRole("searchbox", { name: "Buscar cliente o venta" }),
+    ).toBeInTheDocument();
+  });
+
+  it("en resueltos no hay vencimiento ni asignación, y la fila dice cómo terminó", () => {
+    render(
+      <SalesRecoveryInbox
+        data={datos({
+          canAssign: true,
+          filters: { ...filtrosBase, view: "resueltos" },
+          pagination: { page: 1, totalPages: 1, total: 2 },
+          cases: [
+            caso({
+              id: "r",
+              status: "RECOVERED",
+              resolvedAtLabel: "04/09 09:00",
+              resolutionLabel: "Recuperada con ORD-9",
+            }),
+            caso({
+              id: "l",
+              status: "LOST",
+              resolvedAtLabel: "03/09 18:00",
+              resolutionLabel: "Perdida · Rechazo definitivo",
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Resueltos: 2 casos" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Vencimiento" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Asignar/ })).toBeNull();
+    expect(screen.getByText("Recuperada con ORD-9")).toBeInTheDocument();
+    expect(
+      screen.getByText("Perdida · Rechazo definitivo"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Volver a los abiertos" }),
     ).toHaveAttribute("href", "/recovery/sales");
   });
 
@@ -140,11 +245,11 @@ describe("Bandeja de recupero de ventas", () => {
     expect(filas[0]).toHaveAttribute("data-no-sales", "true");
   });
 
-  it("las páginas conservan el vencimiento elegido", () => {
+  it("las páginas conservan los filtros elegidos", () => {
     render(
       <SalesRecoveryInbox
         data={datos({
-          dueFilter: "primer_contacto",
+          filters: { ...filtrosBase, due: "primer_contacto", priority: "ALTA" },
           pagination: { page: 2, totalPages: 3, total: 250 },
         })}
       />,
@@ -152,11 +257,11 @@ describe("Bandeja de recupero de ventas", () => {
 
     expect(screen.getByRole("link", { name: "Anterior" })).toHaveAttribute(
       "href",
-      "/recovery/sales?vence=primer_contacto",
+      "/recovery/sales?prioridad=ALTA&vence=primer_contacto",
     );
     expect(screen.getByRole("link", { name: "Siguiente" })).toHaveAttribute(
       "href",
-      "/recovery/sales?vence=primer_contacto&page=3",
+      "/recovery/sales?prioridad=ALTA&vence=primer_contacto&page=3",
     );
   });
 });

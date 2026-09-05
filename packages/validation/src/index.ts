@@ -10,6 +10,7 @@ export * from "./dito-order-correction-schema.js";
 export * from "./dito-order-assignment-retry-schema.js";
 export * from "./dito-order-orphan-claim-schema.js";
 export * from "./dito-import-admin-schema.js";
+export * from "./order-inbox-filters.js";
 export * from "./order-period.js";
 export * from "./advisor-display-name.js";
 
@@ -21,6 +22,7 @@ export * from "./recovery-portability.js";
 export * from "./recovery-portability-report.js";
 export * from "./recovery-search.js";
 export * from "./recovery-where.js";
+export * from "./sales-recovery-filters.js";
 export * from "./recovery-queue-filters.js";
 export * from "./recovery-follow-up.js";
 export * from "./recovery-board-period.js";

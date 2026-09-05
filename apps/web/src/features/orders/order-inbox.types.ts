@@ -1,4 +1,8 @@
-import type { OrderPeriod } from "@repo/validation";
+import type {
+  OrderActionFilter,
+  OrderDueFilter,
+  OrderPeriod,
+} from "@repo/validation";
 
 export type OrderSlaState =
   | "OVERDUE"
@@ -41,6 +45,14 @@ export interface OrderInboxAccess {
 export interface OrderInboxTeamOption {
   id: string;
   name: string;
+}
+
+/** Asesor elegible como filtro: los mismos que se pueden asignar (SPEC-041). */
+export interface OrderAdvisorOption {
+  id: string;
+  name: string;
+  teamId: string;
+  teamName: string;
 }
 
 export interface OrderAssignmentTeamOption extends OrderInboxTeamOption {
@@ -184,6 +196,12 @@ export interface OrderInboxData {
   teamFilter: string;
   teamAllLabel: string;
   teamOptions: OrderInboxTeamOption[];
+  /** `ALL` o el `agentUserId` elegido, ya validado contra el alcance. */
+  advisorFilter: string;
+  advisorOptions: OrderAdvisorOption[];
+  /** Solo en `LOGISTICS`; en cualquier otra vista es `null`. */
+  actionFilter: OrderActionFilter | null;
+  dueFilter: OrderDueFilter | null;
   assignmentTeams: OrderAssignmentTeamOption[];
   showTeamFilter: boolean;
   showAdvisorColumn: boolean;
