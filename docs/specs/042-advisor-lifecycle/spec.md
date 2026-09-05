@@ -1,6 +1,6 @@
 # SPEC-042 — Ciclo de vida del vendedor: baja, reingreso y promoción
 
-Estado: **construida, en verificación** (05/09/2026). Pedido por José el
+Estado: **desplegada y verificada en lectura** (05/09/2026). Pedido por José el
 02/09/2026: «poder promover a un vendedor como supervisor, dar de baja a un
 vendedor y hacer un reingreso». Las cuatro decisiones de §5 se tomaron con
 la opción recomendada, como supuestos explícitos: José pidió avanzar en vez
