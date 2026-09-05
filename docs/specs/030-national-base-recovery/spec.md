@@ -307,6 +307,36 @@ construir un reporte a mano.
     un número de píxeles apuntaría a otra fila. El caso vuelve señalado.
   - Llegar a una ficha por un enlace suelto no trae contexto, y entonces
     «Volver a mi cola» abre la bandeja normal.
+- **BR-090** (05/09/2026): **tipificar desde la bandeja**, con la forma de
+  trabajo del Excel: tipificación y observación a la izquierda, se anota y se
+  sigue con el siguiente. Cada guardado es un evento nuevo e inmutable con
+  autor y hora del servidor; nada se edita ni se borra desde la bandeja.
+  - **Las mismas reglas que la ficha**, porque es la misma función de
+    servidor: acceso por organización, rol y asignación; estados abiertos;
+    cadencia, pausas, agenda y verificación por resultado. Tipificar y
+    resolver siguen siendo acciones distintas.
+  - **Idempotencia por clave del cliente.** Bloquear el botón no basta: un
+    reintento tras un corte, con el primero ya guardado, crea una segunda
+    gestión. La clave nace con el borrador, viaja en cada envío y el servidor
+    devuelve lo ya guardado si la reconoce. Columna `client_request_id`,
+    única por caso; nula en los intentos históricos y en los de la ficha.
+  - **La fila no se mueve al guardar.** La acción en fila **no revalida
+    ninguna ruta**: en Next, una revalidación dentro de una acción devuelve
+    también el árbol fresco de la página actual y la lista se reordena bajo
+    las manos del asesor —pasó con la primera versión—. La fila se actualiza
+    con lo que el servidor confirmó y avisa que cambiará de posición al
+    actualizar la cola.
+  - **Un solo borrador abierto.** Cambiar de cliente con cambios sin guardar
+    ofrece tres salidas dentro de la fila —guardar, descartar, seguir—; los
+    filtros y la paginación preguntan antes de llevárselo; cerrar la pestaña
+    también.
+  - **La observación anterior nunca se copia** al campo nuevo: sería
+    registrar información vieja como si fuera del contacto de hoy. Se
+    muestra como referencia, diferenciada.
+  - **Un fallo inesperado del servidor vuelve como error en la fila**, con
+    el borrador intacto, no como pantalla caída.
+  - Las etiquetas del Excel que no existen —«Apagado», «Tiene deuda»— no
+    se incorporan sin definir significado, campos y efecto en la cadencia.
 - **BR-025:** un caso `WAITING` cuyos servicios aparecen luego portados a
   Movistar se cierra como `DISCARDED` y no vuelve a revisarse.
 - **BR-026:** un caso `LIBERADO` pasa a `OPEN` y queda disponible para asignar.

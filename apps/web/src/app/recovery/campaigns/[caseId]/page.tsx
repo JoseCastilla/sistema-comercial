@@ -313,10 +313,7 @@ export default async function CampaignCasePage({
             title="Registrar intento"
             description="Lo que registres no se puede editar después. Si no contesta, intenta 3 veces en el día; si agendas, se pausa hasta la fecha acordada."
           >
-            <RegisterAttemptForm
-              caseId={detail.id}
-              returnTo="/recovery/campaigns"
-            />
+            <RegisterAttemptForm caseId={detail.id} returnTo={backHref} />
           </SectionPanel>
         ) : null}
 

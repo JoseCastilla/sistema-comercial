@@ -1,17 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useCallback, useId, useState } from "react";
 
 import {
   attemptResultLabels,
   attemptResultTones,
 } from "../attempt-result-labels";
+import {
+  CampaignAttemptEditor,
+  type ConfirmedAttempt,
+} from "./campaign-attempt-editor";
+import { useCampaignDraft } from "./campaign-draft-context";
 import { CopyValue } from "./copy-value";
 
 export interface CampaignQueueRowData {
   id: string;
   lastResult: string | null;
+  /** Observación de la última gestión, como referencia; nunca se copia. */
+  lastObservation: string | null;
+  lastAttemptAtLabel: string | null;
   holderName: string;
   documentNumber: string;
   fatherName: string | null;
@@ -68,7 +76,42 @@ export function CampaignQueueRow({
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
-  const tone = row.lastResult ? attemptResultTones[row.lastResult] : undefined;
+  const editorId = useId();
+  const draft = useCampaignDraft();
+  const editing = draft.editingId === row.id;
+
+  /**
+   * Tras guardar, la fila enseña lo que el servidor confirmó y no lo que el
+   * asesor escribió. Se queda en su sitio a propósito (BR-090): la lista se
+   * reconcilia al actualizarla, no bajo las manos de quien trabaja.
+   */
+  const [confirmed, setConfirmed] = useState<ConfirmedAttempt | null>(null);
+  const [unmanageableReason, setUnmanageableReason] = useState<string | null>(
+    null,
+  );
+
+  const lastResult = confirmed?.result ?? row.lastResult;
+  const lastObservation = confirmed
+    ? confirmed.observation
+    : row.lastObservation;
+  const status = confirmed?.status ?? row.status;
+  const attemptsToday = confirmed?.attemptsToday ?? row.attemptsToday;
+  const nextActionAtLabel = confirmed
+    ? confirmed.nextActionAtLabel
+    : row.nextActionAtLabel;
+  const tone = lastResult ? attemptResultTones[lastResult] : undefined;
+
+  const handleSaved = useCallback((attempt: ConfirmedAttempt) => {
+    setConfirmed(attempt);
+  }, []);
+
+  // Teléfonos de contacto primero, luego las líneas; sin repetir.
+  const phoneOptions = [
+    ...new Set([
+      ...row.phones,
+      ...row.services.map((service) => service.serviceNumber),
+    ]),
+  ];
 
   return (
     <>
@@ -78,7 +121,60 @@ export function CampaignQueueRow({
        * número de píxeles apuntaría a otra fila. `scroll-mt` deja aire para
        * que la cabecera no la tape al saltar.
        */}
-      <tr data-result-tone={tone} id={`caso-${row.id}`} className="scroll-mt-24">
+      <tr
+        aria-selected={editing || undefined}
+        className={editing ? "scroll-mt-24 bg-ui-accent-soft" : "scroll-mt-24"}
+        data-result-tone={tone}
+        id={`caso-${row.id}`}
+      >
+        {/* Tipificación: el último resultado, y desde aquí se registra el
+            siguiente. Va primero porque es lo que el asesor escribe. */}
+        <td className="text-xs">
+          <span
+            className="ui-status-badge"
+            data-tone={lastResult ? (tone ?? "neutral") : "neutral"}
+          >
+            {lastResult
+              ? (attemptResultLabels[lastResult] ?? lastResult)
+              : "Sin gestión"}
+          </span>
+          {status === "SCHEDULED" || status === "WAITING" ? (
+            <span className="block text-2xs text-ui-muted">{statusLabel}</span>
+          ) : null}
+          {row.lastAttemptAtLabel && !confirmed ? (
+            <span className="block text-2xs text-ui-muted">
+              {row.lastAttemptAtLabel}
+            </span>
+          ) : null}
+          {unmanageableReason ? (
+            <span className="block text-2xs text-ui-danger">
+              {unmanageableReason}
+            </span>
+          ) : editing ? null : (
+            <button
+              aria-controls={editorId}
+              aria-expanded={false}
+              className="ui-row-toggle mt-1"
+              onClick={() => draft.startEditing(row.id)}
+              type="button"
+            >
+              Registrar gestión
+            </button>
+          )}
+        </td>
+
+        {/* Observación: la última, como referencia. La nueva se escribe en
+            el editor y nunca se copia de aquí. */}
+        <td className="text-xs">
+          {lastObservation ? (
+            <span className="ui-cell-clamp" title={lastObservation}>
+              {lastObservation}
+            </span>
+          ) : (
+            <span className="text-ui-muted">—</span>
+          )}
+        </td>
+
         <td className="font-medium text-ui-text">
           {row.holderName}
           {justVisited ? (
@@ -114,52 +210,44 @@ export function CampaignQueueRow({
         </td>
         <td className="text-xs">
           {row.origin ? (
-            <>
-              <span className="font-medium text-ui-text">
-                {row.origin.operator}
-              </span>
-              {row.origin.detail ? (
-                <span className="block text-2xs text-ui-muted">
-                  {row.origin.detail}
-                </span>
-              ) : null}
-            </>
+            <span className="font-medium text-ui-text">
+              {row.origin.operator}
+            </span>
           ) : (
             <span className="text-ui-muted">—</span>
           )}
-        </td>
-        <td className="text-xs text-ui-muted">
-          {row.planSummary}
-          {row.serviceCount > 1 ? ` · ${row.serviceCount} líneas` : ""}
-        </td>
-        <td className="text-xs">
-          {statusLabel}
-          {row.lastResult ? (
+          <span className="block text-2xs text-ui-muted">
+            {row.planSummary}
+            {row.serviceCount > 1 ? ` · ${row.serviceCount} líneas` : ""}
+          </span>
+          {row.origin?.detail ? (
             <span className="block text-2xs text-ui-muted">
-              {attemptResultLabels[row.lastResult] ?? row.lastResult}
+              {row.origin.detail}
             </span>
           ) : null}
         </td>
         <td className="text-xs" data-numeric>
           <span
             className={
-              row.status !== "SCHEDULED" &&
-              row.status !== "WAITING" &&
-              row.attemptsToday < minimumDailyAttempts
+              status !== "SCHEDULED" &&
+              status !== "WAITING" &&
+              attemptsToday < minimumDailyAttempts
                 ? "font-semibold text-ui-warning"
                 : "text-ui-muted"
             }
           >
-            {row.attemptsToday} / {minimumDailyAttempts}
+            {attemptsToday} / {minimumDailyAttempts}
           </span>
         </td>
         <td className="text-xs">
           <span
             className={
-              row.overdue ? "font-semibold text-ui-danger" : "text-ui-muted"
+              row.overdue && !confirmed
+                ? "font-semibold text-ui-danger"
+                : "text-ui-muted"
             }
           >
-            {row.nextActionAtLabel ?? "—"}
+            {nextActionAtLabel ?? "—"}
           </span>
         </td>
         <td className="text-xs" data-actions>
@@ -182,6 +270,29 @@ export function CampaignQueueRow({
           </Link>
         </td>
       </tr>
+
+      {editing ? (
+        <tr data-result-tone={tone}>
+          <td className="ui-row-panel" colSpan={9} id={editorId}>
+            {/* En pantalla pequeña el editor va debajo del cliente con su
+                nombre visible: las columnas fijas no existen ahí. */}
+            <p className="mb-2 text-sm font-medium text-ui-text lg:hidden">
+              {row.holderName} · {row.documentNumber}
+            </p>
+            <CampaignAttemptEditor
+              caseId={row.id}
+              defaultPhone={row.phone}
+              holderName={row.holderName}
+              lastObservation={lastObservation}
+              lastResult={lastResult}
+              onCancel={draft.stopEditing}
+              onSaved={handleSaved}
+              onUnmanageable={setUnmanageableReason}
+              phoneOptions={phoneOptions}
+            />
+          </td>
+        </tr>
+      ) : null}
 
       {open ? (
         <tr data-result-tone={tone}>

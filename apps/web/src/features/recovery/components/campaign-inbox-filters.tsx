@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { parseRecoverySearchTerm } from "@repo/validation";
 
+import { useCampaignDraft } from "./campaign-draft-context";
+
 const debounceMs = 300;
 
 /**
@@ -37,6 +39,7 @@ export function CampaignInboxFilters({
   resultLabel: string;
 }) {
   const router = useRouter();
+  const { confirmLeave } = useCampaignDraft();
   const [term, setTerm] = useState(search);
   const [planTerm, setPlanTerm] = useState(plan);
   const [pending, startTransition] = useTransition();
@@ -68,6 +71,11 @@ export function CampaignInboxFilters({
     plan?: string;
   }) {
     clearTimer(timer);
+
+    // Filtrar recarga la lista y se llevaría una gestión a medias sin avisar
+    // (BR-090): se pregunta antes, y si el asesor no quiere perderla, el
+    // filtro no se aplica.
+    if (!confirmLeave()) return;
 
     const query = new URLSearchParams();
     const nextSearch = next.search ?? term;

@@ -49,7 +49,12 @@ export function RegisterAttemptForm({
   // navegación.
   useEffect(() => {
     if (!returnTo || state.type !== "success") return;
-    router.push(`${returnTo}?intento=${encodeURIComponent(state.message)}`);
+
+    // `returnTo` puede traer ya la búsqueda, los filtros, la página y el
+    // ancla del caso (BR-089): el aviso se suma a eso, no lo pisa.
+    const destino = new URL(returnTo, window.location.origin);
+    destino.searchParams.set("intento", state.message);
+    router.push(`${destino.pathname}${destino.search}${destino.hash}`);
   }, [returnTo, router, state, state.message, state.type]);
 
   return (

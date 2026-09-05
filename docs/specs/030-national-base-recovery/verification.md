@@ -691,6 +691,60 @@ simétrica con las otras dos, ya verificadas.
    - `?page=99` sobre una sola página devuelve los 38 casos, no una lista
      vacía.
 
+### Tipificar desde la bandeja — BR-090, 05/09/2026
+
+1. **Pruebas de componente**: 12 casos en `campanas-gestion-en-fila.test.tsx`
+   — elegir no guarda; la observación nueva empieza vacía aunque haya
+   anterior; agendar exige fecha y hora futuras; teléfono único
+   preseleccionado, varios elegibles, «otro número» exige escribirlo; un
+   reintento tras error lleva la misma clave y «Registrar otro intento» una
+   distinta; la fila recibe lo confirmado por el servidor; cancelar descarta
+   solo el borrador; cambiar de cliente con cambios ofrece tres salidas; sin
+   cambios el cambio es inmediato; los filtros preguntan antes de
+   llevarse un borrador. 78 en verde en `apps/web`; tipos y lint limpios.
+2. **Recorrido real** con sesión de asesor sobre 38 casos, servidor de
+   desarrollo:
+   - La cabecera sale en el orden pedido, la tabla lleva las tres columnas
+     fijas, cada fila tiene «Registrar gestión» y la insignia «Sin gestión»
+     donde no hay historial (37 de 38).
+   - Al abrir: fila marcada, foco en el resultado, teléfono preseleccionado
+     con el de contacto, clave de 36 caracteres en el formulario,
+     observación vacía y la última gestión como referencia.
+   - **Primer guardado (CELIA)**: confirmación «Gestión guardada… Llevas 1
+     de 3 intentos exigidos hoy… cambiará de posición al actualizar la
+     cola», con «Registrar otro intento» y «Cerrar». La fila mostró «No
+     contesta», la observación, 1 / 3 y la próxima acción del servidor.
+     **Pero la lista se reordenó y el desplazamiento saltó** (CELIA pasó a
+     la posición 37): `revalidatePath("/recovery/sales")` dentro de la
+     acción refrescaba también la página actual. Se quitó toda
+     revalidación de la acción en fila.
+   - **Segundo guardado (MIGUEL), ya sin revalidar**: la fila siguió en la
+     posición 1, el desplazamiento no se movió (361 → 361), la URL no cambió
+     y la fila mostró los datos confirmados.
+   - **Base de datos**: exactamente un intento por caso con su clave
+     (`d273f2b6…` y `b3e2c8d5…`), con resultado, observación, teléfono y
+     canal correctos; CELIA conserva sus 3 intentos históricos.
+   - **Un fallo real, útil**: el primer intento de guardado se hizo con el
+     servidor de desarrollo cargado con el cliente Prisma anterior a la
+     migración; la acción lanzó `PrismaClientValidationError`, la página
+     cayó en la pantalla de error y **la base no registró nada** (0 filas
+     con esa clave: la transacción se revirtió). De ahí salió endurecer la
+     acción en fila: un fallo inesperado vuelve como error en la fila con el
+     borrador intacto, no como pantalla caída. Tras reiniciar el servidor,
+     cero errores en sus registros durante los dos guardados.
+3. **Migración** `20260905120000_add_attempt_client_request_id` aplicada en
+   local con `prisma migrate deploy`; en producción la aplica el arranque
+   del API (Dockerfile). No hay cambio de tipo de dato ni relleno: la
+   columna es nula para lo existente.
+
+**Limitación declarada**: la vía de idempotencia se ejercitó en pruebas de
+componente (misma clave en el reintento) y en el servidor por lectura
+—`findUnique` por `(caseId, clientRequestId)` antes de crear—, pero no se
+provocó un reenvío real con la misma clave contra la base: el botón se
+bloquea durante el envío y no hubo forma limpia de simular el corte de red
+en el navegador. El cambio de cliente con tres salidas y el aviso al salir
+se verificaron en pruebas de componente, no en el navegador.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de
