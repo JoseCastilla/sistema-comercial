@@ -1,4 +1,10 @@
-import { act, createEvent, fireEvent, render } from "@testing-library/react";
+import {
+  act,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -299,5 +305,61 @@ describe("Triage · la columna de estado", () => {
     );
 
     expect(encabezados(view)).toContain("Estado");
+  });
+});
+
+/**
+ * COR-05: cambiar el filtro trae otra lista; lo marcado antes no puede
+ * seguir viajando oculto en el formulario.
+ */
+describe("Triage · la selección no sobrevive al cambio de lista", () => {
+  function conOtrosIds(row: RecoveryTriageRow, index: number) {
+    return { ...row, id: `otro-${index}` };
+  }
+
+  it("limpia lo marcado y lo dice cuando la lista cambia", () => {
+    const { view, rows } = renderTriage(4);
+
+    fireEvent.keyDown(rows[1]!, { key: " ", shiftKey: true });
+    expect(view.container.querySelectorAll('input[name="caseIds"]')).toHaveLength(1);
+
+    view.rerender(
+      <RecoveryTriageForm
+        canAssignTeams={false}
+        rows={buildRows(3).map(conOtrosIds)}
+        teams={[]}
+      />,
+    );
+
+    expect(view.container.querySelectorAll('input[name="caseIds"]')).toHaveLength(0);
+    expect(screen.getByRole("status")).toHaveTextContent(/se limpió/);
+  });
+
+  it("si no había nada marcado, no avisa", () => {
+    const { view } = renderTriage(4);
+
+    view.rerender(
+      <RecoveryTriageForm
+        canAssignTeams={false}
+        rows={buildRows(3).map(conOtrosIds)}
+        teams={[]}
+      />,
+    );
+
+    expect(screen.queryByText(/se limpió/)).toBeNull();
+  });
+
+  it("una acción exitosa no cuenta como cambio de lista", () => {
+    const { view, rows } = renderTriage(2);
+
+    fireEvent.keyDown(rows[0]!, { key: " ", shiftKey: true });
+
+    // Misma lista, misma clave: el aviso de COR-05 no debe aparecer.
+    view.rerender(
+      <RecoveryTriageForm canAssignTeams={false} rows={buildRows(2)} teams={[]} />,
+    );
+
+    expect(screen.queryByText(/se limpió/)).toBeNull();
+    expect(view.container.querySelectorAll('input[name="caseIds"]')).toHaveLength(1);
   });
 });

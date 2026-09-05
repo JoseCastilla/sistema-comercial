@@ -433,6 +433,17 @@ venía llamando—.
 - [x] El redireccionamiento tras registrar desde la ficha conserva el
       contexto de la cola.
 
+## Fase 1 del plan de usabilidad: confiabilidad (05/09/2026)
+
+- [x] COR-01: `allOf` en `@repo/validation` (4 pruebas); `caseScope` del
+      triage y `filterWhere`/`viewWhere` de distribución compuestos con AND.
+- [x] COR-02: tercera vista «Con pedido en curso» en el triage; «Listos»
+      solo `TRIAGE`; tarjetas enlazadas a su vista; texto por vista.
+- [x] COR-04: `teamScope` que solo estrecha en distribución y tablero (el
+      triage ya lo tenía desde BR-089).
+- [x] COR-05: limpieza de selección al cambiar la lista, con aviso, en los
+      formularios de triage y distribución (3 pruebas).
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

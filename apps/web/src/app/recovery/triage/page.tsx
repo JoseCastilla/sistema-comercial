@@ -9,6 +9,8 @@ import {
 } from "@/features/recovery/components/recovery-triage-form";
 import { releaseWaitingBaseCases } from "@/features/recovery/server/release-waiting-base-cases";
 import { requireCommercialAccess } from "@/server/auth/access";
+
+import { allOf } from "@repo/validation";
 import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
@@ -62,7 +64,18 @@ export default async function RecoveryTriagePage({
   await releaseWaitingBaseCases(membership.organization.id);
 
   const parameters = await searchParams;
-  const view = parameters.view === "pendientes" ? "pendientes" : "listos";
+  /**
+   * COR-02 (05/09/2026): tres vistas y cada contador abre exactamente el
+   * conjunto que nombra. «Listos» eran solo los `TRIAGE` verificados en el
+   * contador, pero el listado colaba también los `WAITING` verificados: el
+   * supervisor veía casos en espera bajo un botón que decía «listos».
+   */
+  const view =
+    parameters.view === "pendientes"
+      ? "pendientes"
+      : parameters.view === "espera"
+        ? "espera"
+        : "listos";
   const teamFilter = parameters.team ?? "";
   const departmentFilter = parameters.department ?? "";
   const planFilter = (parameters.plan ?? "").trim().slice(0, 100);
@@ -121,15 +134,28 @@ export default async function RecoveryTriagePage({
       : ""
     : teamFilter;
 
-  const caseScope: Prisma.RecoveryCaseWhereInput = {
-    ...scopeWhere,
-    status: { in: ["TRIAGE", "WAITING"] },
-    ...(view === "listos" ? readyWhere : pendingWhere),
-    ...(teamScope ? { assignedTeamId: teamScope } : {}),
-    ...(departmentFilter
+  const viewWhere: Prisma.RecoveryCaseWhereInput =
+    view === "listos"
+      ? { status: "TRIAGE", ...readyWhere }
+      : view === "espera"
+        ? { status: "WAITING", ...readyWhere }
+        : { status: { in: ["TRIAGE", "WAITING"] }, ...pendingWhere };
+
+  /**
+   * COR-01 (05/09/2026): las condiciones se juntan con AND, no por spread.
+   * La vista y el filtro de plan hablan los dos de `services`; por spread
+   * el plan ganaba y borraba la verificación, así que elegir un plan en
+   * «Listos» traía casos sin consultar. El contador usaba el mismo objeto:
+   * coincidían entre sí y mentían los dos.
+   */
+  const caseScope: Prisma.RecoveryCaseWhereInput = allOf<Prisma.RecoveryCaseWhereInput>(
+    scopeWhere,
+    viewWhere,
+    teamScope ? { assignedTeamId: teamScope } : null,
+    departmentFilter
       ? { department: { equals: departmentFilter, mode: "insensitive" } }
-      : {}),
-    ...(planFilter
+      : null,
+    planFilter
       ? {
           services: {
             some: {
@@ -138,9 +164,9 @@ export default async function RecoveryTriagePage({
             },
           },
         }
-      : {}),
-    ...(documentFilter ? { documentNumber: { contains: documentFilter } } : {}),
-  };
+      : null,
+    documentFilter ? { documentNumber: { contains: documentFilter } } : null,
+  );
 
   const [
     readyTotal,
@@ -245,7 +271,7 @@ export default async function RecoveryTriagePage({
     return `/recovery/triage${suffix ? `?${suffix}` : ""}`;
   }
 
-  function viewHref(target: "listos" | "pendientes"): string {
+  function viewHref(target: "listos" | "pendientes" | "espera"): string {
     const query = new URLSearchParams(baseQuery);
     query.delete("view");
     if (target !== "listos") query.set("view", target);
@@ -270,19 +296,22 @@ export default async function RecoveryTriagePage({
 
         <MetricGroup>
           <Metric
+            href={viewHref("listos")}
             label="Listos para repartir"
             value={readyTotal}
             hint="Líneas ya verificadas: se pueden entregar hoy"
           />
           <Metric
+            href={viewHref("pendientes")}
             label="Falta consultar"
             value={pendingTotal}
             hint="Aún no pasan por el reporte de portabilidad"
           />
           <Metric
+            href={viewHref("espera")}
             label="Con pedido en curso"
             value={waitingTotal}
-            hint="Su pedido avanza solo; salen cuando se concreta"
+            hint="Verificados que esperan a que su pedido se concrete o se caiga"
           />
           <Metric
             label="Disponible"
@@ -305,6 +334,12 @@ export default async function RecoveryTriagePage({
             Falta consultar ({formatCount(pendingTotal)})
           </Link>
           <Link
+            className={`ui-button ${view === "espera" ? "ui-button--primary" : "ui-button--secondary"}`}
+            href={viewHref("espera")}
+          >
+            Con pedido en curso ({formatCount(waitingTotal)})
+          </Link>
+          <Link
             className="ui-button ui-button--secondary"
             href="/recovery/board"
           >
@@ -313,7 +348,9 @@ export default async function RecoveryTriagePage({
           <span className="pb-2 text-xs text-ui-muted">
             {view === "pendientes"
               ? "Aún sin verificar: si los repartes, el asesor llamará sin saber si el cliente ya es Movistar."
-              : "Ya verificados: el cliente no es Movistar y no tiene portación en curso."}
+              : view === "espera"
+                ? "Verificados con pedido en curso: vuelven solos a revisión al día siguiente, o cuando su fecha de portación pasa."
+                : "Ya verificados, sin pedido en curso: se pueden repartir hoy."}
           </span>
         </div>
 

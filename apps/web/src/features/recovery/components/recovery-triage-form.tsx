@@ -76,6 +76,32 @@ export function RecoveryTriageForm({
     }
   }, [state]);
 
+  /**
+   * COR-05 (05/09/2026): al cambiar el filtro la lista trae otros casos, pero
+   * el estado de este componente sobrevive, y los IDs marcados seguirían
+   * viajando ocultos en el formulario aunque ya no estén en pantalla: un
+   * clic en «aplicar» actuaría sobre clientes que nadie ve. Se limpia y se
+   * dice, porque una selección que desaparece sin explicación parece un
+   * fallo.
+   */
+  const rowsKey = rows.map((row) => row.id).join("|");
+  const previousRowsKey = useRef(rowsKey);
+  const [selectionCleared, setSelectionCleared] = useState(false);
+
+  useEffect(() => {
+    if (previousRowsKey.current === rowsKey) return;
+
+    previousRowsKey.current = rowsKey;
+
+    if (selected.size > 0) {
+      lastIndexRef.current = null;
+      setSelected(new Set());
+      setSelectionCleared(true);
+    }
+  }, [rowsKey, selected]);
+
+
+
   const allSelected = rows.length > 0 && selected.size === rows.length;
 
   /**
@@ -189,6 +215,12 @@ export function RecoveryTriageForm({
 
   return (
     <form action={formAction} className="space-y-4">
+      {selectionCleared && selected.size === 0 ? (
+        <p className="text-xs text-ui-warning" role="status">
+          La selección se limpió porque cambió la lista: marca de nuevo lo que
+          quieras aplicar.
+        </p>
+      ) : null}
       {[...selected].map((id) => (
         <input key={id} name="caseIds" type="hidden" value={id} />
       ))}
@@ -235,6 +267,8 @@ export function RecoveryTriageForm({
           clic extiende el rango.
         </span>
       </div>
+
+
 
       <div className="ui-form-row">
         <Button
