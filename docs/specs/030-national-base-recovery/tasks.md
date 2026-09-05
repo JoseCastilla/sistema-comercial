@@ -493,9 +493,9 @@ venía llamando—.
 - [x] `order-link.ts`: enlace a la venta con su día de registro
       (`period=RANGE`), usado por la bandeja y la ficha del caso.
 - [x] Prueba de la bandeja (`bandeja-recupero.test.tsx`, 6 casos).
-- [ ] Verificación de solo lectura en producción tras el despliegue: los 63
-      «vencidos» de la definición anterior deben repartirse entre los tres
-      indicadores.
+- [x] Verificación de solo lectura en producción tras el despliegue: los 63
+      «vencidos» de la definición anterior quedaron en 60 primer contacto +
+      3 seguimiento + 0 agenda (67 abiertos).
 
 ## Superficie y honestidad de datos (31/08/2026)
 
