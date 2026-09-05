@@ -58,7 +58,11 @@ export async function createTeamAction(
   }
 
   if (Object.keys(fieldErrors).length > 0) {
-    return { type: "error", message: "Revisa los datos del equipo.", fieldErrors };
+    return {
+      type: "error",
+      message: "Revisa los datos del equipo.",
+      fieldErrors,
+    };
   }
 
   const duplicate = await database.commercialTeam.findFirst({
@@ -97,7 +101,12 @@ export async function createTeamAction(
           teamId: team.id,
           action: "TEAM_CREATED",
           actorUserId: session.user.id,
-          newValues: { name, normalizedName, code: code || null, status: "ACTIVE" },
+          newValues: {
+            name,
+            normalizedName,
+            code: code || null,
+            status: "ACTIVE",
+          },
         },
       });
     });
@@ -110,7 +119,8 @@ export async function createTeamAction(
 
     return {
       type: "error",
-      message: "No se pudo crear el equipo. Verifica que el nombre no esté repetido.",
+      message:
+        "No se pudo crear el equipo. Verifica que el nombre no esté repetido.",
     };
   }
 
@@ -177,7 +187,10 @@ export async function assignTeamMemberAction(
   const assignmentMode = readText(formData.get("memberRole"));
 
   if (!teamId || !userId || !isTeamAssignmentMode(assignmentMode)) {
-    return { type: "error", message: "Selecciona un equipo y una persona válidos." };
+    return {
+      type: "error",
+      message: "Selecciona un equipo y una persona válidos.",
+    };
   }
 
   const memberRole = assignmentMode === "AGENT" ? "AGENT" : "SUPERVISOR";
@@ -196,12 +209,10 @@ export async function assignTeamMemberAction(
       where: {
         organizationId: membership.organization.id,
         userId,
-        role:
-          assignmentMode === "AGENT"
-            ? "AGENT"
-            : assignmentMode === "SELLING_SUPERVISOR"
-              ? { in: ["AGENT", "SUPERVISOR"] }
-              : "SUPERVISOR",
+        // SPEC-042 BR-012: asignar integrantes no promueve. «Supervisor que
+        // también vende» solo aplica a quien ya es supervisor; a un asesor se
+        // lo promueve desde Personas, con nombre propio.
+        role: assignmentMode === "AGENT" ? "AGENT" : "SUPERVISOR",
         user: { status: "ACTIVE" },
       },
       select: {
@@ -216,7 +227,8 @@ export async function assignTeamMemberAction(
   if (!team || !targetMembership) {
     return {
       type: "error",
-      message: "El equipo o la persona no pertenece a esta organización o no está activo.",
+      message:
+        "El equipo o la persona no pertenece a esta organización o no está activo.",
     };
   }
 
@@ -233,22 +245,27 @@ export async function assignTeamMemberAction(
       salesEnabled,
     })
   ) {
-    return { type: "error", message: "La asignación solicitada no está permitida." };
+    return {
+      type: "error",
+      message: "La asignación solicitada no está permitida.",
+    };
   }
 
   const assignedAt = new Date();
   const isPrimarySeller = salesEnabled;
 
   await database.$transaction(async (transaction) => {
-    const previousMembership = await transaction.commercialTeamMember.findFirst({
-      where: {
-        userId,
-        isActive: true,
-        team: { organizationId: membership.organization.id },
-        ...(salesEnabled ? { salesEnabled: true } : { memberRole }),
+    const previousMembership = await transaction.commercialTeamMember.findFirst(
+      {
+        where: {
+          userId,
+          isActive: true,
+          team: { organizationId: membership.organization.id },
+          ...(salesEnabled ? { salesEnabled: true } : { memberRole }),
+        },
+        select: { teamId: true, isPrimary: true, salesEnabled: true },
       },
-      select: { teamId: true, isPrimary: true, salesEnabled: true },
-    });
+    );
 
     if (salesEnabled) {
       await transaction.commercialTeamMember.updateMany({
@@ -260,18 +277,6 @@ export async function assignTeamMemberAction(
           NOT: { teamId },
         },
         data: { isActive: false, isPrimary: false, validUntil: assignedAt },
-      });
-    }
-
-    if (assignmentMode === "SELLING_SUPERVISOR") {
-      await transaction.organizationMember.update({
-        where: {
-          organizationId_userId: {
-            organizationId: membership.organization.id,
-            userId,
-          },
-        },
-        data: { role: "SUPERVISOR" },
       });
     }
 
@@ -319,7 +324,6 @@ export async function assignTeamMemberAction(
           salesEnabled,
           isPrimary: isPrimarySeller,
           isActive: true,
-          promotedToSupervisor: assignmentMode === "SELLING_SUPERVISOR",
         },
       },
     });

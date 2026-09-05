@@ -2,30 +2,34 @@
 
 ## Decisión (bloquea la construcción)
 
-- [ ] José responde las cuatro preguntas de §5 de la spec: ventas abiertas,
-      cartera de recupero, correo en el reingreso, degradación.
+- [x] Las cuatro preguntas de §5 se resolvieron con la opción recomendada
+      (José pidió avanzar); quedan escritas como supuestos revisables.
 
 ## Datos y reglas
 
-- [ ] Migración `add_person_lifecycle_events` + modelo Prisma.
-- [ ] `person-lifecycle.ts` en validation: permisos y plan de liberación,
-      con pruebas.
+- [x] Migración `add_person_lifecycle_events` + modelo Prisma.
+- [x] `person-lifecycle.ts` en validation: permisos y plan de liberación,
+      con pruebas (5).
 
 ## Servidor
 
-- [ ] Vista previa de consecuencias por persona.
-- [ ] Acción de baja (estado, membresías, cartera, sesiones, evento).
-- [ ] Acción de reingreso (estado, rol, equipo, contraseña, evento).
-- [ ] Acción de promoción (rol, supervisión, venta, evento).
-- [ ] `assignTeamMemberAction` deja de promover en silencio.
+- [x] Vista previa de consecuencias por persona (`getPersonLifecycleOverview`).
+- [x] Acción de baja (estado, membresías, cartera, sesiones, evento).
+- [x] Acción de reingreso (estado, rol, equipo, correo opcional, contraseña,
+      evento).
+- [x] Acción de promoción (rol, supervisión, venta, evento).
+- [x] `assignTeamMemberAction` deja de promover en silencio; el formulario de
+      Equipos ofrece solo supervisores para «también vende».
 
 ## Interfaz
 
-- [ ] Acciones por fila en Personas con panel de confirmación y números.
-- [ ] Historial de ciclo de vida en la ficha de la persona.
+- [x] Acciones por fila en Personas con panel de confirmación y números.
+- [x] Historial de ciclo de vida en la fila de la persona.
 
 ## Verificación
 
-- [ ] Pruebas puras y web.
-- [ ] Recorrido local con sesión de administrador.
+- [x] Pruebas puras (5) y web (6).
+- [x] Recorrido local con sesión de administrador: baja y promoción reales;
+      reingreso hasta la validación del formulario (no se escribe una
+      contraseña desde aquí).
 - [ ] Lectura de solo lectura en producción tras el despliegue.

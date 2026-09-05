@@ -39,15 +39,9 @@ export function AssignTeamMemberForm({
   >("AGENT");
   const [userId, setUserId] = useState("");
   const candidates = useMemo(() => {
-    const source =
-      memberRole === "AGENT"
-        ? agents
-        : memberRole === "SUPERVISOR"
-          ? supervisors
-          : [...agents, ...supervisors].filter(
-              (candidate, index, all) =>
-                all.findIndex((item) => item.id === candidate.id) === index,
-            );
+    // SPEC-042 BR-012: aquí no se promueve; un asesor pasa a supervisor
+    // desde Personas. Las dos funciones de supervisión ofrecen supervisores.
+    const source = memberRole === "AGENT" ? agents : supervisors;
     return source.filter(
       (candidate) =>
         memberRole !== "AGENT" || !candidate.activeTeamIds.includes(teamId),

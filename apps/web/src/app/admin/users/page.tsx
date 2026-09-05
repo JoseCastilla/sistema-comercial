@@ -8,6 +8,8 @@ import { SectionPanel } from "@repo/ui/section-panel";
 import { StatusBadge } from "@repo/ui/status-badge";
 
 import { CreateUserForm } from "@/features/users/components/create-user-form";
+import { PersonLifecycleActions } from "@/features/users/components/person-lifecycle-actions";
+import { getPersonLifecycleOverview } from "@/features/users/server/get-person-lifecycle-overview";
 import { ResetUserPasswordForm } from "@/features/users/components/reset-user-password-form";
 
 import { requireAdminAccess } from "@/server/auth/access";
@@ -45,7 +47,7 @@ export default async function AdminUsersPage({
   const statusFilter = firstValue(parameters.status);
   const teamFilter = firstValue(parameters.team);
 
-  const [members, teams] = await Promise.all([
+  const [members, teams, lifecycle] = await Promise.all([
     database.organizationMember.findMany({
       where: { organizationId },
       orderBy: { user: { name: "asc" } },
@@ -82,7 +84,29 @@ export default async function AdminUsersPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    getPersonLifecycleOverview(organizationId),
   ]);
+
+  // SPEC-042: quién puede recibir la cartera de quien se va (asesores activos
+  // con venta del mismo equipo) y qué equipos quedarían sin supervisor.
+  const primaryTeamOf = (member: (typeof members)[number]) =>
+    member.user.commercialTeamMemberships.find(
+      (teamMembership) =>
+        teamMembership.salesEnabled &&
+        teamMembership.isPrimary &&
+        teamMembership.team.status === "ACTIVE",
+    )?.teamId ?? null;
+  const activeSupervisorsByTeam = new Map<string, number>();
+  for (const member of members) {
+    if (member.user.status !== "ACTIVE") continue;
+    for (const teamMembership of member.user.commercialTeamMemberships) {
+      if (teamMembership.memberRole !== "SUPERVISOR") continue;
+      activeSupervisorsByTeam.set(
+        teamMembership.teamId,
+        (activeSupervisorsByTeam.get(teamMembership.teamId) ?? 0) + 1,
+      );
+    }
+  }
 
   const normalizedQuery = query.toLocaleLowerCase("es");
   const filteredMembers = members.filter((member) => {
@@ -303,11 +327,54 @@ export default async function AdminUsersPage({
                         {statusLabels[member.user.status] ?? member.user.status}
                       </StatusBadge>
                     </div>
-                    <ResetUserPasswordForm
-                      isCurrentUser={member.user.id === session.user.id}
-                      userEmail={member.user.email}
-                      userId={member.user.id}
-                    />
+                    <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                      <ResetUserPasswordForm
+                        isCurrentUser={member.user.id === session.user.id}
+                        userEmail={member.user.email}
+                        userId={member.user.id}
+                      />
+                      <PersonLifecycleActions
+                        destinationCandidates={members
+                          .filter(
+                            (candidate) =>
+                              candidate.user.id !== member.user.id &&
+                              candidate.user.status === "ACTIVE" &&
+                              primaryTeam !== undefined &&
+                              primaryTeamOf(candidate) === primaryTeam.teamId,
+                          )
+                          .map((candidate) => ({
+                            id: candidate.user.id,
+                            name: candidate.user.name,
+                          }))}
+                        history={lifecycle.history.get(member.user.id) ?? []}
+                        isCurrentUser={member.user.id === session.user.id}
+                        overview={
+                          lifecycle.counts.get(member.user.id) ?? {
+                            openOrders: 0,
+                            internalCases: 0,
+                            campaignCases: 0,
+                          }
+                        }
+                        person={{
+                          id: member.user.id,
+                          name: member.user.name,
+                          email: member.user.email,
+                          role: member.role,
+                          status: member.user.status,
+                          primaryTeamId: primaryTeam?.teamId ?? null,
+                          primaryTeamName: primaryTeam?.team.name ?? null,
+                          teamsLeftWithoutSupervisor: supervisedTeams
+                            .filter(
+                              (teamMembership) =>
+                                (activeSupervisorsByTeam.get(
+                                  teamMembership.teamId,
+                                ) ?? 0) <= 1,
+                            )
+                            .map((teamMembership) => teamMembership.team.name),
+                        }}
+                        teams={teams}
+                      />
+                    </div>
                   </article>
                 );
               })}
