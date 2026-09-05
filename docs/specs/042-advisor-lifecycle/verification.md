@@ -66,3 +66,14 @@
 del formulario; la lectura de producción tras el despliegue confirma que la
 migración corrió y que Personas carga con las acciones, sin ejecutar ninguna.
 
+## 3. Producción tras el despliegue, solo lectura (05/09/2026)
+
+Commit 93fda31, minutos después, sesión de administrador, sin ejecutar
+ninguna acción: la API arrancó con `prisma migrate deploy` y Personas carga
+sin error —la página consulta `person_lifecycle_events`, así que la tabla
+existe—. 25 personas: 22 comerciales activas con «Dar de baja», 19 asesores
+con «Promover a supervisor», ningún «Reingresar» ni «Historial» (todavía no
+hay bajas ni promociones reales), y los dos administradores y el back office
+sin acciones de ciclo de vida. Equipos sigue ofreciendo «Supervisor que
+también vende» solo con supervisores como candidatos.
+

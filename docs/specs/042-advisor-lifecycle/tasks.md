@@ -32,4 +32,6 @@
 - [x] Recorrido local con sesión de administrador: baja y promoción reales;
       reingreso hasta la validación del formulario (no se escribe una
       contraseña desde aquí).
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción tras el despliegue: la migración
+      corrió y Personas carga con las acciones (25 personas; 22 con baja, 19
+      con promoción; administradores y back office sin acciones).
