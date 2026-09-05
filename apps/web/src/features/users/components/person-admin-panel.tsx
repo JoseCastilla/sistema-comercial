@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { StatusBadge } from "@repo/ui/status-badge";
 
+import { AssignTeamFromPersonForm } from "@/features/teams/components/assign-team-from-person-form";
+
 import {
   personRoleLabels,
   personStatusLabels,
@@ -23,6 +25,8 @@ export interface PersonAdminPanelPerson extends PersonLifecyclePerson {
   sinceLabel: string;
   /** Equipos que supervisa hoy, por nombre. */
   supervisedTeamNames: string[];
+  /** Activo y sin equipo operativo (asesor) o sin equipo a cargo (supervisor). */
+  needsTeam: boolean;
 }
 
 /**
@@ -120,6 +124,15 @@ export function PersonAdminPanel({
             </div>
           ) : null}
         </dl>
+        {/* SPEC-043 UX-04: la persona incompleta se completa desde aquí, con
+            la misma acción y las mismas reglas que en Equipos. */}
+        {person.needsTeam && teams.length > 0 ? (
+          <AssignTeamFromPersonForm
+            mode={person.role === "SUPERVISOR" ? "SUPERVISOR" : "AGENT"}
+            teams={teams}
+            userId={person.id}
+          />
+        ) : null}
       </section>
 
       {requiresTeam ? (

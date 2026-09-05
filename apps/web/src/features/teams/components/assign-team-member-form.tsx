@@ -24,11 +24,14 @@ export function AssignTeamMemberForm({
   supervisors,
   teamId,
   teamName,
+  defaultMode = "AGENT",
 }: {
   agents: Candidate[];
   supervisors: Candidate[];
   teamId: string;
   teamName: string;
+  /** SPEC-043 UX-04: un equipo sin supervisor abre el formulario pidiendo uno. */
+  defaultMode?: "AGENT" | "SUPERVISOR" | "SELLING_SUPERVISOR";
 }) {
   const [state, action, pending] = useActionState(
     assignTeamMemberAction,
@@ -36,7 +39,7 @@ export function AssignTeamMemberForm({
   );
   const [memberRole, setMemberRole] = useState<
     "AGENT" | "SUPERVISOR" | "SELLING_SUPERVISOR"
-  >("AGENT");
+  >(defaultMode);
   const [userId, setUserId] = useState("");
   const candidates = useMemo(() => {
     // SPEC-042 BR-012: aquí no se promueve; un asesor pasa a supervisor
