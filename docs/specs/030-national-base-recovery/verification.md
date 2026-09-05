@@ -958,9 +958,19 @@ la base de desarrollo vacía.
    despliegue esos 63 deben repartirse entre los tres indicadores, y la suma
    de los tres no puede superar los abiertos.
 
-**Limitación declarada**: la base de desarrollo tiene un solo caso, así que
-la paginación (más de 100) y el reparto real entre los tres vencimientos solo
-se verán en producción; el panel del navegador siguió en modo lectura.
+4. **Producción tras el despliegue, solo lectura** (commit 16cf337, minutos
+   después): 67 abiertos; **60 primer contacto vencido + 3 seguimiento
+   vencido + 0 agenda vencida** — los 63 «vencidos» de antes se separaron y
+   la suma no supera los abiertos. `?vence=primer_contacto` lista exactamente
+   60 filas y `?vence=seguimiento` exactamente 3 (tres casos Media «En
+   gestión», con intentos previos, que antes se rotulaban como si nadie los
+   hubiera llamado). La cola quedó ordenada por fecha real dentro de Alta
+   (31/8 11:23 → 11:37 → 11:39 → 1/9 11:44 → 12:00 → 12:02; antes 11:44,
+   12:02, 12:05, 12:00). Cada enlace a la venta lleva su día de registro
+   (p. ej. `from=2026-08-30&to=2026-08-30` para una venta caída el 31/08).
+
+**Limitación declarada**: la paginación (más de 100 casos) no se pudo ver
+con 67 abiertos; el panel del navegador siguió en modo lectura, sin clics.
 
 ### Pendiente de verificación
 
