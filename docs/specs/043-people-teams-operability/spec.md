@@ -1,6 +1,6 @@
 # SPEC-043 — Personas y Equipos operativos
 
-Estado: **fase 1 en construcción** (05/09/2026). Une dos planes revisados
+Estado: **fases 1 a 3 construidas; PE-07 pendiente de confirmación** (05/09/2026). Une dos planes revisados
 con José el mismo día: «Plan actualizado de Personas y Equipos» (PE-01 a
 PE-07) y «Plan de mejora UX de Personas y Equipos» (UX-01 a UX-08). Se apoya
 en SPEC-001 (equipos), SPEC-017 (directorios), SPEC-019 (supervisor que
@@ -105,7 +105,20 @@ tres tipos de problema:
   BR-009); reactivar un equipo lo devuelve vacío, sin restaurar membresías.
 - **BR-014** «Mi equipo» del supervisor: solo lectura de sus integrantes y
   «Nuevo asesor» limitado a sus equipos activos con rol `AGENT` fijo
-  (SPEC-001 BR-011 a BR-013), si José lo confirma al llegar a la fase.
+  (SPEC-001 BR-011 a BR-013). **Queda fuera de esta entrega**: abre una
+  superficie nueva para otro rol y un alta de cuentas por supervisores;
+  merece su propia decisión y su propio incremento.
+- **BR-015 · Retirar una supervisión toca solo esa relación.** Si la persona
+  vende en el equipo, su membresía sigue activa como asesora (sus ventas
+  nuevas se le siguen asignando); si no, se cierra con fecha. El rol de la
+  organización no cambia. Si era la única supervisión, se avisa que el equipo
+  queda sin supervisor; no se bloquea (SPEC-017 BR-009).
+- **BR-016 · Reactivar devuelve el equipo vacío.** Las membresías cerradas al
+  deshabilitarlo no se restauran; se rearma a mano. No se reactiva si otro
+  equipo activo se llama igual.
+- **BR-017 · Renombrar conserva la identidad.** Cambia nombre y código; el id,
+  las ventas, los casos y el historial no se tocan; el nombre sigue único
+  entre activos.
 
 ## 4. Criterios de aceptación de la fase 1
 

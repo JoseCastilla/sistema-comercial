@@ -99,3 +99,43 @@ MAGISTERIAL 01 (8 asesores, 53 ventas abiertas, 933 casos de recupero)**—;
 nadie los ve ni gestiona desde supervisión. El indicador ahora lo enseña y
 abre la lista con el formulario pidiendo un supervisor.
 
+## Fase 3 · Navegación y continuidad (05/09/2026)
+
+1. **Pruebas** — 141 en verde en `apps/web`, 3 nuevas sobre la barra
+   compartida (`directorio-filtros.test.tsx`): espera 300 ms y dos
+   caracteres, conserva el panel abierto y los demás filtros en la URL; Enter
+   aplica al instante y los selectores al cambiar; las fichas se quitan una a
+   una y «Limpiar filtros» deja solo el panel. El panel comprueba además que
+   cada equipo supervisado enlaza a su tarjeta. Tipos y lint limpios; la
+   migración `add_team_audit_actions` se aplicó en local.
+2. **Recorrido local con sesión de administrador** (dev server reiniciado
+   para tomar el cliente Prisma):
+   - `/admin/teams?q=huan&supervision=con`: barra con Estado, Supervisión y
+     Supervisor, fichas «Busca «huan»» y «Supervisión: Con supervisor», «1
+     equipo»; la tarjeta de Huancayo enlaza a cada integrante con
+     `/admin/users?persona=<id>`, ofrece «Agregar o trasladar integrante»,
+     «Renombrar» (nombre y código), «Retirar supervisión» junto a Erika
+     Lavado y «Deshabilitar»; el historial muestra las asignaciones de
+     agosto («Integrante asignado · Steven Lizarraga · asesor · vende aquí ·
+     22/08/2026, 10:36 · Jose Castilla»). El indicador «Sin supervisor»
+     enlaza a `?supervision=sin`.
+   - `/admin/teams?equipo=<Huancayo>#equipo-<id>`: la tarjeta llega abierta
+     y con el foco (`document.activeElement` es la tarjeta); ninguna otra
+     abierta.
+   - `/admin/users?venta=si&q=an`: la barra en vivo reemplaza al formulario
+     GET (0 `form.ui-admin-toolbar`), con Rol, Equipo, Estado, Capacidad de
+     venta y Situación; fichas «Busca «an»» y «Capacidad de venta: Vende»;
+     cada fila enlaza su equipo a `/admin/teams?equipo=<id>#equipo-<id>` y
+     «Administrar» conserva `q` y `venta`.
+   - Panel de Angieska: el guardián de borradores envuelve el contenido
+     (`data-dirty` ausente sin cambios), «Equipo comercial» y «Supervisa»
+     enlazan a la tarjeta del equipo, «Cerrar» vuelve a `?q=an#persona-<id>`.
+   - Ninguna escritura: renombrar, retirar supervisión, reactivar y
+     deshabilitar se dejaron en su diálogo sin confirmar; las acciones están
+     cubiertas por lectura de código y por las reglas de la spec.
+
+**Limitación declarada**: no hay equipos deshabilitados en la base local, así
+que «Reactivar» no se vio renderizado; su acción y su diálogo existen y el
+código está revisado. El aviso de borrador (`beforeunload` / confirmación al
+cerrar) se comprueba a mano escribiendo en un formulario del panel y cerrando.
+

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Form from "next/form";
 import { formatCount } from "@repo/ui/format";
 import { EmptyState } from "@repo/ui/empty-state";
 import { Metric, MetricGroup } from "@repo/ui/metric";
@@ -7,6 +6,7 @@ import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
 import { StatusBadge } from "@repo/ui/status-badge";
 
+import { DirectoryFilters } from "@/features/admin/components/directory-filters";
 import { CreateUserForm } from "@/features/users/components/create-user-form";
 import { PersonAdminPanel } from "@/features/users/components/person-admin-panel";
 import { ReturnFocus } from "@/features/users/components/return-focus";
@@ -51,6 +51,10 @@ export default async function AdminUsersPage({
   // SPEC-043 UX-04: «Asesores sin equipo» abre exactamente esta lista.
   const situationFilter =
     firstValue(parameters.situacion) === "sin-equipo" ? "sin-equipo" : "";
+  // UX-06: capacidad de venta, distinta del rol (SPEC-019).
+  const salesFilter = ["si", "no"].includes(firstValue(parameters.venta))
+    ? firstValue(parameters.venta)
+    : "";
 
   const [members, teams, lifecycle] = await Promise.all([
     database.organizationMember.findMany({
@@ -138,13 +142,17 @@ export default async function AdminUsersPage({
       (member.role === "AGENT" &&
         member.user.status === "ACTIVE" &&
         primaryTeamOf(member) === null);
+    const sells = primaryTeamOf(member) !== null;
+    const matchesSales =
+      !salesFilter || (salesFilter === "si" ? sells : !sells);
 
     return (
       matchesQuery &&
       matchesRole &&
       matchesStatus &&
       matchesTeam &&
-      matchesSituation
+      matchesSituation &&
+      matchesSales
     );
   });
 
@@ -162,7 +170,12 @@ export default async function AdminUsersPage({
       member.user.status === "ACTIVE" && primaryTeamOf(member) === null,
   ).length;
   const hasFilters = Boolean(
-    query || roleFilter || statusFilter || teamFilter || situationFilter,
+    query ||
+    roleFilter ||
+    statusFilter ||
+    teamFilter ||
+    situationFilter ||
+    salesFilter,
   );
 
   const dateFormatter = new Intl.DateTimeFormat("es-PE", {
@@ -185,6 +198,7 @@ export default async function AdminUsersPage({
     if (teamFilter) next.set("team", teamFilter);
     if (statusFilter) next.set("status", statusFilter);
     if (situationFilter) next.set("situacion", situationFilter);
+    if (salesFilter) next.set("venta", salesFilter);
     if (overrides.persona) next.set("persona", overrides.persona);
     if (overrides.nueva) next.set("nueva", "1");
     const search = next.toString();
@@ -242,68 +256,76 @@ export default async function AdminUsersPage({
           description={`${formatCount(filteredMembers.length)} ${filteredMembers.length === 1 ? "resultado" : "resultados"}`}
           title="Directorio de la organización"
         >
-          <Form action="/admin/users" className="ui-admin-toolbar">
-            {openMember ? (
-              <input name="persona" type="hidden" value={openMember.user.id} />
-            ) : null}
-            <label className="ui-admin-toolbar__search">
-              <span className="sr-only">Buscar persona</span>
-              <input
-                defaultValue={query}
-                maxLength={100}
-                name="q"
-                placeholder="Buscar por nombre o correo"
-                type="search"
-              />
-            </label>
-            <label>
-              <span className="sr-only">Filtrar por rol</span>
-              <select defaultValue={roleFilter} name="role">
-                <option value="">Todos los roles</option>
-                <option value="AGENT">Asesores</option>
-                <option value="SUPERVISOR">Supervisores</option>
-                <option value="BACKOFFICE">Back office</option>
-                <option value="ADMIN">Administradores</option>
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Filtrar por equipo</span>
-              <select defaultValue={teamFilter} name="team">
-                <option value="">Todos los equipos</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Filtrar por estado</span>
-              <select defaultValue={statusFilter} name="status">
-                <option value="">Todos los estados</option>
-                <option value="ACTIVE">Activos</option>
-                <option value="INVITED">Invitados</option>
-                <option value="DISABLED">Deshabilitados</option>
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Filtrar por situación</span>
-              <select defaultValue={situationFilter} name="situacion">
-                <option value="">Cualquier situación</option>
-                <option value="sin-equipo">
-                  Asesores sin equipo operativo
-                </option>
-              </select>
-            </label>
-            <button className="ui-admin-toolbar__submit" type="submit">
-              Filtrar
-            </button>
-            {hasFilters ? (
-              <Link className="ui-admin-toolbar__clear" href="/admin/users">
-                Limpiar
-              </Link>
-            ) : null}
-          </Form>
+          <DirectoryFilters
+            basePath="/admin/users"
+            preserve={{
+              persona: openMember?.user.id ?? "",
+              nueva: creating ? "1" : "",
+            }}
+            resultLabel={`${formatCount(filteredMembers.length)} ${filteredMembers.length === 1 ? "resultado" : "resultados"}`}
+            search={{
+              value: query,
+              label: "Buscar persona",
+              placeholder: "Nombre o correo",
+            }}
+            selects={[
+              {
+                key: "role",
+                label: "Rol",
+                value: roleFilter,
+                emptyLabel: "Todos los roles",
+                options: [
+                  { value: "AGENT", label: "Asesores" },
+                  { value: "SUPERVISOR", label: "Supervisores" },
+                  { value: "BACKOFFICE", label: "Back office" },
+                  { value: "ADMIN", label: "Administradores" },
+                ],
+              },
+              {
+                key: "team",
+                label: "Equipo",
+                value: teamFilter,
+                emptyLabel: "Todos los equipos",
+                options: teams.map((team) => ({
+                  value: team.id,
+                  label: team.name,
+                })),
+              },
+              {
+                key: "status",
+                label: "Estado",
+                value: statusFilter,
+                emptyLabel: "Todos los estados",
+                options: [
+                  { value: "ACTIVE", label: "Activos" },
+                  { value: "INVITED", label: "Invitados" },
+                  { value: "DISABLED", label: "Deshabilitados" },
+                ],
+              },
+              {
+                key: "venta",
+                label: "Capacidad de venta",
+                value: salesFilter,
+                emptyLabel: "Cualquiera",
+                options: [
+                  { value: "si", label: "Vende (asesores y supervisores)" },
+                  { value: "no", label: "No vende" },
+                ],
+              },
+              {
+                key: "situacion",
+                label: "Situación",
+                value: situationFilter,
+                emptyLabel: "Cualquiera",
+                options: [
+                  {
+                    value: "sin-equipo",
+                    label: "Asesores sin equipo operativo",
+                  },
+                ],
+              },
+            ]}
+          />
 
           {filteredMembers.length === 0 ? (
             <EmptyState
@@ -362,13 +384,23 @@ export default async function AdminUsersPage({
                         : ""}
                     </div>
                     <div className="ui-directory__cell" data-label="Equipo">
-                      <span
-                        className={
-                          teamLabel === "Sin equipo" ? "text-ui-warning" : ""
-                        }
-                      >
-                        {teamLabel}
-                      </span>
+                      {primaryTeam ? (
+                        // UX-07: del equipo de la persona a su tarjeta.
+                        <Link
+                          className="text-ui-accent underline-offset-2 hover:underline"
+                          href={`/admin/teams?equipo=${primaryTeam.teamId}#equipo-${primaryTeam.teamId}`}
+                        >
+                          {primaryTeam.team.name}
+                        </Link>
+                      ) : (
+                        <span
+                          className={
+                            teamLabel === "Sin equipo" ? "text-ui-warning" : ""
+                          }
+                        >
+                          {teamLabel}
+                        </span>
+                      )}
                     </div>
                     <div className="ui-directory__cell" data-label="Estado">
                       <StatusBadge
@@ -474,9 +506,10 @@ export default async function AdminUsersPage({
                       (openMember.role === "SUPERVISOR" &&
                         supervisedTeams.length === 0)),
                   sinceLabel: dateFormatter.format(openMember.createdAt),
-                  supervisedTeamNames: supervisedTeams.map(
-                    (teamMembership) => teamMembership.team.name,
-                  ),
+                  supervisedTeams: supervisedTeams.map((teamMembership) => ({
+                    id: teamMembership.teamId,
+                    name: teamMembership.team.name,
+                  })),
                 }}
                 teams={teams}
               />
