@@ -35,7 +35,10 @@ const persona = (
   teamsLeftWithoutSupervisor: [],
   emailVerified: true,
   sinceLabel: "09/08/2026",
-  supervisedTeamNames: ["Lima Centro", "Huancayo"],
+  supervisedTeams: [
+    { id: "t-1", name: "Lima Centro" },
+    { id: "t-2", name: "Huancayo" },
+  ],
   needsTeam: false,
   ...extra,
 });
@@ -95,6 +98,11 @@ describe("Panel de administración de una persona", () => {
     expect(screen.getByText("Supervisa").nextSibling).toHaveTextContent(
       "Lima Centro, Huancayo",
     );
+    // UX-07: cada equipo lleva a su tarjeta.
+    expect(screen.getByRole("link", { name: "Huancayo" })).toHaveAttribute(
+      "href",
+      "/admin/teams?equipo=t-2#equipo-t-2",
+    );
   });
 
   it("agrupa seguridad y ciclo de vida, y muestra el historial", () => {
@@ -122,7 +130,7 @@ describe("Panel de administración de una persona", () => {
       role: "ADMIN",
       primaryTeamId: null,
       primaryTeamName: null,
-      supervisedTeamNames: [],
+      supervisedTeams: [],
     });
 
     expect(screen.getByText("No requiere equipo")).toBeInTheDocument();
@@ -134,7 +142,7 @@ describe("Panel de administración de una persona", () => {
       role: "AGENT",
       primaryTeamId: null,
       primaryTeamName: null,
-      supervisedTeamNames: [],
+      supervisedTeams: [],
       needsTeam: true,
     });
 

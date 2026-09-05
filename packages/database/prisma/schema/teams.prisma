@@ -12,6 +12,10 @@ enum CommercialTeamAuditAction {
   TEAM_CREATED
   TEAM_DISABLED
   MEMBER_ASSIGNED
+  /// SPEC-043 PE-05
+  MEMBER_REMOVED
+  TEAM_RENAMED
+  TEAM_REACTIVATED
 }
 
 enum DitoOrderAssignmentReason {

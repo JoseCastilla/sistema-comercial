@@ -43,11 +43,23 @@
       nuevas, «Sin supervisor = 2» con enlace, confirmaciones con nombres y
       conteos reales.
 
-## Fase 3 · Navegación y continuidad
+## Fase 3 · Navegación y continuidad (05/09/2026)
 
-- [ ] UX-06 · Filtros en vivo en Personas y Equipos (mecánica compartida).
-- [ ] UX-07 · Enlaces Personas ↔ Equipos con contexto.
-- [ ] UX-08 · Formularios con estructura común y protección de borradores.
-- [ ] PE-05 · Renombrar, retirar supervisión, reactivar vacío, historial de
-      auditoría.
-- [ ] PE-07 · «Mi equipo» del supervisor (pendiente de confirmación).
+- [x] UX-06 · `DirectoryFilters`: barra en vivo compartida (URL, 300 ms,
+      Enter, fichas, conserva el panel abierto). Personas suma «Capacidad de
+      venta»; Equipos estrena búsqueda por nombre, código o integrante,
+      estado, supervisión y supervisor. 3 pruebas.
+- [x] UX-07 · El equipo de la persona (fila y panel) abre su tarjeta en
+      Equipos (`equipo=<id>#equipo-<id>`, tarjeta abierta y enfocada); cada
+      integrante de una tarjeta abre su panel en Personas.
+- [x] UX-08 · `PanelDraftGuard`: el panel detecta borradores y pregunta
+      antes de cerrar o recargar; los formularios no cambian.
+- [x] PE-05 · Renombrar (unicidad entre activos), retirar supervisión (quien
+      vende sigue como asesor; aviso si el equipo queda sin supervisor),
+      reactivar vacío (bloqueado si hay homónimo activo) e historial de
+      auditoría por equipo. Migración `add_team_audit_actions`
+      (MEMBER_REMOVED, TEAM_RENAMED, TEAM_REACTIVATED).
+- [x] Recorrido local con sesión de administrador.
+- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [ ] PE-07 · «Mi equipo» del supervisor: queda para una entrega propia
+      (superficie nueva + alta de asesores por supervisores).
