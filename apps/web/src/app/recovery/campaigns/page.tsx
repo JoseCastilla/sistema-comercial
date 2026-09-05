@@ -14,6 +14,10 @@ import {
   readContactSummary,
   readCoordinates,
 } from "@/features/recovery/contact-summary";
+import {
+  CampaignDraftProvider,
+  GuardedLink,
+} from "@/features/recovery/components/campaign-draft-context";
 import { CampaignInboxFilters } from "@/features/recovery/components/campaign-inbox-filters";
 import { TakePoolBlockForm } from "@/features/recovery/components/take-pool-block-form";
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
@@ -212,7 +216,11 @@ export default async function RecoveryCampaignsPage({
           attempts: {
             orderBy: { createdAt: "desc" },
             take: 15,
-            select: { createdAt: true, result: true },
+            select: {
+              createdAt: true,
+              result: true,
+              observation: true,
+            },
           },
         },
       }),
@@ -298,6 +306,10 @@ export default async function RecoveryCampaignsPage({
         String(item.status) !== "WAITING",
       id: item.id,
       lastResult,
+      lastObservation: item.attempts[0]?.observation ?? null,
+      lastAttemptAtLabel: item.attempts[0]
+        ? dateTimeFormatter.format(item.attempts[0].createdAt)
+        : null,
       holderName: item.holderName,
       documentNumber: item.documentNumber,
       fatherName: item.fatherName,
@@ -447,6 +459,7 @@ export default async function RecoveryCampaignsPage({
           title="Mis casos"
           description="Vencidos primero, luego lo de hoy, después los agendados; lo que espera confirmación queda al fondo."
         >
+          <CampaignDraftProvider>
           <CampaignInboxFilters
             department={departmentFilter}
             departments={myDepartmentOptions}
@@ -456,15 +469,15 @@ export default async function RecoveryCampaignsPage({
           />
 
           <div className="overflow-x-auto rounded-xl border border-ui-border">
-            <table className="ui-table">
+            <table className="ui-table ui-table--campaign">
               <thead>
                 <tr>
+                  <th>Tipificación</th>
+                  <th>Observación</th>
                   <th>Cliente</th>
                   <th>Teléfono</th>
                   <th>DNI</th>
-                  <th>Operador</th>
-                  <th>Plan</th>
-                  <th>Estado</th>
+                  <th>Operador / Plan</th>
                   <th data-numeric>Intentos hoy</th>
                   <th>Próxima acción</th>
                   <th data-actions />
@@ -502,26 +515,27 @@ export default async function RecoveryCampaignsPage({
           {totalPages > 1 ? (
             <div className="flex items-center gap-3 text-sm">
               {page > 1 ? (
-                <Link
+                <GuardedLink
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={pageHref(page - 1)}
                 >
                   ← Anterior
-                </Link>
+                </GuardedLink>
               ) : null}
               <span className="text-ui-muted">
                 Página {page} de {totalPages}
               </span>
               {page < totalPages ? (
-                <Link
+                <GuardedLink
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={pageHref(page + 1)}
                 >
                   Siguiente →
-                </Link>
+                </GuardedLink>
               ) : null}
             </div>
           ) : null}
+          </CampaignDraftProvider>
         </SectionPanel>
       </div>
     </>

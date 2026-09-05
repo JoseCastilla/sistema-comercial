@@ -521,12 +521,18 @@ model RecoveryCaseAttempt {
   observation  String?   @db.Text
   nextActionAt DateTime? @map("next_action_at") @db.Timestamptz(3)
 
+  /// Clave que genera el cliente al abrir la gestión (BR-090). Un reenvío del
+  /// mismo formulario —doble clic, reintento tras un corte— trae la misma
+  /// clave y encuentra el intento ya guardado en vez de crear otro.
+  clientRequestId String? @map("client_request_id") @db.Uuid
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
   actor        User         @relation("RecoveryCaseAttemptActor", fields: [actorUserId], references: [id], onDelete: Restrict)
 
+  @@unique([caseId, clientRequestId], map: "recovery_case_attempts_case_request_key")
   @@index([caseId, createdAt], map: "recovery_case_attempts_case_created_idx")
   @@index([organizationId, createdAt], map: "recovery_case_attempts_org_created_idx")
   @@index([actorUserId, createdAt], map: "recovery_case_attempts_actor_created_idx")

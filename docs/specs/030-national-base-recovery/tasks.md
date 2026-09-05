@@ -412,6 +412,27 @@ venía llamando—.
 - [x] La página pedida se acota al total real; el contexto de la cola viaja
       a la ficha y vuelve anclado al caso, que aparece señalado.
 
+## Tipificar desde la bandeja (05/09/2026)
+
+- [x] BR-090: núcleo `registerRecoveryAttempt` compartido por la acción de
+      la ficha y la nueva acción en fila `registerCampaignAttemptInlineAction`,
+      que devuelve los datos confirmados y no revalida ninguna ruta.
+- [x] Clave de idempotencia `client_request_id` en `recovery_case_attempts`
+      (migración `20260905120000`), única por caso; el reenvío devuelve lo ya
+      guardado.
+- [x] `CampaignAttemptEditor`: resultado, observación, canal, teléfono
+      (único preseleccionado, varios elegibles, «otro número»), campos
+      condicionales de agenda y pausa, validación junto al dato, confirmación
+      accesible y «Registrar otro intento».
+- [x] `CampaignDraftProvider`: un borrador a la vez, tres salidas al cambiar
+      de cliente, aviso en filtros, paginación y cierre de pestaña.
+- [x] Fila reordenada —tipificación, observación, cliente, teléfono, DNI,
+      operador/plan, intentos, próxima acción, acciones—, tres columnas fijas
+      en escritorio, observación recortada a dos líneas con el texto completo
+      disponible, estado del caso como texto secundario bajo la tipificación.
+- [x] El redireccionamiento tras registrar desde la ficha conserva el
+      contexto de la cola.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en

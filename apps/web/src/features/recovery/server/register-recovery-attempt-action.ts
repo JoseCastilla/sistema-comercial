@@ -14,7 +14,79 @@ import {
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
-import type { SendOrderToRecoveryActionState } from "./recovery-action.types";
+import type {
+  CampaignAttemptInlineState,
+  SendOrderToRecoveryActionState,
+} from "./recovery-action.types";
+
+const attemptDateFormatter = new Intl.DateTimeFormat("es-PE", {
+  timeZone: "America/Lima",
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+interface AttemptInput {
+  caseId: string;
+  channel: string;
+  result: string;
+  phoneUsed: string | null;
+  observation: string | null;
+  scheduledAtRaw: string;
+  pauseDaysRaw: string;
+  /** BR-090: clave de idempotencia; solo la bandeja la envía. */
+  clientRequestId: string | null;
+}
+
+type AttemptOutcome =
+  | { kind: "INVALID"; message: string }
+  | { kind: "NOT_FOUND" }
+  | {
+      kind: "DONE";
+      /** El reenvío encontró el intento ya guardado (BR-090). */
+      replayed: boolean;
+      holderName: string;
+      result: string;
+      observation: string | null;
+      phoneUsed: string | null;
+      status: string;
+      attemptsToday: number | null;
+      nextActionAt: Date | null;
+      mustResolve: boolean;
+      isBaseCase: boolean;
+    };
+
+function readAttemptInput(formData: FormData): AttemptInput {
+  return {
+    caseId: String(formData.get("caseId") ?? "").trim(),
+    channel: String(formData.get("channel") ?? "").trim(),
+    result: String(formData.get("result") ?? "").trim(),
+    phoneUsed:
+      String(formData.get("phoneUsed") ?? "")
+        .trim()
+        .slice(0, 15) || null,
+    observation:
+      String(formData.get("observation") ?? "")
+        .trim()
+        .slice(0, 2000) || null,
+    scheduledAtRaw: String(formData.get("scheduledAt") ?? "").trim(),
+    pauseDaysRaw: String(formData.get("pauseDays") ?? "").trim(),
+    clientRequestId: readUuid(formData.get("clientRequestId")),
+  };
+}
+
+function readUuid(value: FormDataEntryValue | null): string | null {
+  const text = String(value ?? "").trim();
+
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    text,
+  )
+    ? text
+    : null;
+}
+
 
 /**
  * Registro de un intento de contacto — SPEC-030 BR-032 a BR-036, BR-066.
@@ -51,31 +123,24 @@ const openStatuses = [
   "WAITING",
 ] as const;
 
-export async function registerRecoveryAttemptAction(
-  previousState: SendOrderToRecoveryActionState,
-  formData: FormData,
-): Promise<SendOrderToRecoveryActionState> {
-  void previousState;
-
+async function registerRecoveryAttempt(
+  input: AttemptInput,
+): Promise<AttemptOutcome> {
   const { session, membership } = await requireCommercialAccess();
-
-  const caseId = String(formData.get("caseId") ?? "").trim();
-  const channel = String(formData.get("channel") ?? "").trim();
-  const result = String(formData.get("result") ?? "").trim();
-  const phoneUsed =
-    String(formData.get("phoneUsed") ?? "")
-      .trim()
-      .slice(0, 15) || null;
-  const observation =
-    String(formData.get("observation") ?? "")
-      .trim()
-      .slice(0, 2000) || null;
-  const scheduledAtRaw = String(formData.get("scheduledAt") ?? "").trim();
-  const pauseDaysRaw = String(formData.get("pauseDays") ?? "").trim();
+  const {
+    caseId,
+    channel,
+    result,
+    phoneUsed,
+    observation,
+    scheduledAtRaw,
+    pauseDaysRaw,
+    clientRequestId,
+  } = input;
 
   if (!caseId || !channels.has(channel) || !results.has(result)) {
     return {
-      type: "error",
+      kind: "INVALID",
       message: "Completa el canal y el resultado del intento.",
     };
   }
@@ -85,13 +150,13 @@ export async function registerRecoveryAttemptAction(
     scheduledAt = scheduledAtRaw ? new Date(scheduledAtRaw) : null;
     if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
       return {
-        type: "error",
+        kind: "INVALID",
         message: "Una agenda necesita fecha y hora de la próxima llamada.",
       };
     }
     if (scheduledAt.getTime() <= Date.now()) {
       return {
-        type: "error",
+        kind: "INVALID",
         message: "La fecha agendada debe estar en el futuro.",
       };
     }
@@ -156,7 +221,54 @@ export async function registerRecoveryAttemptAction(
 
     if (!recoveryCase) return { kind: "NOT_FOUND" as const };
 
+    const isBaseCase = recoveryCase.source === "NATIONAL_BASE";
     const now = new Date();
+
+    /**
+     * BR-090: un reenvío del mismo formulario —doble clic, reintento tras un
+     * corte— trae la misma clave. Encontrarla significa que el primer envío
+     * ya hizo todo su trabajo, incluidos los efectos sobre el caso: se
+     * devuelve lo que ya existe y no se toca nada.
+     */
+    if (clientRequestId) {
+      const replayed = await transaction.recoveryCaseAttempt.findUnique({
+        where: {
+          caseId_clientRequestId: { caseId: recoveryCase.id, clientRequestId },
+        },
+        select: {
+          result: true,
+          observation: true,
+          phoneUsed: true,
+        },
+      });
+
+      if (replayed) {
+        const current = await transaction.recoveryCase.findUniqueOrThrow({
+          where: { id: recoveryCase.id },
+          select: { status: true, nextActionAt: true },
+        });
+
+        return {
+          kind: "DONE" as const,
+          replayed: true,
+          holderName: recoveryCase.holderName,
+          result: String(replayed.result),
+          observation: replayed.observation,
+          phoneUsed: replayed.phoneUsed,
+          status: String(current.status),
+          attemptsToday: isBaseCase
+            ? countOnSameLimaDay(
+                recoveryCase.attempts.map((attempt) => attempt.createdAt),
+                now,
+              )
+            : null,
+          nextActionAt: current.nextActionAt,
+          mustResolve: false,
+          isBaseCase,
+        };
+      }
+    }
+
     await transaction.recoveryCaseAttempt.create({
       data: {
         organizationId: membership.organization.id,
@@ -167,10 +279,9 @@ export async function registerRecoveryAttemptAction(
         phoneUsed,
         observation,
         nextActionAt: scheduledAt,
+        clientRequestId,
       },
     });
-
-    const isBaseCase = recoveryCase.source === "NATIONAL_BASE";
     const managedSince = recoveryCase.claimedAt ?? recoveryCase.createdAt;
     // Incluye el intento recién creado en el conteo del día (BR-032).
     const attemptsToday =
@@ -195,21 +306,30 @@ export async function registerRecoveryAttemptAction(
         data: { needsRevalidation: true },
       });
 
+      const verificationNextAction =
+        result === "YA_ACTIVO" ? null : getNextLimaMorning(now);
+
       await transaction.recoveryCase.update({
         where: { id: recoveryCase.id },
         data: {
           status: result === "YA_ACTIVO" ? "WAITING" : "SCHEDULED",
           firstContactAt: recoveryCase.firstContactAt ?? now,
-          nextActionAt: result === "YA_ACTIVO" ? null : getNextLimaMorning(now),
+          nextActionAt: verificationNextAction,
         },
       });
 
       return {
         kind: "DONE" as const,
+        replayed: false,
         holderName: recoveryCase.holderName,
         result,
+        observation,
+        phoneUsed,
+        status: result === "YA_ACTIVO" ? "WAITING" : "SCHEDULED",
         attemptsToday,
+        nextActionAt: verificationNextAction,
         mustResolve: false,
+        isBaseCase,
       };
     }
 
@@ -237,9 +357,15 @@ export async function registerRecoveryAttemptAction(
 
     return {
       kind: "DONE" as const,
+      replayed: false,
       holderName: recoveryCase.holderName,
       result,
+      observation,
+      phoneUsed,
+      status: result === "AGENDA" ? "SCHEDULED" : "IN_PROGRESS",
       attemptsToday: isBaseCase ? attemptsToday : null,
+      nextActionAt,
+      isBaseCase,
       mustResolve:
         result !== "AGENDA" &&
         result !== "RECHAZA" &&
@@ -249,6 +375,52 @@ export async function registerRecoveryAttemptAction(
           : getInternalRecoveryNextTouchAt(managedSince, now) === null),
     };
   });
+
+  return outcome;
+}
+
+/**
+ * La consecuencia operativa del resultado, en una frase. Es lo que el asesor
+ * necesita saber justo después de guardar: cuántos intentos van, si el caso
+ * entró en verificación, si toca vincular la venta.
+ */
+function describeAttemptOutcome(
+  outcome: Extract<AttemptOutcome, { kind: "DONE" }>,
+): string {
+  if (outcome.result === "VENDIDO") {
+    return "Vincula la orden nueva desde la ficha para resolverlo como recuperado.";
+  }
+  if (outcome.result === "YA_ACTIVO") {
+    return "Pasa a verificación: el caso no se cierra hasta que el reporte o tu supervisor lo confirmen.";
+  }
+  if (outcome.result === "INTERESADO_CON_PEDIDO") {
+    return "Agendado para mañana: vuelve a llamarlo para ver si el pedido anterior cayó; el cruce lo vigila en paralelo.";
+  }
+  if (outcome.mustResolve) {
+    return "La cadencia se agotó: este caso entra en resolución obligatoria.";
+  }
+  if (outcome.attemptsToday !== null && outcome.attemptsToday < 3) {
+    return `Llevas ${outcome.attemptsToday} de 3 intentos exigidos hoy.`;
+  }
+
+  return "";
+}
+
+/**
+ * Acción de la ficha: mensaje en prosa y revalidación de las colas, porque
+ * el asesor sale de la ficha hacia su cola y quiere verla ya reordenada.
+ */
+export async function registerRecoveryAttemptAction(
+  previousState: SendOrderToRecoveryActionState,
+  formData: FormData,
+): Promise<SendOrderToRecoveryActionState> {
+  void previousState;
+
+  const outcome = await registerRecoveryAttempt(readAttemptInput(formData));
+
+  if (outcome.kind === "INVALID") {
+    return { type: "error", message: outcome.message };
+  }
 
   if (outcome.kind === "NOT_FOUND") {
     return {
@@ -261,21 +433,87 @@ export async function registerRecoveryAttemptAction(
   revalidatePath("/recovery/sales");
   revalidatePath("/recovery/campaigns");
 
-  const suffix =
-    outcome.result === "VENDIDO"
-      ? " Vincula la orden nueva para resolverlo como recuperado."
-      : outcome.result === "YA_ACTIVO"
-        ? " Pasa a verificación: el caso no se cierra hasta que el reporte o tu supervisor lo confirmen."
-        : outcome.result === "INTERESADO_CON_PEDIDO"
-          ? " Agendado para mañana: vuelve a llamarlo para ver si el pedido anterior cayó; el cruce lo vigila en paralelo."
-          : outcome.mustResolve
-            ? " La cadencia se agotó: este caso entra en resolución obligatoria."
-            : outcome.attemptsToday !== null && outcome.attemptsToday < 3
-              ? ` Llevas ${outcome.attemptsToday} de 3 intentos exigidos hoy.`
-              : "";
+  const suffix = describeAttemptOutcome(outcome);
 
   return {
     type: "success",
-    message: `Intento registrado para ${outcome.holderName}.${suffix}`,
+    message: `Intento registrado para ${outcome.holderName}.${suffix ? ` ${suffix}` : ""}`,
+  };
+}
+
+/**
+ * Acción de la bandeja (BR-090): devuelve los datos confirmados para que la
+ * fila se actualice sola, y **no revalida la bandeja**. Revalidarla
+ * reordenaría la lista bajo las manos del asesor y la fila que acaba de
+ * gestionar saltaría a otra posición; la página es dinámica, así que la
+ * próxima navegación ya la trae reconciliada. La cola de ventas sí se
+ * revalida: no está en pantalla.
+ */
+export async function registerCampaignAttemptInlineAction(
+  previousState: CampaignAttemptInlineState,
+  formData: FormData,
+): Promise<CampaignAttemptInlineState> {
+  void previousState;
+
+  /**
+   * Un fallo inesperado —la base no responde, un cliente desactualizado—
+   * no puede tumbar la bandeja entera con una pantalla de error: el asesor
+   * perdería el borrador y el sitio donde estaba (§7). Vuelve como estado
+   * de error, el formulario sigue ahí con lo escrito, y la misma clave de
+   * idempotencia hace que el reintento no duplique nada si el primero sí
+   * llegó a guardarse.
+   */
+  let outcome: AttemptOutcome;
+
+  try {
+    outcome = await registerRecoveryAttempt(readAttemptInput(formData));
+  } catch (error) {
+    console.error("Fallo al registrar la gestión desde la bandeja", error);
+
+    return {
+      type: "error",
+      message:
+        "No se pudo guardar la gestión. Lo que escribiste sigue aquí: vuelve a intentarlo.",
+    };
+  }
+
+  if (outcome.kind === "INVALID") {
+    return { type: "error", message: outcome.message };
+  }
+
+  if (outcome.kind === "NOT_FOUND") {
+    return {
+      type: "error",
+      message:
+        "Este caso ya no está a tu cargo o se resolvió. Actualiza la cola para verlo.",
+      unmanageable: true,
+    };
+  }
+
+  /**
+   * Aquí no se revalida **ninguna** ruta, ni siquiera otra. En Next, una
+   * revalidación dentro de una acción devuelve también el árbol fresco de la
+   * página actual, y la bandeja se reordenó bajo las manos del asesor con la
+   * primera versión: la fila que acababa de gestionar saltó al fondo y el
+   * desplazamiento la siguió. Las colas son dinámicas y se traen frescas en
+   * la siguiente navegación; la fila ya tiene los datos confirmados.
+   */
+  return {
+    type: "success",
+    message: outcome.replayed
+      ? `La gestión de ${outcome.holderName} ya estaba guardada.`
+      : `Gestión guardada para ${outcome.holderName}.`,
+    detail: describeAttemptOutcome(outcome),
+    attempt: {
+      result: outcome.result,
+      observation: outcome.observation,
+      phoneUsed: outcome.phoneUsed,
+      status: outcome.status,
+      attemptsToday: outcome.attemptsToday,
+      nextActionAtLabel: outcome.nextActionAt
+        ? attemptDateFormatter.format(outcome.nextActionAt)
+        : null,
+      mustResolve: outcome.mustResolve,
+    },
   };
 }

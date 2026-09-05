@@ -204,3 +204,70 @@
     white-space: normal;
   }
 }
+
+@layer components {
+  /*
+   * Bandeja de campaña (BR-090): tipificación, observación y cliente quedan
+   * fijas al desplazar en horizontal, porque son lo que el asesor escribe y
+   * a quién se lo escribe; el resto de columnas son consulta. Solo en
+   * escritorio: en pantalla pequeña tres columnas fijas se comerían todo el
+   * ancho y la tabla dejaría de poder desplazarse.
+   *
+   * Los anchos son fijos a propósito: una columna fija sin ancho no puede
+   * calcular dónde empieza la siguiente. Las celdas con `colspan` —la ficha
+   * desplegada y el editor— no se fijan: ocupan la fila entera.
+   */
+  @media (min-width: 64rem) {
+    .ui-table--campaign tr > td:not([colspan]):nth-child(-n + 3),
+    .ui-table--campaign tr > th:nth-child(-n + 3) {
+      position: sticky;
+      z-index: 1;
+      background: var(--ui-surface);
+    }
+
+    .ui-table--campaign thead tr > th:nth-child(-n + 3) {
+      z-index: 2;
+      background: var(--ui-surface-subtle);
+    }
+
+    .ui-table--campaign tr > :nth-child(1) {
+      left: 0;
+      width: 11rem;
+      min-width: 11rem;
+    }
+
+    .ui-table--campaign tr > :nth-child(2) {
+      left: 11rem;
+      width: 16rem;
+      min-width: 16rem;
+    }
+
+    .ui-table--campaign tr > :nth-child(3) {
+      left: 27rem;
+      width: 14rem;
+      min-width: 14rem;
+      /* La sombra marca dónde termina lo fijo y empieza lo que se desplaza. */
+      box-shadow: inset -1px 0 0 var(--ui-border);
+    }
+
+    /* El hover tiñe la celda; en una columna fija el tinte debe seguir tapando
+       lo que pasa por debajo. */
+    .ui-table--campaign tbody tr:hover td:not([colspan]):nth-child(-n + 3) {
+      background: var(--ui-surface-subtle);
+    }
+  }
+
+  /*
+   * Una observación larga se lee entera en la ficha desplegada; en la
+   * tabla se recorta a dos líneas para que una frase de tres párrafos no
+   * convierta la fila en una página.
+   */
+  .ui-cell-clamp {
+    display: -webkit-box;
+    max-width: 15rem;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+  }
+}
