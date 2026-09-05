@@ -926,6 +926,42 @@ la base de desarrollo vacía.
   EasyPanel construía. La señal al aterrizar: título «Tablero» y los bloques
   «Cartera · ahora» y «Actividad · hoy».
 
+### Fase 1 del plan de Pedidos y Recupero — BR-095, 05/09/2026
+
+1. **Pruebas puras**: 9 casos en `recovery-internal-due.test.mjs` — solo se
+   aceptan los tres vencimientos; primer contacto vence a las dos horas si
+   nadie llamó, también sin responsable; con contacto previo es seguimiento;
+   una agenda futura no vence y una pasada es agenda vencida aunque no haya
+   contacto; en espera no vence; la prioridad manda; lo vencido va antes;
+   luego lo más próximo; agosto antes que septiembre. 295 en verde en
+   `@repo/validation`; 104 en `apps/web` (6 nuevas sobre la bandeja: cada
+   vencimiento abre su lista, título con cuenta y vuelta, enlace a la venta
+   con su día, enlace sin período cuando no se conoce, «Llamar ya» y rótulo
+   por fila, páginas que conservan el vencimiento). Tipos y lint limpios.
+2. **Recorrido por fetch con sesión de administrador en local** (cartera de
+   desarrollo: 1 caso crítico asignado, con contacto previo y próxima acción
+   del 31/08):
+   - Seis indicadores; los tres de vencimiento enlazan a `?vence=…`; «Casos
+     abiertos» solo enlaza cuando hay un vencimiento elegido, para volver.
+   - `?vence=seguimiento` → «Seguimiento vencido: 1 caso», la fila marcada
+     como vencida con rótulo «Seguimiento vencido»; `?vence=primer_contacto`
+     y `?vence=agenda` → «0 casos» con vacío propio; `?vence=otro&page=99` →
+     toda la cola («Casos por prioridad»), sin error.
+   - El enlace a la venta lleva
+     `/orders?status=ALL&q=1942469714A&period=RANGE&from=2026-08-03&to=2026-08-03`:
+     la orden se registró el 03/08 y antes el enlace abría septiembre.
+3. **Línea de base en producción, solo lectura, antes del despliegue**: 66
+   casos abiertos, **63** rotulados «Primer contacto vencido» con la
+   definición anterior (cualquier próxima acción pasada), sin enlaces en los
+   indicadores, enlaces a la venta sin período, y la cola sin orden estable
+   dentro de la prioridad Alta (11:44, 12:02, 12:05, 12:00). Tras el
+   despliegue esos 63 deben repartirse entre los tres indicadores, y la suma
+   de los tres no puede superar los abiertos.
+
+**Limitación declarada**: la base de desarrollo tiene un solo caso, así que
+la paginación (más de 100) y el reparto real entre los tres vencimientos solo
+se verán en producción; el panel del navegador siguió en modo lectura.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de

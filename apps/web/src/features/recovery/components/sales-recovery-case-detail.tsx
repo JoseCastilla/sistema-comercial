@@ -5,6 +5,7 @@ import { attemptResultLabels } from "../attempt-result-labels";
 
 import { RegisterAttemptForm } from "./register-attempt-form";
 import { ResolveCaseForm } from "./resolve-case-form";
+import { buildOrderHref } from "../order-link";
 
 import type { SalesRecoveryCaseDetail } from "../server/get-sales-recovery-case";
 
@@ -77,7 +78,9 @@ export function SalesRecoveryCaseDetail({
           <span>Venta origen</span>
           <strong>
             {data.orderCode ? (
-              <Link href={`/orders?status=ALL&q=${data.orderCode}`}>
+              <Link
+                href={buildOrderHref(data.orderCode, data.orderRegisteredDay)}
+              >
                 {data.orderCode}
               </Link>
             ) : (

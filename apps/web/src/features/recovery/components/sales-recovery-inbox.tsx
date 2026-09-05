@@ -2,10 +2,13 @@ import Link from "next/link";
 
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
+import { internalRecoveryDueOptions } from "@repo/validation";
 
+import { buildOrderHref } from "../order-link";
 import { AssignSalesRecoveryForm } from "./assign-sales-recovery-form";
 
 import type { SalesRecoveryInboxData } from "../server/get-sales-recovery-inbox";
+import type { InternalRecoveryDue } from "@repo/validation";
 
 const reasonLabels: Record<string, string> = {
   NO_ENTREGADO: "No recibió",
@@ -31,12 +34,31 @@ const priorityLabels: Record<string, string> = {
   CONDICIONADA: "Condicionada",
 };
 
-function orderHref(orderCode: string): string {
-  const parameters = new URLSearchParams({ status: "ALL", q: orderCode });
-  return `/orders?${parameters.toString()}`;
+const dueLabels = Object.fromEntries(
+  internalRecoveryDueOptions.map((option) => [option.value, option.label]),
+) as Record<InternalRecoveryDue, string>;
+
+const dueHints = Object.fromEntries(
+  internalRecoveryDueOptions.map((option) => [option.value, option.hint]),
+) as Record<InternalRecoveryDue, string>;
+
+function inboxHref(
+  due: InternalRecoveryDue | null,
+  page: number | null = null,
+): string {
+  const parameters = new URLSearchParams();
+
+  if (due) parameters.set("vence", due);
+  if (page && page > 1) parameters.set("page", String(page));
+
+  const query = parameters.toString();
+
+  return query ? `/recovery/sales?${query}` : "/recovery/sales";
 }
 
 export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
+  const { totals, dueFilter, pagination } = data;
+
   return (
     <div className="ui-page-stack">
       <PageHeader
@@ -50,26 +72,42 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
         <Metric
           emphasis="hero"
           hint="De nuestras propias ventas"
+          href={dueFilter ? inboxHref(null) : undefined}
           label="Casos abiertos"
-          value={data.totals.open}
+          value={totals.open}
         />
         <Metric
-          hint="Pasaron las 2 horas sin gestión"
-          label="Primer contacto vencido"
-          tone={data.totals.overdue > 0 ? "warning" : "neutral"}
-          value={data.totals.overdue}
+          hint={dueHints.primer_contacto}
+          href={inboxHref("primer_contacto")}
+          label={dueLabels.primer_contacto}
+          tone={totals.firstContactOverdue > 0 ? "warning" : "neutral"}
+          value={totals.firstContactOverdue}
+        />
+        <Metric
+          hint={dueHints.seguimiento}
+          href={inboxHref("seguimiento")}
+          label={dueLabels.seguimiento}
+          tone={totals.followUpOverdue > 0 ? "warning" : "neutral"}
+          value={totals.followUpOverdue}
+        />
+        <Metric
+          hint={dueHints.agenda}
+          href={inboxHref("agenda")}
+          label={dueLabels.agenda}
+          tone={totals.agendaOverdue > 0 ? "warning" : "neutral"}
+          value={totals.agendaOverdue}
         />
         <Metric
           hint="El supervisor debe asignarlas a otro asesor"
           label="Críticas sin asignar"
-          tone={data.totals.criticalUnassigned > 0 ? "danger" : "neutral"}
-          value={data.totals.criticalUnassigned}
+          tone={totals.criticalUnassigned > 0 ? "danger" : "neutral"}
+          value={totals.criticalUnassigned}
         />
         <Metric
           hint="Con orden nueva vinculada"
           label="Recuperadas este mes"
           tone="success"
-          value={data.totals.recoveredThisMonth}
+          value={totals.recoveredThisMonth}
         />
       </MetricGroup>
 
@@ -77,10 +115,20 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
         <header className="performance-panel__header">
           <div>
             <p className="performance-panel__eyebrow">Cola de trabajo</p>
-            <h2>Casos por prioridad</h2>
+            <h2>
+              {dueFilter
+                ? `${dueLabels[dueFilter]}: ${pagination.total} ${pagination.total === 1 ? "caso" : "casos"}`
+                : "Casos por prioridad"}
+            </h2>
             <p>
-              Crítica nunca vuelve a quien originó la venta; el resto se queda
-              con su asesor el primer día.
+              {dueFilter ? (
+                <>
+                  Solo los casos con este vencimiento, en el orden de la cola.{" "}
+                  <Link href={inboxHref(null)}>Ver todos los casos</Link>
+                </>
+              ) : (
+                "Crítica nunca vuelve a quien originó la venta; el resto se queda con su asesor el primer día. Lo vencido va primero dentro de cada prioridad."
+              )}
             </p>
           </div>
         </header>
@@ -99,10 +147,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
             </thead>
             <tbody>
               {data.cases.map((item) => (
-                <tr
-                  data-no-sales={item.nextActionOverdue ? "true" : undefined}
-                  key={item.id}
-                >
+                <tr data-no-sales={item.due ? "true" : undefined} key={item.id}>
                   <td>
                     <Link href={`/recovery/sales/${item.id}`}>
                       <strong>{item.holderName}</strong>
@@ -111,7 +156,12 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
                   </td>
                   <td>
                     {item.orderCode ? (
-                      <Link href={orderHref(item.orderCode)}>
+                      <Link
+                        href={buildOrderHref(
+                          item.orderCode,
+                          item.orderRegisteredDay,
+                        )}
+                      >
                         {item.orderCode}
                       </Link>
                     ) : (
@@ -159,16 +209,18 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
                     ) : null}
                   </td>
                   <td>
-                    {item.nextActionAtLabel ?? "—"}
-                    {item.nextActionOverdue ? <small>Vencida</small> : null}
+                    {item.nextActionAtLabel ??
+                      (item.due === "primer_contacto" ? "Llamar ya" : "—")}
+                    {item.due ? <small>{dueLabels[item.due]}</small> : null}
                   </td>
                 </tr>
               ))}
               {data.cases.length === 0 ? (
                 <tr>
                   <td className="reconciliation-empty" colSpan={7}>
-                    No hay ventas en recuperación. Las nuevas caídas aparecerán
-                    aquí solas.
+                    {dueFilter
+                      ? "Ningún caso tiene este vencimiento ahora."
+                      : "No hay ventas en recuperación. Las nuevas caídas aparecerán aquí solas."}
                   </td>
                 </tr>
               ) : null}
@@ -176,6 +228,37 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
           </table>
         </div>
       </section>
+
+      {pagination.totalPages > 1 ? (
+        <nav aria-label="Páginas de casos" className="ui-pagination">
+          {pagination.page > 1 ? (
+            <Link
+              className="ui-pagination__link"
+              href={inboxHref(dueFilter, pagination.page - 1)}
+            >
+              Anterior
+            </Link>
+          ) : (
+            <span />
+          )}
+
+          <span className="ui-pagination__status">
+            Página {pagination.page} de {pagination.totalPages} ·{" "}
+            {pagination.total} casos
+          </span>
+
+          {pagination.page < pagination.totalPages ? (
+            <Link
+              className="ui-pagination__link"
+              href={inboxHref(dueFilter, pagination.page + 1)}
+            >
+              Siguiente
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
+      ) : null}
     </div>
   );
 }

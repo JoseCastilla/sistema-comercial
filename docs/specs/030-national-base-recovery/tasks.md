@@ -481,6 +481,22 @@ venía llamando—.
       «Tablero».
 - [ ] Rango libre de fechas: fuera de esta versión.
 
+## Fase 1 del plan de Pedidos y Recupero: confiabilidad (05/09/2026)
+
+- [x] BR-095: `recovery-internal-due.ts` en validation — tres vencimientos
+      excluyentes sobre las funciones de la cadencia y el orden de la cola con
+      fechas reales (9 pruebas).
+- [x] Bandeja de recupero: toda la cartera del alcance ordenada antes de
+      paginar (100 por página), totales sobre el conjunto completo, tres
+      indicadores que abren su lista con `?vence=`, título con la cuenta y
+      vuelta a «todos», rótulo del vencimiento en cada fila.
+- [x] `order-link.ts`: enlace a la venta con su día de registro
+      (`period=RANGE`), usado por la bandeja y la ficha del caso.
+- [x] Prueba de la bandeja (`bandeja-recupero.test.tsx`, 6 casos).
+- [ ] Verificación de solo lectura en producción tras el despliegue: los 63
+      «vencidos» de la definición anterior deben repartirse entre los tres
+      indicadores.
+
 ## Superficie y honestidad de datos (31/08/2026)
 
 - [x] Filtros de trabajo (equipo, departamento, plan, DNI) en el triage y en
