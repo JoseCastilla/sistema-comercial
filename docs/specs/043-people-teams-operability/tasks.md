@@ -39,7 +39,9 @@
 - [x] `team-roster.ts` (plantilla y consecuencias) con 4 pruebas; panel con
       2 pruebas más.
 - [x] Recorrido local con sesión de administrador.
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción tras el despliegue: métricas
+      nuevas, «Sin supervisor = 2» con enlace, confirmaciones con nombres y
+      conteos reales.
 
 ## Fase 3 · Navegación y continuidad
 
