@@ -1,8 +1,11 @@
 # SPEC-042 — Ciclo de vida del vendedor: baja, reingreso y promoción
 
-Estado: **propuesta, pendiente de decisiones** (05/09/2026). Pedido por José
-el 02/09/2026: «poder promover a un vendedor como supervisor, dar de baja a
-un vendedor y hacer un reingreso».
+Estado: **construida, en verificación** (05/09/2026). Pedido por José el
+02/09/2026: «poder promover a un vendedor como supervisor, dar de baja a un
+vendedor y hacer un reingreso». Las cuatro decisiones de §5 se tomaron con
+la opción recomendada, como supuestos explícitos: José pidió avanzar en vez
+de elegir entre opciones; cualquiera de ellas se puede revertir con un
+cambio acotado.
 
 ## 1. Problema
 
@@ -44,8 +47,8 @@ baja: la venta sigue siendo suya).
 
 ## 3. Decisiones propuestas
 
-Marcadas con **[D]** las que necesitan confirmación de José antes de
-construir; el resto se deriva de reglas ya vigentes.
+Marcadas con **[D]** las que eran de José y se resolvieron con la opción
+recomendada (ver §5); el resto se deriva de reglas ya vigentes.
 
 ### Baja
 
@@ -166,19 +169,21 @@ construir; el resto se deriva de reglas ya vigentes.
 - **AC-008:** tipos, lint y pruebas en verde; las reglas puras (qué se puede
   hacer a quién, qué se libera) viven en `@repo/validation` con pruebas.
 
-## 5. Preguntas abiertas (para José)
+## 5. Decisiones tomadas (supuestos, 05/09/2026)
 
-1. **Ventas abiertas en la baja (BR-004):** ¿se quedan a nombre del vendedor
-   —como propongo, por liquidación e historia— o el administrador debe
-   reasignarlas a otro asesor en el mismo acto?
-2. **Cartera de recupero (BR-005):** ¿basta con liberarla a «sin
-   responsable» / pool para que el supervisor reparta después, o el
-   formulario de baja debe permitir elegir un asesor destino? Propongo
-   ambas: liberar por defecto, entregar si se elige a alguien.
-3. **Reingreso con otro correo (BR-008):** ¿se permite cambiar el correo en
-   el reingreso, o el correo corporativo se considera fijo?
-4. **Degradar a asesor:** ¿entra ahora (un supervisor que vuelve a vender) o
-   queda para después?
+1. **Ventas abiertas en la baja (BR-004): se quedan a nombre del vendedor.**
+   Pesan en su liquidación y el supervisor del equipo ya las gestiona; la
+   reasignación manual con motivo sigue disponible para casos puntuales.
+2. **Cartera de recupero (BR-005): liberar por defecto, entregar si se elige
+   a alguien.** El formulario ofrece los asesores activos con venta del mismo
+   equipo; la regla de Crítica se aplica y lo bloqueado queda sin
+   responsable, y se dice.
+3. **Reingreso con otro correo (BR-008): se permite.** El campo es opcional;
+   vacío conserva el correo actual.
+4. **Degradar a asesor: después.** Queda como extensión en §6.
+
+Si José prefiere otra opción en cualquiera de los cuatro, el cambio es local
+a la acción correspondiente y no toca datos históricos.
 
 ## 6. Extensiones previstas, fuera de este incremento
 

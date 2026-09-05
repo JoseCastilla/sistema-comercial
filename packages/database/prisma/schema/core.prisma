@@ -76,6 +76,7 @@ model Organization {
   commercialTeams              CommercialTeam[]
   commercialTeamMembers        CommercialTeamMember[]
   commercialTeamAuditLogs      CommercialTeamAuditLog[]
+  personLifecycleEvents        PersonLifecycleEvent[]
   ditoOrderAssignmentHistories DitoOrderAssignmentHistory[]
   ditoOrderAssignmentRequests  DitoOrderAssignmentRequest[]
   ditoOrderCorrections         DitoOrderCorrection[]
@@ -145,6 +146,8 @@ model User {
   commercialTeamMembershipsGiven CommercialTeamMember[]   @relation("CommercialTeamMemberAssignedBy")
   commercialTeamAuditsPerformed  CommercialTeamAuditLog[] @relation("CommercialTeamAuditActor")
   commercialTeamAuditsAsTarget   CommercialTeamAuditLog[] @relation("CommercialTeamAuditTarget")
+  personLifecycleEvents          PersonLifecycleEvent[]   @relation("PersonLifecycleSubject")
+  personLifecycleEventsPerformed PersonLifecycleEvent[]   @relation("PersonLifecycleActor")
 
   ditoAssignmentsAsPreviousAgent DitoOrderAssignmentHistory[] @relation("DitoAssignmentPreviousAgent")
   ditoAssignmentsAsNewAgent      DitoOrderAssignmentHistory[] @relation("DitoAssignmentNewAgent")
@@ -194,6 +197,38 @@ model OrganizationMember {
   @@id([organizationId, userId])
   @@index([organizationId, role])
   @@map("organization_members")
+}
+
+/// SPEC-042 BR-013: baja, reingreso y promoción de una persona, con quién,
+/// cuándo y por qué. La auditoría de equipos exige un equipo; esto es de la
+/// persona.
+enum PersonLifecycleAction {
+  DISABLED
+  REENTERED
+  PROMOTED
+}
+
+model PersonLifecycleEvent {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  userId         String                @map("user_id") @db.Uuid
+  action         PersonLifecycleAction
+  actorUserId    String                @map("actor_user_id") @db.Uuid
+  reason         String                @db.VarChar(200)
+  previousValues Json?                 @map("previous_values") @db.JsonB
+  newValues      Json?                 @map("new_values") @db.JsonB
+  /// Conteos de lo que la baja tocó: ventas a su nombre, casos liberados o
+  /// entregados, casos de Campañas al pool.
+  releasedSummary Json? @map("released_summary") @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user         User         @relation("PersonLifecycleSubject", fields: [userId], references: [id], onDelete: Restrict)
+  actor        User         @relation("PersonLifecycleActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt], map: "person_lifecycle_events_org_created_idx")
+  @@index([userId, createdAt], map: "person_lifecycle_events_user_created_idx")
+  @@map("person_lifecycle_events")
 }
 
 model GhlIntegration {
