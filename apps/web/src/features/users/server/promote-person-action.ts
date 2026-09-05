@@ -32,6 +32,10 @@ export async function promotePersonAction(
   const userId = readText(formData.get("userId"));
   const teamId = readText(formData.get("teamId"));
   const keepsSelling = formData.get("keepsSelling") === "on";
+  // SPEC-043 PE-01: si sigue vendiendo y supervisa otro equipo, decide si su
+  // venta se traslada (convención SPEC-019) o se queda donde está.
+  const salesMode =
+    readText(formData.get("salesMode")) === "KEEP" ? "KEEP" : "MOVE";
 
   if (!userId || !teamId) {
     return {
@@ -117,18 +121,34 @@ export async function promotePersonAction(
         data: { role: "SUPERVISOR" },
       });
 
-      // La venta, si sigue, se concentra en el equipo supervisado; si no
-      // sigue, se cierra con fecha. En ambos casos las demás membresías
-      // activas se cierran: una sola membresía comercial vigente.
+      /*
+       * Tres salidas, todas explícitas en el formulario (SPEC-043 PE-01):
+       * - sigue vendiendo y su venta se traslada al equipo supervisado
+       *   (convención SPEC-019: una sola membresía, supervisor con venta);
+       * - sigue vendiendo donde está y supervisa otro equipo (dos
+       *   membresías: la de venta intacta, la de supervisión sin venta);
+       * - deja de vender: su membresía de venta se cierra con fecha.
+       */
+      const keepsSalesTeam =
+        keepsSelling &&
+        salesMode === "KEEP" &&
+        primary !== null &&
+        primary.teamId !== team.id;
+      const preservedTeamIds = keepsSalesTeam
+        ? [team.id, primary.teamId]
+        : [team.id];
+
       await transaction.commercialTeamMember.updateMany({
         where: {
           userId: target.user.id,
           isActive: true,
           team: { organizationId: membership.organization.id },
-          NOT: { teamId: team.id },
+          NOT: { teamId: { in: preservedTeamIds } },
         },
         data: { isActive: false, isPrimary: false, validUntil: now },
       });
+
+      const supervisionSells = keepsSelling && !keepsSalesTeam;
 
       await transaction.commercialTeamMember.upsert({
         where: { teamId_userId: { teamId: team.id, userId: target.user.id } },
@@ -137,16 +157,16 @@ export async function promotePersonAction(
           teamId: team.id,
           userId: target.user.id,
           memberRole: "SUPERVISOR",
-          salesEnabled: keepsSelling,
-          isPrimary: keepsSelling,
+          salesEnabled: supervisionSells,
+          isPrimary: supervisionSells,
           isActive: true,
           assignedByUserId: session.user.id,
           validFrom: now,
         },
         update: {
           memberRole: "SUPERVISOR",
-          salesEnabled: keepsSelling,
-          isPrimary: keepsSelling,
+          salesEnabled: supervisionSells,
+          isPrimary: supervisionSells,
           isActive: true,
           assignedByUserId: session.user.id,
           validFrom: now,
@@ -172,10 +192,11 @@ export async function promotePersonAction(
           newValues: {
             teamId: team.id,
             memberRole: "SUPERVISOR",
-            salesEnabled: keepsSelling,
-            isPrimary: keepsSelling,
+            salesEnabled: supervisionSells,
+            isPrimary: supervisionSells,
             isActive: true,
             promotedToSupervisor: true,
+            keepsSalesTeamId: keepsSalesTeam ? primary.teamId : null,
           },
         },
       });
@@ -197,6 +218,11 @@ export async function promotePersonAction(
             teamId: team.id,
             teamName: team.name,
             keepsSelling,
+            salesTeamName: keepsSalesTeam
+              ? primary.team.name
+              : keepsSelling
+                ? team.name
+                : null,
           },
         },
       });
@@ -221,8 +247,10 @@ export async function promotePersonAction(
 
   return {
     type: "success",
-    message: keepsSelling
-      ? `${target.user.name} ahora supervisa ${team.name} y sigue vendiendo ahí.`
-      : `${target.user.name} ahora supervisa ${team.name} y deja de vender: sus ventas nuevas irán al pool.`,
+    message: !keepsSelling
+      ? `${target.user.name} ahora supervisa ${team.name} y deja de vender: sus ventas nuevas irán al pool.`
+      : salesMode === "KEEP" && primary && primary.teamId !== team.id
+        ? `${target.user.name} ahora supervisa ${team.name} y sigue vendiendo en ${primary.team.name}.`
+        : `${target.user.name} ahora supervisa ${team.name} y sigue vendiendo ahí.`,
   };
 }

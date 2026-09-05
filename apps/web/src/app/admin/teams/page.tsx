@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { formatCount } from "@repo/ui/format";
 import { ConfirmSubmitButton } from "@repo/ui/confirm-submit-button";
 import { EmptyState } from "@repo/ui/empty-state";
@@ -11,8 +13,17 @@ import { disableTeamAction } from "@/features/teams/server/team-actions";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
-export default async function AdminTeamsPage() {
+export default async function AdminTeamsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { membership } = await requireAdminAccess();
+  const parameters = await searchParams;
+  const creating =
+    (Array.isArray(parameters.nuevo)
+      ? parameters.nuevo[0]
+      : parameters.nuevo) === "1";
   const organizationId = membership.organization.id;
   const [teams, candidates] = await Promise.all([
     database.commercialTeam.findMany({
@@ -112,6 +123,14 @@ export default async function AdminTeamsPage() {
         <PageHeader
           description="Revisa la estructura comercial, detecta equipos sin supervisión y administra integrantes cuando sea necesario."
           eyebrow="Administración"
+          meta={
+            <Link
+              className="ui-directory__manage"
+              href={creating ? "/admin/teams" : "/admin/teams?nuevo=1"}
+            >
+              {creating ? "Cerrar" : "Nuevo equipo"}
+            </Link>
+          }
           title="Equipos comerciales"
         />
 
@@ -131,20 +150,26 @@ export default async function AdminTeamsPage() {
           />
         </MetricGroup>
 
-        <details className="ui-admin-create">
-          <summary>
-            <span>
-              <strong>Nuevo equipo</strong>
-              <small>
-                Crea otro equipo sin interrumpir la revisión actual.
-              </small>
-            </span>
-            <span aria-hidden="true">+</span>
-          </summary>
-          <div className="ui-admin-create__body">
+        {creating ? (
+          <section
+            aria-labelledby="nuevo-equipo-titulo"
+            className="ui-admin-panel"
+            style={{ position: "static" }}
+          >
+            <header className="ui-admin-panel__header">
+              <div>
+                <p className="ui-admin-panel__eyebrow">Crear</p>
+                <h2 className="ui-admin-panel__title" id="nuevo-equipo-titulo">
+                  Nuevo equipo
+                </h2>
+              </div>
+              <Link className="ui-admin-panel__close" href="/admin/teams">
+                Cerrar
+              </Link>
+            </header>
             <CreateTeamForm />
-          </div>
-        </details>
+          </section>
+        ) : null}
 
         {teams.length === 0 ? (
           <EmptyState

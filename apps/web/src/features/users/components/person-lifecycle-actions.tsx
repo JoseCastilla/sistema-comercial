@@ -10,13 +10,12 @@ import { reenterPersonAction } from "../server/reenter-person-action";
 
 import type {
   PersonLifecycleActionState,
-  PersonLifecycleHistoryItem,
   PersonLifecycleOverview,
 } from "../server/person-lifecycle.types";
 
 const initialState: PersonLifecycleActionState = { type: "idle", message: "" };
 
-type Panel = "baja" | "promover" | "reingresar" | "historial";
+type Panel = "baja" | "promover" | "reingresar";
 
 export interface PersonLifecyclePerson {
   id: string;
@@ -34,6 +33,10 @@ const inputClass =
   "w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-sm text-ui-text outline-none focus:ring-2 focus:ring-ui-border";
 const toggleClass =
   "rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-xs font-medium text-ui-muted transition hover:bg-ui-subtle";
+const dangerToggleClass =
+  "rounded-lg border border-ui-danger-border bg-ui-surface px-3 py-2 text-xs font-medium text-ui-danger transition hover:bg-ui-danger-soft";
+const formClass =
+  "w-full space-y-3 rounded-xl border border-ui-border bg-ui-subtle p-3 text-left";
 
 function Feedback({ state }: { state: PersonLifecycleActionState }) {
   if (state.type === "idle") return null;
@@ -54,12 +57,14 @@ function Feedback({ state }: { state: PersonLifecycleActionState }) {
 }
 
 /**
- * Baja, reingreso y promoción desde la fila de Personas — SPEC-042.
+ * Baja, reingreso y promoción de una persona — SPEC-042, dispuestas para el
+ * panel de administración (SPEC-043 UX-02).
  *
  * Cada acción se abre al pedirla y, antes de confirmar, dice con números qué
  * va a pasar (BR-006): cuántas ventas se quedan a su nombre, cuántos casos se
  * liberan o a quién se entregan, qué equipos quedan sin supervisor. Nada se
- * ejecuta sin esa confirmación y sin motivo.
+ * ejecuta sin esa confirmación y sin motivo. La baja va aparte y en tono de
+ * cuidado: no es una acción habitual.
  */
 export function PersonLifecycleActions({
   person,
@@ -67,7 +72,6 @@ export function PersonLifecycleActions({
   overview,
   destinationCandidates,
   teams,
-  history,
 }: {
   person: PersonLifecyclePerson;
   isCurrentUser: boolean;
@@ -75,7 +79,6 @@ export function PersonLifecycleActions({
   /** Asesores activos con venta de su mismo equipo, para entregar la cartera. */
   destinationCandidates: Array<{ id: string; name: string }>;
   teams: Array<{ id: string; name: string }>;
-  history: PersonLifecycleHistoryItem[];
 }) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const commercial = person.role === "AGENT" || person.role === "SUPERVISOR";
@@ -90,18 +93,8 @@ export function PersonLifecycleActions({
     setPanel((current) => (current === next ? null : next));
 
   return (
-    <div className="flex flex-col items-stretch gap-2 sm:items-end">
-      <div className="flex flex-wrap justify-end gap-1.5">
-        {canDisable ? (
-          <button
-            aria-expanded={panel === "baja"}
-            className={toggleClass}
-            onClick={() => toggle("baja")}
-            type="button"
-          >
-            {panel === "baja" ? "Cancelar" : "Dar de baja"}
-          </button>
-        ) : null}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         {canPromote ? (
           <button
             aria-expanded={panel === "promover"}
@@ -122,15 +115,22 @@ export function PersonLifecycleActions({
             {panel === "reingresar" ? "Cancelar" : "Reingresar"}
           </button>
         ) : null}
-        {history.length > 0 ? (
+        {canDisable ? (
           <button
-            aria-expanded={panel === "historial"}
-            className={toggleClass}
-            onClick={() => toggle("historial")}
+            aria-expanded={panel === "baja"}
+            className={dangerToggleClass}
+            onClick={() => toggle("baja")}
             type="button"
           >
-            Historial ({history.length})
+            {panel === "baja" ? "Cancelar" : "Dar de baja"}
           </button>
+        ) : null}
+        {!canPromote && !canReenter && !canDisable ? (
+          <p className="text-xs text-ui-muted">
+            {isCurrentUser
+              ? "Tu propia cuenta no se administra desde aquí."
+              : "Sin acciones de ciclo de vida para este estado."}
+          </p>
         ) : null}
       </div>
 
@@ -146,22 +146,6 @@ export function PersonLifecycleActions({
       ) : null}
       {panel === "reingresar" ? (
         <ReenterPanel person={person} teams={teams} />
-      ) : null}
-      {panel === "historial" ? (
-        <ol className="w-full space-y-1.5 rounded-xl border border-ui-border bg-ui-subtle p-3 text-left text-xs sm:min-w-80">
-          {history.map((item, index) => (
-            <li key={`${item.createdAtLabel}-${index}`}>
-              <span className="font-medium text-ui-text">{item.label}</span>{" "}
-              <span className="text-ui-muted">
-                · {item.createdAtLabel} · {item.actorName}
-              </span>
-              <span className="block text-ui-muted">{item.reason}</span>
-              {item.summary ? (
-                <span className="block text-ui-muted">{item.summary}</span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
       ) : null}
     </div>
   );
@@ -185,10 +169,7 @@ function DisablePanel({
   const total = overview.internalCases + overview.campaignCases;
 
   return (
-    <form
-      action={action}
-      className="w-full space-y-3 rounded-xl border border-ui-border bg-ui-subtle p-3 text-left sm:min-w-80"
-    >
+    <form action={action} className={formClass}>
       <input name="userId" type="hidden" value={person.id} />
       <p className="text-xs font-medium text-ui-text">
         Dar de baja a {person.name}
@@ -310,17 +291,21 @@ function PromotePanel({
   );
   const [teamId, setTeamId] = useState(person.primaryTeamId ?? "");
   const [keepsSelling, setKeepsSelling] = useState(true);
-  const movesSale =
-    keepsSelling && teamId !== "" && teamId !== person.primaryTeamId;
+  const [salesMode, setSalesMode] = useState<"MOVE" | "KEEP">("MOVE");
+  const otherTeam = teamId !== "" && teamId !== person.primaryTeamId;
+  const teamName =
+    teams.find((team) => team.id === teamId)?.name ?? "ese equipo";
+  const currentTeam = person.primaryTeamName ?? "su equipo";
 
   return (
-    <form
-      action={action}
-      className="w-full space-y-3 rounded-xl border border-ui-border bg-ui-subtle p-3 text-left sm:min-w-80"
-    >
+    <form action={action} className={formClass}>
       <input name="userId" type="hidden" value={person.id} />
       <p className="text-xs font-medium text-ui-text">
         Promover a {person.name} a supervisor
+      </p>
+      <p className="text-xs text-ui-muted">
+        Hoy: asesor en {person.primaryTeamName ?? "ningún equipo"}. Se promueve
+        a un equipo por vez; más equipos, desde Equipos.
       </p>
       <label className="block space-y-1 text-xs">
         <span className="font-medium text-ui-muted">
@@ -356,13 +341,51 @@ function PromotePanel({
           Sigue vendiendo.{" "}
           <span className="text-ui-muted">
             {keepsSelling
-              ? movesSale
-                ? `Su venta pasa de ${person.primaryTeamName ?? "su equipo"} al equipo que supervisa; sus ventas anteriores conservan el equipo registrado.`
-                : "Las ventas que lleguen por su correo se le siguen asignando; no puede cerrar ni cancelar las suyas."
+              ? "Las ventas que lleguen por su correo se le siguen asignando; no puede cerrar ni cancelar las suyas."
               : "Su membresía de venta se cierra hoy; las ventas que lleguen por su correo irán al pool. Lo histórico no cambia."}
           </span>
         </span>
       </label>
+      {/* SPEC-043 PE-01: supervisar otro equipo obliga a decir dónde quedan
+          las ventas nuevas; nada se traslada sin quedar expresado. */}
+      {keepsSelling && otherTeam ? (
+        <fieldset className="space-y-1.5 text-xs">
+          <legend className="font-medium text-ui-muted">
+            Dónde quedan sus ventas nuevas
+          </legend>
+          <label className="flex items-start gap-2 text-ui-text">
+            <input
+              checked={salesMode === "MOVE"}
+              className="mt-1"
+              name="salesMode"
+              onChange={() => setSalesMode("MOVE")}
+              type="radio"
+              value="MOVE"
+            />
+            <span>
+              Supervisa y vende en {teamName}.{" "}
+              <span className="text-ui-muted">
+                Su venta se traslada; las ventas anteriores conservan{" "}
+                {currentTeam}.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-ui-text">
+            <input
+              checked={salesMode === "KEEP"}
+              className="mt-1"
+              name="salesMode"
+              onChange={() => setSalesMode("KEEP")}
+              type="radio"
+              value="KEEP"
+            />
+            <span>
+              Sigue vendiendo en {currentTeam} y supervisa {teamName}.{" "}
+              <span className="text-ui-muted">Nada se traslada.</span>
+            </span>
+          </label>
+        </fieldset>
+      ) : null}
       <Feedback state={state} />
       <button
         className="rounded-lg bg-ui-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
@@ -391,10 +414,7 @@ function ReenterPanel({
   );
 
   return (
-    <form
-      action={action}
-      className="w-full space-y-3 rounded-xl border border-ui-border bg-ui-subtle p-3 text-left sm:min-w-80"
-    >
+    <form action={action} className={formClass}>
       <input name="userId" type="hidden" value={person.id} />
       <p className="text-xs font-medium text-ui-text">
         Reingresar a {person.name}

@@ -120,12 +120,16 @@ recomendada (ver §5); el resto se deriva de reglas ya vigentes.
 ### Promoción
 
 - **BR-011 · Promover es una acción con nombre.** «Promover a supervisor»
-  vive en Personas, sobre un asesor activo, y pide: qué equipo(s) va a
-  supervisar y si **sigue vendiendo** (SPEC-019: `salesEnabled` en su equipo
-  primario). Sube `OrganizationMember.role` a `SUPERVISOR`, crea la
-  membresía de supervisión y conserva o cierra la de venta según la
-  elección, todo en una transacción. Sus ventas y métricas previas no se
-  tocan (SPEC-019: retirar la venta no altera lo histórico).
+  vive en Personas, sobre un asesor activo, y pide: **un equipo** que va a
+  supervisar (más equipos se agregan desde Equipos) y si **sigue vendiendo**
+  (SPEC-019: `salesEnabled`). Si sigue vendiendo y el equipo supervisado es
+  otro que el suyo, elige explícitamente entre **trasladar su venta** al
+  equipo supervisado (una sola membresía, convención SPEC-019) o
+  **conservar su equipo de venta** y supervisar el otro (dos membresías:
+  la de venta intacta y una de supervisión sin venta) — SPEC-043 BR-006.
+  Sube `OrganizationMember.role` a `SUPERVISOR` y aplica lo elegido en una
+  transacción. Sus ventas y métricas previas no se tocan (SPEC-019: retirar
+  la venta no altera lo histórico).
 - **BR-012 · Solo el administrador promueve** (SPEC-001 BR-014), y solo a
   quien está activo y tiene equipo. El modo `SELLING_SUPERVISOR` de
   «asignar integrante» deja de subir el rol en silencio: asignar integrantes

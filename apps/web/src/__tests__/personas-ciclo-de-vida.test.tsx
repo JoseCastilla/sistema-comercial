@@ -42,7 +42,6 @@ function renderAcciones(
   render(
     <PersonLifecycleActions
       destinationCandidates={[{ id: "u-2", name: "Luis" }]}
-      history={[]}
       isCurrentUser={false}
       overview={{ openOrders: 3, internalCases: 4, campaignCases: 6 }}
       person={persona(extra)}
@@ -55,6 +54,7 @@ function renderAcciones(
 /**
  * SPEC-042: las tres acciones aparecen según estado y rol, se abren al
  * pedirlas y anticipan con números lo que va a pasar antes de confirmar.
+ * SPEC-043 PE-01: promover dice dónde quedan las ventas nuevas.
  */
 describe("Ciclo de vida de una persona", () => {
   it("un asesor activo puede darse de baja o promoverse; no reingresar", () => {
@@ -76,7 +76,6 @@ describe("Ciclo de vida de una persona", () => {
     render(
       <PersonLifecycleActions
         destinationCandidates={[]}
-        history={[]}
         isCurrentUser={false}
         overview={{ openOrders: 0, internalCases: 0, campaignCases: 0 }}
         person={persona({ id: "u-9", status: "DISABLED" })}
@@ -125,22 +124,50 @@ describe("Ciclo de vida de una persona", () => {
     expect(screen.getByRole("textbox", { name: "Cuál" })).toBeRequired();
   });
 
-  it("promover propone su equipo, y dice qué pasa con su venta", () => {
+  it("promover muestra el equipo actual, propone ese equipo y dice qué pasa con su venta", () => {
     renderAcciones();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Promover a supervisor" }),
     );
 
+    expect(screen.getByText(/Hoy: asesor en Lima Centro/)).toBeInTheDocument();
     expect(
       screen.getByRole("combobox", { name: "Equipo que va a supervisar" }),
     ).toHaveValue("t-1");
     expect(screen.getByText(/se le siguen asignando/)).toBeInTheDocument();
+    // Mismo equipo: no hay nada que trasladar ni que elegir.
+    expect(screen.queryByRole("radio")).toBeNull();
 
     fireEvent.click(screen.getByRole("checkbox", { name: /Sigue vendiendo/ }));
     expect(
       screen.getByText(/Su membresía de venta se cierra hoy/),
     ).toBeInTheDocument();
+  });
+
+  it("supervisar otro equipo obliga a decir dónde quedan las ventas nuevas", () => {
+    renderAcciones();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Promover a supervisor" }),
+    );
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Equipo que va a supervisar" }),
+      { target: { value: "t-2" } },
+    );
+
+    const traslada = screen.getByRole("radio", {
+      name: /Supervisa y vende en Huancayo/,
+    });
+    const conserva = screen.getByRole("radio", {
+      name: /Sigue vendiendo en Lima Centro y supervisa Huancayo/,
+    });
+    expect(traslada).toBeChecked();
+    expect(conserva).not.toBeChecked();
+
+    fireEvent.click(conserva);
+    expect(conserva).toBeChecked();
+    expect(conserva).toHaveAttribute("value", "KEEP");
   });
 
   it("el reingreso pide equipo y contraseña nueva, y ofrece cambiar el correo", () => {
@@ -169,26 +196,11 @@ describe("Ciclo de vida de una persona", () => {
     ).toBeInTheDocument();
   });
 
-  it("el historial se ve cuando existe", () => {
-    renderAcciones(
-      {},
-      {
-        history: [
-          {
-            action: "PROMOTED",
-            label: "Promoción a supervisor",
-            reason: "Promoción a supervisor",
-            actorName: "Admin",
-            createdAtLabel: "05/09/2026, 16:00",
-            summary: "equipo Lima Centro · sigue vendiendo",
-          },
-        ],
-      },
-    );
+  it("sin acciones posibles, lo dice en vez de quedarse vacío", () => {
+    renderAcciones({ status: "INVITED" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Historial (1)" }));
     expect(
-      screen.getByText("equipo Lima Centro · sigue vendiendo"),
+      screen.getByText("Sin acciones de ciclo de vida para este estado."),
     ).toBeInTheDocument();
   });
 });
