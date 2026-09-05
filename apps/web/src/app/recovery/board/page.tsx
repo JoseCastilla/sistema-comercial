@@ -111,11 +111,24 @@ export default async function RecoveryBoardPage({
       ).map((item) => item.teamId)
     : null;
 
+  /**
+   * COR-04 (05/09/2026, BR-022b/BR-029): el `?team=` de la URL pisaba la
+   * restricción a los equipos del supervisor. Solo estrecha; un equipo
+   * ajeno se ignora.
+   */
+  const teamScope = supervisedTeamIds
+    ? supervisedTeamIds.includes(teamFilter)
+      ? teamFilter
+      : ""
+    : teamFilter;
+
   const scopeWhere: Prisma.RecoveryCaseWhereInput = {
     organizationId: membership.organization.id,
     source: "NATIONAL_BASE",
     ...(supervisedTeamIds ? { assignedTeamId: { in: supervisedTeamIds } } : {}),
-    ...(teamFilter ? { assignedTeamId: teamFilter } : {}),
+    // Con supervisor, `teamScope` es un subconjunto de sus equipos: el
+    // reemplazo estrecha, nunca amplía.
+    ...(teamScope ? { assignedTeamId: teamScope } : {}),
   };
 
   const [assignedCases, attemptsToday, resolvedToday, cohortCases, teams] =
@@ -356,7 +369,7 @@ export default async function RecoveryBoardPage({
               <span className="ui-label-eyebrow">Equipo</span>
               <select
                 className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={teamFilter}
+                defaultValue={teamScope}
                 name="team"
               >
                 <option value="">Todos</option>

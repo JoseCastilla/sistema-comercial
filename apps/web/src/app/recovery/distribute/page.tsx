@@ -10,6 +10,8 @@ import {
 } from "@/features/recovery/components/distribute-recovery-form";
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
 import { requireCommercialAccess } from "@/server/auth/access";
+
+import { allOf } from "@repo/validation";
 import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
@@ -86,13 +88,26 @@ export default async function RecoveryDistributePage({
     ...(supervisedTeamIds ? { assignedTeamId: { in: supervisedTeamIds } } : {}),
   };
 
-  const filterWhere: Prisma.RecoveryCaseWhereInput = {
-    ...scopeWhere,
-    ...(teamFilter ? { assignedTeamId: teamFilter } : {}),
-    ...(departmentFilter
+  /**
+   * COR-04 (05/09/2026, BR-022b/BR-029): el `?team=` de la URL pisaba la
+   * restricción a los equipos del supervisor —misma clave, el último gana—
+   * y le mostraba la base de otro equipo. El filtro solo puede estrechar el
+   * alcance; un equipo ajeno se ignora.
+   */
+  const teamScope = supervisedTeamIds
+    ? supervisedTeamIds.includes(teamFilter)
+      ? teamFilter
+      : ""
+    : teamFilter;
+
+  // COR-01: condiciones juntas con AND, para que ninguna pise a otra.
+  const filterWhere: Prisma.RecoveryCaseWhereInput = allOf<Prisma.RecoveryCaseWhereInput>(
+    scopeWhere,
+    teamScope ? { assignedTeamId: teamScope } : null,
+    departmentFilter
       ? { department: { equals: departmentFilter, mode: "insensitive" } }
-      : {}),
-    ...(planFilter
+      : null,
+    planFilter
       ? {
           services: {
             some: {
@@ -101,14 +116,16 @@ export default async function RecoveryDistributePage({
             },
           },
         }
-      : {}),
-    ...(documentFilter ? { documentNumber: { contains: documentFilter } } : {}),
-  };
+      : null,
+    documentFilter ? { documentNumber: { contains: documentFilter } } : null,
+  );
 
-  const viewWhere: Prisma.RecoveryCaseWhereInput =
+  const viewWhere: Prisma.RecoveryCaseWhereInput = allOf<Prisma.RecoveryCaseWhereInput>(
+    filterWhere,
     view === "open"
-      ? { ...filterWhere, status: "OPEN" }
-      : { ...filterWhere, status: "ASSIGNED", attempts: { none: {} } };
+      ? { status: "OPEN" }
+      : { status: "ASSIGNED", attempts: { none: {} } },
+  );
 
   const [
     openCount,
@@ -250,7 +267,7 @@ export default async function RecoveryDistributePage({
 
   const baseQuery = new URLSearchParams();
   if (view !== "open") baseQuery.set("view", view);
-  if (teamFilter) baseQuery.set("team", teamFilter);
+  if (teamScope) baseQuery.set("team", teamScope);
   if (departmentFilter) baseQuery.set("department", departmentFilter);
   if (planFilter) baseQuery.set("plan", planFilter);
   if (documentFilter) baseQuery.set("q", documentFilter);
@@ -321,7 +338,7 @@ export default async function RecoveryDistributePage({
               </span>
               <select
                 className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-                defaultValue={teamFilter}
+                defaultValue={teamScope}
                 name="team"
               >
                 <option value="">Todos</option>

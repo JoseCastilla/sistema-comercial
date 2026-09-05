@@ -337,6 +337,28 @@ construir un reporte a mano.
     el borrador intacto, no como pantalla caída.
   - Las etiquetas del Excel que no existen —«Apagado», «Tiene deuda»— no
     se incorporan sin definir significado, campos y efecto en la cadencia.
+- **BR-091** (05/09/2026, fase 1 del plan de usabilidad de Campañas):
+  **los filtros de las pantallas administrativas se componen con AND y solo
+  estrechan el alcance.** Cuatro correcciones de control:
+  - **COR-01.** Los fragmentos de una consulta se unen con `AND`, nunca por
+    spread. Por spread, dos fragmentos sobre la misma clave se pisaban en
+    silencio: elegir un plan en el triage borraba la condición de
+    verificación de la vista y traía casos sin consultar bajo el botón
+    «Listos». El compositor `allOf` vive en `@repo/validation` con prueba.
+  - **COR-02.** Cada contador abre exactamente el conjunto que nombra. El
+    triage pasa a tres vistas —Listos (`TRIAGE` verificados), Falta consultar
+    (con alguna línea sin consultar), Con pedido en curso (`WAITING`
+    verificados)— y las tarjetas enlazan a su vista. Verificación y estado
+    son dimensiones distintas; ningún contador suma categorías solapadas.
+  - **COR-04.** Un `?team=` en la URL nunca amplía el alcance de un
+    supervisor: en triage, distribución y tablero el filtro solo puede
+    estrechar sus equipos; un equipo ajeno se ignora. Cuando exista filtro
+    por asesor, misma regla.
+  - **COR-05.** La selección por lote no sobrevive a un cambio de lista. El
+    estado del componente persiste entre filtros y los IDs marcados seguían
+    viajando ocultos en el formulario: «aplicar» actuaba sobre clientes que
+    nadie veía. Se limpia y se avisa, porque una selección que desaparece
+    sin explicación parece un fallo.
 - **BR-025:** un caso `WAITING` cuyos servicios aparecen luego portados a
   Movistar se cierra como `DISCARDED` y no vuelve a revisarse.
 - **BR-026:** un caso `LIBERADO` pasa a `OPEN` y queda disponible para asignar.

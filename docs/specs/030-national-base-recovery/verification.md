@@ -745,6 +745,45 @@ bloquea durante el envío y no hubo forma limpia de simular el corte de red
 en el navegador. El cambio de cliente con tres salidas y el aviso al salir
 se verificaron en pruebas de componente, no en el navegador.
 
+### Fase 1 del plan de usabilidad — BR-091, 05/09/2026
+
+Las cuatro correcciones se confirmaron primero en el código, antes de tocar:
+
+- **COR-01** en `triage/page.tsx`: `caseScope` por spread; `readyWhere`
+  aportaba `services: { none }` y el plan `services: { some }`; ganaba el
+  plan. El contador `filteredTotal` usaba el mismo objeto: coincidían entre
+  sí y mentían los dos. Distribución no colisionaba hoy pero usaba la misma
+  construcción.
+- **COR-02**: `readyTotal` contaba `status: "TRIAGE"` + verificados; el
+  listado «Listos» usaba `status in [TRIAGE, WAITING]`. Existía
+  `waitingTotal` aparte, así que la suma cuadraba: era una etiqueta que no
+  nombraba lo que abría.
+- **COR-04** en `distribute/page.tsx:86-91` y `board/page.tsx:118`: el
+  alcance del supervisor se escribía y, dos líneas después, `?team=` lo
+  pisaba. El triage ya estaba cerrado desde BR-089.
+- **COR-05** en ambos formularios: `setSelected(new Set())` solo dentro del
+  efecto de éxito; sin efecto alguno sobre `rows`.
+
+Evidencia:
+
+1. **Pruebas puras**: 4 casos sobre `allOf` — dos condiciones sobre la misma
+   clave se conservan; vacíos/nulos/falsos no ensucian; sin fragmentos
+   devuelve `AND: []`; respeta el orden. 267 en verde en `@repo/validation`.
+2. **Pruebas de componente**: 3 casos de COR-05 — limpia y avisa al cambiar
+   la lista; sin nada marcado no avisa; una lista idéntica (acción exitosa)
+   no dispara el aviso. 81 en verde en `apps/web`; tipos y lint limpios.
+3. **Un tropiezo propio, corregido**: el script de edición insertó tres
+   veces el bloque de COR-05 en el triage (redeclaraciones); se dejó una y
+   se verificó por conteo antes de volver a correr las pruebas.
+
+**Limitación declarada**: las tres pantallas afectadas (triage, distribución,
+tablero) exigen rol supervisor o administrador y la sesión disponible en el
+navegador era de asesor, que es redirigido. La composición con AND y la
+limpieza de selección quedan cubiertas por pruebas; el estrechamiento por
+`?team=` repite exactamente el patrón ya verificado en el triage en BR-089.
+Al desplegar, la señal es que el triage muestre **tres** botones de vista y
+que «Listos» deje de incluir casos en espera.
+
 ### Pendiente de verificación
 
 - **AC-046 y AC-049** end to end automático: exige provocar un cambio de
