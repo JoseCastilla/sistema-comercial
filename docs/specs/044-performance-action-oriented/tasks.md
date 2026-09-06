@@ -77,7 +77,8 @@
 - [x] ASE-06 · Conciliación del asesor sin «Sin asesor» ni columna de asesor.
 - [x] Recorrido local con sesión de administrador (bloque de anteriores,
       estados de ventana, conciliación intacta para ADMIN).
-- [ ] Lectura de solo lectura en producción con la sesión de asesor.
+- [x] Lectura de solo lectura en producción con la sesión de asesor (cuota
+      15/100 = la de supervisión; «Comienza el día 25»; anteriores 5 = 5).
 
 - [x] Lectura de solo lectura en producción con la sesión de supervisor
       (HUANCAYO - EL TAMBO: cuotas por alcance, reparto 270 de 300, hoy y
