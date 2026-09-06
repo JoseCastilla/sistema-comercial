@@ -66,7 +66,12 @@ const issueLabels: Record<string, string> = {
 export default async function DitoImportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ batch?: string; confirmed?: string }>;
+  searchParams: Promise<{
+    batch?: string;
+    confirmed?: string;
+    historial?: string;
+    pagina?: string;
+  }>;
 }) {
   const { membership } = await requireAdminAccess();
   const parameters = await searchParams;
@@ -88,6 +93,40 @@ export default async function DitoImportsPage({
       conflictRows: true,
     },
   });
+  // PL-10: las ocho recientes siguen a mano; el historial completo se
+  // consulta paginado y en solo lectura (una carga confirmada no se borra).
+  const historyPageSize = 20;
+  const showHistory = parameters.historial === "1";
+  const historyPage = Math.max(
+    1,
+    Number.parseInt(parameters.pagina ?? "1", 10) || 1,
+  );
+  const [historyTotal, historyBatches] = await Promise.all([
+    database.ditoImportBatch.count({ where: { organizationId } }),
+    showHistory
+      ? database.ditoImportBatch.findMany({
+          where: { organizationId },
+          orderBy: { uploadedAt: "desc" },
+          skip: (historyPage - 1) * historyPageSize,
+          take: historyPageSize,
+          select: {
+            id: true,
+            fileName: true,
+            status: true,
+            uploadedAt: true,
+            confirmedAt: true,
+            sourceRows: true,
+            importableRows: true,
+            blockedRows: true,
+            conflictRows: true,
+            uploadedBy: { select: { name: true } },
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+  const historyPages = Math.max(1, Math.ceil(historyTotal / historyPageSize));
+  const historyHref = (page: number) =>
+    `/admin/dito-imports?historial=1&pagina=${page}${parameters.batch ? `&batch=${parameters.batch}` : ""}`;
   const selectedBatchId = parameters.batch ?? recentBatches[0]?.id ?? null;
   const selectedBatch = selectedBatchId
     ? await database.ditoImportBatch.findFirst({
@@ -332,7 +371,105 @@ export default async function DitoImportsPage({
                   ))}
                 </nav>
               )}
+              <p className="mt-3 text-xs text-ui-muted">
+                {showHistory ? (
+                  <Link
+                    className="text-ui-accent underline-offset-2 hover:underline"
+                    href={`/admin/dito-imports${parameters.batch ? `?batch=${parameters.batch}` : ""}`}
+                  >
+                    Ocultar el historial
+                  </Link>
+                ) : (
+                  <Link
+                    className="text-ui-accent underline-offset-2 hover:underline"
+                    href={historyHref(1)}
+                  >
+                    Ver el historial completo ({formatCount(historyTotal)}{" "}
+                    {historyTotal === 1 ? "carga" : "cargas"})
+                  </Link>
+                )}
+              </p>
             </SectionPanel>
+
+            {showHistory ? (
+              <SectionPanel
+                description="Todas las cargas, de la más reciente a la más antigua. Solo lectura: una carga confirmada conserva su trazabilidad y no se puede retirar desde aquí."
+                title={`Historial de cargas · página ${historyPage} de ${historyPages}`}
+              >
+                <div className="ui-table-wrap">
+                  <table className="ui-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Archivo</th>
+                        <th scope="col">Cargada</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Filas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyBatches.map((batch) => (
+                        <tr key={batch.id}>
+                          <td>
+                            <Link
+                              href={`/admin/dito-imports?historial=1&pagina=${historyPage}&batch=${batch.id}`}
+                            >
+                              <strong>{batch.fileName}</strong>
+                            </Link>
+                            <small>{batch.uploadedBy.name}</small>
+                          </td>
+                          <td>
+                            {dateFormatter.format(batch.uploadedAt)}
+                            {batch.confirmedAt ? (
+                              <small>
+                                Confirmada{" "}
+                                {dateFormatter.format(batch.confirmedAt)}
+                              </small>
+                            ) : null}
+                          </td>
+                          <td>
+                            {batchStatusLabels[batch.status] ?? batch.status}
+                          </td>
+                          <td>
+                            {batch.importableRows} aprobadas de{" "}
+                            {batch.sourceRows}
+                            <small>
+                              {batch.blockedRows} bloqueadas ·{" "}
+                              {batch.conflictRows} en conflicto
+                            </small>
+                          </td>
+                        </tr>
+                      ))}
+                      {historyBatches.length === 0 ? (
+                        <tr>
+                          <td colSpan={4}>No hay cargas en esta página.</td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+                <nav
+                  aria-label="Páginas del historial"
+                  className="mt-3 flex flex-wrap items-center gap-3 text-sm"
+                >
+                  {historyPage > 1 ? (
+                    <Link
+                      className="text-ui-accent underline-offset-2 hover:underline"
+                      href={historyHref(historyPage - 1)}
+                    >
+                      ← Más recientes
+                    </Link>
+                  ) : null}
+                  {historyPage < historyPages ? (
+                    <Link
+                      className="text-ui-accent underline-offset-2 hover:underline"
+                      href={historyHref(historyPage + 1)}
+                    >
+                      Más antiguas →
+                    </Link>
+                  ) : null}
+                </nav>
+              </SectionPanel>
+            ) : null}
           </div>
 
           <div className="min-w-0 space-y-6">

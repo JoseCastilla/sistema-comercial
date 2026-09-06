@@ -1,7 +1,7 @@
 # SPEC-045 — Mejoras transversales de la plataforma
 
-Estado: **fases 1 a 3 entregadas y verificadas en producción** (06/09/2026);
-fase 4 pendiente. Plan «Mejoras transversales de
+Estado: **fase 4 en construcción** (06/09/2026); fases 1 a 3 entregadas y
+verificadas en producción. Plan «Mejoras transversales de
 la plataforma comercial» v1.0 propuesto por José el 06/09/2026 (rol ADMIN,
 revisión de lectura de diez módulos), contrastado con la revisión de
 integridad del 05/09/2026 (`docs/revisiones/2026-09-05-integridad-plataforma.md`)
@@ -133,6 +133,30 @@ tratar en una spec propia de operación; no bloquean esta.
   DNI; acceso externo alternativo; selectores de destino con etiqueta
   accesible y reparto operable con teclado.
 
+#### Decisiones de la fase 4 (asumidas y escritas, 06/09/2026)
+
+- **Consulta DNI (PL-10)**: la actividad propia se muestra siempre («Tu
+  actividad»: mes, hoy, DNI distintos, y en la pista cuántas fueron nuevas al
+  proveedor y cuántas desde la ficha guardada); la de toda la organización
+  solo a administración, en un bloque aparte con la misma distinción. El
+  saldo se presenta como «el que reportó el proveedor en la última consulta
+  nueva, el <fecha>; no es un saldo en tiempo real». Sin cambios de datos:
+  `DniLookupEvent.source` ya distinguía `API` de `CACHE`.
+- **Cargas DITO (PL-10)**: las ocho recientes siguen como estaban (con
+  «retirar» solo para vistas previas); un enlace «Ver el historial completo
+  (N cargas)» abre una tabla paginada de 20 en solo lectura (`historial=1&
+  pagina=N`), con quién cargó, cuándo se confirmó y las filas; el historial
+  no ofrece retirar nada, y la acción de borrado sigue rechazando cualquier
+  carga confirmada.
+- **Consultas externas (PL-11)**: «Checa tus líneas» dice que lo consultado
+  no se guarda ni se audita, a diferencia de la consulta por DNI, y que si el
+  portal se ve recortado se abra fuera del sistema; el botón «Abrir fuera del
+  sistema» ya existía. El selector de equipo del triage gana etiqueta
+  accesible; los del reparto la ganaron en la fase 2. Las acciones del
+  reparto son botones y casillas: operables con teclado.
+- **Fuera de la fase**: el recorte del portal externo depende del portal;
+  no se reescribe el `iframe` (SPEC-036), se documenta la salida.
+
 ## 4. Criterios de aceptación de la fase 1
 
 - **AC-001:** el número de la alerta es igual a «N caso(s) cumplen el filtro»
@@ -163,3 +187,13 @@ tratar en una spec propia de operación; no bloquean esta.
   los cuatro períodos y la cifra coincide con «caso(s) cumplen el filtro».
 - **AC-010:** el resumen por equipo conserva cabecera y nombre del equipo al
   desplazarse y distingue personas de vendedores activos.
+
+## 7. Criterios de aceptación de la fase 4
+
+- **AC-011:** un asesor ve solo su actividad; administración ve además la de
+  la organización; ambas distinguen nuevas de guardadas; el saldo dice la
+  fecha del reporte y que no es en tiempo real.
+- **AC-012:** Importar ventas DITO conserva ocho recientes y abre un
+  historial paginado sin acción de borrado.
+- **AC-013:** «Checa tus líneas» explica que no queda auditado y ofrece la
+  salida externa; el selector de equipo del triage tiene nombre accesible.

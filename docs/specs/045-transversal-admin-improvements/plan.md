@@ -51,8 +51,15 @@
 - **Pruebas**: `logistica-horario.test.ts` (4); `recovery-follow-up.test.mjs`
   ajustado.
 
-## Fases siguientes
+## Fase 4
 
-- Fase 4: métricas de DNI por alcance y origen; historial paginado de cargas
-  DITO; textos y accesibilidad de consultas externas y reparto.
+- **`features/dni/dni-stats.ts`** (puro): `splitBySource`,
+  `buildDniLookupStats`; `getDniLookupOverview` cuenta por alcance con un
+  `groupBy` por origen; el formulario muestra «Tu actividad» y «Toda la
+  organización»; el panel de saldo explica la fecha del reporte.
+- **`/admin/dito-imports`**: `historial=1&pagina=N`, conteo total, tabla de
+  20 por página en solo lectura con navegación.
+- **Consultas externas**: textos en `/tools/lines` y en el marco;
+  `aria-label` en el selector de equipo del triage.
+- **Pruebas**: `dni-actividad.test.ts` (2).
 - Fase 0 (spec propia): worker, copias de seguridad, login.

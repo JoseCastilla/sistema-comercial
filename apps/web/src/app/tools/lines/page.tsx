@@ -8,7 +8,7 @@ export default function ChecaTusLineasPage() {
       <PageHeader
         eyebrow="Consulta externa"
         title="Checa tus líneas"
-        description="Consulta el portal oficial sin abandonar el espacio de trabajo del sistema comercial."
+        description="Consulta el portal de OSIPTEL sin salir del sistema. Lo que veas aquí no queda guardado ni auditado, a diferencia de la consulta por DNI: si necesitas dejar constancia, anótalo en el pedido o en el caso."
       />
       <ChecaTusLineasFrame />
     </div>

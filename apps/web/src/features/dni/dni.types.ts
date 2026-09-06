@@ -32,10 +32,22 @@ export interface DniPersonView {
   source: "API" | "CACHE";
 }
 
-export interface DniLookupStats {
+export interface DniLookupScopeStats {
   today: number;
   month: number;
   uniqueDnisThisMonth: number;
+  /** Consultas nuevas al proveedor este mes: las que gastan crédito. */
+  apiThisMonth: number;
+  /** Lecturas de la ficha guardada este mes: no gastan crédito. */
+  cacheThisMonth: number;
+}
+
+/**
+ * SPEC-045 PL-10: la actividad propia siempre; la de la organización solo
+ * para administración (`null` para el resto).
+ */
+export interface DniLookupStats extends DniLookupScopeStats {
+  organization: DniLookupScopeStats | null;
 }
 
 export interface DniCreditStatus {

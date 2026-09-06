@@ -8,7 +8,8 @@ export function ChecaTusLineasFrame() {
           <h2 className="text-sm font-bold text-ui-text">Líneas del cliente</h2>
           <p className="mt-1 text-xs leading-5 text-ui-muted">
             El asesor selecciona el documento y completa la consulta en el
-            portal oficial.
+            portal oficial. El resultado no se guarda en el sistema. Si el
+            portal se ve recortado o no carga, ábrelo fuera del sistema.
           </p>
         </div>
         <ExternalPortalActions url={portalUrl} />

@@ -53,22 +53,40 @@ export function DniLookupForm({
             Tu actividad de consultas
           </h2>
           <p className="mt-1 text-xs leading-5 text-ui-muted">
-            El sistema cuenta cada consulta completada, incluso si el DNI ya
-            existía en el historial.
+            Tus consultas. Cada una cuenta, pero solo las nuevas al proveedor
+            gastan crédito; leer una ficha ya guardada no gasta.
           </p>
         </div>
-        <MetricGroup>
+        <MetricGroup label="Tu actividad">
           <Metric
             emphasis="hero"
-            label="Consultas del mes"
+            hint={`${state.stats.apiThisMonth} nuevas al proveedor · ${state.stats.cacheThisMonth} desde la ficha guardada`}
+            label="Tus consultas del mes"
             value={state.stats.month}
           />
-          <Metric label="Consultas de hoy" value={state.stats.today} />
+          <Metric label="Tus consultas de hoy" value={state.stats.today} />
           <Metric
             label="DNI distintos este mes"
             value={state.stats.uniqueDnisThisMonth}
           />
         </MetricGroup>
+        {state.stats.organization ? (
+          <MetricGroup label="Toda la organización">
+            <Metric
+              hint={`${state.stats.organization.apiThisMonth} nuevas al proveedor (gastan crédito) · ${state.stats.organization.cacheThisMonth} desde la ficha guardada`}
+              label="Consultas del mes en la organización"
+              value={state.stats.organization.month}
+            />
+            <Metric
+              label="Consultas de hoy en la organización"
+              value={state.stats.organization.today}
+            />
+            <Metric
+              label="DNI distintos este mes en la organización"
+              value={state.stats.organization.uniqueDnisThisMonth}
+            />
+          </MetricGroup>
+        ) : null}
       </section>
 
       <section className="rounded-xl border border-ui-border bg-ui-surface p-4 shadow-sm sm:p-5">
@@ -321,12 +339,11 @@ function DniCreditPanel({ status }: { status: DniCreditStatus }) {
         </div>
       </div>
       <p className="mt-3 text-sm leading-6 text-ui-muted">{explanation}</p>
-      {status.reportedAt ? (
-        <p className="mt-1 text-xs text-ui-soft">
-          Saldo reportado el{" "}
-          {fetchedAtFormatter.format(new Date(status.reportedAt))}.
-        </p>
-      ) : null}
+      <p className="mt-1 text-xs text-ui-soft">
+        {status.reportedAt
+          ? `Es el saldo que reportó el proveedor en la última consulta nueva, el ${fetchedAtFormatter.format(new Date(status.reportedAt))}. No es un saldo en tiempo real: cambia con cada consulta nueva.`
+          : "Todavía no hay una consulta nueva que haya reportado saldo."}
+      </p>
     </section>
   );
 }
