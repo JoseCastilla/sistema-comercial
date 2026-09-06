@@ -15,11 +15,30 @@
   supervisados), total en «Pendientes de intervención» y por fila en el
   desglose, ambos enlazando a `/recovery/sales` (SPEC-041).
 
-## Fases siguientes
+## Fase 2
 
-- Fase 2: agregación por equipo en el servidor (reutilizando el desglose por
-  asesor y las cuotas de `get-performance-quotas`), orden por URL, filtros
-  de gestión como parámetros.
+- **`performance-management.ts`** (puro, probado): claves de orden
+  (`orden=`) y de filtros de gestión (`gestion=`) con etiqueta y definición;
+  `parse*`, `matchesManagementFilter`, `filterBreakdown`, `sortBreakdown`.
+- **Servidor** (`get-performance-dashboard.ts`): `buildQuotaProgress` compartido
+  (entregadas, confirmadas, brecha, siguiente tramo individual);
+  `buildTeamSummaries` agrupa los pedidos por `assignedTeamId`, cuenta la
+  plantilla por equipo (`sellersByTeam`), casos de recupero por equipo
+  (segundo `groupBy`), supervisor activo y cuota de equipo (fila
+  `performanceQuota` con `teamId` o defecto × plantilla); `quotaWindow`
+  expone `startDay`/`endDay`; devuelve `sort`, `management`, `teams`.
+- **Enlaces**: `performanceHref` conserva `orden` y `gestion`; `sortHref`,
+  `managementHref` (alterna), `quotasHref`; `recoveryCasesHref` admite equipo.
+- **Componente**: `TeamSummaryPanel` (tabla con pie de reconciliación),
+  `ManagementBar` (fichas-enlace con `aria-current` y definición),
+  `AdvisorBreakdown` (abierto, ordenado y filtrado, `QuotaCell` con
+  confirmadas y siguiente tramo); la matriz sigue el mismo filtro y orden; la
+  tarjeta «Asesores con ventas» abre `gestion=SIN_PRODUCCION`.
+- **CSS**: `.performance-management*` y `.performance-teams tfoot` en
+  `patterns.css`.
+
+## Fase siguiente
+
 - Fase 3: `DirectoryFilters` en el tablero y reordenación de secciones;
   matriz con rango de días visible.
 

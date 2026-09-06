@@ -1090,6 +1090,69 @@
     font-size: var(--ui-text-2xs);
   }
 
+  /*
+   * Filtros de gestión y orden del desglose (SPEC-044 REN-04/05): fichas que
+   * son enlaces —el estado vive en la URL— y una línea que dice qué significa
+   * el filtro elegido y cuántos asesores quedan.
+   */
+  .performance-management {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--ui-border);
+  }
+
+  .performance-management__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .performance-management__row > span {
+    margin-right: 0.25rem;
+    color: var(--ui-text-soft);
+    font-size: var(--ui-text-3xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .performance-management__row a {
+    padding: 0.3rem 0.65rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    color: var(--ui-text-muted);
+    background: var(--ui-surface-subtle);
+    font-size: var(--ui-text-3xs);
+    font-weight: 700;
+  }
+
+  .performance-management__row a:hover {
+    border-color: var(--ui-accent);
+    color: var(--ui-text);
+  }
+
+  .performance-management__row a[aria-current="true"] {
+    border-color: var(--ui-accent);
+    color: var(--ui-accent);
+    background: var(--ui-accent-soft);
+  }
+
+  .performance-management__meaning {
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-2xs);
+  }
+
+  .performance-teams tfoot td {
+    border-top: 2px solid var(--ui-border);
+    font-weight: 700;
+  }
+
+  .performance-teams tfoot small {
+    font-weight: 400;
+  }
+
   .performance-breakdown__summary {
     display: flex;
     align-items: center;

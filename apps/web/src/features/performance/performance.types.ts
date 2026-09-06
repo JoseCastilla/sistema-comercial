@@ -1,5 +1,10 @@
 import type { PerformanceMetrics } from "@repo/validation";
 
+import type {
+  BreakdownSortKey,
+  ManagementFilterKey,
+} from "./performance-management";
+
 export type PerformanceRole = "ADMIN" | "SUPERVISOR" | "AGENT" | "BACKOFFICE";
 
 export interface PerformanceBreakdownItem {
@@ -14,13 +19,37 @@ export interface PerformanceBreakdownItem {
   openRecoveryCases: number;
   showCommission: boolean;
   dailyEntered: number[];
-  quota: {
-    target: number;
-    delivered: number;
-    confirmed: number;
-    missing: number;
-    reached: boolean;
-  } | null;
+  quota: PerformanceQuotaProgress | null;
+}
+
+/**
+ * Avance de la ventana de cuota vigente (SPEC-038, SPEC-044 REN-04): la cuota
+ * se mide en entregadas; el acelerador, en confirmadas. Las dos se muestran.
+ */
+export interface PerformanceQuotaProgress {
+  target: number;
+  delivered: number;
+  confirmed: number;
+  missing: number;
+  reached: boolean;
+  /** Siguiente tramo del acelerador y cuántas confirmadas faltan; `null` si no hay dato. */
+  nextTarget: number | null;
+  missingForNextTarget: number;
+}
+
+/** Resumen de un equipo dentro del alcance del tablero (SPEC-044 REN-02). */
+export interface PerformanceTeamSummary {
+  /** `null` en las filas residuales: sin equipo asignado u otros equipos. */
+  id: string | null;
+  kind: "TEAM" | "UNASSIGNED" | "OTHER";
+  name: string;
+  supervisorName: string | null;
+  activeSellers: number;
+  sellersWithSales: number;
+  sellersWithoutSales: number;
+  metrics: PerformanceMetrics;
+  openRecoveryCases: number;
+  quota: PerformanceQuotaProgress | null;
 }
 
 export interface MonthlyPerformanceDay {
@@ -114,7 +143,16 @@ export interface PerformanceDashboardData {
     key: "ONE" | "TWO";
     label: string;
     isActive: boolean;
+    /** Días del mes que abarca la ventana, para decir la cohorte sin rodeos. */
+    startDay: number;
+    endDay: number;
   } | null;
+  /** Orden del desglose (`orden=`), SPEC-044 REN-04. */
+  sort: BreakdownSortKey;
+  /** Filtro de gestión (`gestion=`), SPEC-044 REN-05. */
+  management: ManagementFilterKey | null;
+  /** Resumen por equipo; vacío en la vista personal o con un asesor aislado. */
+  teams: PerformanceTeamSummary[];
   workforce: {
     activeSellers: number;
     sellersWithSales: number;
