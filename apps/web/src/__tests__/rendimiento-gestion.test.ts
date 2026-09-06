@@ -69,7 +69,7 @@ const alcance = {
   agentFilter: "ALL",
   from: "2026-09-01",
   to: "2026-09-30",
-  sort: "PAGABLES" as const,
+  sort: "ENTREGADAS" as const,
   management: null,
 };
 
@@ -120,7 +120,7 @@ describe("Filtros de gestión del desglose", () => {
   });
 
   it("un valor desconocido en la URL vuelve al orden y al filtro por defecto", () => {
-    expect(parseBreakdownSort("lo-que-sea")).toBe("PAGABLES");
+    expect(parseBreakdownSort("lo-que-sea")).toBe("ENTREGADAS");
     expect(parseBreakdownSort("CUOTA")).toBe("CUOTA");
     expect(parseManagementFilter("x")).toBeNull();
     expect(parseManagementFilter("POR_ACTIVAR")).toBe("POR_ACTIVAR");
@@ -143,7 +143,7 @@ describe("Orden del desglose", () => {
     ]);
   });
 
-  it("por defecto manda pagables, luego ingresadas, luego el nombre", () => {
+  it("«más pagables» manda pagables, luego ingresadas, luego el nombre", () => {
     const rows = [
       advisor("B", { payable: 2, entered: 5 }),
       advisor("A", { payable: 2, entered: 5 }),

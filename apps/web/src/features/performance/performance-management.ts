@@ -9,6 +9,7 @@ import type { PerformanceBreakdownItem } from "./performance.types";
  * pantalla la muestra, así nadie discute qué significa «sin producción».
  */
 export const breakdownSortKeys = [
+  "ENTREGADAS",
   "PAGABLES",
   "CUOTA",
   "BONO",
@@ -20,12 +21,14 @@ export const breakdownSortKeys = [
 
 export type BreakdownSortKey = (typeof breakdownSortKeys)[number];
 
-export const defaultBreakdownSort: BreakdownSortKey = "PAGABLES";
+/** SPEC-047 BR-004: el resultado se mide en entregadas, así que encabezan. */
+export const defaultBreakdownSort: BreakdownSortKey = "ENTREGADAS";
 
 export const breakdownSortOptions: ReadonlyArray<{
   key: BreakdownSortKey;
   label: string;
 }> = [
+  { key: "ENTREGADAS", label: "Más entregadas" },
   { key: "PAGABLES", label: "Más pagables" },
   { key: "CUOTA", label: "Cuota: más cerca de llegar" },
   { key: "BONO", label: "Bono: más cerca del siguiente tramo" },
@@ -45,6 +48,7 @@ export function parseBreakdownSort(value: unknown): BreakdownSortKey {
 export const managementFilterKeys = [
   "SIN_VENTAS_HOY",
   "SIN_PRODUCCION",
+  "SIN_ENTREGAS",
   "POR_ACTIVAR",
   "POR_RECUPERAR",
   "CUOTA_PENDIENTE",
@@ -81,6 +85,16 @@ export const managementFilterOptions: readonly ManagementFilterOption[] = [
     label: "Sin ventas en el mes",
     definition:
       "Vendedores activos y habilitados para vender con cero ventas registradas en el mes elegido.",
+    requiresQuota: false,
+    requiresCurrentMonth: false,
+  },
+  {
+    // SPEC-047 BR-005: el filtro de resultado. Vender sin entregar es lo que
+    // hay que mirar cuando el eje es la entrega.
+    key: "SIN_ENTREGAS",
+    label: "Sin entregas en el mes",
+    definition:
+      "Vendedores activos con cero ventas entregadas en el mes elegido, tengan o no ventas ingresadas.",
     requiresQuota: false,
     requiresCurrentMonth: false,
   },
@@ -149,6 +163,9 @@ export function matchesManagementFilter(
   }
   if (filter === "SIN_PRODUCCION") {
     return item.isActiveSeller && item.metrics.entered === 0;
+  }
+  if (filter === "SIN_ENTREGAS") {
+    return item.isActiveSeller && item.metrics.delivered === 0;
   }
   if (filter === "POR_ACTIVAR") {
     return item.metrics.deliveredPendingActivation > 0;
@@ -244,6 +261,13 @@ export function sortBreakdown<T extends SortSubject>(
 ): T[] {
   const copy = [...items];
   switch (sort) {
+    case "ENTREGADAS":
+      return copy.sort(
+        (left, right) =>
+          right.metrics.delivered - left.metrics.delivered ||
+          right.metrics.payable - left.metrics.payable ||
+          byName(left, right),
+      );
     case "CUOTA":
       return copy.sort(byQuota);
     case "BONO":
