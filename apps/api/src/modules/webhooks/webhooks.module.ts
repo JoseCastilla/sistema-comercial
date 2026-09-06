@@ -16,6 +16,8 @@ import { GhlWebhookController } from './ghl-webhook.controller';
 
 import { GhlWebhookService } from './ghl-webhook.service';
 
+import { MaintenanceController } from './maintenance.controller';
+
 import { WebhookEventsRepository } from './webhook-events.repository';
 
 import { WebhookValidationService } from './webhook-validation.service';
@@ -23,7 +25,11 @@ import { WebhookValidationService } from './webhook-validation.service';
 @Module({
   imports: [DatabaseModule, CommercialProjectionModule],
 
-  controllers: [GhlWebhookController, DitoWebhookController],
+  controllers: [
+    GhlWebhookController,
+    DitoWebhookController,
+    MaintenanceController,
+  ],
 
   providers: [
     GhlWebhookService,

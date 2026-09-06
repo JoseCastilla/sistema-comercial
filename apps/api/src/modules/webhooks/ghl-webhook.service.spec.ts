@@ -69,7 +69,7 @@ describe('GhlWebhookService', () => {
 
   const markProcessed = jest.fn<Promise<void>, [string]>();
 
-  const markFailed = jest.fn<Promise<void>, [string]>();
+  const markFailed = jest.fn<Promise<void>, [string, string?]>();
 
   const project = jest.fn<
     Promise<GhlProjectionResult>,
@@ -291,7 +291,10 @@ describe('GhlWebhookService', () => {
       service.ingest(webhookEnvelopeFixture, webhookSecret),
     ).rejects.toBe(projectionError);
 
-    expect(markFailed).toHaveBeenCalledWith('webhook-event-001');
+    expect(markFailed).toHaveBeenCalledWith(
+      'webhook-event-001',
+      expect.any(String),
+    );
 
     expect(markProcessed).not.toHaveBeenCalled();
   });

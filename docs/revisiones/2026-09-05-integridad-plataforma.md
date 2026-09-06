@@ -70,9 +70,12 @@ producto funciona, la documentación y la operación no lo han alcanzado.
 5. **Diez restricciones `NOT VALID` nunca validadas** (`20260809200000`,
    `20260813120000`): el histórico anterior al 09/08 nunca se auditó; un
    restore no garantiza integridad.
-6. **Login sin límite de intentos ni MFA.** Sin `rateLimit` de Better Auth, sin
-   `twoFactor`; cuentas ADMIN con acceso a datos RENIEC y credenciales AGR
-   protegidas solo por contraseña de 12 caracteres y sesión de 12 h.
+6. **Login sin MFA y con el límite de intentos solo por defecto.** Better
+   Auth sí limita en producción sin configurarlo (3 intentos de acceso cada
+   10 s por IP), pero no estaba escrito ni decidido; sin `twoFactor`; cuentas
+   ADMIN con acceso a datos RENIEC y credenciales AGR protegidas solo por
+   contraseña de 12 caracteres y sesión de 12 h. *(Corregido el 06/09: el
+   límite existía por defecto; SPEC-046 lo deja explícito.)*
 7. **Script que borra órdenes contra la base que apunte `DATABASE_URL`**
    (`packages/database/scripts/test-orphan-claim-concurrency.mjs`), sin
    comprobar que no sea producción; por el `Cascade` arrastra el historial de

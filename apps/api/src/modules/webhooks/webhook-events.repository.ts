@@ -35,6 +35,20 @@ export interface CreateWebhookEventInput extends WebhookEventIdentity {
   envelope: GhlWebhookEnvelopeV1;
 }
 
+export interface RetryableWebhookEvent {
+  id: string;
+
+  payload: unknown;
+
+  ghlIntegration: {
+    id: string;
+
+    organizationId: string;
+
+    locationId: string;
+  };
+}
+
 @Injectable()
 export class WebhookEventsRepository {
   constructor(private readonly databaseService: DatabaseService) {}
@@ -173,7 +187,12 @@ export class WebhookEventsRepository {
     });
   }
 
-  async markFailed(webhookEventId: string): Promise<void> {
+  /**
+   * SPEC-046 BR-003: el motivo del fallo se guarda; antes `lastError`
+   * existía en el esquema y nunca se escribía, así que una venta que no
+   * se proyectaba se perdía sin diagnóstico.
+   */
+  async markFailed(webhookEventId: string, error?: string): Promise<void> {
     const database = this.databaseService.getClient();
 
     await database.webhookEvent.update({
@@ -183,6 +202,52 @@ export class WebhookEventsRepository {
 
       data: {
         status: 'FAILED',
+
+        lastError: error ? error.slice(0, 2000) : undefined,
+      },
+    });
+  }
+
+  /**
+   * Eventos fallidos que todavía admiten reintento: los más antiguos
+   * primero, con un tope de intentos para que un evento roto no se
+   * reintente para siempre.
+   */
+  async findRetryable(
+    maxAttempts: number,
+    limit: number,
+  ): Promise<RetryableWebhookEvent[]> {
+    const database = this.databaseService.getClient();
+
+    return database.webhookEvent.findMany({
+      where: {
+        status: 'FAILED',
+
+        processingAttempts: {
+          lt: maxAttempts,
+        },
+      },
+
+      orderBy: {
+        receivedAt: 'asc',
+      },
+
+      take: limit,
+
+      select: {
+        id: true,
+
+        payload: true,
+
+        ghlIntegration: {
+          select: {
+            id: true,
+
+            organizationId: true,
+
+            locationId: true,
+          },
+        },
       },
     });
   }

@@ -49,6 +49,34 @@ export const auth = betterAuth({
     revokeSessionsOnPasswordReset: true,
   },
 
+  /*
+   * SPEC-046 BR-002: límite de intentos explícito. Better Auth ya limita en
+   * producción por defecto (3 intentos de acceso cada 10 s por IP), pero un
+   * defecto no es una decisión: aquí queda escrito y algo más estricto para
+   * el acceso, sin estorbar al resto de la API de sesión.
+   */
+  rateLimit: {
+    enabled: process.env.NODE_ENV === "production",
+
+    window: 60,
+
+    max: 100,
+
+    customRules: {
+      "/sign-in/email": {
+        window: 60,
+
+        max: 5,
+      },
+
+      "/request-password-reset": {
+        window: 300,
+
+        max: 3,
+      },
+    },
+  },
+
   session: {
     /*
      * Sesión máxima:

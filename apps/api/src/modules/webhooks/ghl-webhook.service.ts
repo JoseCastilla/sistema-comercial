@@ -19,6 +19,24 @@ import { WebhookEventsRepository } from './webhook-events.repository';
 
 import { WebhookValidationService } from './webhook-validation.service';
 
+export interface WebhookRetrySummary {
+  candidates: number;
+  processed: number;
+  failed: number;
+}
+
+/** Tope de intentos por evento (SPEC-046 BR-003). */
+const maxProcessingAttempts = 5;
+
+/** Cuántos eventos se reintentan por pasada del worker. */
+const retryBatchSize = 50;
+
+function describeError(error: unknown): string {
+  return error instanceof Error
+    ? `${error.name}: ${error.message}`
+    : String(error);
+}
+
 @Injectable()
 export class GhlWebhookService {
   constructor(
@@ -28,6 +46,53 @@ export class GhlWebhookService {
 
     private readonly projectionService: GhlCommercialProjectionService,
   ) {}
+
+  /**
+   * SPEC-046 BR-003: vuelve a proyectar los eventos que quedaron en FAILED
+   * con menos de cinco intentos. Cada evento se reclama de forma atómica,
+   * así dos pasadas concurrentes no lo procesan dos veces. El resumen dice
+   * cuántos se recuperaron y cuántos siguen fallando.
+   */
+  async retryFailed(): Promise<WebhookRetrySummary> {
+    const events = await this.repository.findRetryable(
+      maxProcessingAttempts,
+      retryBatchSize,
+    );
+
+    let processed = 0;
+
+    let failed = 0;
+
+    for (const event of events) {
+      const claimed = await this.repository.claimForProcessing(event.id);
+
+      if (!claimed) continue;
+
+      try {
+        const envelope = await this.validationService.parse(event.payload);
+
+        await this.projectionService.project(envelope, {
+          organizationId: event.ghlIntegration.organizationId,
+
+          ghlIntegrationId: event.ghlIntegration.id,
+
+          locationId: event.ghlIntegration.locationId,
+        });
+
+        await this.repository.markProcessed(event.id);
+
+        processed += 1;
+      } catch (error) {
+        await this.repository
+          .markFailed(event.id, describeError(error))
+          .catch(() => undefined);
+
+        failed += 1;
+      }
+    }
+
+    return { candidates: events.length, processed, failed };
+  }
 
   async ingest(
     rawPayload: unknown,
@@ -137,7 +202,9 @@ export class GhlWebhookService {
        * si el cambio de estado tambien
        * llegara a fallar.
        */
-      await this.repository.markFailed(event.id).catch(() => undefined);
+      await this.repository
+        .markFailed(event.id, describeError(error))
+        .catch(() => undefined);
 
       throw error;
     }
