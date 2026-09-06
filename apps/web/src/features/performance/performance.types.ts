@@ -2,6 +2,7 @@ import type { PerformanceMetrics } from "@repo/validation";
 
 import type { AcceleratorWindowView } from "./accelerator-windows";
 import type { AdminPendingGroup } from "./admin-pending";
+import type { DeliveryTrend } from "./delivery-trend";
 import type {
   BreakdownSortKey,
   ManagementFilterKey,
@@ -38,6 +39,13 @@ export interface PerformanceQuotaProgress {
   /** Siguiente tramo del acelerador y cuántas confirmadas faltan; `null` si no hay dato. */
   nextTarget: number | null;
   missingForNextTarget: number;
+  /** Cumplimiento: entregadas / cuota (SPEC-047 BR-007). */
+  ratio: number;
+  /**
+   * De dónde sale la cuota: fijada por alguien, el tramo por defecto, o —en
+   * un agregado— una mezcla de ambas (SPEC-047 BR-007).
+   */
+  source: "ASSIGNED" | "DEFAULT" | "MIXED";
 }
 
 /** Resumen de un equipo dentro del alcance del tablero (SPEC-044 REN-02). */
@@ -217,4 +225,13 @@ export interface PerformanceDashboardData {
   /** Casos abiertos en Recupero de ventas dentro del alcance (REN-03). */
   openRecoveryCases: number;
   breakdown: PerformanceBreakdownItem[];
+  /** Entregas registradas por día dentro del mes (SPEC-047 BR-009). */
+  deliveryTrend: DeliveryTrend;
+  /**
+   * Cuota del tramo para todo el alcance (SPEC-047 BR-008): la suma de las
+   * cuotas de los equipos resumidos, la del asesor aislado o la personal.
+   */
+  scopeQuota: PerformanceQuotaProgress | null;
+  /** Cuántos de los equipos sumados tienen cuota asignada. */
+  scopeQuotaTeams: { total: number; assigned: number } | null;
 }

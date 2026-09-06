@@ -30,6 +30,7 @@ import {
   sortHref,
   teamHref,
 } from "../performance-links";
+import { buildPriorityNotices, quotaSourceLabel } from "../priority-notices";
 import {
   breakdownSortOptions,
   defaultBreakdownSort,
@@ -792,9 +793,10 @@ function QuotaCell({
         {quota.delivered}/{quota.target}
       </strong>
       <small>
+        {formatPercent(quota.ratio)} ·{" "}
         {quota.reached ? "cumplida" : `faltan ${quota.missing}`} ·{" "}
         {quota.confirmed} {quota.confirmed === 1 ? "confirmada" : "confirmadas"}
-        {nextTier ? ` · ${nextTier}` : ""}
+        {nextTier ? ` · ${nextTier}` : ""} · {quotaSourceLabel(quota.source)}
       </small>
     </td>
   );
@@ -1398,6 +1400,7 @@ function PersonalQuotaPanel({ data }: { data: PerformanceDashboardData }) {
               {quota.target > 0
                 ? `${percentage(quota.delivered / quota.target)} de la cuota`
                 : "Sin cuota asignada"}
+              {` · ${quotaSourceLabel(quota.source)}`}
               {quota.reached
                 ? " · cumplida"
                 : ` · faltan ${quota.missing} ${quota.missing === 1 ? "entregada" : "entregadas"}`}
@@ -1528,6 +1531,278 @@ function AdminPendingSummary({ data }: { data: PerformanceDashboardData }) {
         </table>
       </div>
     </section>
+  );
+}
+
+/**
+ * SPEC-047 BR-008: la cuota del alcance dicha con su cumplimiento, su brecha
+ * y su origen. Un agregado de equipos dice cuántos tienen cuota asignada.
+ */
+function scopeQuotaHint(data: PerformanceDashboardData): string {
+  const quota = data.scopeQuota;
+  if (!quota) return "";
+  const parts = [
+    formatPercent(quota.ratio),
+    quota.reached
+      ? "cumplida"
+      : `faltan ${quota.missing} ${quota.missing === 1 ? "entregada" : "entregadas"}`,
+  ];
+  if (data.scopeQuotaTeams) {
+    parts.push(
+      `${data.scopeQuotaTeams.total === 1 ? "1 equipo" : `${data.scopeQuotaTeams.total} equipos`} · ${data.scopeQuotaTeams.assigned} con cuota asignada`,
+    );
+  } else {
+    parts.push(quotaSourceLabel(quota.source));
+  }
+  if (data.role !== "AGENT" && data.view !== "SELF") parts.push("ver cuotas");
+  return parts.join(" · ");
+}
+
+/**
+ * SPEC-047 BR-009: entregas registradas por día del mes elegido, de
+ * cualquier mes de venta. Actividad, no cohorte: por eso no abre Pedidos,
+ * que filtra por fecha de ingreso.
+ */
+function DeliveryTrendPanel({ data }: { data: PerformanceDashboardData }) {
+  const trend = data.deliveryTrend;
+  const visibleDays = trend.days.filter((day) => !day.isFuture);
+  const maximum = Math.max(...visibleDays.map((day) => day.delivered), 1);
+
+  return (
+    <section
+      className="performance-panel performance-delivery-trend"
+      aria-labelledby="delivery-trend-title"
+    >
+      <header className="performance-panel__header">
+        <div>
+          <p className="performance-panel__eyebrow">Resultado</p>
+          <h2 id="delivery-trend-title">Entregas registradas por día</h2>
+          <p>
+            Por día de entrega registrada en {data.monthLabel}, sea cual sea el
+            mes de la venta.{" "}
+            {trend.fromEarlierMonths > 0
+              ? `${trend.fromEarlierMonths} de estas entregas ${trend.fromEarlierMonths === 1 ? "es de una venta" : "son de ventas"} de meses anteriores.`
+              : "Todas son ventas de este mes."}
+          </p>
+        </div>
+        <span className="performance-panel__note">
+          Por día de entrega registrada
+        </span>
+      </header>
+
+      <dl className="performance-month-progress__summary">
+        <div>
+          <dt>Entregas en el mes</dt>
+          <dd>{trend.total}</dd>
+        </div>
+        <div>
+          <dt>Días con entregas</dt>
+          <dd>
+            {trend.productiveDays} de {trend.elapsedDays}
+          </dd>
+        </div>
+        <div>
+          <dt>Promedio diario</dt>
+          <dd>{formatDecimal(trend.averagePerElapsedDay)}</dd>
+        </div>
+        <div>
+          <dt>Mejor día</dt>
+          <dd>
+            {trend.bestDay
+              ? `${trend.bestDay.delivered} · día ${trend.bestDay.day}`
+              : "—"}
+          </dd>
+        </div>
+      </dl>
+
+      <div
+        aria-label={`Entregas registradas por día y acumuladas en ${data.monthLabel}`}
+        className="performance-month-progress__chart"
+      >
+        {trend.days.map((day) => (
+          <div
+            className="performance-month-progress__day"
+            data-future={day.isFuture ? "true" : undefined}
+            data-today={day.isToday ? "true" : undefined}
+            key={day.key}
+            title={
+              day.isFuture
+                ? `Día ${day.day}: aún no transcurre`
+                : `Día ${day.day}: ${day.delivered} entregas · ${day.cumulative} acumuladas${day.fromEarlierMonths > 0 ? ` · ${day.fromEarlierMonths} de meses anteriores` : ""}`
+            }
+          >
+            <strong>{day.isFuture ? "" : day.delivered}</strong>
+            <div aria-hidden="true">
+              <span
+                style={{
+                  height: `${Math.max(
+                    (day.delivered / maximum) * 100,
+                    day.delivered > 0 ? 10 : 2,
+                  )}%`,
+                }}
+              />
+            </div>
+            <small>{day.day}</small>
+            <em>{day.isFuture ? "" : day.cumulative}</em>
+          </div>
+        ))}
+      </div>
+      <p className="performance-month-progress__legend">
+        <span>Cifra superior: entregas del día</span>
+        <span>Cifra inferior: acumulado del mes</span>
+      </p>
+    </section>
+  );
+}
+
+/**
+ * SPEC-047 BR-010: una barra por equipo del alcance, de menor a mayor
+ * cumplimiento —lo que más falta, arriba—; con un asesor aislado o en la
+ * vista personal, la barra es la suya.
+ */
+function CompliancePanel({ data }: { data: PerformanceDashboardData }) {
+  const window = data.quotaWindow;
+  if (!window) return null;
+
+  const teamRows = data.teams
+    .filter(
+      (team): team is PerformanceTeamSummary & { id: string } =>
+        team.kind === "TEAM" && team.id !== null && team.quota !== null,
+    )
+    .sort(
+      (left, right) =>
+        (left.quota?.ratio ?? 0) - (right.quota?.ratio ?? 0) ||
+        left.name.localeCompare(right.name, "es"),
+    );
+  const rows =
+    teamRows.length > 0
+      ? teamRows.map((team) => ({
+          key: team.id,
+          name: team.name,
+          quota: team.quota as PerformanceQuotaProgress,
+          href: performanceHref(data, data.month, { team: team.id }),
+        }))
+      : data.scopeQuota
+        ? [
+            {
+              key: "scope",
+              name: data.scopeLabel,
+              quota: data.scopeQuota,
+              href: null,
+            },
+          ]
+        : [];
+
+  return (
+    <section className="performance-panel" aria-labelledby="compliance-title">
+      <header className="performance-panel__header">
+        <div>
+          <p className="performance-panel__eyebrow">Cumplimiento</p>
+          <h2 id="compliance-title">
+            Cuota {window.isActive ? "en curso" : "del último tramo"}
+          </h2>
+          <p>{quotaCohortLabel(data)}</p>
+        </div>
+      </header>
+      {rows.length === 0 ? (
+        <p className="performance-panel__empty">
+          Sin cuota que medir en este alcance.
+        </p>
+      ) : (
+        <div className="performance-bars">
+          {rows.map((row) => (
+            <div
+              className="performance-bars__row"
+              data-quota-reached={row.quota.reached ? "true" : undefined}
+              key={row.key}
+            >
+              <div className="performance-bars__meta">
+                {row.href ? (
+                  <Link href={row.href}>{row.name}</Link>
+                ) : (
+                  <span>{row.name}</span>
+                )}
+                <strong>
+                  {row.quota.delivered}/{row.quota.target}
+                </strong>
+              </div>
+              <div aria-hidden="true" className="performance-bars__track">
+                <span
+                  style={{
+                    width: `${Math.min(100, Math.round(row.quota.ratio * 100))}%`,
+                  }}
+                />
+              </div>
+              <small>
+                {formatPercent(row.quota.ratio)} ·{" "}
+                {row.quota.reached ? "cumplida" : `faltan ${row.quota.missing}`}{" "}
+                · {quotaSourceLabel(row.quota.source)}
+              </small>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** SPEC-047 BR-011: lo que exige atención, en orden fijo y solo si no es cero. */
+function PriorityNoticesPanel({ data }: { data: PerformanceDashboardData }) {
+  const notices = buildPriorityNotices(data);
+
+  return (
+    <section
+      className="performance-panel performance-panel--attention"
+      aria-labelledby="notices-title"
+    >
+      <header className="performance-panel__header">
+        <div>
+          <p className="performance-panel__eyebrow">Avisos prioritarios</p>
+          <h2 id="notices-title">
+            {notices.length === 0
+              ? "Nada urgente"
+              : `${notices.length} ${notices.length === 1 ? "aviso" : "avisos"}`}
+          </h2>
+        </div>
+      </header>
+      {notices.length === 0 ? (
+        <p className="performance-panel__empty">
+          Nada que atender antes de leer el detalle.
+        </p>
+      ) : (
+        <ul className="performance-notices">
+          {notices.map((notice) => (
+            <li key={notice.key}>
+              <span>
+                {notice.href ? (
+                  <Link href={notice.href}>{notice.label}</Link>
+                ) : (
+                  notice.label
+                )}
+              </span>
+              {notice.count !== null ? <strong>{notice.count}</strong> : null}
+              <small>{notice.hint}</small>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** SPEC-047 BR-012: accesos al detalle desde el resumen. */
+function ResultLinks({ data }: { data: PerformanceDashboardData }) {
+  return (
+    <nav aria-label="Accesos al detalle" className="performance-result-links">
+      <Link href={ordersHref(data, "DELIVERED")}>Entregadas en Pedidos</Link>
+      {data.role !== "AGENT" && data.view !== "SELF" && data.quotaWindow ? (
+        <Link href={quotasHref(data, data.quotaWindow.key)}>Cuotas</Link>
+      ) : null}
+      {data.showCommission ? (
+        <Link href={reconciliationHref(data, "ALL")}>Conciliación</Link>
+      ) : null}
+      <a href="#analisis">Análisis detallado</a>
+    </nav>
   );
 }
 
@@ -1731,7 +2006,19 @@ export function PerformanceDashboard({
           label="Portabilidades pagables"
           value={data.metrics.payable}
         />
-        {data.view === "SELF" ? (
+        {data.scopeQuota && data.quotaWindow ? (
+          <Metric
+            hint={scopeQuotaHint(data)}
+            href={
+              data.role !== "AGENT" && data.view !== "SELF"
+                ? quotasHref(data, data.quotaWindow.key)
+                : undefined
+            }
+            label={`Cuota del tramo${data.quotaWindow.isActive ? "" : " (cerrada)"}`}
+            tone={data.scopeQuota.reached ? "success" : "neutral"}
+            value={`${data.scopeQuota.delivered}/${data.scopeQuota.target}`}
+          />
+        ) : data.view === "SELF" ? (
           <Metric
             hint={`${percentage(
               data.metrics.entered > 0
@@ -1757,6 +2044,20 @@ export function PerformanceDashboard({
           />
         ) : null}
       </MetricGroup>
+
+      {/*
+       * SPEC-047 BR-009 a BR-012: el resumen visual del resultado —entregas
+       * por día, cumplimiento por equipo, avisos y accesos— antes de las
+       * tablas de gestión.
+       */}
+      <div className="performance-result-grid">
+        <DeliveryTrendPanel data={data} />
+        <div className="performance-result-grid__aside">
+          <CompliancePanel data={data} />
+          <PriorityNoticesPanel data={data} />
+          <ResultLinks data={data} />
+        </div>
+      </div>
 
       <div
         className={`performance-decision-grid${showsTeams ? " performance-decision-grid--teams" : ""}`}
@@ -1940,7 +2241,7 @@ export function PerformanceDashboard({
       ) : null}
 
       {/* REN-07: el análisis va después de lo que decide. */}
-      <header className="performance-section-heading">
+      <header className="performance-section-heading" id="analisis">
         <p className="performance-panel__eyebrow">Análisis detallado</p>
         <h2>Ritmo, conversión y composición</h2>
       </header>

@@ -25,11 +25,48 @@ no). Tipos y lint limpios.
 - BR-006: cinco bloques declaran su fecha (resumen por equipo, desglose,
   actividad diaria, matriz, conversión).
 
+**Producción (06/09/2026, commit 52c99f3, setiembre en curso, sesión de
+administrador en solo lectura)**:
+
+- AC-001 / AC-007: «Ventas entregadas 182» (168 portabilidades y 14 altas
+  nuevas) abre Pedidos con `status=DELIVERED`: «50 órdenes en esta página de
+  **182 encontradas**» y el indicador «Entregados 182» de Pedidos.
+- AC-002: el pie dice «182 frente a 79 entregadas hasta el día 6 del mes
+  pasado (+130.4%) · esa cohorte terminó con 100»; la de ingresadas, «281
+  frente a 155 en los días 1–6 del mes pasado (+81.3%)».
+- AC-003: el desglose va 21 → 17 → 15 → 15 → 14 entregadas sin `orden=`.
+- AC-004: equipos 105 + 61 + 16 + 0 = 182 = tarjeta; pie «Total del alcance»
+  281 / 182.
+- AC-005: `gestion=SIN_ENTREGAS` muestra la definición y «2 de 19 asesores».
+
+## Fase 2 (06/09/2026)
+
+**Pruebas**: web 207 (5 nuevas en `rendimiento-resumen-visual`: tendencia por
+día de entrega con la venta del 31/08 entregada el 02/09 contada en el día 2
+de setiembre y marcada de mes anterior, entregas de agosto y sin fecha
+excluidas; avisos vacíos sin valor, en orden fijo y con su destino; sin
+enlace a administración para un supervisor y sin «sin asesor» en la vista
+personal; etiqueta del origen de la cuota). Tipos y lint limpios.
+
+**Local, agosto de 2026 (mes cerrado), sesión de administrador**:
+
+- AC-009: celdas «22/30 · 73.3% · faltan 8 · 22 confirmadas · cuota por
+  defecto» en asesores y «97/210 · 46.2% · faltan 113 · 97 confirmadas · cuota
+  por defecto» en equipos.
+- AC-010: tarjeta «Cuota del tramo 111/390 · 28.5% · faltan 279 entregadas ·
+  4 equipos · 0 con cuota asignada»; barras 1 + 6 + 7 + 97 = 111.
+- AC-011: «Entregas registradas por día»: 118 en el mes, 6 de 31 días con
+  entregas, mejor día 56 · día 23; «Todas son ventas de este mes».
+- AC-012: barras de menor a mayor cumplimiento (3.3% → 6.7% → 11.7% → 46.2%),
+  cada una abre el tablero del equipo.
+- AC-013: dos avisos, «Equipo sin supervisor 1» → Equipos sin supervisor y
+  «Pendientes de meses anteriores 42» → Pedidos con el rango exacto.
+- BR-012: accesos «Entregadas en Pedidos», «Cuotas», «Conciliación» y
+  «Análisis detallado» (ancla).
+- La cabecera de cumplimiento dice «Cuota del último tramo · Tramo cerrado»
+  en agosto.
+
 **Producción**: pendiente.
-
-## Fase 2
-
-Pendiente.
 
 ## Fase 3
 

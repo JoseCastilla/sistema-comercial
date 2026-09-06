@@ -1,6 +1,6 @@
 # SPEC-047 — Rendimiento medido en ventas entregadas
 
-**Estado:** `EN_CURSO` — plan «Dashboard de rendimiento basado en ventas entregadas» contrastado el 06/09/2026; fase 1 en construcción (06/09/2026)
+**Estado:** `EN_CURSO` — fase 1 verificada en producción; fase 2 entregada; fase 3 pendiente (06/09/2026)
 
 > Plan v1.0 de José del 06/09/2026, con criterio confirmado: **el resultado
 > comercial se mide por ventas entregadas**. Se apoya en SPEC-027 (tablero),
