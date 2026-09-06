@@ -30,7 +30,8 @@
       producción».
 - [x] Recorrido local con sesión de administrador (reconciliación 177 y 17;
       filtros y orden por URL; vuelta con `orden`/`gestion`).
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción (278/24/83/70 reconciliados;
+      3 de 20 sin producción; orden por cuota).
 
 ## Fase 3 · Filtros vivos y jerarquía
 

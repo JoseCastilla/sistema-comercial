@@ -1,7 +1,7 @@
 # SPEC-044 — Rendimiento orientado a la acción
 
-Estado: **fase 2 construida** (05/09/2026); fase 1 entregada y verificada en
-producción; fase 3 pendiente. Plan «Rendimiento orientado a
+Estado: **fases 1 y 2 entregadas y verificadas en producción** (05/09/2026);
+fase 3 pendiente. Plan «Rendimiento orientado a
 la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`;
 las revisiones de `SUPERVISOR` y `AGENT` quedan pendientes. Se apoya en
 SPEC-027 (tablero), SPEC-032 (integridad de métricas), SPEC-034 (filtro por
