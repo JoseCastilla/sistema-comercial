@@ -15,6 +15,12 @@ export interface DirectoryFilterSelect {
   value: string;
   emptyLabel: string;
   options: ReadonlyArray<{ value: string; label: string }>;
+  /**
+   * Parámetros que se vacían al cambiar este selector (SPEC-044 SUP-06): al
+   * cambiar de equipo, el asesor del equipo anterior deja de tener sentido y
+   * se quita de forma visible, en vez de quedar filtrando en silencio.
+   */
+  resets?: readonly string[];
 }
 
 /**
@@ -200,7 +206,12 @@ export function DirectoryFilters({
             <select
               className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
               onChange={(event) =>
-                navigate({ [select.key]: event.target.value })
+                navigate({
+                  [select.key]: event.target.value,
+                  ...Object.fromEntries(
+                    (select.resets ?? []).map((key) => [key, ""]),
+                  ),
+                })
               }
               value={select.value}
             >

@@ -47,5 +47,22 @@
 - [x] Recorrido local con sesión de administrador.
 - [x] Lectura de solo lectura en producción (barra en vivo, búsqueda «cuya»
       1 de 19 sin tocar 278 ingresadas, matriz de días transcurridos).
-- [ ] Recorrido con sesión real de supervisor y de asesor (pendiente de una
-      cuenta de prueba; de José).
+- [x] Recorrido con sesión real de supervisor (producción, solo lectura,
+      HUANCAYO - EL TAMBO): origen del plan SUP-01..06.
+- [ ] Recorrido con sesión real de asesor; supervisor que también vende;
+      supervisor con varios equipos.
+
+## Fase 4 · Supervisor (05/09/2026)
+
+- [x] SUP-01 · Verificado resuelto por la fase 1 con la sesión de supervisor.
+- [x] SUP-02 · «Hoy», «Última venta», «N de M días con ventas»; filtro «Sin
+      ventas hoy» solo en el mes en curso; textos sin juicio de asistencia.
+- [x] SUP-03 · Orden «Bono: más cerca del siguiente tramo».
+- [x] SUP-04 · Reparto explicado (objetivo, repartido, diferencia con signo);
+      «asignada / por defecto»; «N vendedores × tramo».
+- [x] SUP-05 · Cabecera de Cuotas por alcance: «Objetivo de tus equipos».
+- [x] SUP-06 · Volúmenes en la comparación; cambiar de equipo quita al
+      asesor; aviso de asesor ajeno al equipo.
+- [x] Inconsistencia documental SPEC-014 BR-019 vs SPEC-034 registrada.
+- [x] Recorrido local con sesión de administrador.
+- [ ] Lectura de solo lectura en producción con la sesión de supervisor.

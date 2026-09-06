@@ -158,6 +158,12 @@ export interface PerformanceDashboardData {
   matrixRange: MatrixRangeKey;
   /** Lo que pidió la URL, para que los enlaces lo conserven tal cual. */
   matrixRangeRequested: MatrixRangeKey | null;
+  /**
+   * El asesor filtrado no es vendedor activo del equipo filtrado (SUP-06):
+   * se avisa, porque los indicadores quedan acotados a sus ventas dentro de
+   * ese equipo.
+   */
+  advisorOutsideTeam: boolean;
   /** Resumen por equipo; vacío en la vista personal o con un asesor aislado. */
   teams: PerformanceTeamSummary[];
   workforce: {

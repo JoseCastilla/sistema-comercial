@@ -46,12 +46,22 @@ export interface PerformanceQuotasData {
   currentPeriodKey: string;
   planningLimit: string;
   editable: boolean;
-  /** Cuota de toda la organización: la que el dueño fija y se reparte. */
+  /**
+   * Cabecera del reparto. Para ADMIN/BACKOFFICE es la cuota de toda la
+   * organización (fijada o calculada). Para un supervisor el alcance es
+   * parcial: la suma de sus equipos no es la cuota de la organización y no
+   * se presenta como tal (SPEC-044 SUP-05).
+   */
   organization: {
+    scope: "ORGANIZATION" | "SUPERVISED_TEAMS";
     target: number;
     isDefault: boolean;
     canAssign: boolean;
     distribution: QuotaDistributionSummary;
+    /** Cuota organizacional fijada por administración, si existe. */
+    explicitTarget: number | null;
+    /** Cuántos equipos suma el objetivo mostrado. */
+    teamCount: number;
   };
   window: QuotaWindowKey;
   windowLabel: string;
@@ -180,9 +190,13 @@ export async function getPerformanceQuotas(
       };
     });
 
-  const organizationTarget =
-    organizationQuota?.target ??
-    teams.reduce((total, team) => total + team.target, 0);
+  const supervisedTotal = teams.reduce((total, team) => total + team.target, 0);
+  const isPartialScope = access.role === "SUPERVISOR";
+  // SUP-05: un subtotal de equipos supervisados no se presenta como total
+  // organizacional; el reparto se evalúa contra objetivos del mismo alcance.
+  const organizationTarget = isPartialScope
+    ? supervisedTotal
+    : (organizationQuota?.target ?? supervisedTotal);
 
   return {
     periodKey,
@@ -193,8 +207,11 @@ export async function getPerformanceQuotas(
     planningLimit: getQuotaPlanningLimit(now),
     editable: isQuotaPeriodEditable(periodKey, currentPeriodKey),
     organization: {
+      scope: isPartialScope ? "SUPERVISED_TEAMS" : "ORGANIZATION",
       target: organizationTarget,
-      isDefault: organizationQuota === undefined,
+      isDefault: isPartialScope || organizationQuota === undefined,
+      explicitTarget: organizationQuota?.target ?? null,
+      teamCount: teams.length,
       // Sin rol de dueño en el sistema, la cuota de la organización la fija
       // administración; es el ancla de toda la cadena de reparto.
       canAssign: access.role === "ADMIN",

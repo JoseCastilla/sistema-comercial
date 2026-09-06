@@ -5,6 +5,8 @@ import { PageHeader } from "@repo/ui/page-header";
 
 import { QuotaTargetForm } from "./quota-target-form";
 
+import { describeQuotaDistribution } from "../quota-distribution";
+
 import type { PerformanceQuotasData } from "../server/get-performance-quotas";
 
 export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
@@ -56,32 +58,70 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
         </p>
       ) : null}
 
-      <section className="performance-panel">
-        <header className="performance-panel__header">
-          <div>
-            <p className="performance-panel__eyebrow">Organización</p>
-            <h2>Cuota total del período</h2>
-            <p>
-              {data.organization.distribution.covers
-                ? `Repartida entre los equipos: ${data.organization.distribution.assignedTarget} de ${data.organization.target}.`
-                : `Faltan ${data.organization.distribution.remaining} por repartir entre los equipos, de los ${data.organization.target} del período.`}
-            </p>
-          </div>
-          <div className="performance-commission__aside">
-            <span className="performance-panel__note">
-              Portabilidades entregadas
-            </span>
-            <QuotaTargetForm
-              disabled={!data.editable || !data.organization.canAssign}
-              isDefault={data.organization.isDefault}
-              period={data.periodKey}
-              scope="ORG"
-              target={data.organization.target}
-              window={data.window}
-            />
-          </div>
-        </header>
-      </section>
+      {/*
+       * SUP-05: para un supervisor el alcance es parcial. La suma de sus
+       * equipos se presenta como lo que es y, si administración fijó una
+       * cuota de organización, se muestra aparte sin compararla con un
+       * reparto parcial.
+       */}
+      {data.organization.scope === "SUPERVISED_TEAMS" ? (
+        <section className="performance-panel">
+          <header className="performance-panel__header">
+            <div>
+              <p className="performance-panel__eyebrow">Equipos a tu cargo</p>
+              <h2>Objetivo de tus equipos</h2>
+              <p>
+                {data.organization.teamCount === 1
+                  ? `La cuota de tu equipo para el tramo es ${data.organization.target}. La fija administración; tú la repartes entre tus asesores.`
+                  : `Tus ${data.organization.teamCount} equipos suman ${data.organization.target} para el tramo. Las cuotas de equipo las fija administración; tú las repartes entre tus asesores.`}
+                {data.organization.explicitTarget !== null
+                  ? ` La cuota de toda la organización es ${data.organization.explicitTarget}; no se compara con tu reparto porque tu alcance es parcial.`
+                  : " No es la cuota de la organización."}
+              </p>
+            </div>
+          </header>
+        </section>
+      ) : (
+        <section className="performance-panel">
+          <header className="performance-panel__header">
+            <div>
+              <p className="performance-panel__eyebrow">Organización</p>
+              <h2>Cuota total del período</h2>
+              <p
+                data-tone={
+                  describeQuotaDistribution(
+                    data.organization.distribution,
+                    "de la organización",
+                  ).tone
+                }
+              >
+                {
+                  describeQuotaDistribution(
+                    data.organization.distribution,
+                    "de la organización",
+                  ).text
+                }
+                {data.organization.isDefault
+                  ? " Sin cuota fijada: el objetivo es la suma de los equipos."
+                  : ""}
+              </p>
+            </div>
+            <div className="performance-commission__aside">
+              <span className="performance-panel__note">
+                Portabilidades entregadas
+              </span>
+              <QuotaTargetForm
+                disabled={!data.editable || !data.organization.canAssign}
+                isDefault={data.organization.isDefault}
+                period={data.periodKey}
+                scope="ORG"
+                target={data.organization.target}
+                window={data.window}
+              />
+            </div>
+          </header>
+        </section>
+      )}
 
       {data.teams.map((team) => (
         <section className="performance-panel" key={team.id}>
@@ -93,10 +133,12 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
                   : "Equipo sin supervisor · lo reparte administración"}
               </p>
               <h2>{team.name}</h2>
-              <p>
-                {team.distribution.covers
-                  ? `Repartido ${team.distribution.assignedTarget} de ${team.distribution.teamTarget}.`
-                  : `Faltan ${team.distribution.remaining} por repartir de los ${team.distribution.teamTarget} del equipo.`}
+              {/* SUP-04: objetivo, repartido y diferencia, con su signo. */}
+              <p data-tone={describeQuotaDistribution(team.distribution).tone}>
+                {describeQuotaDistribution(team.distribution).text}
+                {team.isDefault
+                  ? ` Cuota de equipo por defecto: ${team.advisors.length} ${team.advisors.length === 1 ? "vendedor" : "vendedores"} × tramo.`
+                  : ""}
               </p>
             </div>
             <div className="performance-commission__aside">

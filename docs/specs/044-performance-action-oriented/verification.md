@@ -171,3 +171,33 @@ roles y las contraseñas no se escriben). Queda en tareas.
      1–5 y «7 días». La cabecera decía «Últimos 7 días transcurridos (del 1 al
      5)»; se ajustó a «Días transcurridos del mes (del 1 al 5)» cuando hay
      menos de siete (AC-015).
+
+## Fase 4 · Supervisor (05/09/2026)
+
+0. **Origen**: lectura en producción con la sesión de supervisor de HUANCAYO -
+   EL TAMBO antes de tocar nada. SUP-01 ya resuelto: con `agent=` los cuatro
+   accesos llevan `advisor=` y `volver=…&agent=`; «Pedidos por recuperar 7» →
+   Pedidos con 7 órdenes y «← Volver a Rendimiento». Cuotas mostraba
+   «Organización · Repartida entre los equipos: 300 de 300» (era la suma del
+   único equipo) y el equipo «Faltan 30 por repartir de los 300».
+1. **Pruebas** — 170 en verde en `apps/web`, 6 nuevas
+   (`rendimiento-supervisor.test.tsx`): resumen de actividad sin días futuros;
+   «Sin ventas hoy» exige mes en curso y vendedor activo; ninguna definición
+   habla de ausencia; orden por bono; reparto de menos / justo / de más;
+   cambiar de equipo vacía `agent`. Tipos y lint limpios.
+2. **Recorrido local con sesión de administrador**, setiembre 2026:
+   - Cabecera: «Ventas ingresadas 0 · 0 frente a 135 en los días 1–5 del mes
+     pasado (-100%)».
+   - Desglose: columnas «Asesor · Hoy · Ingresadas · Vs. mes pasado · Última
+     venta · Tasa de entrega · Cuota · Pagables · …»; fila «Sin ventas en el
+     mes · 0 de 5 días con ventas»; fichas «Sin ventas hoy · Sin ventas en el
+     mes · …» y «Bono: más cerca del siguiente tramo»; `gestion=SIN_VENTAS_HOY`
+     → «13 de 14 asesores» con la definición «Es un dato de ventas, no de
+     presencia»; `orden=BONO` activo.
+   - Cuotas (ADMIN): «Objetivo de la organización: 390. Repartido: 390, justo
+     el objetivo. Sin cuota fijada…»; equipo «Objetivo del equipo: 60.
+     Repartido: 60, justo el objetivo. Cuota de equipo por defecto: 2
+     vendedores × tramo.» con `data-tone="EXACT"`.
+   - `team=<EXTERNOS>&agent=<Alexandra>`: aviso «… no está entre los vendedores
+     activos del equipo filtrado … Ver todo el equipo» y fichas de equipo y
+     asesor.

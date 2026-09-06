@@ -1,7 +1,7 @@
 # SPEC-044 — Rendimiento orientado a la acción
 
-Estado: **fases 1, 2 y 3 entregadas y verificadas en producción**
-(05/09/2026). Las vistas `SUPERVISOR` y `AGENT` se revisaron por
+Estado: **fase 4 (supervisor) construida** (05/09/2026); fases 1 a 3
+entregadas y verificadas en producción. Las vistas `SUPERVISOR` y `AGENT` se revisaron por
 lectura del código; el recorrido con sesión real sigue pendiente. Plan «Rendimiento orientado a
 la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`;
 las revisiones de `SUPERVISOR` y `AGENT` quedan pendientes. Se apoya en
@@ -149,6 +149,58 @@ comisiones; alcance e importes por rol.
   desglose ni matriz; el orden es controles → indicadores → avance del mes +
   pendientes → comisión → análisis (pulso diario, conversión, composición).
 
+### Fase 4 — Supervisor (plan «Rendimiento accionable para supervisores» v1.0, 05/09/2026)
+
+Revisado con la sesión de supervisor de HUANCAYO - EL TAMBO en producción.
+
+| Acción | Hallazgo del plan | Contraste |
+|---|---|---|
+| SUP-01 | Los enlaces por activar / por recuperar omiten el asesor | **Ya resuelto por la fase 1** (BR-001/BR-003): con la sesión de supervisor, «Pedidos por recuperar 7» de Christian abre Pedidos con `advisor=` y devuelve 7; la vuelta conserva `agent=`. Sin cambios. |
+| SUP-02 | «6 de 6 con ventas» no distingue una venta de actividad sostenida | Real. |
+| SUP-03 | Falta una tabla de intervención ordenable antes de la matriz | Parcial: la tabla existe desde la fase 2 y va antes de la matriz; faltaba el orden por cercanía al bono. |
+| SUP-04 | El reparto «330 frente a 300» no se explica | Real. |
+| SUP-05 | «Organización» en cuotas es la suma de los equipos visibles del supervisor | Real: `organizationTarget` caía a la suma de los equipos del alcance y se etiquetaba «Organización». |
+| SUP-06 | Filtros con botón; variación sin volúmenes; asesor incompatible al cambiar de equipo | Filtros vivos ya resueltos por la fase 3; volúmenes y asesor incompatible, reales. |
+
+**Inconsistencia documental registrada** (corrección al plan anterior): SPEC-014
+BR-019 (31/08/2026) autoriza al `SUPERVISOR` a ver el importe individual de
+comisión de sus asesores y es lo implementado (`showsIndividualCommission`).
+SPEC-034 (§ alcance y AC-005) todavía dice que el supervisor no ve importes:
+está desactualizada frente a BR-019. Se conserva la autorización implementada;
+SPEC-034 no se reescribe aquí.
+
+- **BR-011 · Acompañar sin juzgar (SUP-02).** El desglose muestra por asesor
+  «Hoy» (solo en el mes en curso), «Ingresadas» del mes, «Última venta» (día
+  del mes) y «N de M días con ventas» sobre los días transcurridos; los días
+  futuros no cuentan. El filtro «Sin ventas hoy» existe solo en el mes en
+  curso y solo para vendedores activos; «Sin producción» pasa a llamarse «Sin
+  ventas en el mes». Ningún texto habla de asistencia o ausencia: son ventas
+  registradas. Los históricos siguen marcados «· histórico» y quedan fuera de
+  ambos filtros.
+- **BR-012 · Cercanía al bono (SUP-03).** Orden «Bono: más cerca del siguiente
+  tramo»: menos confirmadas faltantes primero; sin siguiente tramo, al final.
+  Cuota (entregadas) y bono (confirmadas) siguen separados en la celda.
+- **BR-013 · El reparto se explica (SUP-04).** Cada equipo en Cuotas dice
+  «Objetivo del equipo: X. Repartido: Y.» y la diferencia con su signo: faltan
+  N por repartir / justo el objetivo / N por encima del objetivo («puede ser
+  deliberado; no bloquea», SPEC-038 BR-009). Cada cuota se marca «asignada» o
+  «por defecto»; con cuota de equipo por defecto se dice «N vendedores ×
+  tramo». El acceso «Asignar cuotas» ya vive junto al resumen por equipo.
+- **BR-014 · El alcance de la cuota se nombra (SUP-05).** Para un supervisor
+  la cabecera de Cuotas es «Equipos a tu cargo · Objetivo de tus equipos» con
+  la suma de sus equipos y quién la fija; si administración fijó una cuota de
+  organización, se muestra como referencia sin compararla con el reparto
+  parcial. Nunca se etiqueta «Organización» un subtotal.
+- **BR-015 · Comparar con volúmenes (SUP-06).** La variación se dice con sus
+  cifras: «95 frente a 13 en los días 1–5 del mes pasado (+630.8%)»; con base
+  cero: «95 este mes; sin ventas en los días 1–5 del mes pasado para
+  comparar». En el desglose la celda «Vs. mes pasado» lleva la misma frase en
+  su `title`.
+- **BR-016 · Cambiar de equipo resuelve al asesor (SUP-06).** El selector de
+  equipo vacía `agent=` al cambiar (`resets`). Si la URL trae un asesor que no
+  vende en el equipo filtrado, el tablero lo avisa y ofrece «Ver todo el
+  equipo»; los indicadores quedan acotados a sus ventas dentro de ese equipo.
+
 ## 5. Criterios de aceptación de la fase 1
 
 - **AC-001:** con asesor y equipo filtrados, «Entregadas por activar = N»
@@ -190,3 +242,17 @@ comisiones; alcance e importes por rol.
   días exactos en la cabecera; «Ventas ingresadas» no cambia.
 - **AC-016:** el resumen por equipo y los pendientes van antes del desglose;
   el análisis detallado, al final.
+
+## 8. Criterios de aceptación de la fase 4
+
+- **AC-017:** con sesión de supervisor, la cabecera de Cuotas dice «Objetivo
+  de tus equipos» y nunca «Organización»; el equipo dice objetivo, repartido
+  y diferencia con signo.
+- **AC-018:** el desglose muestra «Hoy», «Última venta» y «N de M días con
+  ventas»; `gestion=SIN_VENTAS_HOY` solo aparece en el mes en curso y excluye
+  históricos.
+- **AC-019:** `orden=BONO` pone primero a quien menos confirmadas le faltan.
+- **AC-020:** la tarjeta «Ventas ingresadas» muestra actual frente a anterior
+  con los días equivalentes; con base cero lo dice.
+- **AC-021:** cambiar de equipo con un asesor filtrado deja la URL sin
+  `agent=`; una URL con asesor ajeno al equipo muestra el aviso.

@@ -57,6 +57,25 @@
 - **Pruebas**: `rendimiento-filtros-vivos.test.tsx` (7) y ajuste de
   `rendimiento-enlaces.test.ts`.
 
+## Fase 4 · Supervisor
+
+- **`performance-management.ts`**: filtro `SIN_VENTAS_HOY`
+  (`requiresCurrentMonth`, contexto `todayIndex`), orden `BONO`,
+  `summarizeAdvisorActivity` (hoy, última venta, días con ventas, sin
+  futuros).
+- **`quota-distribution.ts`**: `describeQuotaDistribution` (UNDER / EXACT /
+  OVER con texto).
+- **`get-performance-quotas.ts`**: `organization.scope`
+  (`SUPERVISED_TEAMS` para el supervisor), `explicitTarget`, `teamCount`; el
+  objetivo mostrado al supervisor es la suma de sus equipos.
+- **`get-performance-dashboard.ts`**: `advisorOutsideTeam`.
+- **`DirectoryFilters`**: `resets` por selector.
+- **Componentes**: columnas «Hoy» / «Última venta» (`ActivityCell`), `title`
+  con volúmenes, `comparedVolumes` en la tarjeta principal, aviso de asesor
+  ajeno, cabecera de Cuotas por alcance, textos de reparto, «asignada / por
+  defecto».
+- **Pruebas**: `rendimiento-supervisor.test.tsx` (6).
+
 ## Verificación
 
 Pruebas puras de los enlaces; recorrido local con sesión de administrador
