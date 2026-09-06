@@ -807,14 +807,6 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
                     <Link href="/admin/teams?sinSupervisor=1">
                       Asignar supervisor
                     </Link>
-                    {data.quotaWindow ? (
-                      <>
-                        {" · "}
-                        <Link href={quotasHref(data, data.quotaWindow.key)}>
-                          Repartir su cuota
-                        </Link>
-                      </>
-                    ) : null}
                   </>
                 ) : null}
               </>

@@ -141,6 +141,7 @@ export default async function RecoveryBaseAdminPage({
     unverifiedCount,
     verifiedCount,
     waitingReadyCount,
+    unworkedCount,
   ] = await Promise.all([
     database.recoveryEligibilityConfig.findFirst({
       where: { organizationId: membership.organization.id, isActive: true },
@@ -204,11 +205,16 @@ export default async function RecoveryBaseAdminPage({
         status: "OPEN",
       },
     }),
+    // PL-03: «En gestión» significa lo mismo que en Repartir —con al menos un
+    // intento, en curso o agendado—; los asignados sin gestión van aparte.
     database.recoveryCase.count({
       where: {
         organizationId: membership.organization.id,
         source: "NATIONAL_BASE",
-        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
+        OR: [
+          { status: { in: ["IN_PROGRESS", "SCHEDULED"] } },
+          { status: "ASSIGNED", attempts: { some: {} } },
+        ],
       },
     }),
     database.recoveryCase.count({
@@ -366,6 +372,14 @@ export default async function RecoveryBaseAdminPage({
         services: { none: { discardedAt: null, portabilityCheckedAt: null } },
       },
     }),
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "ASSIGNED",
+        attempts: { none: {} },
+      },
+    }),
   ]);
 
   const waitingNumbers = new Set(
@@ -394,6 +408,7 @@ export default async function RecoveryBaseAdminPage({
     triageCount +
     waitingCount +
     openCount +
+    unworkedCount +
     managedCount +
     recoveredCount +
     discardedCount +
@@ -448,6 +463,12 @@ export default async function RecoveryBaseAdminPage({
               href={campaignStageHrefs.open}
               label={campaignStageLabels.open}
               value={openCount}
+            />
+            <Metric
+              hint={campaignStageHints.assignedUnworked}
+              href={campaignStageHrefs.assignedUnworked}
+              label={campaignStageLabels.assignedUnworked}
+              value={unworkedCount}
             />
             <Metric
               hint={campaignStageHints.managed}

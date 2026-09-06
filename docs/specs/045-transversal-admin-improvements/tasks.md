@@ -11,8 +11,11 @@
 - [x] PL-05 · Cabecera del resumen por equipo con cobertura administrativa y
       enlaces; fila enlazada a la tarjeta del equipo.
 - [x] PL-06 · «Pedidos que requieren acción» abre `/orders?status=LOGISTICS`.
-- [ ] Recorrido local con sesión de administrador.
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Recorrido local con sesión de administrador (1 = 1, 9 = 9, nombres y
+      enlaces).
+- [x] Lectura de solo lectura en producción (alerta 70 = 70; verificados
+      270 = 270; Logística 347 = 347); «En gestión» de Preparar alineado con
+      Repartir.
 
 ## Fase 2 · Resumen administrativo y reparto con carga
 
