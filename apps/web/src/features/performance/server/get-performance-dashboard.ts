@@ -7,7 +7,9 @@ import {
   formatAdvisorDisplayName,
   getDefaultQuotaTarget,
   getLimaDayOfMonth,
+  getLimaIsoDate,
   getOrderPeriodRange,
+  getPerformanceCommissionPolicy,
   getPotentialBaseCommissionCents,
   getPerformanceMonthRange,
   parsePerformanceMonth,
@@ -18,6 +20,7 @@ import {
 
 import { database } from "@/server/database";
 
+import { describeAcceleratorWindows } from "../accelerator-windows";
 import {
   normalizeSearchTerm,
   parseBreakdownSort,
@@ -1058,6 +1061,46 @@ export async function getPerformanceDashboard(
   );
   const salesMix = buildSalesOperationMix(orders);
 
+  /*
+   * ASE-04: lo que quedó abierto de meses anteriores no se mezcla con el mes
+   * elegido, pero sí es una acción pendiente. Misma definición que Pedidos
+   * («pendientes de meses anteriores»): registrado antes del mes en curso y
+   * todavía abierto, con el alcance del tablero.
+   */
+  const currentMonthStart = getPerformanceMonthRange(currentMonth).start;
+  const pendingBeforeWhere: Prisma.DitoOrderWhereInput = {
+    organizationId,
+    AND: [
+      accessWhere,
+      teamWhere,
+      { registeredAt: { lt: currentMonthStart } },
+      { status: { in: ["OPEN", "SENT", "UNKNOWN"] } },
+    ],
+  };
+  const pendingBefore = await database.ditoOrder.aggregate({
+    where: pendingBeforeWhere,
+    _count: { _all: true },
+    _min: { registeredAt: true },
+  });
+  const pendingBeforeMonth =
+    pendingBefore._count._all > 0 && pendingBefore._min.registeredAt
+      ? {
+          count: pendingBefore._count._all,
+          monthLabel: monthLabelFormatter.format(currentMonthStart),
+          from: getLimaIsoDate(pendingBefore._min.registeredAt),
+          to: getLimaIsoDate(new Date(currentMonthStart.getTime() - 1)),
+        }
+      : null;
+
+  // ASE-02: las ventanas del acelerador según el día de hoy.
+  const todayDay =
+    currentRange.key === currentMonth ? getLimaDayOfMonth(now) : null;
+  const acceleratorWindows = describeAcceleratorWindows(
+    getPerformanceCommissionPolicy(currentRange.key).acceleratorWindows,
+    todayDay,
+    monthProgress.days.length,
+  );
+
   return {
     generatedAt: dateTimeFormatter.format(now),
     role: access.role,
@@ -1162,6 +1205,20 @@ export async function getPerformanceDashboard(
       selectedAdvisor !== null &&
       teamFilter !== "ALL" &&
       !allActiveSellers.has(selectedAdvisor.id),
+    // ASE-01: la misma cuota que ve supervisión para esta persona y ventana.
+    personalQuota:
+      isIndividualScope && relevantWindow
+        ? buildQuotaProgress(
+            scopedMetrics,
+            relevantWindow.key,
+            quotaTargets.get(access.userId) ??
+              getDefaultQuotaTarget(relevantWindow.key),
+            true,
+          )
+        : null,
+    acceleratorWindows,
+    todayDay,
+    pendingBeforeMonth,
     teams: buildTeamSummaries({
       orders,
       teams: summarizedTeams,

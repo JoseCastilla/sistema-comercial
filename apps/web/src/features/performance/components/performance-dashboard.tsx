@@ -14,7 +14,12 @@ import { DirectoryFilters } from "@/features/admin/components/directory-filters"
 import { OrderRealtimeStatus } from "@/features/orders/components/order-realtime-status";
 
 import {
+  describePendingAdvice,
+  isOutsideAcceleratorWindows,
+} from "../accelerator-windows";
+import {
   advisorHref,
+  earlierPendingHref,
   managementHref,
   matrixHref,
   ordersHref,
@@ -135,10 +140,16 @@ function DailyPerformancePulse({ data }: { data: PerformanceDashboardData }) {
   );
   const isAgent = data.view === "SELF";
   const heading = isAgent ? "Tu día de hoy" : "Movimiento de hoy en tu equipo";
+  // ASE-03: el consejo nace de los pendientes reales del mes, no de una frase.
   const motivation = isAgent
-    ? pulse.entered > 0
-      ? `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} hoy y ${pulse.closed} ${pulse.closed === 1 ? "cierre registrado" : "cierres registrados"}. Sigue cuidando la entrega para convertir el potencial en comisión.`
-      : "Aún no registras ventas hoy. Tu cartera pendiente sigue siendo una oportunidad para recuperar activaciones."
+    ? `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} hoy y ${pulse.closed} ${pulse.closed === 1 ? "cierre registrado" : "cierres registrados"}. ${describePendingAdvice(
+        {
+          enteredToday: pulse.entered,
+          deliveredPendingActivation: data.metrics.deliveredPendingActivation,
+          recovery: data.metrics.recovery,
+          openRecoveryCases: data.openRecoveryCases,
+        },
+      )}`
     : `${pulse.entered} ${pulse.entered === 1 ? "venta ingresada" : "ventas ingresadas"} y ${pulse.closed} ${pulse.closed === 1 ? "cierre registrado" : "cierres registrados"} hoy en ${data.scopeLabel.toLocaleLowerCase("es-PE")}.`;
 
   return (
@@ -1243,6 +1254,106 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
   );
 }
 
+/**
+ * ASE-01: la cuota del propio asesor, la misma que ve supervisión para esta
+ * persona y ventana. Solo lectura: la fija el supervisor. Cuota (entregadas)
+ * y bono (confirmadas) son conceptos distintos y se nombran aparte.
+ */
+function PersonalQuotaPanel({ data }: { data: PerformanceDashboardData }) {
+  const quota = data.personalQuota;
+  const window = data.quotaWindow;
+
+  return (
+    <section
+      className="performance-panel performance-personal-quota"
+      aria-labelledby="personal-quota-title"
+    >
+      <header className="performance-panel__header">
+        <div>
+          <p className="performance-panel__eyebrow">Tu objetivo</p>
+          <h2 id="personal-quota-title">
+            {window
+              ? `Cuota del tramo · ${window.label.replace(/^Bono /, "")}`
+              : "Cuota del tramo"}
+          </h2>
+          <p>
+            {window
+              ? quotaCohortLabel(data)
+              : "Este mes no tiene un tramo de cuota sobre el que hablar."}
+          </p>
+        </div>
+        <span className="performance-panel__note">
+          La fija tu supervisor · solo lectura
+        </span>
+      </header>
+      {quota && window ? (
+        <div className="performance-commission__details">
+          <div data-quota-reached={quota.reached ? "true" : undefined}>
+            <span>Portabilidades entregadas</span>
+            <strong>
+              {quota.delivered}/{quota.target}
+            </strong>
+            <small>
+              {quota.target > 0
+                ? `${percentage(quota.delivered / quota.target)} de la cuota`
+                : "Sin cuota asignada"}
+              {quota.reached
+                ? " · cumplida"
+                : ` · faltan ${quota.missing} ${quota.missing === 1 ? "entregada" : "entregadas"}`}
+            </small>
+          </div>
+          <div>
+            <span>Cuentan para la cuota</span>
+            <strong>Portabilidades entregadas</strong>
+            <small>
+              Registradas del {window.startDay} al {window.endDay}. Las altas
+              nuevas no cuentan.
+            </small>
+          </div>
+          <div>
+            <span>Bono del tramo (otra cosa)</span>
+            <strong>
+              {quota.confirmed}{" "}
+              {quota.confirmed === 1 ? "confirmada" : "confirmadas"}
+            </strong>
+            <small>
+              El bono mide entregadas y cerradas
+              {quota.nextTarget !== null && quota.missingForNextTarget > 0
+                ? `: faltan ${quota.missingForNextTarget} para el tramo de ${quota.nextTarget}`
+                : ""}
+              .
+            </small>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * ASE-04: lo abierto de meses anteriores es una acción pendiente aunque no
+ * cuente en el mes elegido. Misma definición y alcance que Pedidos.
+ */
+function EarlierPendingBlock({ data }: { data: PerformanceDashboardData }) {
+  const pending = data.pendingBeforeMonth;
+  if (!pending) return null;
+
+  return (
+    <Link
+      className="performance-actions__earlier"
+      href={earlierPendingHref(data, pending)}
+      title={`Pedidos abiertos registrados del ${pending.from} al ${pending.to}, con el mismo alcance que este tablero`}
+    >
+      <span>Pendientes de meses anteriores a {pending.monthLabel}</span>
+      <strong>{pending.count}</strong>
+      <small>
+        Pedidos abiertos registrados antes del mes en curso. No se mezclan con
+        las ventas de {data.monthLabel}.
+      </small>
+    </Link>
+  );
+}
+
 export function PerformanceDashboard({
   data,
 }: {
@@ -1468,7 +1579,7 @@ export function PerformanceDashboard({
         {showsTeams ? (
           <TeamSummaryPanel data={data} />
         ) : data.view === "SELF" ? (
-          <PersonalMonthlyProgress data={data} />
+          <PersonalQuotaPanel data={data} />
         ) : (
           <SalesTrendOverview data={data} />
         )}
@@ -1502,9 +1613,13 @@ export function PerformanceDashboard({
                 <small>Asignar antes de medir desempeño</small>
               </Link>
             ) : null}
+            <EarlierPendingBlock data={data} />
           </div>
         </section>
       </div>
+
+      {/* ASE-05: la actividad de hoy va antes del análisis, aparte del mes. */}
+      {data.view === "SELF" ? <DailyPerformancePulse data={data} /> : null}
 
       <AdvisorBreakdown data={data} />
 
@@ -1546,28 +1661,56 @@ export function PerformanceDashboard({
                 {money(data.metrics.baseCommissionCents)} de comisión base
               </small>
             </div>
-            {data.metrics.accelerators.map((accelerator) => (
-              <div key={accelerator.key}>
-                <span>{accelerator.label}</span>
-                <strong>{money(accelerator.amountCents)}</strong>
-                <small>
-                  {accelerator.confirmed} cerradas de {accelerator.eligible}{" "}
-                  registradas
-                  {accelerator.delivered > accelerator.confirmed
-                    ? ` · ${accelerator.delivered - accelerator.confirmed} entregadas por activar`
-                    : ""}
-                </small>
-              </div>
-            ))}
+            {data.metrics.accelerators.map((accelerator) => {
+              const window = data.acceleratorWindows.find(
+                (item) => item.key === accelerator.key,
+              );
+              const state = window?.state ?? "CLOSED";
+              return (
+                <div data-window-state={state} key={accelerator.key}>
+                  <span>
+                    {accelerator.label}
+                    {state === "ACTIVE"
+                      ? " · en curso"
+                      : state === "UPCOMING"
+                        ? " · por comenzar"
+                        : " · cerrado"}
+                  </span>
+                  <strong>
+                    {state === "UPCOMING"
+                      ? `Comienza el día ${window?.startDay}`
+                      : money(accelerator.amountCents)}
+                  </strong>
+                  <small>
+                    {state === "UPCOMING"
+                      ? `Entran las ventas registradas del ${window?.startDay} al ${window?.endDay} que se entreguen y cierren.`
+                      : `${accelerator.confirmed} cerradas de ${accelerator.eligible} registradas del ${window?.startDay} al ${window?.endDay}${
+                          accelerator.delivered > accelerator.confirmed
+                            ? ` · ${accelerator.delivered - accelerator.confirmed} entregadas por activar`
+                            : ""
+                        }`}
+                  </small>
+                </div>
+              );
+            })}
           </div>
           {/*
-           * Lo que mueve la aguja del asesor: cuanto le falta para el
-           * siguiente tramo y cuanto vale alcanzarlo (SPEC-038 BR-013).
+           * Lo que mueve la aguja del asesor: cuánto le falta para el
+           * siguiente tramo y cuánto vale alcanzarlo (SPEC-038 BR-013). Solo
+           * de la ventana en curso: un tramo futuro no es un atraso (ASE-02).
            */}
           {data.view === "SELF" ? (
             <div className="performance-commission__details">
               {data.metrics.accelerators
-                .filter((accelerator) => accelerator.nextTarget !== null)
+                .filter((accelerator) => {
+                  const window = data.acceleratorWindows.find(
+                    (item) => item.key === accelerator.key,
+                  );
+                  return (
+                    window?.state === "ACTIVE" &&
+                    accelerator.nextTarget !== null
+                  );
+                })
                 .map((accelerator) => (
                   <div key={`next-${accelerator.key}`}>
                     <span>
@@ -1581,10 +1724,25 @@ export function PerformanceDashboard({
                     </strong>
                     <small>
                       para llegar a {accelerator.nextTarget} y sumar{" "}
-                      {money(accelerator.nextTargetAmountCents)}
+                      {money(accelerator.nextTargetAmountCents)}. Cuentan las
+                      ventas registradas en el tramo que se entreguen y cierren.
                     </small>
                   </div>
                 ))}
+              {isOutsideAcceleratorWindows(
+                data.acceleratorWindows,
+                data.todayDay,
+              ) ? (
+                <div>
+                  <span>Hoy no hay tramo de bono</span>
+                  <strong>Día {data.todayDay}</strong>
+                  <small>
+                    Las ventas registradas fuera de los tramos no entran en
+                    ningún bono; arriba queda el resultado del último tramo
+                    cerrado.
+                  </small>
+                </div>
+              ) : null}
             </div>
           ) : null}
           <p className="performance-commission__notice">
@@ -1604,6 +1762,8 @@ export function PerformanceDashboard({
         <SalesTrendOverview data={data} />
       ) : null}
 
+      {data.view === "SELF" ? <PersonalMonthlyProgress data={data} /> : null}
+
       <TeamDailyMatrix data={data} />
 
       <div className="performance-insight-grid">
@@ -1620,8 +1780,6 @@ export function PerformanceDashboard({
 
         <SalesOperationMix data={data} />
       </div>
-
-      {data.view === "SELF" ? <DailyPerformancePulse data={data} /> : null}
     </div>
   );
 }

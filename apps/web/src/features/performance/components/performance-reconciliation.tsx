@@ -126,7 +126,10 @@ export function PerformanceReconciliation({
                 Entregadas, falta activarlas
               </option>
               <option value="NOT_DELIVERED">Pendientes de entrega</option>
-              <option value="UNASSIGNED">Sin asesor responsable</option>
+              {/* ASE-06: un asesor solo ve lo suyo; «sin asesor» no aplica. */}
+              {data.role === "AGENT" ? null : (
+                <option value="UNASSIGNED">Sin asesor responsable</option>
+              )}
               <option value="UNKNOWN_OPERATION">
                 Falta clasificar la operación
               </option>
@@ -176,7 +179,7 @@ export function PerformanceReconciliation({
               <tr>
                 <th>Orden</th>
                 <th>Cliente</th>
-                <th>Asesor</th>
+                {data.role === "AGENT" ? null : <th>Asesor</th>}
                 <th>Operación</th>
                 <th>Resultado</th>
                 {data.showLineAmounts ? (
@@ -194,10 +197,12 @@ export function PerformanceReconciliation({
                     <small>{line.registeredAtLabel}</small>
                   </td>
                   <td>{line.customerName}</td>
-                  <td>
-                    <strong>{line.agentName}</strong>
-                    <small>{line.teamName ?? "Sin equipo"}</small>
-                  </td>
+                  {data.role === "AGENT" ? null : (
+                    <td>
+                      <strong>{line.agentName}</strong>
+                      <small>{line.teamName ?? "Sin equipo"}</small>
+                    </td>
+                  )}
                   <td>{operationLabels[line.operation] ?? line.operation}</td>
                   <td>
                     <span

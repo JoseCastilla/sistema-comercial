@@ -1,8 +1,8 @@
 # SPEC-044 — Rendimiento orientado a la acción
 
-Estado: **fases 1 a 4 entregadas y verificadas en producción** (05/09/2026).
-Quedan las validaciones con sesión de asesor, supervisor que vende y
-supervisor multiequipo. Las vistas `SUPERVISOR` y `AGENT` se revisaron por
+Estado: **fase 5 (asesor) construida** (05/09/2026); fases 1 a 4 entregadas
+y verificadas en producción. Quedan las validaciones con sesión de supervisor
+que vende y supervisor multiequipo. Las vistas `SUPERVISOR` y `AGENT` se revisaron por
 lectura del código; el recorrido con sesión real sigue pendiente. Plan «Rendimiento orientado a
 la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`;
 las revisiones de `SUPERVISOR` y `AGENT` quedan pendientes. Se apoya en
@@ -202,6 +202,56 @@ SPEC-034 no se reescribe aquí.
   vende en el equipo filtrado, el tablero lo avisa y ofrece «Ver todo el
   equipo»; los indicadores quedan acotados a sus ventas dentro de ese equipo.
 
+### Fase 5 — Asesor (plan «Mi rendimiento orientado a objetivos y acciones» v1.0, 05/09/2026)
+
+Revisado con la sesión de asesor (Jimena Cuya) en producción. El plan ya
+validaba: solo filtros personales, 8 pagables = S/ 200 de base, 3 por
+recuperar abren 3 órdenes propias.
+
+| Acción | Hallazgo del plan | Contraste |
+|---|---|---|
+| ASE-01 | La vista personal no muestra cuota ni avance | Real: `quota` solo se calculaba por fila del desglose, vacío en la vista personal. |
+| ASE-02 | La segunda ventana aparece como faltante antes de comenzar | Real: «Bono del 25 a fin de mes: te falta 15 cerradas» el día 5. |
+| ASE-03 | El mensaje recomienda recuperar activaciones con cero por activar | Real: frase fija en el pulso diario. |
+| ASE-04 | Pedidos muestra pendientes anteriores que Rendimiento no ofrece como acción | Real: 5 en Pedidos, nada en Rendimiento. |
+| ASE-05 | Objetivo y acciones detrás del análisis | Parcial: la fase 3 ya bajó el análisis; faltaba el objetivo y subir la actividad de hoy. |
+| ASE-06 | Conciliación con «Sin asesor responsable» y la identidad repetida | Real. |
+
+- **BR-017 · Cuota personal (ASE-01).** En la vista personal el asesor ve su
+  cuota del tramo vigente (o del último cerrado): entregadas/cuota,
+  porcentaje, faltante y los días exactos de la cohorte; es la misma cuota
+  que ve supervisión (asignada, o la por defecto del tramo) y es de solo
+  lectura. La cuota mide portabilidades entregadas; el bono, confirmadas; el
+  panel los nombra como conceptos distintos. Las altas nuevas no cuentan.
+- **BR-018 · Tramos según el día (ASE-02).** Cada ventana del bono se
+  presenta «en curso», «por comenzar» (con su día de inicio) o «cerrada»
+  (con su resultado). El «te falta para el siguiente bono» solo habla de la
+  ventana en curso; en los días sin tramo (16 al 24) se dice que hoy no hay
+  bono y queda el resultado del último cerrado. En un mes cerrado todas las
+  ventanas están cerradas. Los faltantes y montos salen de la política
+  centralizada.
+- **BR-019 · Consejo desde los pendientes reales (ASE-03).** El texto del
+  pulso diario se compone con las entregadas por activar, los pedidos por
+  recuperar y los casos abiertos; con cero por activar no pide activar; con
+  pedidos por recuperar ofrece revisarlos «por si alguno se puede reingresar»,
+  sin prometer; sin pendientes, lo dice.
+- **BR-020 · Pendientes de meses anteriores (ASE-04).** Bloque aparte dentro
+  de «Pendientes de intervención»: pedidos abiertos (`OPEN`, `SENT`,
+  `UNKNOWN`) registrados antes del mes en curso, con el alcance del tablero;
+  misma definición que «pendientes de meses anteriores» en Pedidos. Su enlace
+  abre Pedidos con `period=RANGE` del primer registro al último día del mes
+  anterior, `status=ACTIVE` y el alcance, así el contador coincide con la
+  lista. No suma a las ventas ni conversiones del mes elegido. Se muestra en
+  todas las vistas.
+- **BR-021 · Orden de la vista personal (ASE-05).** Controles → indicadores →
+  [cuota personal + pendientes] → actividad de hoy → comisión estimada («no
+  es tu boleta de pago») → «Análisis detallado» (ritmo del mes, conversión,
+  composición).
+- **BR-022 · Conciliación personal (ASE-06).** Con rol `AGENT` la conciliación
+  no ofrece «Sin asesor responsable» ni repite la columna de asesor; conserva
+  resultado, motivo, comisión base y enlace al pedido. El alcance personal
+  sigue validado en el servidor.
+
 ## 5. Criterios de aceptación de la fase 1
 
 - **AC-001:** con asesor y equipo filtrados, «Entregadas por activar = N»
@@ -257,3 +307,19 @@ SPEC-034 no se reescribe aquí.
   con los días equivalentes; con base cero lo dice.
 - **AC-021:** cambiar de equipo con un asesor filtrado deja la URL sin
   `agent=`; una URL con asesor ajeno al equipo muestra el aviso.
+
+## 9. Criterios de aceptación de la fase 5
+
+- **AC-022:** con sesión de asesor, «Cuota del tramo» muestra entregadas/cuota,
+  porcentaje, faltante y los días de la cohorte; la cuota coincide con la de
+  supervisión para la misma persona y ventana.
+- **AC-023:** el día 5 la segunda ventana dice «Comienza el día 25» y no
+  muestra faltante; el «te falta» solo aparece para la ventana en curso.
+- **AC-024:** con cero por activar el consejo no menciona activar; con N por
+  recuperar ofrece revisarlos.
+- **AC-025:** «Pendientes de meses anteriores» muestra N y su enlace abre
+  Pedidos con exactamente N órdenes.
+- **AC-026:** la vista personal ordena objetivo y acciones → hoy → comisión →
+  análisis.
+- **AC-027:** la conciliación del asesor no ofrece «Sin asesor responsable»
+  ni columna de asesor.

@@ -931,6 +931,24 @@
     border-top: 3px solid var(--ui-accent);
   }
 
+  /* ASE-04: lo de meses anteriores, aparte y sin mezclarse con el mes. */
+  .performance-actions__earlier {
+    border-top: 1px dashed var(--ui-border);
+    margin-top: 0.3rem;
+    padding-top: 0.9rem !important;
+    background: transparent !important;
+  }
+
+  /* ASE-02: una ventana por comenzar no es un atraso. */
+  .performance-commission__details > div[data-window-state="UPCOMING"] strong {
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-sm);
+  }
+
+  .performance-commission__details > div[data-quota-reached="true"] strong {
+    color: var(--ui-success);
+  }
+
   .performance-commission__total {
     color: var(--ui-accent);
     font-size: var(--ui-text-2xl);

@@ -130,6 +130,23 @@ export function reconciliationHref(data: Scope, reason: string): string {
  * vigentes (o a los que se pidan para una fila), con camino de vuelta. En la
  * vista personal el alcance ya es el propio: no viaja equipo ni asesor.
  */
+function applyOrdersScope(
+  data: Scope,
+  parameters: URLSearchParams,
+  options: { team?: string; advisor?: string } = {},
+): void {
+  if (data.view !== "SELF") {
+    const team = options.team ?? data.teamFilter;
+    const advisor =
+      options.advisor ?? (data.agentFilter !== "ALL" ? data.agentFilter : null);
+
+    if (team !== "ALL") parameters.set("team", team);
+    if (advisor && team !== "UNASSIGNED") parameters.set("advisor", advisor);
+  }
+
+  parameters.set("volver", performanceHref(data));
+}
+
 export function ordersHref(
   data: Scope,
   status: string,
@@ -141,17 +158,27 @@ export function ordersHref(
     to: data.to,
     status,
   });
+  applyOrdersScope(data, parameters, options);
 
-  if (data.view !== "SELF") {
-    const team = options.team ?? data.teamFilter;
-    const advisor =
-      options.advisor ?? (data.agentFilter !== "ALL" ? data.agentFilter : null);
+  return `/orders?${parameters.toString()}`;
+}
 
-    if (team !== "ALL") parameters.set("team", team);
-    if (advisor && team !== "UNASSIGNED") parameters.set("advisor", advisor);
-  }
-
-  parameters.set("volver", performanceHref(data));
+/**
+ * ASE-04: pedidos abiertos de meses anteriores, exactamente los que cuenta el
+ * tablero: mismo rango de fechas (del primero registrado al día anterior al
+ * mes en curso), mismo alcance y el estado «activos» de Pedidos.
+ */
+export function earlierPendingHref(
+  data: Scope,
+  range: { from: string; to: string },
+): string {
+  const parameters = new URLSearchParams({
+    period: "RANGE",
+    from: range.from,
+    to: range.to,
+    status: "ACTIVE",
+  });
+  applyOrdersScope(data, parameters);
 
   return `/orders?${parameters.toString()}`;
 }
