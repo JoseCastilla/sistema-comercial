@@ -1643,7 +1643,7 @@ export function PerformanceDashboard({
               >
                 Revisar cálculo
               </Link>
-              {data.role !== "AGENT" ? (
+              {data.role !== "AGENT" && data.view !== "SELF" ? (
                 <Link
                   className="performance-commission__review"
                   href={quotasHref(data, data.quotaWindow?.key)}

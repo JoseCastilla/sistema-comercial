@@ -51,7 +51,17 @@
       HUANCAYO - EL TAMBO): origen del plan SUP-01..06.
 - [x] Recorrido con sesión real de asesor (producción, solo lectura, Jimena
       Cuya): origen del plan ASE-01..06.
-- [ ] Supervisor que también vende; supervisor con varios equipos.
+- [x] Supervisor que también vende (producción, solo lectura, Francis Pary).
+- [ ] Supervisor con varios equipos.
+
+## Fase 6 · Supervisor que vende (05/09/2026)
+
+- [x] SV-01 · Enlaces de la vista personal con el propio id (Pedidos,
+      anteriores, Recupero, conciliación).
+- [x] «Asignar cuotas» solo en la vista de equipo.
+- [x] SV-02 · Un supervisor no fija su propia cuota (página y acción).
+- [x] Verificación de destinos en producción con la sesión: Pedidos con advisor=<él> devuelve 0 (= 0 por recuperar); Recupero con advisor=<él> «Casos abiertos 1» (= 1); conciliación con agent=<él> muestra su nombre y 0 órdenes (= 0 ingresadas).
+- [ ] Lectura de solo lectura en producción tras el despliegue.
 
 ## Fase 4 · Supervisor (05/09/2026)
 

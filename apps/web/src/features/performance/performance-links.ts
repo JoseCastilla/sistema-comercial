@@ -30,7 +30,11 @@ type Scope = Pick<
   Partial<
     Pick<
       PerformanceDashboardData,
-      "sort" | "management" | "search" | "matrixRangeRequested"
+      | "sort"
+      | "management"
+      | "search"
+      | "matrixRangeRequested"
+      | "selfAdvisorId"
     >
   >;
 
@@ -119,6 +123,13 @@ export function matrixHref(data: Scope, matrix: MatrixRangeKey): string {
 export function reconciliationHref(data: Scope, reason: string): string {
   const parameters = new URLSearchParams({ month: data.month, reason });
 
+  if (data.view === "SELF") {
+    // SV-01: la conciliación no tiene vista personal; un supervisor que vende
+    // la abre filtrada por sí mismo o vería la de sus equipos.
+    if (data.selfAdvisorId) parameters.set("agent", data.selfAdvisorId);
+    return `/performance/reconciliation?${parameters.toString()}`;
+  }
+
   if (data.teamFilter !== "ALL") parameters.set("team", data.teamFilter);
   if (data.agentFilter !== "ALL") parameters.set("agent", data.agentFilter);
 
@@ -142,6 +153,10 @@ function applyOrdersScope(
 
     if (team !== "ALL") parameters.set("team", team);
     if (advisor && team !== "UNASSIGNED") parameters.set("advisor", advisor);
+  } else if (data.selfAdvisorId) {
+    // SV-01: para un supervisor que vende, Pedidos abre sus equipos; «solo
+    // lo mío» hay que pedirlo. Un asesor no lo necesita: ya es su alcance.
+    parameters.set("advisor", data.selfAdvisorId);
   }
 
   parameters.set("volver", performanceHref(data));
@@ -201,6 +216,8 @@ export function recoveryCasesHref(
 
     if (responsible) parameters.set("advisor", responsible);
     else if (scopedTeam !== "ALL") parameters.set("team", scopedTeam);
+  } else if (data.selfAdvisorId) {
+    parameters.set("advisor", data.selfAdvisorId);
   }
 
   const query = parameters.toString();

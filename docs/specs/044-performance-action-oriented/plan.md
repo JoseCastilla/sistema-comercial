@@ -90,6 +90,17 @@
   personal; conciliación sin «Sin asesor» ni columna de asesor para `AGENT`.
 - **Pruebas**: `rendimiento-asesor.test.ts` (7).
 
+## Fase 6 · Supervisor que vende
+
+- **Datos**: `selfAdvisorId` (solo en vista personal con rol `SUPERVISOR`).
+- **Enlaces**: `applyOrdersScope`, `recoveryCasesHref` y `reconciliationHref`
+  lo usan en vista personal.
+- **Componentes**: sin «Asignar cuotas» en vista personal; fila propia
+  deshabilitada en Cuotas (`QuotaAdvisorRow.canAssign`).
+- **Acción**: `assign-performance-quota-action` rechaza la cuota propia del
+  supervisor.
+- **Pruebas**: `rendimiento-supervisor-vendedor.test.ts` (3).
+
 ## Verificación
 
 Pruebas puras de los enlaces; recorrido local con sesión de administrador

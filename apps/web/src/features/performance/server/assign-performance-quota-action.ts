@@ -74,6 +74,19 @@ export async function assignPerformanceQuotaAction(
     };
   }
 
+  // SV-02: un supervisor que también vende no fija su propia cuota; la fija
+  // administración, igual que la del equipo. Repartir es para los demás.
+  if (
+    scope === "USER" &&
+    membership.role === "SUPERVISOR" &&
+    targetId === session.user.id
+  ) {
+    return {
+      type: "error",
+      message: "Tu propia cuota la fija administración.",
+    };
+  }
+
   // BR-009: solo administración fija la cuota del equipo.
   if (scope === "TEAM" && membership.role === "SUPERVISOR") {
     return {

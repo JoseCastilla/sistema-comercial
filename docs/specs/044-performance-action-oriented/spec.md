@@ -1,6 +1,8 @@
 # SPEC-044 — Rendimiento orientado a la acción
 
-Estado: **fases 1 a 5 entregadas y verificadas en producción** (05/09/2026). Quedan las validaciones con sesión de supervisor
+Estado: **fase 6 (supervisor que vende) construida** (05/09/2026); fases 1 a
+5 entregadas y verificadas en producción. Queda la validación con un
+supervisor de varios equipos. Quedan las validaciones con sesión de supervisor
 que vende y supervisor multiequipo. Las vistas `SUPERVISOR` y `AGENT` se revisaron por
 lectura del código; el recorrido con sesión real sigue pendiente. Plan «Rendimiento orientado a
 la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`;
@@ -251,6 +253,32 @@ recuperar abren 3 órdenes propias.
   resultado, motivo, comisión base y enlace al pedido. El alcance personal
   sigue validado en el servidor.
 
+### Fase 6 — Supervisor que también vende (validación pendiente del plan del supervisor, 05/09/2026)
+
+Revisado con la sesión de Francis Pary (supervisor y vendedor de AYACUCHO -
+MAGISTERIAL 02) en producción, en «Mi equipo» y «Mi rendimiento».
+
+| Punto | Hallazgo | Contraste |
+|---|---|---|
+| Vista «Mi equipo» | Selector «Vista», resumen del equipo con él mismo como vendedor (3/4, «1 sin producción»), desglose con su fila | Correcto: quien vende cuenta como vendedor. |
+| Vista «Mi rendimiento» | Cuota personal 0/70, la misma que ve administración; pendientes propios | Correcto. |
+| Enlaces personales | «Casos de recupero abiertos 1» abría `/recovery/sales` sin filtro, que para un supervisor es la bandeja de sus equipos (14); «Entregadas por activar 0» abría Pedidos de sus equipos (10); «Revisar cálculo» abría la conciliación de sus equipos (45 órdenes) | **Real**: un asesor no necesita pedir «solo lo mío» porque ya es su alcance; un supervisor sí. |
+| «Asignar cuotas» en la vista personal | Aparecía en «Mi rendimiento» | Fuera de lugar: es una herramienta de supervisión. |
+| Cuotas | Podía fijar su propia cuota de asesor (70) | Conflicto de interés: el que reparte no debería fijarse la suya. |
+
+- **BR-023 · «Solo lo mío» explícito (SV-01).** En la vista personal de un
+  supervisor que vende, los enlaces a Pedidos (del mes y de meses anteriores),
+  a Recupero de ventas y a la conciliación llevan su propio id
+  (`advisor=` / `agent=`), porque esas pantallas le abren por defecto sus
+  equipos. Para un asesor no viaja nada: su alcance ya es el propio. El
+  servidor sigue validando el alcance en cada destino.
+- **BR-024 · «Asignar cuotas» solo en la vista de equipo.** En «Mi
+  rendimiento» no aparece.
+- **BR-025 · Un supervisor no fija su propia cuota (SV-02).** La fija
+  administración, como la del equipo (SPEC-038 BR-009). La página de Cuotas
+  deshabilita su fila y lo dice; la acción lo rechaza con el mismo mensaje.
+  Decisión asumida y escrita: evita que quien reparte se rebaje la suya.
+
 ## 5. Criterios de aceptación de la fase 1
 
 - **AC-001:** con asesor y equipo filtrados, «Entregadas por activar = N»
@@ -322,3 +350,14 @@ recuperar abren 3 órdenes propias.
   análisis.
 - **AC-027:** la conciliación del asesor no ofrece «Sin asesor responsable»
   ni columna de asesor.
+
+## 10. Criterios de aceptación de la fase 6
+
+- **AC-028:** en «Mi rendimiento» del supervisor que vende, «Casos de recupero
+  abiertos N» abre Recupero con «Casos abiertos N»; «Pedidos por recuperar N»
+  y «Entregadas por activar N» abren Pedidos con N; «Revisar cálculo» abre la
+  conciliación con su nombre y sus órdenes.
+- **AC-029:** «Asignar cuotas» no aparece en «Mi rendimiento» y sí en «Mi
+  equipo».
+- **AC-030:** en Cuotas, su propia fila está deshabilitada con «Es tu propia
+  cuota: la fija administración»; la acción devuelve el mismo mensaje.

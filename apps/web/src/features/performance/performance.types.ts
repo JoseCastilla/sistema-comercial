@@ -167,6 +167,12 @@ export interface PerformanceDashboardData {
   advisorOutsideTeam: boolean;
   /** Cuota del propio asesor en la vista personal (ASE-01); solo lectura. */
   personalQuota: PerformanceQuotaProgress | null;
+  /**
+   * En la vista personal de un supervisor que vende, su propio id: Pedidos,
+   * Recupero y la conciliación le muestran por defecto sus equipos, así que
+   * los enlaces deben pedir explícitamente «solo lo mío» (SPEC-044 SV-01).
+   */
+  selfAdvisorId: string | null;
   /** Estado de cada ventana del acelerador según el día de hoy (ASE-02). */
   acceleratorWindows: AcceleratorWindowView[];
   /** Día de hoy en Lima si el mes elegido es el actual; si no, `null`. */
