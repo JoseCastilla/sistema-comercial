@@ -2,6 +2,10 @@ import "server-only";
 
 import { database } from "@/server/database";
 
+import { buildDniLookupStats, splitBySource } from "../dni-stats";
+
+import type { DniSourceCounts } from "../dni-stats";
+
 import {
   getOrderPeriodRange,
   parseDniLookupApiResponse,
@@ -35,43 +39,58 @@ export async function getDniLookupOverview(input: {
 }> {
   const today = getOrderPeriodRange("TODAY");
   const month = getOrderPeriodRange("MONTH");
-  const commonWhere = {
-    organizationId: input.organizationId,
-    actorUserId: input.actorUserId,
+
+  // PL-10: la actividad propia y, para administración, la de toda la
+  // organización, cada una separando consultas nuevas de lecturas guardadas.
+  const countScope = async (where: {
+    organizationId: string;
+    actorUserId?: string;
+  }): Promise<DniSourceCounts> => {
+    const [todayCount, monthBySource, uniqueDnis] = await Promise.all([
+      database.dniLookupEvent.count({
+        where: { ...where, queriedAt: { gte: today.start!, lt: today.end! } },
+      }),
+      database.dniLookupEvent.groupBy({
+        by: ["source"],
+        where: { ...where, queriedAt: { gte: month.start!, lt: month.end! } },
+        _count: { _all: true },
+      }),
+      database.dniLookupEvent.findMany({
+        where: { ...where, queriedAt: { gte: month.start!, lt: month.end! } },
+        distinct: ["dniPersonSnapshotId"],
+        select: { dniPersonSnapshotId: true },
+      }),
+    ]);
+    const split = splitBySource(
+      monthBySource.map((row) => ({
+        source: String(row.source),
+        count: row._count._all,
+      })),
+    );
+    return {
+      today: todayCount,
+      month: split.api + split.cache,
+      uniqueDnisThisMonth: uniqueDnis.length,
+      apiThisMonth: split.api,
+      cacheThisMonth: split.cache,
+    };
   };
 
-  const [todayCount, monthCount, uniqueDnis, creditStatus] = await Promise.all([
-    database.dniLookupEvent.count({
-      where: {
-        ...commonWhere,
-        queriedAt: { gte: today.start!, lt: today.end! },
-      },
+  const [personal, organization, creditStatus] = await Promise.all([
+    countScope({
+      organizationId: input.organizationId,
+      actorUserId: input.actorUserId,
     }),
-    database.dniLookupEvent.count({
-      where: {
-        ...commonWhere,
-        queriedAt: { gte: month.start!, lt: month.end! },
-      },
-    }),
-    database.dniLookupEvent.findMany({
-      where: {
-        ...commonWhere,
-        queriedAt: { gte: month.start!, lt: month.end! },
-      },
-      distinct: ["dniPersonSnapshotId"],
-      select: { dniPersonSnapshotId: true },
-    }),
+    input.canViewCredits
+      ? countScope({ organizationId: input.organizationId })
+      : Promise.resolve(null),
     input.canViewCredits
       ? getLatestDniCreditStatus(input.organizationId)
       : Promise.resolve(null),
   ]);
 
   return {
-    stats: {
-      today: todayCount,
-      month: monthCount,
-      uniqueDnisThisMonth: uniqueDnis.length,
-    },
+    stats: buildDniLookupStats(personal, organization),
     creditStatus,
   };
 }

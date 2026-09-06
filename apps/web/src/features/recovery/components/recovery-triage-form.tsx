@@ -289,6 +289,7 @@ export function RecoveryTriageForm({
         {canAssignTeams ? (
           <>
             <select
+              aria-label="Equipo destino"
               className="ui-form-row__fixed rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
               defaultValue=""
               name="teamId"

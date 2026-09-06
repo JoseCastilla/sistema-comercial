@@ -113,3 +113,10 @@ pone a la vista y cada cifra abre su lista.
    - Resumen por equipo con rejilla `--teams`; HUANCAYO - EL TAMBO muestra
      «5/5 todos con ventas · 6 personas en el equipo» (la supervisora no
      vende) (AC-010).
+
+## Fase 4 (06/09/2026)
+
+1. **Pruebas** — 193 en verde en `apps/web` (2 nuevas, `dni-actividad`):
+   separación de nuevas y guardadas; la organización solo cuando se pide.
+   Tipos y lint limpios.
+2. **Recorrido local con sesión de administrador**: DNI con «Tu actividad» (mes, hoy, DNI distintos; pista «0 nuevas al proveedor · 0 desde la ficha guardada») y «Toda la organización» aparte, saldo «que reportó el proveedor en la última consulta nueva, el 29 ago. 2026…; no es un saldo en tiempo real» (AC-011). Importar ventas DITO: «Ver el historial completo (6 cargas)» → «Historial de cargas · página 1 de 1», tabla sin ningún formulario de borrado (AC-012). «Checa tus líneas» con el texto sobre lo no auditado y la salida externa; a 375 px sin desbordamiento horizontal, marco de 323 × 841 con el botón «Abrir fuera del sistema» visible (AC-013).
