@@ -1,7 +1,6 @@
 # SPEC-044 — Rendimiento orientado a la acción
 
-Estado: **fase 5 (asesor) construida** (05/09/2026); fases 1 a 4 entregadas
-y verificadas en producción. Quedan las validaciones con sesión de supervisor
+Estado: **fases 1 a 5 entregadas y verificadas en producción** (05/09/2026). Quedan las validaciones con sesión de supervisor
 que vende y supervisor multiequipo. Las vistas `SUPERVISOR` y `AGENT` se revisaron por
 lectura del código; el recorrido con sesión real sigue pendiente. Plan «Rendimiento orientado a
 la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`;

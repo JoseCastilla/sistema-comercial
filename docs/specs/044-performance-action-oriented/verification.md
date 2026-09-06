@@ -250,3 +250,34 @@ supervisor habilitado también para vender y supervisor con varios equipos.
      registradas del 25 al 30…»; agosto: ambas «· cerrado» con su resultado.
    - Conciliación de ADMIN intacta: columna Asesor y opción «Sin asesor
      responsable» siguen.
+
+3. **Lectura de producción con la sesión de asesor** (solo lectura, Jimena
+   Cuya, tras el despliegue de `78774f7`, setiembre 2026, día 5):
+   - Orden de pantalla: cabecera → controles → indicadores → [cuota personal +
+     pendientes] → «Tu día de hoy» → comisión → «Análisis detallado» → ritmo
+     del mes → conversión y composición (AC-026).
+   - «Cuota del tramo · días 1 al 15 · La fija tu supervisor · solo lectura»:
+     «Portabilidades entregadas 15/100 · 15% de la cuota · faltan 85
+     entregadas», cohorte «registradas del 1 al 15 de setiembre de 2026. Tramo
+     en curso.», «Las altas nuevas no cuentan», «Bono del tramo (otra cosa): 13
+     confirmadas · faltan 17 para el tramo de 30». La cuota **15/100 coincide**
+     con la fila de Jimena que veía administración (AC-022).
+   - Comisión: «Bono días 1 al 15 · en curso · 13 cerradas de 21 registradas
+     del 1 al 15 · 2 entregadas por activar»; «Bono del 25 a fin de mes · por
+     comenzar · Comienza el día 25 · Entran las ventas registradas del 25 al
+     30…»; el «te falta 17 cerradas para llegar a 30 y sumar S/ 200.00» solo
+     aparece para la ventana en curso (AC-023).
+   - Pulso: «4 ventas ingresadas hoy y 5 cierres registrados. 2 ventas
+     entregadas esperan activarse: todavía no pagan. 7 pedidos del mes no se
+     entregaron o se cancelaron: revísalos por si alguno se puede reingresar.
+     8 casos abiertos en Recupero de ventas con cadencia por cumplir.»
+     (AC-024).
+   - «Pendientes de meses anteriores a setiembre de 2026 · 5» →
+     `period=RANGE&from=2026-08-10&to=2026-08-31&status=ACTIVE` → Pedidos con
+     **5** órdenes (AC-025); coincide con «5 pendientes de meses anteriores»
+     de Pedidos.
+   - Conciliación: columnas «Orden · Cliente · Operación · Resultado ·
+     Comisión fija», sin «Sin asesor responsable» (AC-027).
+
+**Pendiente** (validaciones del plan del supervisor): supervisor habilitado
+también para vender y supervisor con varios equipos.
