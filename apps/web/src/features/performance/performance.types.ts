@@ -1,5 +1,6 @@
 import type { PerformanceMetrics } from "@repo/validation";
 
+import type { AcceleratorWindowView } from "./accelerator-windows";
 import type {
   BreakdownSortKey,
   ManagementFilterKey,
@@ -164,6 +165,25 @@ export interface PerformanceDashboardData {
    * ese equipo.
    */
   advisorOutsideTeam: boolean;
+  /** Cuota del propio asesor en la vista personal (ASE-01); solo lectura. */
+  personalQuota: PerformanceQuotaProgress | null;
+  /** Estado de cada ventana del acelerador según el día de hoy (ASE-02). */
+  acceleratorWindows: AcceleratorWindowView[];
+  /** Día de hoy en Lima si el mes elegido es el actual; si no, `null`. */
+  todayDay: number | null;
+  /**
+   * Pedidos abiertos registrados antes del mes en curso, con el alcance del
+   * tablero (ASE-04). Misma definición que «pendientes de meses anteriores»
+   * en Pedidos; no se mezclan con las ventas del mes elegido.
+   */
+  pendingBeforeMonth: {
+    count: number;
+    /** Mes en curso, del que quedan «antes». */
+    monthLabel: string;
+    /** Rango para abrir exactamente esos pedidos en Pedidos. */
+    from: string;
+    to: string;
+  } | null;
   /** Resumen por equipo; vacío en la vista personal o con un asesor aislado. */
   teams: PerformanceTeamSummary[];
   workforce: {

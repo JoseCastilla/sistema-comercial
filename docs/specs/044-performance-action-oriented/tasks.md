@@ -49,8 +49,9 @@
       1 de 19 sin tocar 278 ingresadas, matriz de días transcurridos).
 - [x] Recorrido con sesión real de supervisor (producción, solo lectura,
       HUANCAYO - EL TAMBO): origen del plan SUP-01..06.
-- [ ] Recorrido con sesión real de asesor; supervisor que también vende;
-      supervisor con varios equipos.
+- [x] Recorrido con sesión real de asesor (producción, solo lectura, Jimena
+      Cuya): origen del plan ASE-01..06.
+- [ ] Supervisor que también vende; supervisor con varios equipos.
 
 ## Fase 4 · Supervisor (05/09/2026)
 
@@ -65,6 +66,19 @@
       asesor; aviso de asesor ajeno al equipo.
 - [x] Inconsistencia documental SPEC-014 BR-019 vs SPEC-034 registrada.
 - [x] Recorrido local con sesión de administrador.
+## Fase 5 · Asesor (05/09/2026)
+
+- [x] ASE-01 · Cuota personal en la vista personal, solo lectura, con cohorte.
+- [x] ASE-02 · Ventanas en curso / por comenzar / cerradas; «te falta» solo de
+      la vigente; aviso en los días sin tramo.
+- [x] ASE-03 · Consejo del pulso desde los pendientes reales.
+- [x] ASE-04 · Bloque «Pendientes de meses anteriores» con enlace exacto.
+- [x] ASE-05 · Orden: objetivo y acciones → hoy → comisión → análisis.
+- [x] ASE-06 · Conciliación del asesor sin «Sin asesor» ni columna de asesor.
+- [x] Recorrido local con sesión de administrador (bloque de anteriores,
+      estados de ventana, conciliación intacta para ADMIN).
+- [ ] Lectura de solo lectura en producción con la sesión de asesor.
+
 - [x] Lectura de solo lectura en producción con la sesión de supervisor
       (HUANCAYO - EL TAMBO: cuotas por alcance, reparto 270 de 300, hoy y
       última venta, 95 frente a 13).

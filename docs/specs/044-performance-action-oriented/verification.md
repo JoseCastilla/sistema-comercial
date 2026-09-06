@@ -224,3 +224,29 @@ roles y las contraseñas no se escriben). Queda en tareas.
 
 **Pendiente** (validaciones del plan): vista de asesor con su propia sesión,
 supervisor habilitado también para vender y supervisor con varios equipos.
+
+## Fase 5 · Asesor (05/09/2026)
+
+0. **Origen**: lectura en producción con la sesión de asesor antes de tocar
+   nada. Filtros: solo «Mes de la venta». Pendientes: 2 por activar, 7 por
+   recuperar, 8 casos. Comisión: «Bono del 25 a fin de mes: te falta 15
+   cerradas» el día 5 (ASE-02 real); pulso «Sigue cuidando la entrega…» fijo
+   (ASE-03); Pedidos «5 pendientes de meses anteriores» sin eco en Rendimiento
+   (ASE-04); conciliación con «Sin asesor responsable» y columna Asesor
+   repitiendo «Jimena Cuya» (ASE-06); sin ninguna mención a la cuota (ASE-01).
+1. **Pruebas** — 177 en verde en `apps/web`, 7 nuevas
+   (`rendimiento-asesor.test.ts`): estados de ventana el día 5, el 20 y en
+   mes cerrado; consejo con cero por activar y sin pendientes; enlace de
+   anteriores con rango, `status=ACTIVE`, alcance y `volver`; en vista
+   personal sin asesor ni equipo. Tipos y lint limpios.
+2. **Recorrido local con sesión de administrador** (la vista personal exige
+   sesión de asesor; se contrasta en producción):
+   - «Pendientes de meses anteriores a setiembre de 2026 · 42» con enlace
+     `period=RANGE&from=2026-08-03&to=2026-08-31&status=ACTIVE&volver=…`;
+     paridad con Pedidos: 42 = 42 órdenes, con «← Volver a Rendimiento». (Un primer intento usaba `filter=` y abría
+     143: Pedidos llama `status` a ese parámetro; corregido antes de entregar.)
+   - Comisión (setiembre, día 5): «Bono días 1 al 15 · en curso» y «Bono del
+     25 a fin de mes · por comenzar · Comienza el día 25 · Entran las ventas
+     registradas del 25 al 30…»; agosto: ambas «· cerrado» con su resultado.
+   - Conciliación de ADMIN intacta: columna Asesor y opción «Sin asesor
+     responsable» siguen.

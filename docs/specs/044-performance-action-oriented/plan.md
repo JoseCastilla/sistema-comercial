@@ -76,6 +76,20 @@
   defecto».
 - **Pruebas**: `rendimiento-supervisor.test.tsx` (6).
 
+## Fase 5 · Asesor
+
+- **`accelerator-windows.ts`** (puro): `describeAcceleratorWindows` (estado
+  por día), `isOutsideAcceleratorWindows`, `describePendingAdvice`.
+- **Servidor**: `personalQuota` (vista personal, misma cuota que supervisión),
+  `acceleratorWindows` + `todayDay`, `pendingBeforeMonth` (conteo y rango
+  exacto con `aggregate`).
+- **Enlaces**: `applyOrdersScope` compartido; `earlierPendingHref` (`RANGE`
+  + `status=ACTIVE` + alcance + `volver`).
+- **Componentes**: `PersonalQuotaPanel`, `EarlierPendingBlock`, comisión con
+  estado por ventana, consejo del pulso desde pendientes, reorden de la vista
+  personal; conciliación sin «Sin asesor» ni columna de asesor para `AGENT`.
+- **Pruebas**: `rendimiento-asesor.test.ts` (7).
+
 ## Verificación
 
 Pruebas puras de los enlaces; recorrido local con sesión de administrador
