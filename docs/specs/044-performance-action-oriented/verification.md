@@ -201,3 +201,26 @@ roles y las contraseñas no se escriben). Queda en tareas.
    - `team=<EXTERNOS>&agent=<Alexandra>`: aviso «… no está entre los vendedores
      activos del equipo filtrado … Ver todo el equipo» y fichas de equipo y
      asesor.
+
+3. **Lectura de producción con la sesión de supervisor** (solo lectura,
+   HUANCAYO - EL TAMBO, tras el despliegue de `7f5176c`, setiembre 2026, día 5):
+   - Tarjeta principal: «Ventas ingresadas 95 · 95 frente a 13 en los días
+     1–5 del mes pasado (+630.8%)» (AC-020).
+   - Desglose: «Asesor · Hoy · Ingresadas · Vs. mes pasado · Última venta ·
+     Tasa de entrega · Cuota · …»; Christian Ruiz «Hoy 2 · Día 5 · 5 de 5
+     días con ventas», Silvia Sinchi «Hoy 5 · Día 5 · 4 de 5 días con
+     ventas»; `gestion=SIN_VENTAS_HOY` → «0 de 6 asesores» con la definición
+     «Es un dato de ventas, no de presencia» (AC-018).
+   - `orden=BONO`: Christian 19 → Silvia 20 → Sarai 22 → Steven 22 → Francesco 24 → Jhesel 29 confirmadas faltantes para el bono de 30 (AC-019).
+   - Cuotas: cabecera «Equipos a tu cargo · Objetivo de tus equipos · La cuota
+     de tu equipo para el tramo es 300. La fija administración; tú la repartes
+     entre tus asesores. No es la cuota de la organización.» Equipo: «Objetivo
+     del equipo: 300. Repartido: 270. Faltan 30 por repartir.» con
+     `data-tone="UNDER"` (AC-017). El «330 frente a 300» del plan ya no estaba
+     en producción: el reparto vigente es 270.
+   - Fichas de gestión: «Sin ventas hoy · Sin ventas en el mes · Con entregas
+     por activar · Con pedidos por recuperar · Cuota pendiente»; orden con
+     «Bono: más cerca del siguiente tramo».
+
+**Pendiente** (validaciones del plan): vista de asesor con su propia sesión,
+supervisor habilitado también para vender y supervisor con varios equipos.

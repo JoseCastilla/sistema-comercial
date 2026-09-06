@@ -65,4 +65,6 @@
       asesor; aviso de asesor ajeno al equipo.
 - [x] Inconsistencia documental SPEC-014 BR-019 vs SPEC-034 registrada.
 - [x] Recorrido local con sesión de administrador.
-- [ ] Lectura de solo lectura en producción con la sesión de supervisor.
+- [x] Lectura de solo lectura en producción con la sesión de supervisor
+      (HUANCAYO - EL TAMBO: cuotas por alcance, reparto 270 de 300, hoy y
+      última venta, 95 frente a 13).
