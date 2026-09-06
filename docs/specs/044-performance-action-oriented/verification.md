@@ -281,3 +281,22 @@ supervisor habilitado también para vender y supervisor con varios equipos.
 
 **Pendiente** (validaciones del plan del supervisor): supervisor habilitado
 también para vender y supervisor con varios equipos.
+
+## Fase 6 · Supervisor que vende (05/09/2026)
+
+0. **Origen**: lectura en producción con la sesión de Francis Pary
+   (supervisor y vendedor de AYACUCHO - MAGISTERIAL 02). «Mi equipo»: filtros
+   «Mes · Buscar asesor · Vista · Equipo · Asesor»; resumen «3/4 · 1 sin
+   producción · 15/250»; desglose con su propia fila (0, 0). «Mi rendimiento»:
+   cuota 0/70 (la misma que ve administración), pendientes 0 / 0 / 1 caso;
+   pero «Casos de recupero abiertos 1» → `/recovery/sales` (bandeja de sus
+   equipos: 14), «Entregadas por activar 0» → Pedidos de sus equipos (10) y
+   «Revisar cálculo» → conciliación «Mis equipos» (45 órdenes). «Asignar
+   cuotas» visible en la vista personal. En Cuotas podía fijar su propia
+   cuota.
+1. **Pruebas** — 180 en verde en `apps/web`, 3 nuevas
+   (`rendimiento-supervisor-vendedor.test.ts`): Pedidos, anteriores y Recupero
+   llevan su id; la conciliación se abre por él; un asesor sigue sin asesor ni
+   equipo. Tipos y lint limpios.
+2. **Destinos comprobados en producción con su sesión antes de entregar**
+   (solo lectura): Pedidos con advisor=<él> devuelve 0 (= 0 por recuperar); Recupero con advisor=<él> «Casos abiertos 1» (= 1); conciliación con agent=<él> muestra su nombre y 0 órdenes (= 0 ingresadas).

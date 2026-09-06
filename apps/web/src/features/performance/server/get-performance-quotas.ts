@@ -27,6 +27,11 @@ export interface QuotaAdvisorRow {
   teamName: string;
   target: number;
   isDefault: boolean;
+  /**
+   * Quién puede fijarla desde esta sesión. Un supervisor que también vende no
+   * fija su propia cuota: la fija administración (SPEC-044 SV-02).
+   */
+  canAssign: boolean;
 }
 
 export interface QuotaTeamRow {
@@ -167,6 +172,12 @@ export async function getPerformanceQuotas(
             teamName: membership.team.name,
             target: stored ?? defaultTarget,
             isDefault: stored === undefined,
+            canAssign:
+              access.role !== "AGENT" &&
+              !(
+                access.role === "SUPERVISOR" &&
+                membership.userId === access.userId
+              ),
           };
         })
         .sort((left, right) => left.name.localeCompare(right.name, "es"));

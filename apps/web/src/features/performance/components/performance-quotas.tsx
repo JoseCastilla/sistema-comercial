@@ -172,7 +172,11 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
                     </td>
                     <td>
                       <QuotaTargetForm
-                        disabled={!data.editable || !data.canAssignAdvisors}
+                        disabled={
+                          !data.editable ||
+                          !data.canAssignAdvisors ||
+                          !advisor.canAssign
+                        }
                         isDefault={advisor.isDefault}
                         period={data.periodKey}
                         scope="USER"
@@ -180,6 +184,11 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
                         targetId={advisor.id}
                         window={data.window}
                       />
+                      {data.canAssignAdvisors && !advisor.canAssign ? (
+                        <small className="text-xs text-ui-muted">
+                          Es tu propia cuota: la fija administración.
+                        </small>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

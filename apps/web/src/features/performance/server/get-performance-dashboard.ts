@@ -1219,6 +1219,8 @@ export async function getPerformanceDashboard(
     acceleratorWindows,
     todayDay,
     pendingBeforeMonth,
+    selfAdvisorId:
+      isIndividualScope && access.role === "SUPERVISOR" ? access.userId : null,
     teams: buildTeamSummaries({
       orders,
       teams: summarizedTeams,
