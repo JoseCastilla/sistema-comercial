@@ -37,7 +37,8 @@
       períodos conservando equipo y asesor.
 - [x] Recorrido local con sesión de administrador (Logística 8:25 / 8:49 /
       12:00; tablero 7 días «Trabajados 2» → Seguimiento 2).
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción («Trabajados» 1/483/1 255/1 255 =
+      Seguimiento; Logística con tres horas; «6 personas en el equipo»).
 
 ## Fase 4 · Control administrativo y consultas externas
 

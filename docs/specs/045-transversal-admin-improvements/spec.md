@@ -1,7 +1,7 @@
 # SPEC-045 — Mejoras transversales de la plataforma
 
-Estado: **fase 3 en construcción** (06/09/2026); fases 1 y 2 entregadas y
-verificadas en producción; fase 4 pendiente. Plan «Mejoras transversales de
+Estado: **fases 1 a 3 entregadas y verificadas en producción** (06/09/2026);
+fase 4 pendiente. Plan «Mejoras transversales de
 la plataforma comercial» v1.0 propuesto por José el 06/09/2026 (rol ADMIN,
 revisión de lectura de diez módulos), contrastado con la revisión de
 integridad del 05/09/2026 (`docs/revisiones/2026-09-05-integridad-plataforma.md`)
