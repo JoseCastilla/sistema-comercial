@@ -533,11 +533,11 @@ export default async function RecoveryBoardPage({
               <dl className="mt-2 flex flex-wrap gap-x-10 gap-y-3">
                 <Stat
                   detail="Casos de la cartera con al menos un intento en el período"
-                  href={
+                  href={followUpHref(
                     period.key === "hoy"
-                      ? followUpHref({ worked: "hoy" })
-                      : undefined
-                  }
+                      ? { worked: "hoy" }
+                      : { worked: "hoy", periodo: period.key },
+                  )}
                   label="Trabajados"
                   value={formatCount(workedToday.length)}
                 />

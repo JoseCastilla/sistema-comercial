@@ -175,6 +175,7 @@ interface TeamSummaryInput {
   teams: ReadonlyArray<{ id: string; name: string }>;
   supervisorNames: ReadonlyMap<string, string>;
   sellersByTeam: ReadonlyMap<string, ReadonlySet<string>>;
+  membersByTeam: ReadonlyMap<string, number>;
   openRecoveryCasesByTeam: ReadonlyMap<string, number>;
   unassignedRecoveryCases: number;
   quotaWindowKey: "ONE" | "TWO" | null;
@@ -238,6 +239,7 @@ function buildTeamSummaries(input: TeamSummaryInput): PerformanceTeamSummary[] {
       kind: "TEAM",
       name: team.name,
       supervisorName: input.supervisorNames.get(team.id) ?? null,
+      activeMembers: input.membersByTeam.get(team.id) ?? sellers.size,
       activeSellers: sellers.size,
       sellersWithSales,
       sellersWithoutSales: sellers.size - sellersWithSales,
@@ -260,6 +262,7 @@ function buildTeamSummaries(input: TeamSummaryInput): PerformanceTeamSummary[] {
       kind: "UNASSIGNED",
       name: "Sin equipo asignado",
       supervisorName: null,
+      activeMembers: 0,
       activeSellers: 0,
       sellersWithSales: 0,
       sellersWithoutSales: 0,
@@ -275,6 +278,7 @@ function buildTeamSummaries(input: TeamSummaryInput): PerformanceTeamSummary[] {
       kind: "OTHER",
       name: "Otros equipos",
       supervisorName: null,
+      activeMembers: 0,
       activeSellers: 0,
       sellersWithSales: 0,
       sellersWithoutSales: 0,
@@ -1012,6 +1016,23 @@ export async function getPerformanceDashboard(
           orderBy: { createdAt: "asc" },
         })
       : [];
+  // PL-08: personas activas por equipo (vendan o no), para distinguirlas de
+  // los vendedores activos que cuenta la columna.
+  const memberRows =
+    summarizedTeams.length > 0
+      ? await database.commercialTeamMember.groupBy({
+          by: ["teamId"],
+          where: {
+            teamId: { in: summarizedTeams.map((team) => team.id) },
+            isActive: true,
+            user: { status: "ACTIVE" },
+          },
+          _count: { userId: true },
+        })
+      : [];
+  const membersByTeam = new Map(
+    memberRows.map((row) => [row.teamId, row._count.userId]),
+  );
   const supervisorNames = new Map<string, string>();
   for (const row of supervisorRows) {
     if (supervisorNames.has(row.teamId)) continue;
@@ -1238,6 +1259,7 @@ export async function getPerformanceDashboard(
       teams: summarizedTeams,
       supervisorNames,
       sellersByTeam,
+      membersByTeam,
       openRecoveryCasesByTeam,
       unassignedRecoveryCases,
       quotaWindowKey: relevantWindow?.key ?? null,

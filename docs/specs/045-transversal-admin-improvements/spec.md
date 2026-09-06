@@ -1,7 +1,7 @@
 # SPEC-045 — Mejoras transversales de la plataforma
 
-Estado: **fases 1 y 2 entregadas y verificadas en producción** (06/09/2026);
-fases 3 y 4 pendientes. Plan «Mejoras transversales de
+Estado: **fase 3 en construcción** (06/09/2026); fases 1 y 2 entregadas y
+verificadas en producción; fase 4 pendiente. Plan «Mejoras transversales de
 la plataforma comercial» v1.0 propuesto por José el 06/09/2026 (rol ADMIN,
 revisión de lectura de diez módulos), contrastado con la revisión de
 integridad del 05/09/2026 (`docs/revisiones/2026-09-05-integridad-plataforma.md`)
@@ -102,6 +102,28 @@ tratar en una spec propia de operación; no bloquean esta.
 - **BR-009** «Trabajados» abre Hoy, Ayer, 7 y 30 días conservando equipo y
   asesor; la actividad del período separada de la cartera actual.
 
+#### Decisiones de la fase 3 (asumidas y escritas, 06/09/2026)
+
+- **Horario único (PL-07)**: las horas de consulta a Máximo viven en
+  `features/agr-delivery/schedule.ts` (08, 12, 15, 18; SPEC-046 BR-007) y de
+  ahí leen la sincronización y la pantalla. Logística muestra «Datos de
+  Máximo al», «Pantalla generada» y «Próxima consulta automática», explica
+  quién la dispara (el proceso de fondo en los cinco minutos siguientes, o
+  quien abra Pedidos si el proceso no está) y avisa cuando la última consulta
+  esperada no se ejecutó, con un margen de diez minutos. El badge «Acceso
+  activo» ya no se lee como garantía de datos recientes.
+- **Contexto al desplazarse (PL-08)**: en el resumen por equipo la cabecera
+  y la columna del equipo quedan fijas al desplazar; la rejilla da más ancho
+  a la tabla cuando está presente. La celda «Vendedores» sigue contando
+  vendedores activos y añade «N personas en el equipo» cuando hay miembros
+  que no venden (el supervisor, por ejemplo).
+- **Período de actividad en Seguimiento (PL-09)**: Seguimiento acepta
+  `periodo=` (hoy, ayer, semana, mes; el mismo parser del tablero); «con
+  gestión» se mide en ese período y la cartera sigue siendo la de ahora. El
+  tablero enlaza «Trabajados» en los cuatro períodos conservando equipo y
+  asesor. Los valores del filtro `worked` no cambian (`hoy`/`no`) para no
+  romper enlaces guardados; sus etiquetas dicen «en el período».
+
 ### Fase 4 — Control administrativo y consultas externas (PL-10, PL-11)
 
 - **BR-010** DNI distingue actividad personal y organizacional, API y caché;
@@ -132,3 +154,12 @@ tratar en una spec propia de operación; no bloquean esta.
   (abiertos, sin primer contacto, vencidos) y lo que recibiría; la tabla del
   reparto equitativo muestra «recibiría» y «quedaría» por participante y
   cambia al desmarcar a alguien.
+
+## 6. Criterios de aceptación de la fase 3
+
+- **AC-008:** Logística muestra tres horas distintas (fuente, pantalla,
+  próxima consulta) y avisa si la última consulta esperada no se ejecutó.
+- **AC-009:** en el tablero de Campañas, «Trabajados» abre Seguimiento en
+  los cuatro períodos y la cifra coincide con «caso(s) cumplen el filtro».
+- **AC-010:** el resumen por equipo conserva cabecera y nombre del equipo al
+  desplazarse y distingue personas de vendedores activos.

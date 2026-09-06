@@ -827,7 +827,7 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
           <thead>
             <tr>
               <th>Equipo</th>
-              <th title="Vendedores activos con ventas del mes / vendedores activos">
+              <th title="Vendedores activos con ventas del mes / vendedores activos. Aparte, cuántas personas tiene el equipo contando a quien no vende">
                 Vendedores
               </th>
               <th>Ingresadas</th>
@@ -903,6 +903,9 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
                           ) : (
                             "todos con ventas"
                           )}
+                          {team.activeMembers !== team.activeSellers
+                            ? ` · ${team.activeMembers} ${team.activeMembers === 1 ? "persona" : "personas"} en el equipo`
+                            : ""}
                         </small>
                       </>
                     ) : (
@@ -1673,7 +1676,9 @@ export function PerformanceDashboard({
         ) : null}
       </MetricGroup>
 
-      <div className="performance-decision-grid">
+      <div
+        className={`performance-decision-grid${showsTeams ? " performance-decision-grid--teams" : ""}`}
+      >
         {showsTeams ? (
           <TeamSummaryPanel data={data} />
         ) : data.view === "SELF" ? (

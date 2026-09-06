@@ -73,8 +73,8 @@ export const recoveryFollowUpContactOptions = [
 ] as const;
 
 export const recoveryFollowUpWorkedOptions = [
-  { value: "hoy", label: "Con gestión hoy" },
-  { value: "no", label: "Sin gestión hoy" },
+  { value: "hoy", label: "Con gestión en el período" },
+  { value: "no", label: "Sin gestión en el período" },
 ] as const;
 
 export interface FollowUpCaseLike {
@@ -85,6 +85,11 @@ export interface FollowUpCaseLike {
   lastResult: string | null;
   /** Intentos registrados hoy, en día de Lima (BR-006). */
   attemptsToday: number;
+  /**
+   * Intentos dentro del período de actividad elegido (SPEC-045 PL-09). Con
+   * el período «hoy» coincide con `attemptsToday`.
+   */
+  attemptsInPeriod: number;
 }
 
 export interface FollowUpFilters {
@@ -117,7 +122,9 @@ export function selectFollowUpCases<T extends FollowUpCaseLike>(
 
     if (filters.lastResult) {
       const expected =
-        filters.lastResult === recoveryLastResultNone ? null : filters.lastResult;
+        filters.lastResult === recoveryLastResultNone
+          ? null
+          : filters.lastResult;
 
       if (item.lastResult !== expected) return false;
     }
@@ -132,8 +139,9 @@ export function selectFollowUpCases<T extends FollowUpCaseLike>(
     if (filters.contact === "sin" && !isWithoutFirstContact(item)) return false;
     if (filters.contact === "con" && isWithoutFirstContact(item)) return false;
 
-    if (filters.worked === "hoy" && item.attemptsToday === 0) return false;
-    if (filters.worked === "no" && item.attemptsToday > 0) return false;
+    // PL-09: «con gestión» se mide en el período de actividad, no solo hoy.
+    if (filters.worked === "hoy" && item.attemptsInPeriod === 0) return false;
+    if (filters.worked === "no" && item.attemptsInPeriod > 0) return false;
 
     return true;
   });

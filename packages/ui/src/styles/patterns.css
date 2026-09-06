@@ -1207,6 +1207,36 @@
     color: var(--ui-warning);
   }
 
+  /*
+   * PL-08: la tabla de equipos vive junto al panel de pendientes y se
+   * desplaza en horizontal. El nombre del equipo y la cabecera se quedan
+   * fijos para que las cifras no pierdan a quién pertenecen.
+   */
+  .performance-teams .ui-table-wrap {
+    max-height: 32rem;
+    overflow: auto;
+  }
+
+  .performance-teams thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--ui-surface);
+  }
+
+  .performance-teams th:first-child,
+  .performance-teams td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--ui-surface);
+    box-shadow: 1px 0 0 var(--ui-border);
+  }
+
+  .performance-teams thead th:first-child {
+    z-index: 3;
+  }
+
   .performance-teams tfoot td {
     border-top: 2px solid var(--ui-border);
     font-weight: 700;
@@ -1317,6 +1347,11 @@
 
     .performance-decision-grid {
       grid-template-columns: minmax(0, 1.65fr) minmax(20rem, 0.75fr);
+    }
+
+    /* PL-08: con el resumen por equipo, la tabla necesita más ancho. */
+    .performance-decision-grid--teams {
+      grid-template-columns: minmax(0, 2.2fr) minmax(18rem, 0.6fr);
     }
 
     .performance-insight-grid {
