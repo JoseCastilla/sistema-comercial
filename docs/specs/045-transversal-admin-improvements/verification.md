@@ -65,3 +65,20 @@
      Logística (9 → `orders?status=LOGISTICS`). Los ceros no enlazan. Con
      `team=<id>` el panel no aparece (AC-006).
    - {local}
+3. **Lectura de producción con sesión de administrador** (solo lectura, tras
+   el despliegue de `07caeb3`):
+   - Panel «Pendientes por resolver o cubrir»: Recupero (casos vencidos
+     **70** → bandeja «70 caso(s) cumplen el filtro»; críticas sin responsable
+     0), Campañas (falta consultar 396, verificados por entregar 270,
+     disponibles 186, asignados sin gestión **302** → Repartir «302»; próxima
+     acción vencida **1 502** → Seguimiento «1 502 caso(s)»), Personas y
+     equipos (equipos sin supervisor 2, asesores activos sin equipo 1,
+     incidencias 0), Logística (**347** → Pedidos «347 encontradas») (AC-006).
+   - Repartir muestra la tabla «Participa · … · Recibiría · Quedaría» (AC-007).
+   - Logística dice «Automática cuatro veces al día, a las 08:00, 12:00,
+     15:00 y 18:00 (hora de Lima); cualquier otra consulta es manual»
+     (SPEC-046 BR-007).
+
+**Hallazgo operativo para José**: 1 502 casos de campaña en gestión tienen la
+próxima acción vencida y 302 llevan dueño sin ningún intento; el resumen lo
+pone a la vista y cada cifra abre su lista.
