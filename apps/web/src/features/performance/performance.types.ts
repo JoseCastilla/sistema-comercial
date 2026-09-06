@@ -4,6 +4,7 @@ import type { AcceleratorWindowView } from "./accelerator-windows";
 import type { AdminPendingGroup } from "./admin-pending";
 import type { DeliveryTrend } from "./delivery-trend";
 import type {
+  BreakdownColumnsKey,
   BreakdownSortKey,
   ManagementFilterKey,
   MatrixRangeKey,
@@ -178,6 +179,8 @@ export interface PerformanceDashboardData {
   matrixRange: MatrixRangeKey;
   /** Lo que pidió la URL, para que los enlaces lo conserven tal cual. */
   matrixRangeRequested: MatrixRangeKey | null;
+  /** Columnas de la tabla individual (`columnas=`), SPEC-047 BR-015. */
+  columns: BreakdownColumnsKey;
   /**
    * El asesor filtrado no es vendedor activo del equipo filtrado (SUP-06):
    * se avisa, porque los indicadores quedan acotados a sus ventas dentro de

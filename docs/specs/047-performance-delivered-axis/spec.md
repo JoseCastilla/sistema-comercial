@@ -1,6 +1,6 @@
 # SPEC-047 — Rendimiento medido en ventas entregadas
 
-**Estado:** `EN_CURSO` — fase 1 verificada en producción; fase 2 entregada; fase 3 pendiente (06/09/2026)
+**Estado:** `ENTREGADA` — fase 1 verificada en producción; fases 2 y 3 entregadas, verificación en producción pendiente (06/09/2026)
 
 > Plan v1.0 de José del 06/09/2026, con criterio confirmado: **el resultado
 > comercial se mide por ventas entregadas**. Se apoya en SPEC-027 (tablero),

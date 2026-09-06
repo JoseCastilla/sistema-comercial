@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { buildDeliveryTrend } from "@/features/performance/delivery-trend";
 import {
+  columnsHref,
+  performanceHref,
+} from "@/features/performance/performance-links";
+import { parseBreakdownColumns } from "@/features/performance/performance-management";
+import {
   buildPriorityNotices,
   quotaSourceLabel,
 } from "@/features/performance/priority-notices";
@@ -172,6 +177,31 @@ describe("Avisos prioritarios (BR-011)", () => {
       key: "TEAMS_WITHOUT_SUPERVISOR",
       href: null,
     });
+  });
+
+  it("las columnas completas viajan en la URL y las compactas son el defecto (BR-015)", () => {
+    expect(parseBreakdownColumns(undefined)).toBe("COMPACTAS");
+    expect(parseBreakdownColumns("todas")).toBe("TODAS");
+    expect(parseBreakdownColumns("otra")).toBe("COMPACTAS");
+    const alcance = {
+      month: "2026-09",
+      view: "TEAM" as const,
+      canSwitchView: false,
+      teamFilter: "ALL",
+      agentFilter: "ALL",
+      from: "2026-09-01",
+      to: "2026-09-30",
+      sort: "CUOTA" as const,
+    };
+    expect(columnsHref(alcance, "TODAS")).toBe(
+      "/performance?month=2026-09&orden=CUOTA&columnas=todas",
+    );
+    expect(columnsHref({ ...alcance, columns: "TODAS" }, "COMPACTAS")).toBe(
+      "/performance?month=2026-09&orden=CUOTA",
+    );
+    expect(performanceHref({ ...alcance, columns: "TODAS" }, "2026-08")).toBe(
+      "/performance?month=2026-08&orden=CUOTA&columnas=todas",
+    );
   });
 
   it("el origen de la cuota se dice con palabras", () => {

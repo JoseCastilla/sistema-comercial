@@ -68,6 +68,24 @@ personal; etiqueta del origen de la cuota). Tipos y lint limpios.
 
 **Producción**: pendiente.
 
-## Fase 3
+## Fase 3 (06/09/2026)
 
-Pendiente.
+**Pruebas**: web 208 (1 nueva: `columnas=todas` viaja en la URL, la compacta
+es el defecto y `performanceHref` la conserva al cambiar de mes). Tipos y
+lint limpios.
+
+**Local, agosto de 2026, sesión de administrador**:
+
+- AC-014: las cabeceras de bloque se leen «Resultado» (tarjetas, entregas por
+  día, cumplimiento, avisos) → «Gestión · Equipos, pendientes y avance
+  individual» → «Económico · monto estimado» → «Actividad · análisis
+  detallado · Ingresos por día, ritmo, conversión y composición».
+- AC-015: «Pendientes por resolver o cubrir · 6 indicadores con pendientes»
+  es un `<details>` cerrado al cargar.
+- AC-016: sin `columnas=` la tabla tiene Asesor, Entregadas, Cuota,
+  Pagables, Pendientes («0 por activar · 0 por recuperar · 0 casos») y
+  Estimado; con `columnas=todas` y `orden=CUOTA`, doce columnas (trece en el
+  mes en curso, con «Hoy»), y el enlace del asesor y la flecha de mes
+  conservan `orden=CUOTA&columnas=todas`.
+
+**Producción**: pendiente.

@@ -1485,6 +1485,23 @@
     font-size: var(--ui-text-2xs);
   }
 
+  .performance-breakdown__pending span {
+    display: block;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .performance-breakdown__pending small {
+    display: block;
+    color: var(--ui-text-soft);
+    font-size: var(--ui-text-2xs);
+    white-space: nowrap;
+  }
+
+  .performance-admin-pending > summary h2 {
+    font-size: var(--ui-text-md);
+  }
+
   .performance-result-links {
     display: flex;
     flex-wrap: wrap;
