@@ -60,8 +60,7 @@ export async function sendOrderToRecoveryAction(
   if (observation.length < 10) {
     return {
       type: "error",
-      message:
-        "Describe en al menos 10 caracteres qué ocurrió con esta venta.",
+      message: "Describe en al menos 10 caracteres qué ocurrió con esta venta.",
     };
   }
 
@@ -177,8 +176,7 @@ export async function sendOrderToRecoveryAction(
   if (outcome.kind === "NOT_RECOVERABLE") {
     return {
       type: "error",
-      message:
-        "Una venta cerrada o entregada no entra a recuperación.",
+      message: "Una venta cerrada o entregada no entra a recuperación.",
     };
   }
 

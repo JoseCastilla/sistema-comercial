@@ -10,6 +10,11 @@ import { QueueFilters } from "@/features/recovery/components/queue-filters";
 import { buildRecoverySearchWhere } from "@/features/recovery/server/recovery-search-where";
 import { releaseWaitingBaseCases } from "@/features/recovery/server/release-waiting-base-cases";
 import { CampaignNav } from "@/features/recovery/components/campaign-nav";
+import {
+  campaignStageHints,
+  campaignStageHrefs,
+  campaignStageLabels,
+} from "@/features/recovery/campaign-stage-labels";
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import {
@@ -357,26 +362,27 @@ export default async function RecoveryTriagePage({
         <MetricGroup>
           <Metric
             href={viewHref("listos")}
-            label="Listos para repartir"
+            label={campaignStageLabels.verified}
             value={readyTotal}
             hint="Líneas ya verificadas: se pueden entregar hoy"
           />
           <Metric
             href={viewHref("pendientes")}
-            label="Falta consultar"
+            label={campaignStageLabels.unverified}
             value={pendingTotal}
             hint="Aún no pasan por el reporte de portabilidad"
           />
           <Metric
             href={viewHref("espera")}
-            label="Con pedido en curso"
+            label={campaignStageLabels.waiting}
             value={waitingTotal}
             hint="Verificados que esperan a que su pedido se concrete o se caiga"
           />
           <Metric
-            label="Disponible"
+            href={campaignStageHrefs.open}
+            label={campaignStageLabels.open}
             value={openTotal}
-            hint="Ya revisados; falta asignarlos a un equipo"
+            hint={campaignStageHints.open}
           />
         </MetricGroup>
 
@@ -385,19 +391,19 @@ export default async function RecoveryTriagePage({
             className={`ui-button ${view === "listos" ? "ui-button--primary" : "ui-button--secondary"}`}
             href={viewHref("listos")}
           >
-            Listos para repartir ({formatCount(readyTotal)})
+            {campaignStageLabels.verified} ({formatCount(readyTotal)})
           </Link>
           <Link
             className={`ui-button ${view === "pendientes" ? "ui-button--primary" : "ui-button--secondary"}`}
             href={viewHref("pendientes")}
           >
-            Falta consultar ({formatCount(pendingTotal)})
+            {campaignStageLabels.unverified} ({formatCount(pendingTotal)})
           </Link>
           <Link
             className={`ui-button ${view === "espera" ? "ui-button--primary" : "ui-button--secondary"}`}
             href={viewHref("espera")}
           >
-            Con pedido en curso ({formatCount(waitingTotal)})
+            {campaignStageLabels.waiting} ({formatCount(waitingTotal)})
           </Link>
           <span className="pb-2 text-xs text-ui-muted">
             {view === "pendientes"
@@ -410,7 +416,7 @@ export default async function RecoveryTriagePage({
 
         {openTotal > 0 ? (
           <p className="text-sm text-ui-muted">
-            Hay {formatCount(openTotal)} caso(s) en la base disponible.{" "}
+            Hay {formatCount(openTotal)} caso(s) disponibles para asignar.{" "}
             <Link
               className="text-ui-accent underline-offset-2 hover:underline"
               href="/recovery/distribute"

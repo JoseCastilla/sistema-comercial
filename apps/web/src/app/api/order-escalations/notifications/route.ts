@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { countOverdueInternalCases } from "@/features/recovery/server/count-overdue-internal-cases";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -40,23 +41,12 @@ export async function GET() {
             : {}),
         },
       }),
-      // SPEC-030 BR-066/BR-058: un caso interno con la próxima acción
-      // vencida escala a la vista del supervisor.
-      database.recoveryCase.count({
-        where: {
-          organizationId: membership.organization.id,
-          source: { in: ["INTERNAL_ORDER_STATE", "MANUAL"] },
-          status: { in: ["OPEN", "ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
-          nextActionAt: { lt: new Date() },
-          ...(membership.role === "SUPERVISOR"
-            ? {
-                OR: [
-                  { assignedTeamId: { in: supervisedTeamIds } },
-                  { originalTeamId: { in: supervisedTeamIds } },
-                ],
-              }
-            : {}),
-        },
+      // SPEC-030 BR-066/BR-058: un caso interno vencido escala a la vista
+      // del supervisor. SPEC-045 PL-02: mismo criterio y mismo alcance que la
+      // bandeja, así el aviso abre exactamente lo que cuenta.
+      countOverdueInternalCases(membership.organization.id, {
+        userId: session.user.id,
+        role: membership.role,
       }),
     ]);
     return NextResponse.json({ count, recoveryOverdue });

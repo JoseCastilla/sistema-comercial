@@ -87,7 +87,6 @@ function readUuid(value: FormDataEntryValue | null): string | null {
     : null;
 }
 
-
 /**
  * Registro de un intento de contacto — SPEC-030 BR-032 a BR-036, BR-066.
  * El intento es inmutable; sus efectos sobre el caso (estado, reloj, agenda,

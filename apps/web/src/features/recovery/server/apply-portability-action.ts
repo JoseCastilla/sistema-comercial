@@ -129,7 +129,9 @@ export async function applyPortabilityAction(
 
   // Un archivo ya conocido no crea un lote nuevo, pero sí vuelve a cruzarse
   // contra los casos abiertos de hoy (BR-020).
-  const prefix = summary.reused ? "Reporte ya conocido, cruzado de nuevo: " : "";
+  const prefix = summary.reused
+    ? "Reporte ya conocido, cruzado de nuevo: "
+    : "";
 
   return { type: "success", message: `${prefix}${parts.join(" · ")}.` };
 }

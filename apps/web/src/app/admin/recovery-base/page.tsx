@@ -7,6 +7,11 @@ import { RecoveryConfigForm } from "@/features/recovery/components/recovery-conf
 import { expireUnverifiedCases } from "@/features/recovery/server/expire-unverified-cases";
 import { releaseWaitingBaseCases } from "@/features/recovery/server/release-waiting-base-cases";
 import { CampaignNav } from "@/features/recovery/components/campaign-nav";
+import {
+  campaignStageHints,
+  campaignStageHrefs,
+  campaignStageLabels,
+} from "@/features/recovery/campaign-stage-labels";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -133,6 +138,9 @@ export default async function RecoveryBaseAdminPage({
     waitingServices,
     sweepServices,
     portabilityBatches,
+    unverifiedCount,
+    verifiedCount,
+    waitingReadyCount,
   ] = await Promise.all([
     database.recoveryEligibilityConfig.findFirst({
       where: { organizationId: membership.organization.id, isActive: true },
@@ -332,6 +340,32 @@ export default async function RecoveryBaseAdminPage({
         uploadedAt: true,
       },
     }),
+    // PL-03: las mismas tres poblaciones que muestra «Revisar», con sus
+    // mismas condiciones, para que el nombre signifique lo mismo aquí y allá.
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: { in: ["TRIAGE", "WAITING"] },
+        services: { some: { discardedAt: null, portabilityCheckedAt: null } },
+      },
+    }),
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "TRIAGE",
+        services: { none: { discardedAt: null, portabilityCheckedAt: null } },
+      },
+    }),
+    database.recoveryCase.count({
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: "WAITING",
+        services: { none: { discardedAt: null, portabilityCheckedAt: null } },
+      },
+    }),
   ]);
 
   const waitingNumbers = new Set(
@@ -391,15 +425,40 @@ export default async function RecoveryBaseAdminPage({
           description="Al volver en otra sesión, aquí está lo que falta."
         >
           <MetricGroup>
-            <Metric label="Por revisar" value={triageCount} />
             <Metric
-              label="Con pedido en curso"
-              value={waitingCount}
-              hint="Su pedido avanza solo"
+              hint={campaignStageHints.unverified}
+              href={campaignStageHrefs.unverified}
+              label={campaignStageLabels.unverified}
+              value={unverifiedCount}
             />
-            <Metric label="Disponible" value={openCount} />
-            <Metric label="En gestión" value={managedCount} />
-            <Metric label="Recuperados" value={recoveredCount} />
+            <Metric
+              hint={campaignStageHints.verified}
+              href={campaignStageHrefs.verified}
+              label={campaignStageLabels.verified}
+              value={verifiedCount}
+            />
+            <Metric
+              hint={campaignStageHints.waiting}
+              href={campaignStageHrefs.waiting}
+              label={campaignStageLabels.waiting}
+              value={waitingReadyCount}
+            />
+            <Metric
+              hint={campaignStageHints.open}
+              href={campaignStageHrefs.open}
+              label={campaignStageLabels.open}
+              value={openCount}
+            />
+            <Metric
+              hint={campaignStageHints.managed}
+              href={campaignStageHrefs.managed}
+              label={campaignStageLabels.managed}
+              value={managedCount}
+            />
+            <Metric
+              label={campaignStageLabels.recovered}
+              value={recoveredCount}
+            />
           </MetricGroup>
 
           {/* El embudo debe cuadrar: sin esta línea, los casos cerrados por

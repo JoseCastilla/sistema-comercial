@@ -793,9 +793,32 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
           <h2 id="teams-summary-title">Resumen por equipo</h2>
           <p>
             Quién responde por cada equipo, cuántos venden y cómo va la cuota.
-            {teamsWithoutSupervisor > 0
-              ? ` ${teamsWithoutSupervisor === 1 ? "Un equipo no tiene" : `${teamsWithoutSupervisor} equipos no tienen`} supervisor: nadie reparte su cuota ni sigue su recupero.`
-              : ""}
+            {teamsWithoutSupervisor > 0 ? (
+              <>
+                {" "}
+                {teamsWithoutSupervisor === 1
+                  ? "Un equipo no tiene"
+                  : `${teamsWithoutSupervisor} equipos no tienen`}{" "}
+                supervisor: administración cubre su cuota y su recupero mientras
+                no lo tenga.
+                {data.role === "ADMIN" ? (
+                  <>
+                    {" "}
+                    <Link href="/admin/teams?sinSupervisor=1">
+                      Asignar supervisor
+                    </Link>
+                    {data.quotaWindow ? (
+                      <>
+                        {" · "}
+                        <Link href={quotasHref(data, data.quotaWindow.key)}>
+                          Repartir su cuota
+                        </Link>
+                      </>
+                    ) : null}
+                  </>
+                ) : null}
+              </>
+            ) : null}
           </p>
         </div>
         {data.role !== "AGENT" && data.quotaWindow ? (
@@ -856,7 +879,14 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
                     )}
                     <small>
                       {team.kind === "TEAM"
-                        ? (team.supervisorName ?? "Sin supervisor")
+                        ? (team.supervisorName ??
+                          (data.role === "ADMIN" && scope ? (
+                            <Link href={`/admin/teams?equipo=${scope}`}>
+                              Sin supervisor · lo cubre administración
+                            </Link>
+                          ) : (
+                            "Sin supervisor · lo cubre administración"
+                          )))
                         : team.kind === "UNASSIGNED"
                           ? "Pedidos sin equipo, con o sin asesor"
                           : "Equipos fuera de este alcance"}

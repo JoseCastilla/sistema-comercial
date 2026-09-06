@@ -3,6 +3,7 @@ import "server-only";
 import {
   allOf,
   classifyInternalRecoveryDue,
+  matchesInternalRecoveryDueFilter,
   compareInternalRecoveryCases,
   describeInternalRecoveryStage,
   getLimaIsoDate,
@@ -23,6 +24,7 @@ import { lossReasonLabels } from "../loss-reason-labels";
 import type { Prisma } from "@repo/database";
 import type {
   InternalRecoveryDue,
+  InternalRecoveryDueFilter,
   InternalRecoveryStage,
   SalesRecoveryOpenStatus,
   SalesRecoveryPriority,
@@ -48,8 +50,8 @@ export interface SalesRecoveryInboxFilters {
   priority: SalesRecoveryPriority | null;
   reason: SalesRecoveryReason | null;
   status: SalesRecoveryOpenStatus | SalesRecoveryResolvedStatus | null;
-  /** Solo en abiertos (BR-095). */
-  due: InternalRecoveryDue | null;
+  /** Solo en abiertos (BR-095); «vencido» abre los tres juntos (PL-02). */
+  due: InternalRecoveryDueFilter | null;
 }
 
 export interface SalesRecoveryInboxOptions {
@@ -60,7 +62,7 @@ export interface SalesRecoveryInboxOptions {
   priority?: string | null;
   reason?: string | null;
   status?: string | null;
-  due?: InternalRecoveryDue | null;
+  due?: InternalRecoveryDueFilter | null;
   page?: number;
 }
 
@@ -493,7 +495,7 @@ export async function getSalesRecoveryInbox(
         (!filters.priority || item.priority === filters.priority) &&
         (!filters.reason || item.row.entryReason === filters.reason) &&
         (!filters.status || String(item.row.status) === filters.status) &&
-        (!filters.due || item.due === filters.due),
+        matchesInternalRecoveryDueFilter(item.due, filters.due),
     );
     const totalPages = Math.max(
       1,

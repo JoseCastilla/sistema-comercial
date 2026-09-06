@@ -1,5 +1,5 @@
 import {
-  parseInternalRecoveryDue,
+  parseInternalRecoveryDueFilter,
   parseSalesRecoveryView,
 } from "@repo/validation";
 
@@ -37,7 +37,7 @@ export default async function SalesRecoveryPage({
       priority: parameters.prioridad,
       reason: parameters.motivo,
       status: parameters.estado,
-      due: parseInternalRecoveryDue(parameters.vence),
+      due: parseInternalRecoveryDueFilter(parameters.vence),
       page: Number.parseInt(parameters.page ?? "1", 10),
     },
   );

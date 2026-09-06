@@ -119,7 +119,7 @@ export function EscalationNotification({ role }: { role: string }) {
         <Link
           aria-label={`${recoveryOverdue} recuperos con la próxima acción vencida`}
           className="flex items-center gap-2 rounded-full border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning shadow-lg"
-          href="/recovery/sales"
+          href="/recovery/sales?vence=vencido"
           role="status"
         >
           <span aria-hidden="true">⏰</span>

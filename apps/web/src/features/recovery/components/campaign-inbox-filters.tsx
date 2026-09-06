@@ -113,7 +113,8 @@ export function CampaignInboxFilters({
    * parpadear la lista completa entre dígito y dígito, así que se espera a
    * que el término pueda encontrar algo.
    */
-  const searchable = term.length === 0 || parseRecoverySearchTerm(term) !== null;
+  const searchable =
+    term.length === 0 || parseRecoverySearchTerm(term) !== null;
 
   return (
     <div className="flex flex-wrap items-end gap-3">

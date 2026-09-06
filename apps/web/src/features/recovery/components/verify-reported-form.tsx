@@ -44,8 +44,8 @@ export function VerifyReportedForm({ caseId }: { caseId: string }) {
         </Button>
       </div>
       <p className="text-xs leading-5 text-ui-muted">
-        Confirmar cierra como pérdida frente a otra agencia, con tu usuario
-        como evidencia. Devolver reactiva el caso con su asesor.
+        Confirmar cierra como pérdida frente a otra agencia, con tu usuario como
+        evidencia. Devolver reactiva el caso con su asesor.
       </p>
       <InlineFeedback
         message={state.message}

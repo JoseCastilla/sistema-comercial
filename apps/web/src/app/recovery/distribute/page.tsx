@@ -11,6 +11,11 @@ import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-st
 import { QueueFilters } from "@/features/recovery/components/queue-filters";
 import { buildRecoverySearchWhere } from "@/features/recovery/server/recovery-search-where";
 import { CampaignNav } from "@/features/recovery/components/campaign-nav";
+import {
+  campaignStageHints,
+  campaignStageHrefs,
+  campaignStageLabels,
+} from "@/features/recovery/campaign-stage-labels";
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import {
@@ -339,10 +344,30 @@ export default async function RecoveryDistributePage({
         <CampaignNav current="repartir" role={membership.role} />
 
         <MetricGroup>
-          <Metric label="Disponible" value={openCount} />
-          <Metric label="Asignados sin gestión" value={unworkedCount} />
-          <Metric label="En gestión" value={inProgressCount} />
-          <Metric label="Por revisar o portando" value={triageCount} />
+          <Metric
+            hint={campaignStageHints.open}
+            href={campaignStageHrefs.open}
+            label={campaignStageLabels.open}
+            value={openCount}
+          />
+          <Metric
+            hint={campaignStageHints.assignedUnworked}
+            href={campaignStageHrefs.assignedUnworked}
+            label={campaignStageLabels.assignedUnworked}
+            value={unworkedCount}
+          />
+          <Metric
+            hint={campaignStageHints.managed}
+            href={campaignStageHrefs.managed}
+            label={campaignStageLabels.managed}
+            value={inProgressCount}
+          />
+          <Metric
+            hint="Todavía en «Revisar»: falta consultar, verificados por entregar o con pedido en curso"
+            href={campaignStageHrefs.verified}
+            label="En revisión"
+            value={triageCount}
+          />
         </MetricGroup>
 
         {triageCount > 0 ? (

@@ -79,8 +79,7 @@ export async function resolveRecoveryCaseAction(
     if (lossReason === "OTRO" && membership.role === "AGENT") {
       return {
         type: "error",
-        message:
-          "El motivo «Otro» solo lo puede registrar tu supervisor.",
+        message: "El motivo «Otro» solo lo puede registrar tu supervisor.",
       };
     }
   }
@@ -214,7 +213,8 @@ export async function resolveRecoveryCaseAction(
   if (outcome.kind === "NOT_FOUND") {
     return {
       type: "error",
-      message: "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
+      message:
+        "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
     };
   }
   if (outcome.kind === "ORDER_INVALID") {

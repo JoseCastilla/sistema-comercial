@@ -100,8 +100,6 @@ export function RecoveryTriageForm({
     }
   }, [rowsKey, selected]);
 
-
-
   const allSelected = rows.length > 0 && selected.size === rows.length;
 
   /**
@@ -175,7 +173,8 @@ export function RecoveryTriageForm({
 
       event.preventDefault();
 
-      const target = event.key === "ArrowRight" ? valueIndex + 1 : valueIndex - 1;
+      const target =
+        event.key === "ArrowRight" ? valueIndex + 1 : valueIndex - 1;
 
       // A la izquierda del primer dato está la fila, no el cliente anterior.
       if (target < 0) {
@@ -267,8 +266,6 @@ export function RecoveryTriageForm({
           clic extiende el rango.
         </span>
       </div>
-
-
 
       <div className="ui-form-row">
         <Button

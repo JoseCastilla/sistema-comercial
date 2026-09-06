@@ -121,7 +121,10 @@ export async function verifyReportedActiveAction(
         },
       });
 
-      return { kind: "CONFIRMED" as const, holderName: recoveryCase.holderName };
+      return {
+        kind: "CONFIRMED" as const,
+        holderName: recoveryCase.holderName,
+      };
     }
 
     const backToOwner = recoveryCase.assignedUserId !== null;

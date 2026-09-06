@@ -28,7 +28,8 @@ export async function confirmRecoveryBaseAction(
   if (typeof batchId !== "string" || batchId.length === 0) {
     return {
       type: "error",
-      message: "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
+      message:
+        "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
     };
   }
 
@@ -38,7 +39,8 @@ export async function confirmRecoveryBaseAction(
   ) {
     return {
       type: "error",
-      message: "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
+      message:
+        "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
     };
   }
 
@@ -91,8 +93,7 @@ export async function confirmRecoveryBaseAction(
   if (!response.ok) {
     return {
       type: "error",
-      message:
-        readRecoveryApiError(payload) ?? "No se pudo confirmar el lote.",
+      message: readRecoveryApiError(payload) ?? "No se pudo confirmar el lote.",
     };
   }
 
