@@ -88,3 +88,33 @@ en cero) queda cerrada con la lectura de producción.
 producción en agosto, así que «N sin producción» del resumen por equipo se
 comprobó por construcción (mismo enlace que la tarjeta) y se contrasta en
 producción.
+
+3. **Lectura de producción** (solo lectura, sesión de administrador, tras el
+   despliegue de `7b457e2`, setiembre 2026, día 5):
+   - Resumen por equipo: MAGISTERIAL 01 138 («Sin supervisor», 8/8) ·
+     HUANCAYO - EL TAMBO 95 (Erika Lavado, 6/6) · MAGISTERIAL 02 45 (Francis
+     Pary, 3/4, «1 sin producción») · EXTERNOS 0 («Sin supervisor», 0/2, «2
+     sin producción»). Pie **278 = «Ventas ingresadas» 278**; por activar
+     13+6+5 = **24**; por recuperar 31+27+25 = **83**; casos 35+21+14 = **70**:
+     los cuatro coinciden con «Pendientes de intervención» (AC-007).
+   - Cuotas de equipo fijadas (700, 300, 250) y de asesor (100, 80, 90)
+     aparecen con su brecha; la celda individual añade el siguiente tramo del
+     bono porque difiere de la cuota («20/100 · faltan 80 · 16 confirmadas ·
+     14 confirmadas para el bono de 30») (AC-009).
+   - Cabecera del desglose: «Portabilidades entregadas registradas del 1 al 15
+     de setiembre de 2026. Tramo en curso.»
+   - «Asesores con ventas 17/20 · 3 sin producción · ver quiénes» abre
+     `gestion=SIN_PRODUCCION`: «3 de 20 asesores», desglose y matriz con las
+     mismas tres personas; `team=<MAGISTERIAL 02>&gestion=SIN_PRODUCCION`:
+     «1 de 4 asesores» (AC-008, AC-010).
+   - `orden=CUOTA&gestion=SIN_PRODUCCION`: 0/30, 0/30, 0/70 (menor brecha
+     primero); «Todos» conserva `orden=CUOTA`; los accesos de Pendientes
+     llevan `volver=/performance?month=2026-09&orden=CUOTA&gestion=SIN_PRODUCCION`
+     (AC-010, AC-011).
+   - Enlaces del equipo con `team=<id>` a Rendimiento, Pedidos (`volver=`) y
+     Recupero de ventas.
+
+La limitación declarada en local («N sin producción» por equipo) queda cerrada
+con la lectura de producción. **Hallazgo operativo**, ya conocido: dos equipos
+siguen sin supervisor (MAGISTERIAL 01, EXTERNOS); ahora el tablero lo dice en
+la cabecera del resumen.
