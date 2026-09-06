@@ -102,3 +102,14 @@ pone a la vista y cada cifra abre su lista.
      período (AC-009).
    - Resumen por equipo con la rejilla `--teams` y cabecera/columna fijas
      (AC-010).
+3. **Lectura de producción con sesión de administrador** (solo lectura, tras
+   el despliegue de `7e2577d`):
+   - Logística: «Datos de Máximo al: 6/09/26, 8:33 · Pantalla generada:
+     6/09/26, 8:56 · Próxima consulta automática: hoy a las 12:00…», sin
+     aviso de atraso (AC-008).
+   - Tablero de Campañas → Seguimiento, «Trabajados» por período: hoy **1 =
+     1**, ayer **483 = 483**, últimos 7 días **1 255 = 1 255**, últimos 30
+     días **1 255 = 1 255**, con `worked=hoy&periodo=<clave>` (AC-009).
+   - Resumen por equipo con rejilla `--teams`; HUANCAYO - EL TAMBO muestra
+     «5/5 todos con ventas · 6 personas en el equipo» (la supervisora no
+     vende) (AC-010).
