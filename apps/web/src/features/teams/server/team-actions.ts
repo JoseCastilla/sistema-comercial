@@ -6,12 +6,9 @@ import { canAssignCommercialTeamMember } from "@repo/validation";
 
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
+import { readText } from "@/server/forms/read-form";
 
 import type { TeamActionState } from "./team-action.types";
-
-function readText(value: FormDataEntryValue | null): string {
-  return typeof value === "string" ? value.trim() : "";
-}
 
 function normalizeTeamName(value: string): string {
   return value

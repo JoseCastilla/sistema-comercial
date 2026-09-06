@@ -15,10 +15,7 @@ export type RecoveryEntryReason =
   | "OTRO";
 
 export type RecoveryCasePriority =
-  | "CRITICA"
-  | "ALTA"
-  | "MEDIA"
-  | "CONDICIONADA";
+  "CRITICA" | "ALTA" | "MEDIA" | "CONDICIONADA";
 
 export interface InternalRecoveryTrigger {
   status: "OPEN" | "SENT" | "CLOSED" | "CANCELLED" | "UNKNOWN";
@@ -91,7 +88,11 @@ export function resolveInternalRecoveryEntryReason(
 
   // La línea ya portó y no cumple los 30 días, o su antigüedad no es
   // verificable por ser línea de planta.
-  if (/TIEMPO MINIMO DE PORTA|NO ESTUVO EN SERVICIO|OTRA PORTA EN CURSO/.test(motive)) {
+  if (
+    /TIEMPO MINIMO DE PORTA|NO ESTUVO EN SERVICIO|OTRA PORTA EN CURSO/.test(
+      motive,
+    )
+  ) {
     return "ANTIGUEDAD_PORTA";
   }
 
@@ -105,7 +106,9 @@ export function resolveInternalRecoveryEntryReason(
   }
 
   // Ausencia o falta de tiempo: la entrega todavía se puede salvar.
-  if (/CLIENTE AUSENTE|NO SE ENCONTRABA|FALTA DE TIEMPO|NO CONTESTA/.test(motive)) {
+  if (
+    /CLIENTE AUSENTE|NO SE ENCONTRABA|FALTA DE TIEMPO|NO CONTESTA/.test(motive)
+  ) {
     return "NO_ENTREGADO";
   }
 
@@ -182,9 +185,7 @@ export function getInternalRecoveryNextTouchAt(
   now: Date,
 ): Date | null {
   for (const day of internalRecoveryCadenceDays) {
-    const candidate = new Date(
-      claimedAt.getTime() + day * 24 * 60 * 60 * 1000,
-    );
+    const candidate = new Date(claimedAt.getTime() + day * 24 * 60 * 60 * 1000);
     if (candidate.getTime() > now.getTime()) return candidate;
   }
   return null;

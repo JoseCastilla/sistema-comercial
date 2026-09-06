@@ -18,14 +18,6 @@ enum DitoParseStatus {
   FAILED
 }
 
-enum DitoMatchStatus {
-  UNMATCHED
-  SUGGESTED
-  LINKED
-  NEEDS_REVIEW
-  DISMISSED
-}
-
 enum DitoCommercialLinkStatus {
   UNMATCHED
   SUGGESTED
@@ -169,7 +161,6 @@ model DitoOrder {
   parseStatus DitoParseStatus @default(PARSED) @map("parse_status")
 
   commercialLinkStatus DitoCommercialLinkStatus @default(UNMATCHED) @map("commercial_link_status")
-  legacyMatchStatus    DitoMatchStatus          @default(UNMATCHED) @map("match_status") @ignore
 
   status DitoOrderStatus @default(UNKNOWN) @map("status")
 

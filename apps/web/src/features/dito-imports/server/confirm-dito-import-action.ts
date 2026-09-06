@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { confirmDitoImportBatchSchema } from "@repo/validation";
 
 import { requireAdminAccess } from "@/server/auth/access";
+import { readApiError } from "./read-api-error";
 
 import type { DitoImportAdminActionState } from "./dito-import-action.types";
 
@@ -28,7 +29,8 @@ export async function confirmDitoImportAction(
   if (!parsed.success) {
     return {
       type: "error",
-      message: "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
+      message:
+        "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
     };
   }
 
@@ -114,17 +116,4 @@ function isConfirmationResponse(
     "status" in value &&
     value.status === "CONFIRMED"
   );
-}
-
-function readApiError(value: unknown): string | null {
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "message" in value &&
-    typeof value.message === "string"
-  ) {
-    return value.message;
-  }
-
-  return null;
 }

@@ -19,13 +19,10 @@ import { getPersonLifecycleOverview } from "@/features/users/server/get-person-l
 
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
+import { firstValueOrEmpty as firstValue } from "@/server/search-params";
 
 interface AdminUsersPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-function firstValue(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
 /**

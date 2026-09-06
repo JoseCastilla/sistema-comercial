@@ -349,6 +349,13 @@ export function canClaimOrphanDitoOrder(input: {
   );
 }
 
+/*
+ * Conservadas a propósito (SPEC-037 AC-004): `resolveCommercialContextAccess`,
+ * `canReassignDitoOrder` y `canResolveAutomaticDitoAssignment` no tienen
+ * consumidor todavía porque las tareas de reasignación, solicitudes y
+ * acceso contextual de SPEC-001 siguen abiertas; sus 51 pruebas fijan la
+ * regla para cuando se construyan.
+ */
 export function resolveCommercialContextAccess(input: {
   role: CommercialAccessRole;
   userId: string;
@@ -461,4 +468,3 @@ export function canCreateAgentForTeam(input: {
     input.supervisedTeamIds.includes(input.teamId)
   );
 }
-

@@ -9,7 +9,8 @@
 export interface RecoveryLineOriginInput {
   /** Cedente según la base consolidada (CLARO, ENTEL, BITEL, 27). */
   carrierRaw: string | null;
-  portabilityState: "PORTADO" | "NO_PORTADO" | "PROGRAMADO" | "DESCONOCIDO" | null;
+  portabilityState:
+    "PORTADO" | "NO_PORTADO" | "PROGRAMADO" | "DESCONOCIDO" | null;
   /** Receptor según el reporte completo, cuando la línea portó. */
   portabilityReceiver: string | null;
   /** Fecha de la última portación según el reporte. */
@@ -30,7 +31,8 @@ export interface RecoveryLineOrigin {
 function shortOperatorName(value: string): string {
   const normalized = value.toUpperCase();
 
-  if (/TELEFONICA|TELEFÓNICA|MOVISTAR|\(22\)/.test(normalized)) return "MOVISTAR";
+  if (/TELEFONICA|TELEFÓNICA|MOVISTAR|\(22\)/.test(normalized))
+    return "MOVISTAR";
   if (/CLARO|AMERICA MOVIL|AMÉRICA MÓVIL/.test(normalized)) return "CLARO";
   if (/ENTEL/.test(normalized)) return "ENTEL";
   if (/BITEL|VIETTEL|\(24\)/.test(normalized)) return "BITEL";

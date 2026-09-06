@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatCount, formatLimaDateTime } from "@repo/ui/format";
 import { redirect } from "next/navigation";
 
 import {
@@ -35,7 +36,6 @@ import {
   type RecoveryNextActionBucket,
 } from "@repo/validation";
 
-import { formatCount } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
@@ -44,15 +44,6 @@ import type { Prisma } from "@repo/database";
 
 const followUpRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
 const pageSize = 100;
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 
 const statusLabels = Object.fromEntries(
   recoveryFollowUpStatusOptions.map((option) => [option.value, option.label]),
@@ -537,7 +528,7 @@ export default async function RecoveryFollowUpPage({
                       </span>
                       {row.lastAttemptAt ? (
                         <span className="block text-2xs text-ui-muted">
-                          {dateTimeFormatter.format(row.lastAttemptAt)}
+                          {formatLimaDateTime(row.lastAttemptAt)}
                         </span>
                       ) : null}
                     </td>
@@ -569,7 +560,7 @@ export default async function RecoveryFollowUpPage({
                     <td className="text-xs">
                       <span className={nextActionTones[bucket]}>
                         {row.nextActionAt
-                          ? dateTimeFormatter.format(row.nextActionAt)
+                          ? formatLimaDateTime(row.nextActionAt)
                           : "Sin fecha"}
                       </span>
                     </td>

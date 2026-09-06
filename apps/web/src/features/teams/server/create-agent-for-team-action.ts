@@ -12,10 +12,7 @@ import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
 import type { CreateUserActionState } from "@/features/users/server/user-action.types";
-
-function readText(value: FormDataEntryValue | null): string {
-  return typeof value === "string" ? value.trim() : "";
-}
+import { readText } from "@/server/forms/read-form";
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);

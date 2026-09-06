@@ -13,20 +13,13 @@ import {
 
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
+import { readUuid } from "@/server/forms/read-form";
+import { formatLimaDateTime } from "@repo/ui/format";
 
 import type {
   CampaignAttemptInlineState,
   SendOrderToRecoveryActionState,
 } from "./recovery-action.types";
-
-const attemptDateFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 
 interface AttemptInput {
   caseId: string;
@@ -75,16 +68,6 @@ function readAttemptInput(formData: FormData): AttemptInput {
     pauseDaysRaw: String(formData.get("pauseDays") ?? "").trim(),
     clientRequestId: readUuid(formData.get("clientRequestId")),
   };
-}
-
-function readUuid(value: FormDataEntryValue | null): string | null {
-  const text = String(value ?? "").trim();
-
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    text,
-  )
-    ? text
-    : null;
 }
 
 /**
@@ -510,7 +493,7 @@ export async function registerCampaignAttemptInlineAction(
       status: outcome.status,
       attemptsToday: outcome.attemptsToday,
       nextActionAtLabel: outcome.nextActionAt
-        ? attemptDateFormatter.format(outcome.nextActionAt)
+        ? formatLimaDateTime(outcome.nextActionAt)
         : null,
       mustResolve: outcome.mustResolve,
     },

@@ -30,10 +30,6 @@ export const ghlWebhookEnvelopeV1Schema: z.ZodType<GhlWebhookEnvelopeV1> = z
   })
   .passthrough();
 
-export function parseGhlWebhookEnvelope(value: unknown): GhlWebhookEnvelopeV1 {
-  return ghlWebhookEnvelopeV1Schema.parse(value);
-}
-
 export function safeParseGhlWebhookEnvelope(value: unknown) {
   return ghlWebhookEnvelopeV1Schema.safeParse(value);
 }

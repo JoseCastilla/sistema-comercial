@@ -272,6 +272,11 @@ export function resolveDitoDeliveredAt(
     : null;
 }
 
+/*
+ * Conservada a propósito (SPEC-037 AC-004): regla de SPEC-014 (umbral de 10
+ * minutos sin subestado). La bandeja aplica hoy el mismo umbral por su
+ * cuenta; unificar ambos es trabajo de la bandeja, no de este retiro.
+ */
 export function isNoStatusIncident(
   state: Pick<
     NormalizedDitoOrderState,

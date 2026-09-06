@@ -18,6 +18,7 @@ import {
 } from "@repo/validation";
 
 import { database } from "@/server/database";
+import { formatLimaDateTime } from "@repo/ui/format";
 
 import { lossReasonLabels } from "../loss-reason-labels";
 
@@ -131,15 +132,6 @@ export interface SalesRecoveryInboxData {
 }
 
 export const salesRecoveryPageSize = 100;
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 
 // BR-074: esta bandeja habla solo del carril interno; la base nacional tiene
 // su propia superficie.
@@ -290,9 +282,9 @@ function mapCase(
     assignedToName: row.assignedUser?.name ?? null,
     originalAgentName: row.originalAgent?.name ?? null,
     originalTeamName: row.originalTeam?.name ?? null,
-    noveltyAtLabel: dateTimeFormatter.format(row.lastSightingAt),
+    noveltyAtLabel: formatLimaDateTime(row.lastSightingAt),
     nextActionAtLabel: row.nextActionAt
-      ? dateTimeFormatter.format(row.nextActionAt)
+      ? formatLimaDateTime(row.nextActionAt)
       : null,
     due: stage?.due ?? null,
     stage,
@@ -300,15 +292,13 @@ function mapCase(
     lastResult: lastAttempt ? String(lastAttempt.result) : null,
     lastObservation: lastAttempt?.observation ?? null,
     lastAttemptAtLabel: lastAttempt
-      ? dateTimeFormatter.format(lastAttempt.createdAt)
+      ? formatLimaDateTime(lastAttempt.createdAt)
       : null,
     // BR-029b: el asesor solo gestiona lo suyo; la supervisión, su alcance.
     canManage:
       !isResolved &&
       (access.role !== "AGENT" || row.assignedUserId === access.userId),
-    resolvedAtLabel: row.resolvedAt
-      ? dateTimeFormatter.format(row.resolvedAt)
-      : null,
+    resolvedAtLabel: row.resolvedAt ? formatLimaDateTime(row.resolvedAt) : null,
     resolutionLabel:
       status === "RECOVERED"
         ? `Recuperada${row.recoveredDitoOrder ? ` con ${row.recoveredDitoOrder.orderCodeRaw}` : ""}`
@@ -544,7 +534,7 @@ export async function getSalesRecoveryInbox(
     ranked.filter((item) => item.due === due).length;
 
   return {
-    generatedAt: dateTimeFormatter.format(now),
+    generatedAt: formatLimaDateTime(now),
     role: access.role,
     scopeLabel:
       access.role === "AGENT"

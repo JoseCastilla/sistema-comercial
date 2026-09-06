@@ -1,4 +1,5 @@
 import "server-only";
+import { formatLimaDateTimeWithYear, formatLimaMonth } from "@repo/ui/format";
 
 import {
   calculatePerformanceMetrics,
@@ -19,6 +20,7 @@ import {
 } from "@repo/validation";
 
 import { database } from "@/server/database";
+import { toMetricInput } from "./order-metric-input";
 
 import { describeAcceleratorWindows } from "../accelerator-windows";
 import {
@@ -36,10 +38,7 @@ import {
 } from "./performance-access";
 
 import type { Prisma } from "@repo/database";
-import type {
-  PerformanceMetrics,
-  PerformanceOrderInput,
-} from "@repo/validation";
+import type { PerformanceMetrics } from "@repo/validation";
 
 import type {
   DailyPerformance,
@@ -71,22 +70,6 @@ interface PerformanceQuery {
   matrix?: string;
 }
 
-const monthLabelFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  month: "long",
-  year: "numeric",
-});
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
 const limaDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Lima",
   year: "numeric",
@@ -117,20 +100,6 @@ const orderSelect = {
 type PerformanceOrderRecord = Prisma.DitoOrderGetPayload<{
   select: typeof orderSelect;
 }>;
-
-function toMetricInput(order: PerformanceOrderRecord): PerformanceOrderInput {
-  return {
-    commercialOperation: order.commercialOperation,
-    status: order.status,
-    deliveryStatus: order.deliveryStatus,
-    sentSubstatus: order.sentSubstatus,
-    registeredAt: order.registeredAt,
-    deliveredAt: order.deliveredAt,
-    closedAt: order.closedAt,
-    agentUserId: order.agentUserId,
-    assignedTeamId: order.assignedTeamId,
-  };
-}
 
 function percentDelta(current: number, previous: number): number | null {
   return previous === 0 ? null : (current - previous) / previous;
@@ -1118,7 +1087,7 @@ export async function getPerformanceDashboard(
     pendingBefore._count._all > 0 && pendingBefore._min.registeredAt
       ? {
           count: pendingBefore._count._all,
-          monthLabel: monthLabelFormatter.format(currentMonthStart),
+          monthLabel: formatLimaMonth(currentMonthStart),
           from: getLimaIsoDate(pendingBefore._min.registeredAt),
           to: getLimaIsoDate(new Date(currentMonthStart.getTime() - 1)),
         }
@@ -1134,11 +1103,11 @@ export async function getPerformanceDashboard(
   );
 
   return {
-    generatedAt: dateTimeFormatter.format(now),
+    generatedAt: formatLimaDateTimeWithYear(now),
     role: access.role,
     month: currentRange.key,
     currentMonth,
-    monthLabel: monthLabelFormatter.format(currentRange.start),
+    monthLabel: formatLimaMonth(currentRange.start),
     previousMonth,
     nextMonth: shiftPerformanceMonth(currentRange.key, 1),
     isCurrentMonth: currentRange.key === currentMonth,

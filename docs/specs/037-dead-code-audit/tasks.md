@@ -5,19 +5,35 @@ abajo es el punto de partida, no la lista final.
 
 ## Barrido
 
-- [ ] Rutas que solo redirigen, contrastadas con quién las enlaza.
-- [ ] Componentes y funciones exportadas sin importadores.
-- [ ] Columnas y tablas sin lectura ni escritura, cruzadas con sus specs.
-- [ ] Valores de enumeración nunca escritos, separando los reservados (BR-003).
+- [x] Rutas que solo redirigen, contrastadas con quién las enlaza
+      (`tools/external-preview`, 31/08/2026).
+- [x] Componentes y funciones exportadas sin importadores (06/09/2026):
+      retirados `domain-schemas.ts` completo (8 esquemas), seis `parse*` de
+      GHL y DITO sin consumidor, `calculateAcceleratorOne` y doce tipos
+      `…Input`; conservadas con motivo cinco reglas (ver verificación).
+- [x] Columnas y tablas sin lectura ni escritura, cruzadas con sus specs
+      (06/09/2026): `mobile_debt_*` (SPEC-046 BR-005) y
+      `dito_orders.match_status` con su tipo `DitoMatchStatus`.
+- [x] Valores de enumeración nunca escritos, separando los reservados
+      (BR-003): `DitoMatchStatus` retirado por duplicado; el resto se
+      conserva porque sus specs los nombran.
 - [ ] Dependencias declaradas y no importadas.
-- [ ] Specs que describen comportamiento que ya no existe.
+- [x] Specs que describen comportamiento que ya no existe (higiene
+      documental del 06/09/2026).
+- [x] Helpers duplicados unificados (06/09/2026): `readText` (8),
+      `readPassword` (2), UUID (3, con la regex que rechazaba v6–v8),
+      `firstValue` (6), `readApiError` (2), `toMetricInput` (2) y doce
+      `Intl.DateTimeFormat` idénticos en `@repo/ui/format`.
+- [x] Restricciones `NOT VALID` de agosto validadas por migración tolerante
+      (06/09/2026).
 
 ## Hallazgos ya confirmados
 
 - [x] Retirada `apps/web/src/app/tools/external-preview/` el 31/08/2026:
       solo redirigia a `/tools/lines` y ninguna referencia la enlazaba.
-- [ ] Verificar si quedó código del prototipo `prospecting` descartado; sus
-      tablas ya se eliminaron de la base local.
+- [x] Verificado el 06/09/2026: del prototipo `prospecting` no queda código
+      fuente; solo aparecía en un `dist` generado y no versionado de
+      `packages/database`, que se regenera al compilar.
 
 ## Higiene documental (06/09/2026, punto 6 del método)
 
@@ -43,5 +59,6 @@ abajo es el punto de partida, no la lista final.
 
 ## Cierre
 
-- [ ] Listar lo conservado a propósito con su motivo (AC-004).
-- [ ] Tipos, lint y pruebas en verde tras cada retiro.
+- [x] Listar lo conservado a propósito con su motivo (AC-004): en
+      `verification.md`.
+- [x] Tipos, lint y pruebas en verde tras cada retiro.

@@ -5,22 +5,9 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
+import { isUuid, readPassword, readText } from "@/server/forms/read-form";
 
 import type { ResetUserPasswordActionState } from "./user-action.types";
-
-function readText(value: FormDataEntryValue | null): string {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function readPassword(value: FormDataEntryValue | null): string {
-  return typeof value === "string" ? value : "";
-}
-
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
-  );
-}
 
 export async function resetUserPasswordAction(
   previousState: ResetUserPasswordActionState,

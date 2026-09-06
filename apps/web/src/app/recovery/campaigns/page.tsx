@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatCount, formatLimaDateTime } from "@repo/ui/format";
 import {
   baseRecoveryMinimumDailyAttempts,
   countOnSameLimaDay,
@@ -26,19 +27,9 @@ import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
 
-import { formatCount } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 
 function summarizePlan(planRaw: string | null): string {
   if (!planRaw) return "—";
@@ -175,81 +166,80 @@ export default async function RecoveryCampaignsPage({
   const totalPages = Math.max(1, Math.ceil(myTotal / pageSize));
   const page = Math.min(requestedPage, totalPages);
 
-  const [myCases, myDepartments, sellingMembership] =
-    await Promise.all([
-      database.recoveryCase.findMany({
-        where: myCasesWhere,
-        orderBy: [{ nextActionAt: { sort: "asc", nulls: "last" } }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        select: {
-          id: true,
-          holderName: true,
-          documentNumber: true,
-          department: true,
-          status: true,
-          claimedAt: true,
-          nextActionAt: true,
-          portabilityEligibleAt: true,
-          fatherName: true,
-          motherName: true,
-          birthPlace: true,
-          province: true,
-          district: true,
-          contactSummary: true,
-          services: {
-            where: { discardedAt: null },
-            select: {
-              planRaw: true,
-              serviceNumber: true,
-              carrierRaw: true,
-              portabilityState: true,
-              portabilityReceiver: true,
-              portabilityWindowAt: true,
-              isPlantLine: true,
-            },
-          },
-          phones: {
-            where: { kind: "CONTACT", invalidMarkedAt: null },
-            select: { phoneNumber: true },
-          },
-          attempts: {
-            orderBy: { createdAt: "desc" },
-            take: 15,
-            select: {
-              createdAt: true,
-              result: true,
-              observation: true,
-            },
+  const [myCases, myDepartments, sellingMembership] = await Promise.all([
+    database.recoveryCase.findMany({
+      where: myCasesWhere,
+      orderBy: [{ nextActionAt: { sort: "asc", nulls: "last" } }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        holderName: true,
+        documentNumber: true,
+        department: true,
+        status: true,
+        claimedAt: true,
+        nextActionAt: true,
+        portabilityEligibleAt: true,
+        fatherName: true,
+        motherName: true,
+        birthPlace: true,
+        province: true,
+        district: true,
+        contactSummary: true,
+        services: {
+          where: { discardedAt: null },
+          select: {
+            planRaw: true,
+            serviceNumber: true,
+            carrierRaw: true,
+            portabilityState: true,
+            portabilityReceiver: true,
+            portabilityWindowAt: true,
+            isPlantLine: true,
           },
         },
-      }),
-      database.recoveryCase.groupBy({
-        by: ["department"],
-        where: {
-          organizationId: membership.organization.id,
-          source: "NATIONAL_BASE",
-          assignedUserId: session.user.id,
-          status: {
-            in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
+        phones: {
+          where: { kind: "CONTACT", invalidMarkedAt: null },
+          select: { phoneNumber: true },
+        },
+        attempts: {
+          orderBy: { createdAt: "desc" },
+          take: 15,
+          select: {
+            createdAt: true,
+            result: true,
+            observation: true,
           },
         },
-        _count: { _all: true },
-        orderBy: { _count: { department: "desc" } },
-        take: 30,
-      }),
-      database.commercialTeamMember.findFirst({
-        where: {
-          organizationId: membership.organization.id,
-          userId: session.user.id,
-          salesEnabled: true,
-          isActive: true,
-          isPrimary: true,
-          team: { status: "ACTIVE" },
+      },
+    }),
+    database.recoveryCase.groupBy({
+      by: ["department"],
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        assignedUserId: session.user.id,
+        status: {
+          in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
         },
-        select: { teamId: true, team: { select: { name: true } } },
-      }),
-    ]);
+      },
+      _count: { _all: true },
+      orderBy: { _count: { department: "desc" } },
+      take: 30,
+    }),
+    database.commercialTeamMember.findFirst({
+      where: {
+        organizationId: membership.organization.id,
+        userId: session.user.id,
+        salesEnabled: true,
+        isActive: true,
+        isPrimary: true,
+        team: { status: "ACTIVE" },
+      },
+      select: { teamId: true, team: { select: { name: true } } },
+    }),
+  ]);
 
   const poolWhere = sellingMembership
     ? {
@@ -308,7 +298,7 @@ export default async function RecoveryCampaignsPage({
       lastResult,
       lastObservation: item.attempts[0]?.observation ?? null,
       lastAttemptAtLabel: item.attempts[0]
-        ? dateTimeFormatter.format(item.attempts[0].createdAt)
+        ? formatLimaDateTime(item.attempts[0].createdAt)
         : null,
       holderName: item.holderName,
       documentNumber: item.documentNumber,
@@ -338,7 +328,7 @@ export default async function RecoveryCampaignsPage({
       serviceCount: item.services.length,
       attemptsToday,
       nextActionAtLabel: item.nextActionAt
-        ? dateTimeFormatter.format(item.nextActionAt)
+        ? formatLimaDateTime(item.nextActionAt)
         : null,
       overdue:
         item.nextActionAt !== null &&
@@ -460,81 +450,81 @@ export default async function RecoveryCampaignsPage({
           description="Vencidos primero, luego lo de hoy, después los agendados; lo que espera confirmación queda al fondo."
         >
           <CampaignDraftProvider>
-          <CampaignInboxFilters
-            department={departmentFilter}
-            departments={myDepartmentOptions}
-            plan={planFilter}
-            resultLabel={`${formatCount(myTotal)} caso(s) cumplen el filtro.`}
-            search={searchInput}
-          />
+            <CampaignInboxFilters
+              department={departmentFilter}
+              departments={myDepartmentOptions}
+              plan={planFilter}
+              resultLabel={`${formatCount(myTotal)} caso(s) cumplen el filtro.`}
+              search={searchInput}
+            />
 
-          <div className="overflow-x-auto rounded-xl border border-ui-border">
-            <table className="ui-table ui-table--campaign">
-              <thead>
-                <tr>
-                  <th>Tipificación</th>
-                  <th>Observación</th>
-                  <th>Cliente</th>
-                  <th>Teléfono</th>
-                  <th>DNI</th>
-                  <th>Operador / Plan</th>
-                  <th data-numeric>Intentos hoy</th>
-                  <th>Próxima acción</th>
-                  <th data-actions />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <CampaignQueueRow
-                    justVisited={row.id === justVisited}
-                    key={row.id}
-                    minimumDailyAttempts={baseRecoveryMinimumDailyAttempts}
-                    queueContext={queueContextQuery}
-                    row={row}
-                    statusLabel={statusLabels[row.status] ?? row.status}
-                  />
-                ))}
-                {rows.length === 0 ? (
+            <div className="overflow-x-auto rounded-xl border border-ui-border">
+              <table className="ui-table ui-table--campaign">
+                <thead>
                   <tr>
-                    <td
-                      className="px-3 py-6 text-center text-ui-muted"
-                      colSpan={9}
-                    >
-                      {/* Decirle que no tiene casos mientras filtra le hace
-                          creer que los perdió. */}
-                      {search || departmentFilter || planFilter
-                        ? "Ningún caso tuyo coincide con lo que buscas. Prueba con menos datos o limpia el filtro."
-                        : "No tienes casos de campaña asignados. Toma casos libres para empezar."}
-                    </td>
+                    <th>Tipificación</th>
+                    <th>Observación</th>
+                    <th>Cliente</th>
+                    <th>Teléfono</th>
+                    <th>DNI</th>
+                    <th>Operador / Plan</th>
+                    <th data-numeric>Intentos hoy</th>
+                    <th>Próxima acción</th>
+                    <th data-actions />
                   </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-
-          {totalPages > 1 ? (
-            <div className="flex items-center gap-3 text-sm">
-              {page > 1 ? (
-                <GuardedLink
-                  className="text-ui-accent underline-offset-2 hover:underline"
-                  href={pageHref(page - 1)}
-                >
-                  ← Anterior
-                </GuardedLink>
-              ) : null}
-              <span className="text-ui-muted">
-                Página {page} de {totalPages}
-              </span>
-              {page < totalPages ? (
-                <GuardedLink
-                  className="text-ui-accent underline-offset-2 hover:underline"
-                  href={pageHref(page + 1)}
-                >
-                  Siguiente →
-                </GuardedLink>
-              ) : null}
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <CampaignQueueRow
+                      justVisited={row.id === justVisited}
+                      key={row.id}
+                      minimumDailyAttempts={baseRecoveryMinimumDailyAttempts}
+                      queueContext={queueContextQuery}
+                      row={row}
+                      statusLabel={statusLabels[row.status] ?? row.status}
+                    />
+                  ))}
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td
+                        className="px-3 py-6 text-center text-ui-muted"
+                        colSpan={9}
+                      >
+                        {/* Decirle que no tiene casos mientras filtra le hace
+                          creer que los perdió. */}
+                        {search || departmentFilter || planFilter
+                          ? "Ningún caso tuyo coincide con lo que buscas. Prueba con menos datos o limpia el filtro."
+                          : "No tienes casos de campaña asignados. Toma casos libres para empezar."}
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
             </div>
-          ) : null}
+
+            {totalPages > 1 ? (
+              <div className="flex items-center gap-3 text-sm">
+                {page > 1 ? (
+                  <GuardedLink
+                    className="text-ui-accent underline-offset-2 hover:underline"
+                    href={pageHref(page - 1)}
+                  >
+                    ← Anterior
+                  </GuardedLink>
+                ) : null}
+                <span className="text-ui-muted">
+                  Página {page} de {totalPages}
+                </span>
+                {page < totalPages ? (
+                  <GuardedLink
+                    className="text-ui-accent underline-offset-2 hover:underline"
+                    href={pageHref(page + 1)}
+                  >
+                    Siguiente →
+                  </GuardedLink>
+                ) : null}
+              </div>
+            ) : null}
           </CampaignDraftProvider>
         </SectionPanel>
       </div>

@@ -18,7 +18,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function renderFilters(props: Partial<Parameters<typeof CampaignInboxFilters>[0]> = {}) {
+function renderFilters(
+  props: Partial<Parameters<typeof CampaignInboxFilters>[0]> = {},
+) {
   const view = render(
     <CampaignInboxFilters
       department=""

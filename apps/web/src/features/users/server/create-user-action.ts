@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
+import { readText } from "@/server/forms/read-form";
 
 import { provisionUser } from "./provision-user";
 
@@ -12,10 +13,6 @@ import type { CreateUserActionState } from "./user-action.types";
 const allowedRoles = ["ADMIN", "SUPERVISOR", "BACKOFFICE", "AGENT"] as const;
 
 type AllowedRole = (typeof allowedRoles)[number];
-
-function readText(value: FormDataEntryValue | null): string {
-  return typeof value === "string" ? value.trim() : "";
-}
 
 function isAllowedRole(value: string): value is AllowedRole {
   return allowedRoles.some((role) => {

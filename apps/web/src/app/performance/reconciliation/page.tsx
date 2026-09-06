@@ -5,13 +5,10 @@ import { getPerformanceReconciliation } from "@/features/performance/server/get-
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import type { ReconciliationFilter } from "@/features/performance/reconciliation.types";
+import { firstValue } from "@/server/search-params";
 
 interface ReconciliationPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-function firstValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
 }
 
 function parseReason(value: string | undefined): ReconciliationFilter {

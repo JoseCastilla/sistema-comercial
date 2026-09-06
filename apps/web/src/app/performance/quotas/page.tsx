@@ -3,13 +3,10 @@ import { redirect } from "next/navigation";
 import { PerformanceQuotas } from "@/features/performance/components/performance-quotas";
 import { getPerformanceQuotas } from "@/features/performance/server/get-performance-quotas";
 import { requireCommercialAccess } from "@/server/auth/access";
+import { firstValue } from "@/server/search-params";
 
 interface QuotasPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-function firstValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
 }
 
 export default async function PerformanceQuotasPage({

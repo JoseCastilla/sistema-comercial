@@ -176,22 +176,6 @@ export const ditoIncomingOrderEnvelopeSchema: z.ZodType<DitoIncomingOrderEnvelop
     ditoExtensionOrderEnvelopeV2Schema,
   ]);
 
-export function parseDitoLegacyOrderEnvelope(
-  value: unknown,
-): DitoLegacyOrderEnvelopeV1 {
-  return ditoLegacyOrderEnvelopeV1Schema.parse(value);
-}
-
-export function safeParseDitoLegacyOrderEnvelope(value: unknown) {
-  return ditoLegacyOrderEnvelopeV1Schema.safeParse(value);
-}
-
-export function parseDitoIncomingOrderEnvelope(
-  value: unknown,
-): DitoIncomingOrderEnvelope {
-  return ditoIncomingOrderEnvelopeSchema.parse(value);
-}
-
 export function safeParseDitoIncomingOrderEnvelope(value: unknown) {
   return ditoIncomingOrderEnvelopeSchema.safeParse(value);
 }

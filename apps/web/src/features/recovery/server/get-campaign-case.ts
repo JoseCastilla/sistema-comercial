@@ -17,6 +17,7 @@ import {
 } from "@repo/validation";
 
 import { database } from "@/server/database";
+import { formatLimaDateTime } from "@repo/ui/format";
 
 import { lossReasonLabels } from "../loss-reason-labels";
 
@@ -25,15 +26,6 @@ import type {
   LossReasonGate,
   RecoveryLossReasonOption,
 } from "@repo/validation";
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 
 export interface CampaignCaseDetail {
   id: string;
@@ -273,12 +265,12 @@ export async function getCampaignCase(
     assignedToName: recoveryCase.assignedUser?.name ?? null,
     isAssignedToViewer,
     sightingCount: recoveryCase._count.sightings,
-    lastSightingLabel: dateTimeFormatter.format(recoveryCase.lastSightingAt),
+    lastSightingLabel: formatLimaDateTime(recoveryCase.lastSightingAt),
     claimedAtLabel: recoveryCase.claimedAt
-      ? dateTimeFormatter.format(recoveryCase.claimedAt)
+      ? formatLimaDateTime(recoveryCase.claimedAt)
       : null,
     nextActionAtLabel: recoveryCase.nextActionAt
-      ? dateTimeFormatter.format(recoveryCase.nextActionAt)
+      ? formatLimaDateTime(recoveryCase.nextActionAt)
       : null,
     nextActionOverdue:
       recoveryCase.nextActionAt !== null &&
@@ -326,7 +318,7 @@ export async function getCampaignCase(
           ? String(service.portabilityState)
           : null,
         portabilityEligibleLabel: service.portabilityEligibleAt
-          ? dateTimeFormatter.format(service.portabilityEligibleAt)
+          ? formatLimaDateTime(service.portabilityEligibleAt)
           : null,
         isPlantLine: service.isPlantLine,
         originOperator: origin.operator,
@@ -349,7 +341,7 @@ export async function getCampaignCase(
       motherName: recoveryCase.motherName,
       birthPlace: recoveryCase.birthPlace,
       revealedAtLabel: recoveryCase.sensitiveRevealedAt
-        ? dateTimeFormatter.format(recoveryCase.sensitiveRevealedAt)
+        ? formatLimaDateTime(recoveryCase.sensitiveRevealedAt)
         : null,
     },
     attempts: recoveryCase.attempts.map((attempt) => ({
@@ -359,12 +351,12 @@ export async function getCampaignCase(
       phoneUsed: attempt.phoneUsed,
       observation: attempt.observation,
       actorName: attempt.actor.name,
-      createdAtLabel: dateTimeFormatter.format(attempt.createdAt),
+      createdAtLabel: formatLimaDateTime(attempt.createdAt),
     })),
     recoveredOrderSuggestions: suggestions.map((order) => ({
       id: order.id,
       orderCode: order.orderCodeRaw,
-      registeredAtLabel: dateTimeFormatter.format(order.registeredAt),
+      registeredAtLabel: formatLimaDateTime(order.registeredAt),
       status: String(order.status),
     })),
     lossReasonGates: evaluateInternalLossReasonGates(recoveryCase.attempts),

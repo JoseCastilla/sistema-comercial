@@ -1,4 +1,5 @@
 import "server-only";
+import { formatLimaDateTimeWithYear, formatLimaMonth } from "@repo/ui/format";
 
 import {
   evaluatePerformanceOrderPayment,
@@ -8,6 +9,7 @@ import {
 } from "@repo/validation";
 
 import { database } from "@/server/database";
+import { toMetricInput } from "./order-metric-input";
 
 import {
   resolvePerformanceScope,
@@ -16,10 +18,7 @@ import {
 
 import type { PerformanceAccess } from "./performance-access";
 import type { Prisma } from "@repo/database";
-import type {
-  PerformanceOrderInput,
-  PerformancePaymentReason,
-} from "@repo/validation";
+import type { PerformancePaymentReason } from "@repo/validation";
 
 import type {
   PerformanceReconciliationData,
@@ -62,40 +61,6 @@ const orderSelect = {
   agent: { select: { name: true } },
   assignedTeam: { select: { name: true } },
 } satisfies Prisma.DitoOrderSelect;
-
-type ReconciliationOrder = Prisma.DitoOrderGetPayload<{
-  select: typeof orderSelect;
-}>;
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-const monthFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  month: "long",
-  year: "numeric",
-});
-
-function toMetricInput(order: ReconciliationOrder): PerformanceOrderInput {
-  return {
-    commercialOperation: order.commercialOperation,
-    status: order.status,
-    deliveryStatus: order.deliveryStatus,
-    sentSubstatus: order.sentSubstatus,
-    registeredAt: order.registeredAt,
-    deliveredAt: order.deliveredAt,
-    closedAt: order.closedAt,
-    agentUserId: order.agentUserId,
-    assignedTeamId: order.assignedTeamId,
-  };
-}
 
 function getReasonWhere(
   reason: PerformancePaymentReason,
@@ -238,10 +203,10 @@ export async function getPerformanceReconciliation(
   const showLineAmounts = access.role !== "BACKOFFICE";
 
   return {
-    generatedAt: dateTimeFormatter.format(now),
+    generatedAt: formatLimaDateTimeWithYear(now),
     month: range.key,
     currentMonth,
-    monthLabel: monthFormatter.format(range.start),
+    monthLabel: formatLimaMonth(range.start),
     from: range.from,
     to: range.to,
     role: access.role,
@@ -275,7 +240,7 @@ export async function getPerformanceReconciliation(
       agentName: order.agent?.name ?? "Sin asesor",
       teamName: order.assignedTeam?.name ?? null,
       operation: order.commercialOperation,
-      registeredAtLabel: dateTimeFormatter.format(order.registeredAt),
+      registeredAtLabel: formatLimaDateTimeWithYear(order.registeredAt),
       reason: evaluation.reason,
       reasonLabel: reasonLabels[evaluation.reason],
       baseCommissionCents: showLineAmounts ? evaluation.baseCommissionCents : 0,

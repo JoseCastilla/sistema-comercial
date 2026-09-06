@@ -127,11 +127,3 @@ export function buildDitoTdpEscalationTemplate(input: {
     `Observación: ${input.observation}`,
   ].join("\n");
 }
-
-export type DitoOrderEscalationCreateInput = z.infer<
-  typeof ditoOrderEscalationCreateSchema
->;
-
-export type DitoOrderEscalationReviewInput = z.infer<
-  typeof ditoOrderEscalationReviewSchema
->;
