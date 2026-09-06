@@ -1,7 +1,7 @@
 # SPEC-044 — Rendimiento orientado a la acción
 
-Estado: **fase 1 entregada y verificada en producción** (05/09/2026);
-fases 2 y 3 pendientes. Plan «Rendimiento orientado a
+Estado: **fase 2 construida** (05/09/2026); fase 1 entregada y verificada en
+producción; fase 3 pendiente. Plan «Rendimiento orientado a
 la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`;
 las revisiones de `SUPERVISOR` y `AGENT` quedan pendientes. Se apoya en
 SPEC-027 (tablero), SPEC-032 (integridad de métricas), SPEC-034 (filtro por
@@ -77,6 +77,33 @@ comisiones; alcance e importes por rol.
   visible; «sin producción» = vendedor activo habilitado con cero ingresadas;
   «cuota pendiente» = entregadas < cuota, sin proyección.
 
+#### Decisiones de la fase 2 (asumidas y escritas, 05/09/2026)
+
+- **Pertenencia al equipo** en el resumen: la del pedido (`assignedTeamId`),
+  la misma que usa el filtro de equipo. Los pedidos sin equipo van a la fila
+  «Sin equipo asignado» (con o sin asesor) y los de equipos fuera del alcance
+  listado a «Otros equipos»; ninguna de las dos enlaza, porque Pedidos no
+  tiene un filtro que signifique exactamente eso. Un pie «Total del alcance»
+  suma las filas y coincide con los indicadores.
+- **Cuota del equipo** sin cuota fijada: el tramo por defecto por cada
+  vendedor activo, igual que en la página de cuotas (SPEC-038 BR-008). A
+  nivel de equipo no hay «siguiente tramo»: los bonos son individuales.
+- **Responsable**: el primer supervisor activo del equipo; sin ninguno, la
+  fila dice «Sin supervisor» y la cabecera cuenta cuántos equipos están así.
+- **Orden por cuota** («más cerca de llegar»): primero quienes no la alcanzan,
+  del que menos le falta al que más; después los cumplidos, de mayor a menor
+  entregadas; sin cuota, al final. El orden por defecto sigue siendo pagables
+  → ingresadas → nombre.
+- **El filtro de gestión y el orden** rigen el desglose **y** la matriz por
+  día: una sola lista de asesores por pantalla. La fila «Sin asesor» solo se
+  muestra sin filtro. Un valor desconocido en `orden=` o `gestion=` vuelve al
+  defecto sin error.
+- **Siguiente tramo del bono** en la celda de cuota solo cuando añade
+  información (tramo distinto de la cuota o confirmadas distintas de
+  entregadas); el detalle completo va siempre en el `title`.
+- **El desglose queda abierto** por defecto y sube junto al resumen por
+  equipo, antes de la matriz; la reordenación completa es REN-07 (fase 3).
+
 ### Fase 3 — Filtros vivos y jerarquía (REN-06, REN-07)
 
 - **BR-009** Barra en vivo compartida (`DirectoryFilters`): equipo y asesor
@@ -99,3 +126,17 @@ comisiones; alcance e importes por rol.
 - **AC-005:** en la vista personal del asesor ningún enlace lleva equipo ni
   asesor.
 - **AC-006:** tipos, lint y pruebas en verde.
+
+## 6. Criterios de aceptación de la fase 2
+
+- **AC-007:** la suma de ingresadas de las filas del resumen por equipo (más
+  las residuales) es igual a «Ventas ingresadas»; igual para pagables, por
+  activar, por recuperar y casos de recupero.
+- **AC-008:** cada equipo muestra su supervisor o «Sin supervisor», y
+  `N sin producción` abre el tablero de ese equipo con `gestion=SIN_PRODUCCION`.
+- **AC-009:** la celda de cuota muestra entregadas/cuota y confirmadas, y la
+  cabecera dice los días exactos de la ventana y si está en curso o cerrada.
+- **AC-010:** `orden=CUOTA` pone primero a quien menos le falta;
+  `gestion=<clave>` acota el desglose y la matriz, muestra la definición y
+  «N de M asesores»; volver a elegir el filtro lo quita.
+- **AC-011:** los enlaces a Pedidos conservan `orden` y `gestion` en `volver=`.

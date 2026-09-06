@@ -16,12 +16,21 @@
 - [x] Lectura de solo lectura en producción tras el despliegue (21/21,
       80/80, 70/70; fila individual 7/7, 8/8, 2/2).
 
-## Fase 2 · Equipos, cuotas y gestión
+## Fase 2 · Equipos, cuotas y gestión (05/09/2026)
 
-- [ ] REN-02 · Resumen por equipo con responsable, plantilla y cuota.
-- [ ] REN-04 · Avance de cuota visible y ordenable; confirmadas y brecha al
-      siguiente tramo; acceso visible a cuotas.
-- [ ] REN-05 · Filtros de gestión en la URL con definición.
+- [x] `performance-management.ts` con orden y filtros de gestión; 9 pruebas
+      (`rendimiento-gestion.test.ts`).
+- [x] REN-02 · Resumen por equipo con responsable, plantilla, pendientes,
+      casos y cuota; filas residuales y pie que reconcilia con el alcance.
+- [x] REN-04 · Desglose abierto antes de la matriz, ordenable por URL
+      (`orden=`), celda de cuota con confirmadas y siguiente tramo, cohorte
+      con días explícitos; «Asignar cuotas» junto al resumen por equipo.
+- [x] REN-05 · Filtros de gestión (`gestion=`) con definición y «N de M»;
+      rigen desglose y matriz; la tarjeta «Asesores con ventas» abre «Sin
+      producción».
+- [x] Recorrido local con sesión de administrador (reconciliación 177 y 17;
+      filtros y orden por URL; vuelta con `orden`/`gestion`).
+- [ ] Lectura de solo lectura en producción tras el despliegue.
 
 ## Fase 3 · Filtros vivos y jerarquía
 

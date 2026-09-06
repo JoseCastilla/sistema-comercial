@@ -19,6 +19,11 @@ import {
 import { database } from "@/server/database";
 
 import {
+  parseBreakdownSort,
+  parseManagementFilter,
+} from "../performance-management";
+
+import {
   getPerformanceAccessWhere,
   resolveRequestedAdvisor,
 } from "./performance-access";
@@ -33,7 +38,9 @@ import type {
   DailyPerformance,
   MonthlyPerformanceProgress,
   PerformanceDashboardData,
+  PerformanceQuotaProgress,
   PerformanceRole,
+  PerformanceTeamSummary,
   SalesOperationMixItem,
 } from "../performance.types";
 
@@ -47,6 +54,10 @@ interface PerformanceQuery {
   team?: string;
   agent?: string;
   view?: "SELF" | "TEAM";
+  /** `orden=`: orden del desglose (SPEC-044 REN-04). */
+  sort?: string;
+  /** `gestion=`: filtro de gestión (SPEC-044 REN-05). */
+  management?: string;
 }
 
 const monthLabelFormatter = new Intl.DateTimeFormat("es-PE", {
@@ -119,6 +130,146 @@ function pointsDelta(
   previous: number | null,
 ): number | null {
   return current === null || previous === null ? null : current - previous;
+}
+
+/**
+ * Avance de la ventana de cuota: entregadas frente al objetivo (la cuota,
+ * SPEC-038 BR-007) y confirmadas (el acelerador, BR-003), con el siguiente
+ * tramo cuando la lectura es individual. Un agregado no tiene «siguiente
+ * tramo»: los bonos son por asesor.
+ */
+function buildQuotaProgress(
+  metrics: PerformanceMetrics,
+  windowKey: "ONE" | "TWO" | null,
+  target: number,
+  individual: boolean,
+): PerformanceQuotaProgress | null {
+  if (!windowKey) return null;
+  const window = metrics.accelerators.find((item) => item.key === windowKey);
+  const delivered = window?.delivered ?? 0;
+
+  return {
+    target,
+    delivered,
+    confirmed: window?.confirmed ?? 0,
+    missing: Math.max(0, target - delivered),
+    reached: delivered >= target,
+    nextTarget: individual ? (window?.nextTarget ?? null) : null,
+    missingForNextTarget: individual ? (window?.missingForNextTarget ?? 0) : 0,
+  };
+}
+
+interface TeamSummaryInput {
+  orders: readonly PerformanceOrderRecord[];
+  teams: ReadonlyArray<{ id: string; name: string }>;
+  supervisorNames: ReadonlyMap<string, string>;
+  sellersByTeam: ReadonlyMap<string, ReadonlySet<string>>;
+  openRecoveryCasesByTeam: ReadonlyMap<string, number>;
+  unassignedRecoveryCases: number;
+  quotaWindowKey: "ONE" | "TWO" | null;
+  teamQuotaTargets: ReadonlyMap<string, number>;
+  redact: boolean;
+}
+
+/**
+ * SPEC-044 REN-02 (BR-006): una fila por equipo del alcance más las filas
+ * residuales —«Sin equipo asignado» y, si aparece, «Otros equipos»— de modo
+ * que la suma de ingresadas reconcilie con el total del tablero sin contar
+ * nada dos veces. La pertenencia es la del pedido (`assignedTeamId`), igual
+ * que el filtro de equipo.
+ */
+function buildTeamSummaries(input: TeamSummaryInput): PerformanceTeamSummary[] {
+  const byTeam = new Map<string, PerformanceOrderRecord[]>();
+  const unassigned: PerformanceOrderRecord[] = [];
+  const other: PerformanceOrderRecord[] = [];
+  const knownTeams = new Set(input.teams.map((team) => team.id));
+  const agentsWithOrders = new Set(
+    input.orders
+      .map((order) => order.agentUserId)
+      .filter((id): id is string => id !== null),
+  );
+
+  for (const order of input.orders) {
+    if (order.assignedTeamId === null) unassigned.push(order);
+    else if (!knownTeams.has(order.assignedTeamId)) other.push(order);
+    else {
+      const group = byTeam.get(order.assignedTeamId) ?? [];
+      group.push(order);
+      byTeam.set(order.assignedTeamId, group);
+    }
+  }
+
+  const metricsOf = (orders: readonly PerformanceOrderRecord[]) => {
+    const metrics = calculatePerformanceMetrics(orders.map(toMetricInput));
+    return input.redact ? redactCommission(metrics) : metrics;
+  };
+
+  const rows: PerformanceTeamSummary[] = input.teams.map((team) => {
+    const sellers = input.sellersByTeam.get(team.id) ?? new Set<string>();
+    const sellersWithSales = [...sellers].filter((id) =>
+      agentsWithOrders.has(id),
+    ).length;
+    const metrics = metricsOf(byTeam.get(team.id) ?? []);
+    // Sin cuota de equipo, el objetivo es el tramo por cada vendedor activo
+    // (SPEC-038 BR-008), la misma lectura que la página de cuotas.
+    const target =
+      input.teamQuotaTargets.get(team.id) ??
+      (input.quotaWindowKey
+        ? getDefaultQuotaTarget(input.quotaWindowKey) * sellers.size
+        : 0);
+
+    return {
+      id: team.id,
+      kind: "TEAM",
+      name: team.name,
+      supervisorName: input.supervisorNames.get(team.id) ?? null,
+      activeSellers: sellers.size,
+      sellersWithSales,
+      sellersWithoutSales: sellers.size - sellersWithSales,
+      metrics,
+      openRecoveryCases: input.openRecoveryCasesByTeam.get(team.id) ?? 0,
+      quota: buildQuotaProgress(metrics, input.quotaWindowKey, target, false),
+    };
+  });
+
+  rows.sort(
+    (left, right) =>
+      right.metrics.payable - left.metrics.payable ||
+      right.metrics.entered - left.metrics.entered ||
+      left.name.localeCompare(right.name, "es"),
+  );
+
+  if (unassigned.length > 0 || input.unassignedRecoveryCases > 0) {
+    rows.push({
+      id: null,
+      kind: "UNASSIGNED",
+      name: "Sin equipo asignado",
+      supervisorName: null,
+      activeSellers: 0,
+      sellersWithSales: 0,
+      sellersWithoutSales: 0,
+      metrics: metricsOf(unassigned),
+      openRecoveryCases: input.unassignedRecoveryCases,
+      quota: null,
+    });
+  }
+
+  if (other.length > 0) {
+    rows.push({
+      id: null,
+      kind: "OTHER",
+      name: "Otros equipos",
+      supervisorName: null,
+      activeSellers: 0,
+      sellersWithSales: 0,
+      sellersWithoutSales: 0,
+      metrics: metricsOf(other),
+      openRecoveryCases: 0,
+      quota: null,
+    });
+  }
+
+  return rows;
 }
 
 function groupByAgent(
@@ -219,23 +370,14 @@ function groupByAgent(
         // Avance de cuota de la ventana relevante: entregadas frente al
         // objetivo, para detectar de un vistazo a quien está cerca sin
         // llegar (SPEC-038 BR-014).
-        quota: quotaWindowKey
-          ? (() => {
-              const window = currentMetrics.accelerators.find(
-                (item) => item.key === quotaWindowKey,
-              );
-              const target =
-                quotaTargets.get(id) ?? getDefaultQuotaTarget(quotaWindowKey);
-              const delivered = window?.delivered ?? 0;
-              return {
-                target,
-                delivered,
-                confirmed: window?.confirmed ?? 0,
-                missing: Math.max(0, target - delivered),
-                reached: delivered >= target,
-              };
-            })()
-          : null,
+        quota: buildQuotaProgress(
+          currentMetrics,
+          quotaWindowKey,
+          quotaWindowKey
+            ? (quotaTargets.get(id) ?? getDefaultQuotaTarget(quotaWindowKey))
+            : 0,
+          true,
+        ),
       };
     })
     .sort(
@@ -660,34 +802,52 @@ export async function getPerformanceDashboard(
    * cuentan aparte, con el mismo alcance del tablero (asesor, equipo o
    * cartera propia), y se abren en su bandeja, no en Pedidos.
    */
-  const openRecoveryCasesRows = await database.recoveryCase.groupBy({
-    by: ["assignedUserId"],
-    where: {
-      organizationId,
-      source: { in: ["INTERNAL_ORDER_STATE", "MANUAL"] },
-      status: {
-        in: ["OPEN", "ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
-      },
-      // Sin responsable también cuenta: es justo lo que hay que atender.
-      AND: [
-        isIndividualScope
-          ? { assignedUserId: access.userId }
-          : selectedAdvisor
-            ? { assignedUserId: selectedAdvisor.id }
-            : teamFilter !== "ALL"
-              ? { assignedTeamId: teamFilter }
-              : access.role === "SUPERVISOR"
-                ? {
-                    OR: [
-                      { assignedTeamId: { in: supervisedTeamIds } },
-                      { assignedUserId: access.userId },
-                    ],
-                  }
-                : {},
-      ],
+  const openRecoveryCasesWhere: Prisma.RecoveryCaseWhereInput = {
+    organizationId,
+    source: { in: ["INTERNAL_ORDER_STATE", "MANUAL"] },
+    status: {
+      in: ["OPEN", "ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"],
     },
-    _count: { _all: true },
-  });
+    // Sin responsable también cuenta: es justo lo que hay que atender.
+    AND: [
+      isIndividualScope
+        ? { assignedUserId: access.userId }
+        : selectedAdvisor
+          ? { assignedUserId: selectedAdvisor.id }
+          : teamFilter !== "ALL"
+            ? { assignedTeamId: teamFilter }
+            : access.role === "SUPERVISOR"
+              ? {
+                  OR: [
+                    { assignedTeamId: { in: supervisedTeamIds } },
+                    { assignedUserId: access.userId },
+                  ],
+                }
+              : {},
+    ],
+  };
+  const [openRecoveryCasesRows, openRecoveryCasesTeamRows] = await Promise.all([
+    database.recoveryCase.groupBy({
+      by: ["assignedUserId"],
+      where: openRecoveryCasesWhere,
+      _count: { _all: true },
+    }),
+    isIndividualScope
+      ? Promise.resolve([])
+      : database.recoveryCase.groupBy({
+          by: ["assignedTeamId"],
+          where: openRecoveryCasesWhere,
+          _count: { _all: true },
+        }),
+  ]);
+  const openRecoveryCasesByTeam = new Map<string, number>(
+    openRecoveryCasesTeamRows.flatMap((row) =>
+      row.assignedTeamId ? [[row.assignedTeamId, row._count._all]] : [],
+    ),
+  );
+  const unassignedRecoveryCases = openRecoveryCasesTeamRows
+    .filter((row) => row.assignedTeamId === null)
+    .reduce((total, row) => total + row._count._all, 0);
   const openRecoveryCasesByAgent = new Map<string, number>(
     openRecoveryCasesRows.flatMap((row) =>
       row.assignedUserId ? [[row.assignedUserId, row._count._all]] : [],
@@ -730,10 +890,17 @@ export async function getPerformanceDashboard(
         },
         select: {
           userId: true,
+          teamId: true,
           user: { select: { name: true, email: true } },
           team: { select: { name: true } },
         },
       });
+  const sellersByTeam = new Map<string, Set<string>>();
+  for (const membership of primaryTeamMemberships) {
+    const sellers = sellersByTeam.get(membership.teamId) ?? new Set<string>();
+    sellers.add(membership.userId);
+    sellersByTeam.set(membership.teamId, sellers);
+  }
   const primaryTeamsByAgent = new Map<string, string[]>();
   for (const membership of primaryTeamMemberships) {
     const teams = primaryTeamsByAgent.get(membership.userId) ?? [];
@@ -790,14 +957,54 @@ export async function getPerformanceDashboard(
           organizationId,
           periodKey: currentRange.key,
           window: relevantWindow.key,
-          userId: { not: null },
+          OR: [{ userId: { not: null } }, { teamId: { not: null } }],
         },
-        select: { userId: true, target: true },
+        select: { userId: true, teamId: true, target: true },
       })
     : [];
   const quotaTargets = new Map(
-    quotaRows.map((row) => [row.userId as string, row.target]),
+    quotaRows
+      .filter((row) => row.userId !== null)
+      .map((row) => [row.userId as string, row.target]),
   );
+  const teamQuotaTargets = new Map(
+    quotaRows
+      .filter((row) => row.teamId !== null)
+      .map((row) => [row.teamId as string, row.target]),
+  );
+
+  // REN-02: el resumen por equipo nombra a su responsable; sin supervisor, lo
+  // dice, porque es lo primero que administración tiene que resolver.
+  const summarizedTeams =
+    isIndividualScope || selectedAdvisor
+      ? []
+      : teamOptions.filter(
+          (team) => teamFilter === "ALL" || team.id === teamFilter,
+        );
+  const supervisorRows =
+    summarizedTeams.length > 0
+      ? await database.commercialTeamMember.findMany({
+          where: {
+            teamId: { in: summarizedTeams.map((team) => team.id) },
+            memberRole: "SUPERVISOR",
+            isActive: true,
+            user: { status: "ACTIVE" },
+          },
+          select: {
+            teamId: true,
+            user: { select: { name: true, email: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        })
+      : [];
+  const supervisorNames = new Map<string, string>();
+  for (const row of supervisorRows) {
+    if (supervisorNames.has(row.teamId)) continue;
+    supervisorNames.set(
+      row.teamId,
+      formatAdvisorDisplayName(row.user.name, row.user.email),
+    );
+  }
 
   const advisorOptions = [
     ...new Map<string, { id: string; name: string }>([
@@ -928,8 +1135,23 @@ export async function getPerformanceDashboard(
           key: relevantWindow.key,
           label: relevantWindow.label,
           isActive: currentWindow !== null,
+          startDay: relevantWindow.windowStartDay,
+          endDay: relevantWindow.windowEndDay ?? monthProgress.days.length,
         }
       : null,
+    sort: parseBreakdownSort(query.sort),
+    management: parseManagementFilter(query.management),
+    teams: buildTeamSummaries({
+      orders,
+      teams: summarizedTeams,
+      supervisorNames,
+      sellersByTeam,
+      openRecoveryCasesByTeam,
+      unassignedRecoveryCases,
+      quotaWindowKey: relevantWindow?.key ?? null,
+      teamQuotaTargets,
+      redact: access.role === "BACKOFFICE",
+    }),
     openRecoveryCases,
     breakdown: isIndividualScope
       ? []

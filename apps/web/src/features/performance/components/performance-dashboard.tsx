@@ -15,13 +15,27 @@ import { OrderRealtimeStatus } from "@/features/orders/components/order-realtime
 
 import {
   advisorHref,
+  managementHref,
   ordersHref,
   performanceHref,
+  quotasHref,
   reconciliationHref,
   recoveryCasesHref,
+  sortHref,
 } from "../performance-links";
+import {
+  breakdownSortOptions,
+  filterBreakdown,
+  getManagementFilterOption,
+  managementFilterOptions,
+  sortBreakdown,
+} from "../performance-management";
 
-import type { PerformanceDashboardData } from "../performance.types";
+import type {
+  PerformanceDashboardData,
+  PerformanceQuotaProgress,
+  PerformanceTeamSummary,
+} from "../performance.types";
 
 /*
  * El formato de cifras vive en `@repo/ui/format`. Antes este archivo definia
@@ -428,8 +442,13 @@ function PersonalMonthlyProgress({ data }: { data: PerformanceDashboardData }) {
 }
 
 function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
-  const advisors = data.breakdown.filter(
-    (advisor) => advisor.isActiveSeller || advisor.metrics.entered > 0,
+  // La matriz sigue el mismo filtro de gestión y el mismo orden que el
+  // desglose: una sola lista de asesores por pantalla (REN-05).
+  const advisors = sortBreakdown(
+    filterBreakdown(data.breakdown, data.management).filter(
+      (advisor) => advisor.isActiveSeller || advisor.metrics.entered > 0,
+    ),
+    data.sort,
   );
   if (data.view === "SELF" || advisors.length === 0) return null;
 
@@ -594,6 +613,481 @@ function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
   );
 }
 
+/**
+ * Cohorte de la cuota dicha con fechas, no con el nombre del bono: «del 1 al
+ * 15 de septiembre de 2026». Fuera de ventana activa se habla de la última
+ * que cerró (SPEC-038 BR-015) y se dice.
+ */
+function quotaCohortLabel(data: PerformanceDashboardData): string {
+  const window = data.quotaWindow;
+  if (!window) return "";
+  const range = `del ${window.startDay} al ${window.endDay} de ${data.monthLabel}`;
+  return window.isActive
+    ? `Portabilidades entregadas registradas ${range}. Tramo en curso.`
+    : `Portabilidades entregadas registradas ${range}. Tramo cerrado: es la última ventana con datos.`;
+}
+
+function QuotaCell({
+  quota,
+  individual,
+}: {
+  quota: PerformanceQuotaProgress | null;
+  individual: boolean;
+}) {
+  if (!quota) return <td>—</td>;
+
+  // El siguiente tramo del bono se dice solo cuando añade algo: si la cuota
+  // y el tramo coinciden y todo lo entregado ya cerró, repetirlo es ruido.
+  const nextTier =
+    individual &&
+    quota.nextTarget !== null &&
+    quota.missingForNextTarget > 0 &&
+    (quota.nextTarget !== quota.target ||
+      quota.missingForNextTarget !== quota.missing)
+      ? `${quota.missingForNextTarget} ${quota.missingForNextTarget === 1 ? "confirmada" : "confirmadas"} para el bono de ${quota.nextTarget}`
+      : null;
+
+  return (
+    <td
+      data-quota-reached={quota.reached ? "true" : undefined}
+      title={
+        nextTier
+          ? `${quota.confirmed} entregadas y cerradas (pagan el bono). Faltan ${nextTier}.`
+          : `${quota.confirmed} entregadas y cerradas (pagan el bono).`
+      }
+    >
+      <strong>
+        {quota.delivered}/{quota.target}
+      </strong>
+      <small>
+        {quota.reached ? "cumplida" : `faltan ${quota.missing}`} ·{" "}
+        {quota.confirmed} {quota.confirmed === 1 ? "confirmada" : "confirmadas"}
+        {nextTier ? ` · ${nextTier}` : ""}
+      </small>
+    </td>
+  );
+}
+
+function CountLink({ value, href }: { value: number; href: string | null }) {
+  return value > 0 && href ? <Link href={href}>{value}</Link> : <>{value}</>;
+}
+
+/**
+ * SPEC-044 REN-02: una fila por equipo con su responsable, su plantilla y su
+ * cuota; las filas residuales cierran la cuenta con el total del alcance.
+ */
+function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
+  if (data.teams.length === 0) return null;
+
+  const teamScope = (team: PerformanceTeamSummary) =>
+    team.kind === "TEAM" && team.id ? team.id : null;
+  const totals = data.teams.reduce(
+    (sum, team) => ({
+      entered: sum.entered + team.metrics.entered,
+      payable: sum.payable + team.metrics.payable,
+      pending: sum.pending + team.metrics.deliveredPendingActivation,
+      recovery: sum.recovery + team.metrics.recovery,
+      cases: sum.cases + team.openRecoveryCases,
+    }),
+    { entered: 0, payable: 0, pending: 0, recovery: 0, cases: 0 },
+  );
+  const teamsWithoutSupervisor = data.teams.filter(
+    (team) => team.kind === "TEAM" && team.supervisorName === null,
+  ).length;
+
+  return (
+    <section
+      className="performance-panel performance-teams"
+      aria-labelledby="teams-summary-title"
+    >
+      <header className="performance-panel__header">
+        <div>
+          <p className="performance-panel__eyebrow">Responsables</p>
+          <h2 id="teams-summary-title">Resumen por equipo</h2>
+          <p>
+            Quién responde por cada equipo, cuántos venden y cómo va la cuota.
+            {teamsWithoutSupervisor > 0
+              ? ` ${teamsWithoutSupervisor === 1 ? "Un equipo no tiene" : `${teamsWithoutSupervisor} equipos no tienen`} supervisor: nadie reparte su cuota ni sigue su recupero.`
+              : ""}
+          </p>
+        </div>
+        {data.role !== "AGENT" && data.quotaWindow ? (
+          <Link
+            className="performance-commission__review"
+            href={quotasHref(data, data.quotaWindow.key)}
+          >
+            Asignar cuotas
+          </Link>
+        ) : null}
+      </header>
+      <div className="ui-table-wrap">
+        <table className="ui-table ui-table--figures">
+          <thead>
+            <tr>
+              <th>Equipo</th>
+              <th title="Vendedores activos con ventas del mes / vendedores activos">
+                Vendedores
+              </th>
+              <th>Ingresadas</th>
+              <th>Tasa de entrega</th>
+              <th>Pagables</th>
+              <th title="Entregadas sin cerrar: aún no generan pago; abre Pedidos">
+                Por activar
+              </th>
+              <th title="Pedidos del mes no entregados o cancelados; abre Pedidos">
+                Por recuperar
+              </th>
+              <th title="Casos abiertos en Recupero de ventas; abre la bandeja">
+                Casos
+              </th>
+              {data.quotaWindow ? (
+                <th title={quotaCohortLabel(data)}>
+                  Cuota{data.quotaWindow.isActive ? "" : " (cerrada)"}
+                </th>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {data.teams.map((team) => {
+              const scope = teamScope(team);
+              return (
+                <tr
+                  data-unattributed={team.kind !== "TEAM" ? "true" : undefined}
+                  key={team.id ?? team.kind}
+                >
+                  <td>
+                    {scope ? (
+                      <Link
+                        href={performanceHref(data, data.month, {
+                          team: scope,
+                        })}
+                      >
+                        <strong>{team.name}</strong>
+                      </Link>
+                    ) : (
+                      <strong>{team.name}</strong>
+                    )}
+                    <small>
+                      {team.kind === "TEAM"
+                        ? (team.supervisorName ?? "Sin supervisor")
+                        : team.kind === "UNASSIGNED"
+                          ? "Pedidos sin equipo, con o sin asesor"
+                          : "Equipos fuera de este alcance"}
+                    </small>
+                  </td>
+                  <td>
+                    {team.kind === "TEAM" ? (
+                      <>
+                        <strong>
+                          {team.sellersWithSales}/{team.activeSellers}
+                        </strong>
+                        <small>
+                          {team.sellersWithoutSales > 0 && scope ? (
+                            <Link
+                              href={performanceHref(data, data.month, {
+                                team: scope,
+                                management: "SIN_PRODUCCION",
+                              })}
+                            >
+                              {team.sellersWithoutSales} sin producción
+                            </Link>
+                          ) : (
+                            "todos con ventas"
+                          )}
+                        </small>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td>{team.metrics.entered}</td>
+                  <td>{percentage(team.metrics.deliveryRate)}</td>
+                  <td>{team.metrics.payable}</td>
+                  <td>
+                    <CountLink
+                      href={
+                        scope
+                          ? ordersHref(data, "AWAITING_ACTIVATION", {
+                              team: scope,
+                            })
+                          : null
+                      }
+                      value={team.metrics.deliveredPendingActivation}
+                    />
+                  </td>
+                  <td>
+                    <CountLink
+                      href={
+                        scope
+                          ? ordersHref(data, "RECOVERY", { team: scope })
+                          : null
+                      }
+                      value={team.metrics.recovery}
+                    />
+                  </td>
+                  <td>
+                    <CountLink
+                      href={
+                        scope ? recoveryCasesHref(data, undefined, scope) : null
+                      }
+                      value={team.openRecoveryCases}
+                    />
+                  </td>
+                  {data.quotaWindow ? (
+                    <QuotaCell individual={false} quota={team.quota} />
+                  ) : null}
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>
+                <strong>Total del alcance</strong>
+                <small>
+                  Los equipos y las filas residuales suman el tablero
+                </small>
+              </td>
+              <td>—</td>
+              <td>{totals.entered}</td>
+              <td>{percentage(data.metrics.deliveryRate)}</td>
+              <td>{totals.payable}</td>
+              <td>{totals.pending}</td>
+              <td>{totals.recovery}</td>
+              <td>{totals.cases}</td>
+              {data.quotaWindow ? <td>—</td> : null}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * SPEC-044 REN-05: los filtros de gestión y el orden viven en la URL y se
+ * eligen con un clic; el filtro activo muestra su definición para que la
+ * cifra no admita dos lecturas.
+ */
+function ManagementBar({
+  data,
+  shown,
+  total,
+}: {
+  data: PerformanceDashboardData;
+  shown: number;
+  total: number;
+}) {
+  const active = data.management
+    ? getManagementFilterOption(data.management)
+    : null;
+
+  return (
+    <div className="performance-management">
+      <div className="performance-management__row">
+        <span>Mostrar</span>
+        <Link
+          aria-current={data.management === null ? "true" : undefined}
+          href={managementHref(data, null)}
+        >
+          Todos
+        </Link>
+        {managementFilterOptions
+          .filter((option) => !option.requiresQuota || data.quotaWindow)
+          .map((option) => (
+            <Link
+              aria-current={data.management === option.key ? "true" : undefined}
+              href={managementHref(data, option.key)}
+              key={option.key}
+              title={option.definition}
+            >
+              {option.label}
+            </Link>
+          ))}
+      </div>
+      <div className="performance-management__row">
+        <span>Ordenar por</span>
+        {breakdownSortOptions
+          .filter((option) => option.key !== "CUOTA" || data.quotaWindow)
+          .map((option) => (
+            <Link
+              aria-current={data.sort === option.key ? "true" : undefined}
+              href={sortHref(data, option.key)}
+              key={option.key}
+            >
+              {option.label}
+            </Link>
+          ))}
+      </div>
+      <p aria-live="polite" className="performance-management__meaning">
+        {active
+          ? `${active.label}: ${active.definition} ${shown} de ${total} asesores.`
+          : `${total} asesores en el alcance.`}
+      </p>
+    </div>
+  );
+}
+
+function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
+  if (data.breakdown.length === 0 && !data.unattributed) return null;
+
+  const rows = sortBreakdown(
+    filterBreakdown(data.breakdown, data.management),
+    data.sort,
+  );
+  const showsEstimate = data.showCommission && data.role !== "AGENT";
+  const columns = 7 + (data.quotaWindow ? 1 : 0) + (showsEstimate ? 1 : 0);
+
+  return (
+    <details className="performance-panel performance-breakdown" open>
+      <summary className="performance-breakdown__summary">
+        <div>
+          <p className="performance-panel__eyebrow">Avance individual</p>
+          <h2>Indicadores por asesor</h2>
+          <p>
+            Cuánto entrega, cuánto llega a comisión y cuánto tiene pendiente
+            cada asesor.
+            {data.quotaWindow ? ` Cuota: ${quotaCohortLabel(data)}` : ""}
+          </p>
+        </div>
+        <span>
+          <b data-collapsed>Ver detalle</b>
+          <b data-expanded>Ocultar detalle</b>
+        </span>
+      </summary>
+      <ManagementBar
+        data={data}
+        shown={rows.length}
+        total={data.breakdown.length}
+      />
+      <div className="ui-table-wrap">
+        <table className="ui-table ui-table--figures">
+          <thead>
+            <tr>
+              <th>Asesor</th>
+              <th>Ingresadas</th>
+              <th
+                title={
+                  data.comparison.comparedThroughDay === null
+                    ? "Comparado contra el mes pasado completo"
+                    : `Comparado contra los días 1–${data.comparison.comparedThroughDay} del mes pasado`
+                }
+              >
+                Vs. mes pasado
+              </th>
+              <th>Tasa de entrega</th>
+              {data.quotaWindow ? (
+                <th title={quotaCohortLabel(data)}>
+                  Cuota{data.quotaWindow.isActive ? "" : " (cerrada)"}
+                </th>
+              ) : null}
+              <th>Pagables</th>
+              <th title="Pedidos del mes no entregados o cancelados; abre Pedidos">
+                Pedidos por recuperar
+              </th>
+              <th title="Casos abiertos a su cargo en Recupero de ventas; abre la bandeja">
+                Casos de recupero
+              </th>
+              <th title="Entregadas sin cerrar: aún no generan pago; abre Pedidos">
+                Por activar
+              </th>
+              {showsEstimate ? <th>Estimado</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((item) => (
+              <tr
+                data-no-sales={
+                  item.isActiveSeller && item.metrics.entered === 0
+                    ? "true"
+                    : undefined
+                }
+                key={item.id}
+              >
+                <td>
+                  <Link href={advisorHref(data, item.id)}>
+                    <strong>{item.name}</strong>
+                  </Link>
+                  <small>
+                    {item.teamName ?? "Sin equipo"}
+                    {!item.isActiveSeller ? " · histórico" : ""}
+                  </small>
+                </td>
+                <td>{item.metrics.entered}</td>
+                <td>{shortDelta(item.enteredDelta)}</td>
+                <td>{percentage(item.metrics.deliveryRate)}</td>
+                {data.quotaWindow ? (
+                  <QuotaCell individual quota={item.quota} />
+                ) : null}
+                <td>{item.metrics.payable}</td>
+                <td>
+                  <CountLink
+                    href={ordersHref(data, "RECOVERY", { advisor: item.id })}
+                    value={item.metrics.recovery}
+                  />
+                </td>
+                <td>
+                  <CountLink
+                    href={recoveryCasesHref(data, item.id)}
+                    value={item.openRecoveryCases}
+                  />
+                </td>
+                <td>
+                  <CountLink
+                    href={ordersHref(data, "AWAITING_ACTIVATION", {
+                      advisor: item.id,
+                    })}
+                    value={item.metrics.deliveredPendingActivation}
+                  />
+                </td>
+                {showsEstimate ? (
+                  <td>{money(item.metrics.estimatedCommissionCents)}</td>
+                ) : null}
+              </tr>
+            ))}
+            {rows.length === 0 ? (
+              <tr>
+                <td className="reconciliation-empty" colSpan={columns}>
+                  Ningún asesor cumple el filtro elegido.
+                </td>
+              </tr>
+            ) : null}
+            {data.unattributed && data.management === null ? (
+              <tr data-unattributed="true">
+                <td>
+                  <strong>Sin asesor</strong>
+                  <small>Asignar antes de medir desempeño</small>
+                </td>
+                <td>{data.unattributed.metrics.entered}</td>
+                <td>{shortDelta(data.unattributed.enteredDelta)}</td>
+                <td>{percentage(data.unattributed.metrics.deliveryRate)}</td>
+                {data.quotaWindow ? <td>—</td> : null}
+                <td>{data.unattributed.metrics.payable}</td>
+                <td>
+                  <CountLink
+                    href={ordersHref(data, "RECOVERY", { team: "UNASSIGNED" })}
+                    value={data.unattributed.metrics.recovery}
+                  />
+                </td>
+                <td>—</td>
+                <td>
+                  <CountLink
+                    href={ordersHref(data, "AWAITING_ACTIVATION", {
+                      team: "UNASSIGNED",
+                    })}
+                    value={data.unattributed.metrics.deliveredPendingActivation}
+                  />
+                </td>
+                {showsEstimate ? <td>—</td> : null}
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
+
 export function PerformanceDashboard({
   data,
 }: {
@@ -744,7 +1238,12 @@ export function PerformanceDashboard({
           />
         ) : data.workforce ? (
           <Metric
-            hint={`${data.workforce.sellersWithoutSales} sin producción · ${formatDecimal(data.workforce.averageEnteredPerSeller)} promedio`}
+            hint={`${data.workforce.sellersWithoutSales} sin producción · ${formatDecimal(data.workforce.averageEnteredPerSeller)} promedio${data.workforce.sellersWithoutSales > 0 ? " · ver quiénes" : ""}`}
+            href={
+              data.workforce.sellersWithoutSales > 0
+                ? managementHref(data, "SIN_PRODUCCION")
+                : undefined
+            }
             label="Asesores con ventas"
             tone={
               data.workforce.sellersWithoutSales > 0 ? "warning" : "neutral"
@@ -793,6 +1292,10 @@ export function PerformanceDashboard({
           </div>
         </section>
       </div>
+
+      <TeamSummaryPanel data={data} />
+
+      <AdvisorBreakdown data={data} />
 
       <TeamDailyMatrix data={data} />
 
@@ -897,194 +1400,6 @@ export function PerformanceDashboard({
             cierran. No es tu boleta de pago.
           </p>
         </section>
-      ) : null}
-
-      {data.breakdown.length > 0 || data.unattributed ? (
-        <details className="performance-panel performance-breakdown">
-          <summary className="performance-breakdown__summary">
-            <div>
-              <p className="performance-panel__eyebrow">Análisis detallado</p>
-              <h2>Indicadores por asesor</h2>
-              <p>
-                Cuánto entrega, cuánto llega a comisión y cuánto tiene pendiente
-                cada asesor.
-                {data.quotaWindow
-                  ? ` La cuota mide portabilidades entregadas de ${data.quotaWindow.label.toLocaleLowerCase("es-PE")}.`
-                  : ""}
-              </p>
-            </div>
-            <span>
-              <b data-collapsed>Ver detalle</b>
-              <b data-expanded>Ocultar detalle</b>
-            </span>
-          </summary>
-          <div className="ui-table-wrap">
-            <table className="ui-table ui-table--figures">
-              <thead>
-                <tr>
-                  <th>Asesor</th>
-                  <th>Ingresadas</th>
-                  <th
-                    title={
-                      data.comparison.comparedThroughDay === null
-                        ? "Comparado contra el mes pasado completo"
-                        : `Comparado contra los días 1–${data.comparison.comparedThroughDay} del mes pasado`
-                    }
-                  >
-                    Vs. mes pasado
-                  </th>
-                  <th>Tasa de entrega</th>
-                  {data.quotaWindow ? (
-                    <th
-                      title={`Cuota de ${data.quotaWindow.label}: portabilidades entregadas en esos días`}
-                    >
-                      Cuota{data.quotaWindow.isActive ? "" : " (cerrada)"}
-                    </th>
-                  ) : null}
-                  <th>Pagables</th>
-                  <th title="Pedidos del mes no entregados o cancelados; abre Pedidos">
-                    Pedidos por recuperar
-                  </th>
-                  <th title="Casos abiertos a su cargo en Recupero de ventas; abre la bandeja">
-                    Casos de recupero
-                  </th>
-                  <th title="Entregadas sin cerrar: aún no generan pago; abre Pedidos">
-                    Por activar
-                  </th>
-                  {data.showCommission && data.role !== "AGENT" ? (
-                    <th>Estimado</th>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody>
-                {data.breakdown.map((item) => (
-                  <tr
-                    data-no-sales={
-                      item.isActiveSeller && item.metrics.entered === 0
-                        ? "true"
-                        : undefined
-                    }
-                    key={item.id}
-                  >
-                    <td>
-                      <Link href={advisorHref(data, item.id)}>
-                        <strong>{item.name}</strong>
-                      </Link>
-                      <small>
-                        {item.teamName ?? "Sin equipo"}
-                        {!item.isActiveSeller ? " · histórico" : ""}
-                      </small>
-                    </td>
-                    <td>{item.metrics.entered}</td>
-                    <td>{shortDelta(item.enteredDelta)}</td>
-                    <td>{percentage(item.metrics.deliveryRate)}</td>
-                    {data.quotaWindow ? (
-                      <td
-                        data-quota-reached={
-                          item.quota?.reached ? "true" : undefined
-                        }
-                      >
-                        <strong>
-                          {item.quota?.delivered ?? 0}/{item.quota?.target ?? 0}
-                        </strong>
-                        <small>
-                          {item.quota?.reached
-                            ? "cumplida"
-                            : `faltan ${item.quota?.missing ?? 0}`}
-                        </small>
-                      </td>
-                    ) : null}
-                    <td>{item.metrics.payable}</td>
-                    <td>
-                      {item.metrics.recovery > 0 ? (
-                        <Link
-                          href={ordersHref(data, "RECOVERY", {
-                            advisor: item.id,
-                          })}
-                        >
-                          {item.metrics.recovery}
-                        </Link>
-                      ) : (
-                        0
-                      )}
-                    </td>
-                    <td>
-                      {item.openRecoveryCases > 0 ? (
-                        <Link href={recoveryCasesHref(data, item.id)}>
-                          {item.openRecoveryCases}
-                        </Link>
-                      ) : (
-                        0
-                      )}
-                    </td>
-                    <td>
-                      {item.metrics.deliveredPendingActivation > 0 ? (
-                        <Link
-                          href={ordersHref(data, "AWAITING_ACTIVATION", {
-                            advisor: item.id,
-                          })}
-                        >
-                          {item.metrics.deliveredPendingActivation}
-                        </Link>
-                      ) : (
-                        0
-                      )}
-                    </td>
-                    {data.showCommission && data.role !== "AGENT" ? (
-                      <td>{money(item.metrics.estimatedCommissionCents)}</td>
-                    ) : null}
-                  </tr>
-                ))}
-                {data.unattributed ? (
-                  <tr data-unattributed="true">
-                    <td>
-                      <strong>Sin asesor</strong>
-                      <small>Asignar antes de medir desempeño</small>
-                    </td>
-                    <td>{data.unattributed.metrics.entered}</td>
-                    <td>{shortDelta(data.unattributed.enteredDelta)}</td>
-                    <td>
-                      {percentage(data.unattributed.metrics.deliveryRate)}
-                    </td>
-                    {data.quotaWindow ? <td>—</td> : null}
-                    <td>{data.unattributed.metrics.payable}</td>
-                    <td>
-                      {data.unattributed.metrics.recovery > 0 ? (
-                        <Link
-                          href={ordersHref(data, "RECOVERY", {
-                            team: "UNASSIGNED",
-                          })}
-                        >
-                          {data.unattributed.metrics.recovery}
-                        </Link>
-                      ) : (
-                        0
-                      )}
-                    </td>
-                    <td>—</td>
-                    <td>
-                      {data.unattributed.metrics.deliveredPendingActivation >
-                      0 ? (
-                        <Link
-                          href={ordersHref(data, "AWAITING_ACTIVATION", {
-                            team: "UNASSIGNED",
-                          })}
-                        >
-                          {data.unattributed.metrics.deliveredPendingActivation}
-                        </Link>
-                      ) : (
-                        0
-                      )}
-                    </td>
-                    {data.showCommission && data.role !== "AGENT" ? (
-                      <td>—</td>
-                    ) : null}
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </details>
       ) : null}
     </div>
   );

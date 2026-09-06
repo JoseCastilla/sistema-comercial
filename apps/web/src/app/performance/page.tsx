@@ -21,10 +21,12 @@ export default async function PerformancePage({
   const team = firstValue(parameters.team)?.trim().slice(0, 50);
   const agent = firstValue(parameters.agent)?.trim().slice(0, 50);
   const view = firstValue(parameters.view) === "SELF" ? "SELF" : "TEAM";
+  const sort = firstValue(parameters.orden)?.trim().slice(0, 30);
+  const management = firstValue(parameters.gestion)?.trim().slice(0, 30);
   const dashboard = await getPerformanceDashboard(
     membership.organization.id,
     { userId: session.user.id, role: membership.role },
-    { month, team, agent, view },
+    { month, team, agent, view, sort, management },
   );
 
   return <PerformanceDashboard data={dashboard} />;
