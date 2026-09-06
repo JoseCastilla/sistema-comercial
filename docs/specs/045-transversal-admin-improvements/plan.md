@@ -34,11 +34,25 @@
   etiqueta accesible).
 - **Pruebas**: `campanas-reparto-carga.test.ts` (5).
 
+## Fase 3
+
+- **`features/agr-delivery/schedule.ts`** (puro): `agrSyncSlotHours`,
+  `resolveAgrScheduleKey` (la sincronización lo usa) y
+  `describeAgrSchedule` (última esperada, próxima, atraso con margen); la
+  página de Logística los muestra.
+- **Validation**: `FollowUpCaseLike.attemptsInPeriod`; `worked` filtra por el
+  período; etiquetas «en el período».
+- **Seguimiento**: `periodo=` con `resolveRecoveryBoardPeriod`, intentos
+  cargados desde el inicio del período, indicador «Con gestión · período» y
+  selector de período. **Tablero**: «Trabajados» enlaza en los cuatro
+  períodos.
+- **Resumen por equipo**: `activeMembers` por `groupBy` de miembros activos;
+  CSS con cabecera y primera columna fijas y rejilla `--teams`.
+- **Pruebas**: `logistica-horario.test.ts` (4); `recovery-follow-up.test.mjs`
+  ajustado.
+
 ## Fases siguientes
 
-- Fase 3: `agr-delivery` con hora de fuente y ventana siguiente; columnas
-  fijas en el resumen por equipo; enlaces de actividad en el tablero de
-  campañas.
 - Fase 4: métricas de DNI por alcance y origen; historial paginado de cargas
   DITO; textos y accesibilidad de consultas externas y reparto.
 - Fase 0 (spec propia): worker, copias de seguridad, login.

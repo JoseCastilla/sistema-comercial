@@ -46,8 +46,8 @@ export function AgrDeliveryCredentialForm() {
         />
       </label>
       <p className="text-xs text-ui-muted">
-        La clave se prueba contra una venta desde el 10/08 y se guarda
-        cifrada. Nunca se vuelve a mostrar.
+        La clave se prueba contra una venta desde el 10/08 y se guarda cifrada.
+        Nunca se vuelve a mostrar.
       </p>
       <Feedback state={state} />
       <button

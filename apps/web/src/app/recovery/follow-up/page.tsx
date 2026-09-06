@@ -23,6 +23,8 @@ import {
   recoveryFollowUpStatusOptions,
   recoveryFollowUpStatuses,
   recoveryFollowUpWorkedOptions,
+  recoveryBoardPeriods,
+  resolveRecoveryBoardPeriod,
   recoveryLastResultNone,
   recoveryNextActionBucket,
   recoveryNextActionBuckets,
@@ -96,6 +98,7 @@ export default async function RecoveryFollowUpPage({
     status?: string;
     page?: string;
     visto?: string;
+    periodo?: string;
   }>;
 }) {
   const { session, membership } = await requireCommercialAccess();
@@ -113,6 +116,13 @@ export default async function RecoveryFollowUpPage({
     Number.parseInt(parameters.page ?? "1", 10) || 1,
   );
   const justVisited = (parameters.visto ?? "").trim().slice(0, 40);
+  // PL-09: el período de actividad del tablero también se acepta aquí; la
+  // cartera sigue siendo la de ahora, lo que cambia es la ventana de los
+  // intentos que cuentan como «gestión».
+  const activityPeriod = resolveRecoveryBoardPeriod(
+    parameters.periodo,
+    new Date(),
+  );
 
   const resultFilter =
     parameters.result === recoveryLastResultNone
@@ -216,7 +226,11 @@ export default async function RecoveryFollowUpPage({
     database.recoveryCaseAttempt.findMany({
       where: {
         organizationId: membership.organization.id,
-        createdAt: { gte: dayStart },
+        createdAt: {
+          gte: new Date(
+            Math.min(dayStart.getTime(), activityPeriod.start.getTime()),
+          ),
+        },
         case: scopeWhere,
       },
       select: { caseId: true, createdAt: true },
@@ -261,6 +275,11 @@ export default async function RecoveryFollowUpPage({
     lastObservation: item.attempts[0]?.observation ?? null,
     lastAttemptAt: item.attempts[0]?.createdAt ?? null,
     attemptsToday: countOnSameLimaDay(attemptsByCase.get(item.id) ?? [], now),
+    attemptsInPeriod: (attemptsByCase.get(item.id) ?? []).filter(
+      (at) =>
+        at.getTime() >= activityPeriod.start.getTime() &&
+        at.getTime() < activityPeriod.end.getTime(),
+    ).length,
   }));
 
   // Las cifras de cabecera cuentan sobre la cartera acotada, no sobre la
@@ -274,7 +293,9 @@ export default async function RecoveryFollowUpPage({
       item.status === "SCHEDULED" &&
       recoveryNextActionBucket(item.nextActionAt, now) === "vencida",
   ).length;
-  const workedToday = cases.filter((item) => item.attemptsToday > 0).length;
+  const workedInPeriod = cases.filter(
+    (item) => item.attemptsInPeriod > 0,
+  ).length;
 
   const selected = selectFollowUpCases(cases, filters, now);
   const totalPages = Math.max(1, Math.ceil(selected.length / pageSize));
@@ -304,6 +325,7 @@ export default async function RecoveryFollowUpPage({
   if (filters.contact) query.set("contact", filters.contact);
   if (filters.worked) query.set("worked", filters.worked);
   if (filters.status) query.set("status", filters.status);
+  if (activityPeriod.key !== "hoy") query.set("periodo", activityPeriod.key);
 
   function href(overrides: Record<string, string | null>): string {
     const next = new URLSearchParams(query);
@@ -349,9 +371,10 @@ export default async function RecoveryFollowUpPage({
           value={overdue}
         />
         <Metric
+          hint={`Con al menos un intento · ${activityPeriod.label.toLowerCase()}`}
           href={href({ worked: "hoy" })}
-          label="Con gestión hoy"
-          value={workedToday}
+          label={`Con gestión · ${activityPeriod.label.toLowerCase()}`}
+          value={workedInPeriod}
         />
       </MetricGroup>
 
@@ -392,8 +415,16 @@ export default async function RecoveryFollowUpPage({
                 options: recoveryFollowUpContactOptions,
               },
               {
+                key: "periodo",
+                label: "Período de actividad",
+                emptyLabel: "Hoy",
+                options: recoveryBoardPeriods.filter(
+                  (option) => option.value !== "hoy",
+                ),
+              },
+              {
                 key: "worked",
-                label: "Gestión de hoy",
+                label: "Gestión en el período",
                 emptyLabel: "Todos",
                 options: recoveryFollowUpWorkedOptions,
               },
@@ -417,6 +448,7 @@ export default async function RecoveryFollowUpPage({
               contact: filters.contact ?? "",
               worked: filters.worked ?? "",
               status: filters.status ?? "",
+              periodo: activityPeriod.key === "hoy" ? "" : activityPeriod.key,
             },
           }}
         />

@@ -10,6 +10,8 @@ import {
 
 import { database } from "@/server/database";
 
+import { resolveAgrScheduleKey } from "../schedule";
+
 import { AGR_SYNC_WINDOWS } from "../agr-delivery.types";
 
 import type { AgrSyncWindow } from "../agr-delivery.types";
@@ -188,32 +190,10 @@ function fingerprint(record: AgrDeliveryRecord): string {
   return createHash("sha256").update(JSON.stringify(record)).digest("hex");
 }
 
-function currentLimaScheduleKey(now = new Date()): string | null {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Lima",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(now);
-  const read = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? "00";
-  const minutes = Number(read("hour")) * 60 + Number(read("minute"));
-  // SPEC-046 BR-007 (José, 06/09/2026): cuatro consultas automáticas al día
-  // —08:00, 12:00, 15:00 y 18:00 de Lima—; cualquier otra es manual.
-  const slot = [18 * 60, 15 * 60, 12 * 60, 8 * 60].find(
-    (candidate) => minutes >= candidate,
-  );
-  if (slot === undefined) return null;
-  return `${read("year")}-${read("month")}-${read("day")}-${String(Math.floor(slot / 60)).padStart(2, "0")}${String(slot % 60).padStart(2, "0")}`;
-}
-
 export async function maybeRunScheduledAgrDeliverySync(
   organizationId: string,
 ): Promise<void> {
-  const scheduleKey = currentLimaScheduleKey();
+  const scheduleKey = resolveAgrScheduleKey();
   if (!scheduleKey) return;
   await runAgrDeliverySync({
     organizationId,

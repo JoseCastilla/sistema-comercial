@@ -82,3 +82,23 @@
 **Hallazgo operativo para José**: 1 502 casos de campaña en gestión tienen la
 próxima acción vencida y 302 llevan dueño sin ningún intento; el resumen lo
 pone a la vista y cada cifra abre su lista.
+
+## Fase 3 (06/09/2026)
+
+1. **Pruebas** — 191 en verde en `apps/web` (4 nuevas, `logistica-horario`:
+   cuatro horas, clave de ventana por hora pasada, última esperada y próxima,
+   margen de diez minutos y siguiente de mañana) y 318 en `@repo/validation`
+   (`recovery-follow-up` ajustado a `attemptsInPeriod`). Tipos y lint
+   limpios.
+2. **Recorrido local con sesión de administrador**:
+   - Logística: «Datos de Máximo al: 6/09/26, 8:25 · Pantalla generada:
+     6/09/26, 8:49 · Próxima consulta automática: hoy a las 12:00; la dispara
+     el proceso de fondo en los cinco minutos siguientes, o quien abra Pedidos
+     si el proceso no está»; sin aviso de atraso porque la consulta de las
+     08:00 ya corrió (AC-008).
+   - Tablero de Campañas con `periodo=semana`: «Trabajados 2» →
+     `/recovery/follow-up?worked=hoy&periodo=semana` → «2 caso(s) cumplen el
+     filtro», indicador «Con gestión · últimos 7 días 2» y selector de
+     período (AC-009).
+   - Resumen por equipo con la rejilla `--teams` y cabecera/columna fijas
+     (AC-010).

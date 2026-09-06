@@ -2,6 +2,7 @@ import {
   AgrDeliveryCredentialForm,
   AgrDeliverySyncForm,
 } from "@/features/agr-delivery/components/agr-delivery-admin-forms";
+import { describeAgrSchedule } from "@/features/agr-delivery/schedule";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -64,6 +65,19 @@ export default async function LogisticsAdminPage() {
   ]);
   const format = (value: Date | null | undefined) =>
     value ? formatter.format(value) : "Aún no registrado";
+  // PL-07: la hora de la fuente no es la hora de la pantalla.
+  const now = new Date();
+  const schedule = describeAgrSchedule(now, integration?.lastSuccessAt ?? null);
+  const timeFormatter = new Intl.DateTimeFormat("es-PE", {
+    timeZone: "America/Lima",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const isToday = (value: Date) =>
+    formatter.format(value).slice(0, 8) === formatter.format(now).slice(0, 8);
+  const slotLabel = (value: Date) =>
+    `${isToday(value) ? "hoy" : "mañana"} a las ${timeFormatter.format(value)}`;
   return (
     <>
       <div className="ui-page-stack">
@@ -92,12 +106,31 @@ export default async function LogisticsAdminPage() {
                 : "Acceso sin configurar"}
           </StatusBadge>
           <span>
-            Última sincronización:{" "}
-            {integration?.lastSuccessAt
-              ? format(integration.lastSuccessAt)
-              : "pendiente"}
+            Datos de Máximo al:{" "}
+            <strong className="text-ui-text">
+              {integration?.lastSuccessAt
+                ? format(integration.lastSuccessAt)
+                : "sin consulta todavía"}
+            </strong>
+          </span>
+          <span>Pantalla generada: {format(now)}</span>
+          <span>
+            Próxima consulta automática: {slotLabel(schedule.nextAt)}; la
+            dispara el proceso de fondo en los cinco minutos siguientes, o quien
+            abra Pedidos si el proceso no está.
           </span>
         </p>
+        {schedule.delayed && schedule.lastExpectedAt ? (
+          <p className="rounded-lg border border-ui-warning-border bg-ui-warning-soft px-4 py-3 text-sm text-ui-warning">
+            La consulta de las {timeFormatter.format(schedule.lastExpectedAt)}{" "}
+            no se ha ejecutado: los datos son de{" "}
+            {integration?.lastSuccessAt
+              ? format(integration.lastSuccessAt)
+              : "antes de la primera consulta"}
+            . El acceso puede estar activo y aun así la información estar
+            atrasada.
+          </p>
+        ) : null}
 
         <MetricGroup>
           {/*

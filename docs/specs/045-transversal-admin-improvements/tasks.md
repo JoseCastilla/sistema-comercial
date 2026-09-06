@@ -27,11 +27,17 @@
 - [x] Lectura de solo lectura en producción (70 = 70, 302 = 302, 1 502 =
       1 502, 347 = 347; tabla de carga en Repartir).
 
-## Fase 3 · Fuente, columnas y actividad
+## Fase 3 · Fuente, columnas y actividad (06/09/2026)
 
-- [ ] PL-07 · Hora de fuente vs pantalla en Logística.
-- [ ] PL-08 · Columnas esenciales visibles en el resumen por equipo.
-- [ ] PL-09 · «Trabajados» abre Hoy / Ayer / 7 / 30 días.
+- [x] PL-07 · Horario único en `schedule.ts`; Logística con fuente, pantalla,
+      próxima consulta y aviso de atraso.
+- [x] PL-08 · Cabecera y equipo fijos al desplazar; rejilla más ancha;
+      «N personas en el equipo» aparte de los vendedores activos.
+- [x] PL-09 · Seguimiento con `periodo=`; «Trabajados» enlaza en los cuatro
+      períodos conservando equipo y asesor.
+- [x] Recorrido local con sesión de administrador (Logística 8:25 / 8:49 /
+      12:00; tablero 7 días «Trabajados 2» → Seguimiento 2).
+- [ ] Lectura de solo lectura en producción tras el despliegue.
 
 ## Fase 4 · Control administrativo y consultas externas
 

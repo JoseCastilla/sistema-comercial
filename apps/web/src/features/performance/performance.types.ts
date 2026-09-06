@@ -47,6 +47,8 @@ export interface PerformanceTeamSummary {
   kind: "TEAM" | "UNASSIGNED" | "OTHER";
   name: string;
   supervisorName: string | null;
+  /** Personas activas del equipo, vendan o no (PL-08). */
+  activeMembers: number;
   activeSellers: number;
   sellersWithSales: number;
   sellersWithoutSales: number;
