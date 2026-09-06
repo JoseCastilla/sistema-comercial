@@ -1,6 +1,7 @@
 import { defaultBreakdownSort } from "./performance-management";
 
 import type {
+  BreakdownColumnsKey,
   BreakdownSortKey,
   ManagementFilterKey,
   MatrixRangeKey,
@@ -35,6 +36,7 @@ type Scope = Pick<
       | "search"
       | "matrixRangeRequested"
       | "selfAdvisorId"
+      | "columns"
     >
   >;
 
@@ -48,6 +50,7 @@ interface PerformanceHrefOverrides {
   /** `""` quita la búsqueda. */
   search?: string;
   matrix?: MatrixRangeKey;
+  columns?: BreakdownColumnsKey;
 }
 
 export function performanceHref(
@@ -65,6 +68,7 @@ export function performanceHref(
       : overrides.management;
   const search = overrides.search ?? data.search ?? "";
   const matrix = overrides.matrix ?? data.matrixRangeRequested ?? null;
+  const columns = overrides.columns ?? data.columns ?? "COMPACTAS";
 
   if (data.canSwitchView) parameters.set("view", data.view);
   if (team !== "ALL") parameters.set("team", team);
@@ -75,6 +79,8 @@ export function performanceHref(
   if (management) parameters.set("gestion", management);
   if (search) parameters.set("q", search);
   if (matrix) parameters.set("matriz", matrix);
+  // BR-015: solo la lectura completa viaja; la compacta es el defecto.
+  if (columns === "TODAS") parameters.set("columnas", "todas");
 
   return `/performance?${parameters.toString()}`;
 }
@@ -118,6 +124,11 @@ export function teamHref(data: Scope): string {
 /** Cambia la ventana de la matriz por día sin tocar la cohorte. */
 export function matrixHref(data: Scope, matrix: MatrixRangeKey): string {
   return performanceHref(data, data.month, { matrix });
+}
+
+/** Cambia las columnas de la tabla individual (SPEC-047 BR-015). */
+export function columnsHref(data: Scope, columns: BreakdownColumnsKey): string {
+  return performanceHref(data, data.month, { columns });
 }
 
 export function reconciliationHref(data: Scope, reason: string): string {

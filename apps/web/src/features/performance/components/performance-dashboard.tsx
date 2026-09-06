@@ -19,6 +19,7 @@ import {
 } from "../accelerator-windows";
 import {
   advisorHref,
+  columnsHref,
   earlierPendingHref,
   managementHref,
   matrixHref,
@@ -1102,6 +1103,23 @@ function ManagementBar({
             </Link>
           ))}
       </div>
+      <div className="performance-management__row">
+        <span>Columnas</span>
+        <Link
+          aria-current={data.columns !== "TODAS" ? "true" : undefined}
+          href={columnsHref(data, "COMPACTAS")}
+          title="Asesor, entregadas, cuota, pagables, pendientes y estimado"
+        >
+          Compactas
+        </Link>
+        <Link
+          aria-current={data.columns === "TODAS" ? "true" : undefined}
+          href={columnsHref(data, "TODAS")}
+          title="Añade hoy, ingresadas, variación, última venta, tasa de entrega y los pendientes por separado"
+        >
+          Todas
+        </Link>
+      </div>
       <p aria-live="polite" className="performance-management__meaning">
         {active
           ? `${active.label}: ${active.definition} ${shown} de ${total} asesores.`
@@ -1149,9 +1167,10 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
 
   const rows = visibleAdvisors(data);
   const showsEstimate = data.showCommission && data.role !== "AGENT";
+  // SPEC-047 BR-015: compacta por defecto; `columnas=todas` añade actividad.
+  const full = data.columns === "TODAS";
   const columns =
-    9 +
-    (data.isCurrentMonth ? 1 : 0) +
+    (full ? 9 + (data.isCurrentMonth ? 1 : 0) : 4) +
     (data.quotaWindow ? 1 : 0) +
     (showsEstimate ? 1 : 0);
   const elapsedDays = data.monthProgress.days.filter(
@@ -1185,45 +1204,59 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
           <thead>
             <tr>
               <th>Asesor</th>
-              {data.isCurrentMonth ? (
+              {full && data.isCurrentMonth ? (
                 <th title="Ventas registradas hoy, hora de Lima">Hoy</th>
               ) : null}
-              <th title={`Ventas registradas en ${data.monthLabel}`}>
-                Ingresadas
-              </th>
+              {full ? (
+                <th title={`Ventas registradas en ${data.monthLabel}`}>
+                  Ingresadas
+                </th>
+              ) : null}
               <th title="Ventas del mes entregadas con fecha: la cifra del resultado; abre Pedidos">
                 Entregadas
               </th>
-              <th
-                title={
-                  data.comparison.comparedThroughDay === null
-                    ? "Comparado contra el mes pasado completo"
-                    : `Comparado contra los días 1–${data.comparison.comparedThroughDay} del mes pasado`
-                }
-              >
-                Vs. mes pasado
-              </th>
-              <th
-                title={`Último día del mes con ventas registradas y días con ventas de los ${elapsedDays} transcurridos. No mide asistencia.`}
-              >
-                Última venta
-              </th>
-              <th>Tasa de entrega</th>
+              {full ? (
+                <>
+                  <th
+                    title={
+                      data.comparison.comparedThroughDay === null
+                        ? "Comparado contra el mes pasado completo"
+                        : `Comparado contra los días 1–${data.comparison.comparedThroughDay} del mes pasado`
+                    }
+                  >
+                    Vs. mes pasado
+                  </th>
+                  <th
+                    title={`Último día del mes con ventas registradas y días con ventas de los ${elapsedDays} transcurridos. No mide asistencia.`}
+                  >
+                    Última venta
+                  </th>
+                  <th>Tasa de entrega</th>
+                </>
+              ) : null}
               {data.quotaWindow ? (
                 <th title={quotaCohortLabel(data)}>
                   Cuota{data.quotaWindow.isActive ? "" : " (cerrada)"}
                 </th>
               ) : null}
               <th>Pagables</th>
-              <th title="Pedidos del mes no entregados o cancelados; abre Pedidos">
-                Pedidos por recuperar
-              </th>
-              <th title="Casos abiertos a su cargo en Recupero de ventas; abre la bandeja">
-                Casos de recupero
-              </th>
-              <th title="Entregadas sin cerrar: aún no generan pago; abre Pedidos">
-                Por activar
-              </th>
+              {full ? (
+                <>
+                  <th title="Pedidos del mes no entregados o cancelados; abre Pedidos">
+                    Pedidos por recuperar
+                  </th>
+                  <th title="Casos abiertos a su cargo en Recupero de ventas; abre la bandeja">
+                    Casos de recupero
+                  </th>
+                  <th title="Entregadas sin cerrar: aún no generan pago; abre Pedidos">
+                    Por activar
+                  </th>
+                </>
+              ) : (
+                <th title="Entregadas por activar · pedidos por recuperar · casos abiertos de recupero; cada cifra abre su conjunto">
+                  Pendientes
+                </th>
+              )}
               {showsEstimate ? <th>Estimado</th> : null}
             </tr>
           </thead>
@@ -1246,7 +1279,7 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                     {!item.isActiveSeller ? " · histórico" : ""}
                   </small>
                 </td>
-                {data.isCurrentMonth ? (
+                {full && data.isCurrentMonth ? (
                   <td>
                     {summarizeAdvisorActivity(
                       item.dailyEntered,
@@ -1254,53 +1287,76 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                     ).today ?? 0}
                   </td>
                 ) : null}
-                <td>{item.metrics.entered}</td>
+                {full ? <td>{item.metrics.entered}</td> : null}
                 <td>
                   <CountLink
                     href={ordersHref(data, "DELIVERED", { advisor: item.id })}
                     value={item.metrics.delivered}
                   />
                 </td>
-                <td
-                  title={comparedVolumes(
-                    item.metrics.entered,
-                    item.previousMetrics.entered,
-                    item.enteredDelta,
-                    data.comparison.comparedThroughDay,
-                  )}
-                >
-                  {shortDelta(item.enteredDelta)}
-                </td>
-                <ActivityCell
-                  dailyEntered={item.dailyEntered}
-                  data={data}
-                  elapsedDays={elapsedDays}
-                />
-                <td>{percentage(item.metrics.deliveryRate)}</td>
+                {full ? (
+                  <>
+                    <td
+                      title={comparedVolumes(
+                        item.metrics.entered,
+                        item.previousMetrics.entered,
+                        item.enteredDelta,
+                        data.comparison.comparedThroughDay,
+                      )}
+                    >
+                      {shortDelta(item.enteredDelta)}
+                    </td>
+                    <ActivityCell
+                      dailyEntered={item.dailyEntered}
+                      data={data}
+                      elapsedDays={elapsedDays}
+                    />
+                    <td>{percentage(item.metrics.deliveryRate)}</td>
+                  </>
+                ) : null}
                 {data.quotaWindow ? (
                   <QuotaCell individual quota={item.quota} />
                 ) : null}
                 <td>{item.metrics.payable}</td>
-                <td>
-                  <CountLink
-                    href={ordersHref(data, "RECOVERY", { advisor: item.id })}
-                    value={item.metrics.recovery}
-                  />
-                </td>
-                <td>
-                  <CountLink
-                    href={recoveryCasesHref(data, item.id)}
-                    value={item.openRecoveryCases}
-                  />
-                </td>
-                <td>
-                  <CountLink
-                    href={ordersHref(data, "AWAITING_ACTIVATION", {
+                {full ? (
+                  <>
+                    <td>
+                      <CountLink
+                        href={ordersHref(data, "RECOVERY", {
+                          advisor: item.id,
+                        })}
+                        value={item.metrics.recovery}
+                      />
+                    </td>
+                    <td>
+                      <CountLink
+                        href={recoveryCasesHref(data, item.id)}
+                        value={item.openRecoveryCases}
+                      />
+                    </td>
+                    <td>
+                      <CountLink
+                        href={ordersHref(data, "AWAITING_ACTIVATION", {
+                          advisor: item.id,
+                        })}
+                        value={item.metrics.deliveredPendingActivation}
+                      />
+                    </td>
+                  </>
+                ) : (
+                  <PendingCell
+                    awaiting={item.metrics.deliveredPendingActivation}
+                    awaitingHref={ordersHref(data, "AWAITING_ACTIVATION", {
                       advisor: item.id,
                     })}
-                    value={item.metrics.deliveredPendingActivation}
+                    cases={item.openRecoveryCases}
+                    casesHref={recoveryCasesHref(data, item.id)}
+                    recovery={item.metrics.recovery}
+                    recoveryHref={ordersHref(data, "RECOVERY", {
+                      advisor: item.id,
+                    })}
                   />
-                </td>
+                )}
                 {showsEstimate ? (
                   <td>{money(item.metrics.estimatedCommissionCents)}</td>
                 ) : null}
@@ -1319,34 +1375,63 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                   <strong>Sin asesor</strong>
                   <small>Asignar antes de medir desempeño</small>
                 </td>
-                {data.isCurrentMonth ? <td>—</td> : null}
-                <td>{data.unattributed.metrics.entered}</td>
+                {full && data.isCurrentMonth ? <td>—</td> : null}
+                {full ? <td>{data.unattributed.metrics.entered}</td> : null}
                 <td>
                   <CountLink
                     href={ordersHref(data, "DELIVERED", { team: "UNASSIGNED" })}
                     value={data.unattributed.metrics.delivered}
                   />
                 </td>
-                <td>{shortDelta(data.unattributed.enteredDelta)}</td>
-                <td>—</td>
-                <td>{percentage(data.unattributed.metrics.deliveryRate)}</td>
+                {full ? (
+                  <>
+                    <td>{shortDelta(data.unattributed.enteredDelta)}</td>
+                    <td>—</td>
+                    <td>
+                      {percentage(data.unattributed.metrics.deliveryRate)}
+                    </td>
+                  </>
+                ) : null}
                 {data.quotaWindow ? <td>—</td> : null}
                 <td>{data.unattributed.metrics.payable}</td>
-                <td>
-                  <CountLink
-                    href={ordersHref(data, "RECOVERY", { team: "UNASSIGNED" })}
-                    value={data.unattributed.metrics.recovery}
-                  />
-                </td>
-                <td>—</td>
-                <td>
-                  <CountLink
-                    href={ordersHref(data, "AWAITING_ACTIVATION", {
+                {full ? (
+                  <>
+                    <td>
+                      <CountLink
+                        href={ordersHref(data, "RECOVERY", {
+                          team: "UNASSIGNED",
+                        })}
+                        value={data.unattributed.metrics.recovery}
+                      />
+                    </td>
+                    <td>—</td>
+                    <td>
+                      <CountLink
+                        href={ordersHref(data, "AWAITING_ACTIVATION", {
+                          team: "UNASSIGNED",
+                        })}
+                        value={
+                          data.unattributed.metrics.deliveredPendingActivation
+                        }
+                      />
+                    </td>
+                  </>
+                ) : (
+                  <PendingCell
+                    awaiting={
+                      data.unattributed.metrics.deliveredPendingActivation
+                    }
+                    awaitingHref={ordersHref(data, "AWAITING_ACTIVATION", {
                       team: "UNASSIGNED",
                     })}
-                    value={data.unattributed.metrics.deliveredPendingActivation}
+                    cases={0}
+                    casesHref={null}
+                    recovery={data.unattributed.metrics.recovery}
+                    recoveryHref={ordersHref(data, "RECOVERY", {
+                      team: "UNASSIGNED",
+                    })}
                   />
-                </td>
+                )}
                 {showsEstimate ? <td>—</td> : null}
               </tr>
             ) : null}
@@ -1354,6 +1439,38 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
         </table>
       </div>
     </details>
+  );
+}
+
+/**
+ * SPEC-047 BR-015: los tres pendientes de un asesor en una celda, cada cifra
+ * abriendo su conjunto. Con `columnas=todas` vuelven a ser tres columnas.
+ */
+function PendingCell({
+  awaiting,
+  awaitingHref,
+  recovery,
+  recoveryHref,
+  cases,
+  casesHref,
+}: {
+  awaiting: number;
+  awaitingHref: string | null;
+  recovery: number;
+  recoveryHref: string | null;
+  cases: number;
+  casesHref: string | null;
+}) {
+  return (
+    <td className="performance-breakdown__pending">
+      <span>
+        <CountLink href={awaitingHref} value={awaiting} /> por activar
+      </span>
+      <small>
+        <CountLink href={recoveryHref} value={recovery} /> por recuperar ·{" "}
+        <CountLink href={casesHref} value={cases} /> casos
+      </small>
+    </td>
   );
 }
 
@@ -1468,15 +1585,26 @@ function AdminPendingSummary({ data }: { data: PerformanceDashboardData }) {
   const groups = data.adminPending;
   if (!groups) return null;
 
+  // BR-014: contraído por defecto; el resumen dice cuántos indicadores
+  // tienen algo pendiente, sin sumar poblaciones que se solapan.
+  const withPending = groups
+    .flatMap((group) => group.items)
+    .filter((item) => item.count > 0).length;
+
   return (
-    <section
+    <details
       className="performance-panel performance-admin-pending"
       aria-labelledby="admin-pending-title"
     >
-      <header className="performance-panel__header">
+      <summary className="performance-breakdown__summary">
         <div>
           <p className="performance-panel__eyebrow">Administración</p>
-          <h2 id="admin-pending-title">Pendientes por resolver o cubrir</h2>
+          <h2 id="admin-pending-title">
+            Pendientes por resolver o cubrir
+            {withPending > 0
+              ? ` · ${withPending} ${withPending === 1 ? "indicador con pendientes" : "indicadores con pendientes"}`
+              : " · nada pendiente"}
+          </h2>
           <p>
             Casos, personas y logística con su definición, su alcance en el
             tiempo y quién los resuelve. Los pedidos del mes están arriba, en
@@ -1484,7 +1612,11 @@ function AdminPendingSummary({ data }: { data: PerformanceDashboardData }) {
             se solapan.
           </p>
         </div>
-      </header>
+        <span>
+          <b data-collapsed>Ver detalle</b>
+          <b data-expanded>Ocultar detalle</b>
+        </span>
+      </summary>
       <div className="ui-table-wrap">
         <table className="ui-table ui-table--figures">
           <thead>
@@ -1530,7 +1662,7 @@ function AdminPendingSummary({ data }: { data: PerformanceDashboardData }) {
           ))}
         </table>
       </div>
-    </section>
+    </details>
   );
 }
 
@@ -1895,6 +2027,7 @@ export function PerformanceDashboard({
             ...(data.matrixRangeRequested
               ? { matriz: data.matrixRangeRequested }
               : {}),
+            ...(data.columns === "TODAS" ? { columnas: "todas" } : {}),
           }}
           resultLabel={
             data.view === "SELF"
@@ -2059,6 +2192,16 @@ export function PerformanceDashboard({
         </div>
       </div>
 
+      {/* SPEC-047 BR-013: Resultado → Gestión → Económico → Actividad. */}
+      <header className="performance-section-heading">
+        <p className="performance-panel__eyebrow">Gestión</p>
+        <h2>
+          {data.view === "SELF"
+            ? "Objetivo y pendientes"
+            : "Equipos, pendientes y avance individual"}
+        </h2>
+      </header>
+
       <div
         className={`performance-decision-grid${showsTeams ? " performance-decision-grid--teams" : ""}`}
       >
@@ -2115,7 +2258,9 @@ export function PerformanceDashboard({
         <section className="performance-panel performance-commission">
           <header className="performance-panel__header">
             <div>
-              <p className="performance-panel__eyebrow">Monto estimado</p>
+              <p className="performance-panel__eyebrow">
+                Económico · monto estimado
+              </p>
               <h2>Comisión del período</h2>
               <p>
                 Se confirma únicamente con portabilidades entregadas y cerradas.
@@ -2242,8 +2387,10 @@ export function PerformanceDashboard({
 
       {/* REN-07: el análisis va después de lo que decide. */}
       <header className="performance-section-heading" id="analisis">
-        <p className="performance-panel__eyebrow">Análisis detallado</p>
-        <h2>Ritmo, conversión y composición</h2>
+        <p className="performance-panel__eyebrow">
+          Actividad · análisis detallado
+        </p>
+        <h2>Ingresos por día, ritmo, conversión y composición</h2>
       </header>
 
       {showsTeams && data.view !== "SELF" ? (

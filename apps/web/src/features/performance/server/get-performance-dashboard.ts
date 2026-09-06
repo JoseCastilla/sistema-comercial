@@ -27,6 +27,7 @@ import { describeAcceleratorWindows } from "../accelerator-windows";
 import { buildDeliveryTrend } from "../delivery-trend";
 import {
   normalizeSearchTerm,
+  parseBreakdownColumns,
   parseBreakdownSort,
   parseManagementFilter,
   parseMatrixRange,
@@ -70,6 +71,8 @@ interface PerformanceQuery {
   search?: string;
   /** `matriz=`: ventana de la matriz por día (SPEC-044 REN-07). */
   matrix?: string;
+  /** `columnas=`: columnas de la tabla individual (SPEC-047 BR-015). */
+  columns?: string;
 }
 
 const limaDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
@@ -1360,6 +1363,7 @@ export async function getPerformanceDashboard(
       currentRange.key === currentMonth,
     ),
     matrixRangeRequested: parseMatrixRange(query.matrix),
+    columns: parseBreakdownColumns(query.columns),
     advisorOutsideTeam:
       selectedAdvisor !== null &&
       teamFilter !== "ALL" &&

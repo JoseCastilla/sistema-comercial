@@ -332,6 +332,22 @@ export function filterBreakdownBySearch<T extends { name: string }>(
 }
 
 /**
+ * SPEC-047 BR-015: la tabla individual arranca compacta —asesor, entregadas,
+ * cuota, pagables, pendientes y estimado— y `columnas=todas` en la URL añade
+ * hoy, ingresadas, variación, última venta, tasa y los pendientes por
+ * separado. La lectura elegida viaja con el resto de la URL.
+ */
+export const breakdownColumnKeys = ["COMPACTAS", "TODAS"] as const;
+
+export type BreakdownColumnsKey = (typeof breakdownColumnKeys)[number];
+
+export function parseBreakdownColumns(value: unknown): BreakdownColumnsKey {
+  return typeof value === "string" && value.toLowerCase() === "todas"
+    ? "TODAS"
+    : "COMPACTAS";
+}
+
+/**
  * SPEC-044 REN-07: la matriz por día puede mostrar los últimos 7 días
  * transcurridos o el mes completo. No altera la cohorte de los indicadores:
  * solo la ventana de lectura de la matriz. En el mes en curso la lectura
