@@ -70,6 +70,18 @@ limpios en web, API y worker.
 
 **Recorrido local**: las diez páginas que consumen los helpers unificados (recupero, seguimiento, campañas, rendimiento, cuotas, conciliación de agosto, usuarios, equipos, pedidos e importaciones DITO) responden 200 sin errores con sesión de administrador; las fechas en hora de Lima se siguen mostrando (setiembre de 2026, agosto de 2026).
 
+**Producción (06/09/2026, commit e8e2152)**: la API se reinició tres
+minutos después de la entrega y `/api/v1/health/ready` volvió a responder 200
+con la base arriba (las migraciones corren en el arranque; si alguna fallara
+el contenedor no llega a «listo»). Con la sesión de administrador, en solo
+lectura, responden 200 sin errores las mismas diez páginas del recorrido
+local más Logística, «Mi equipo», el panel de una persona en Personas y la
+ficha de un caso de recupero; las fechas en hora de Lima siguen iguales
+(`09/26 12:44` en Pedidos, «setiembre de 2026» en Rendimiento). Los chunks
+del cliente no cambiaron de nombre porque el cambio fue solo de servidor, así
+que la fecha exacta del redespliegue de la web se infiere del de la API, no
+de la propia web.
+
 **Pendiente**: dependencias declaradas y no importadas en los `package.json`
 (sin herramienta en el repositorio; se hará con `depcheck` en una pasada
 aparte) y unificar las cuatro barras de filtro (SPEC-039).
