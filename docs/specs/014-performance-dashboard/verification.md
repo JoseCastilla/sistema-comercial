@@ -1,6 +1,6 @@
 # SPEC-014 — Verificación
 
-**Estado:** `IN_PROGRESS`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `IN_PROGRESS`).
 **Fecha:** 2026-08-09
 
 ## Extensión diaria local

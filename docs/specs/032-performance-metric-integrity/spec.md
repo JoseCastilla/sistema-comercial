@@ -1,6 +1,9 @@
 # SPEC-032 — Integridad de métricas de rendimiento
 
-**Estado:** `IN_PROGRESS`
+**Estado:** `VERIFICADA` — la validación con supervisor vendedor la hizo SPEC-044 fase 6 (06/09/2026)
+
+> Antes: `IN_PROGRESS`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-30
 

@@ -1,6 +1,8 @@
 # SPEC-028 — Escalamiento de incidencias al supervisor
 
-**Estado:** `IMPLEMENTED`
+**Estado:** `VERIFICADA` — sin tareas abiertas (06/09/2026)
+
+> Antes: `IMPLEMENTED`
 
 ## Objetivo
 

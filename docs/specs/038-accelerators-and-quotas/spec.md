@@ -1,6 +1,9 @@
 # SPEC-038 — Segundo acelerador y cuotas asignables
 
-**Estado:** `IN_PROGRESS`
+**Estado:** `VERIFICADA` — cuotas y aceleradores verificados en producción por SPEC-044; BR-016 corregida y BR-009 anotada con SPEC-044 BR-025 (06/09/2026)
+
+> Antes: `IN_PROGRESS`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-31
 
@@ -72,7 +75,8 @@ que falta.
 - **BR-008:** la cuota por defecto de cada ventana es **el primer tramo de su
   acelerador** —30 en la primera, 15 en la segunda—. El sistema funciona sin
   configurar nada y el objetivo por defecto ya significa dinero.
-- **BR-009:** la cuota baja por una cadena de tres niveles. La **cuota de la
+- **BR-009** (ver también SPEC-044 BR-025: un supervisor que vende no fija su
+  propia cuota; la fija administración)**:** la cuota baja por una cadena de tres niveles. La **cuota de la
   organización** es el total del período y la fija el dueño del negocio;
   `ADMIN` la reparte entre los equipos; cada `SUPERVISOR` reparte la de su
   equipo entre sus asesores. En cada nivel la interfaz advierte cuando lo
@@ -106,9 +110,10 @@ que falta.
   está cerca de un tramo sin alcanzarlo.
 - **BR-015:** fuera de una ventana activa, la superficie muestra el resultado
   de la última ventana cerrada en lugar de un contador vacío.
-- **BR-016:** se respetan las reglas económicas de SPEC-014: `BACKOFFICE` no
-  ve importes y el supervisor ve el avance de sus asesores sin el importe
-  individual de comisión.
+- **BR-016 (corregida el 06/09/2026):** se respetan las reglas económicas de
+  SPEC-014 BR-019: `BACKOFFICE` no ve importes y el supervisor ve el avance de
+  sus asesores **con** su importe individual de comisión. (Decía «sin el
+  importe individual»: redacción anterior a BR-019.)
 
 ### Presentación de nombres
 

@@ -1,5 +1,7 @@
 # SPEC-026 — Recuperación comercial controlada
 
+**Estado:** `DOMINIO` — spec de reglas del recupero de ventas; su motor es la fase 5 de SPEC-030 (06/09/2026)
+
 ## Problema
 
 La bandeja de recuperos se construye hoy a partir de pedidos `CANCELLED` o

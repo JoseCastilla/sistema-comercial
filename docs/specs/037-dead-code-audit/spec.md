@@ -1,6 +1,9 @@
 # SPEC-037 — Auditoría de residuos del sistema
 
-**Estado:** `PLANNED`
+**Estado:** `EN_CURSO` — la higiene documental de hoy es su punto 6; el barrido de código sigue pendiente (06/09/2026)
+
+> Antes: `PLANNED`
+
 **Versión:** 0.1
 **Fecha:** 2026-08-31
 

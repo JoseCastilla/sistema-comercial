@@ -1,6 +1,9 @@
 # SPEC-016 — Bandeja operativa de recuperación
 
-**Estado:** `READY_FOR_VALIDATION`
+**Estado:** `ENTREGADA` — BR-002 ampliada por SPEC-044 BR-004: pedidos por recuperar y casos de recupero son cosas distintas (06/09/2026)
+
+> Antes: `READY_FOR_VALIDATION`
+
 **Fecha:** 2026-08-11
 
 ## Problema
@@ -22,7 +25,9 @@ sin agregar una nueva página ni saturar la bandeja con controles.
   día o semana seleccionados.
 - **BR-002:** una orden está por recuperar cuando conserva
   `status = SENT` y `sentSubstatus = NOT_DELIVERED`, o cuando su
-  `status = CANCELLED`.
+  `status = CANCELLED`. *Desde SPEC-044 BR-004 esto se llama «Pedidos por
+  recuperar» y es distinto de los «Casos de recupero» (con responsable y
+  cadencia, SPEC-026/030), que abren Recupero de ventas.*
 - **BR-003:** `REJECTED` permanece en Incidencias porque requiere revisión o
   reingreso, no la misma gestión que una visita no entregada.
 - **BR-004:** la cola respeta el alcance vigente: AGENT propio, SUPERVISOR sus

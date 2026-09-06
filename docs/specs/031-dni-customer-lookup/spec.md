@@ -1,5 +1,7 @@
 # SPEC-031 — Consulta de clientes por DNI
 
+**Estado:** `ENTREGADA` — sin estado hasta hoy; SPEC-045 PL-10 separó actividad propia y de la organización (06/09/2026)
+
 ## Problema
 
 La consulta RENIEC se ejecuta hoy desde Google Sheets. El token queda embebido

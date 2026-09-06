@@ -1,6 +1,6 @@
 # SPEC-030 — Verificación
 
-**Estado:** `DRAFT`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `DRAFT`).
 **Fecha de análisis:** 2026-08-26
 
 > **Alcance de esta evidencia.** Esta spec todavía no tiene código. Lo

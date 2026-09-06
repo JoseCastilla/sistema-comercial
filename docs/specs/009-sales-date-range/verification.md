@@ -1,6 +1,6 @@
 # SPEC-009 — Verificación
 
-**Estado:** `VERIFIED`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `VERIFIED`).
 **Fecha:** 2026-08-08
 
 ## Evidencia automatizada

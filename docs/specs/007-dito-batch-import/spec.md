@@ -1,6 +1,9 @@
 # SPEC-007 — Importación controlada de pedidos DITO
 
-**Estado:** `APPROVED`
+**Estado:** `ENTREGADA` — sus reglas fueron modificadas por SPEC-020, 021 y 023 sin versionar esta spec (06/09/2026)
+
+> Antes: `APPROVED`
+
 **Versión:** 1.3
 **Fecha:** 2026-08-06
 **Fecha de aprobación:** 2026-08-06

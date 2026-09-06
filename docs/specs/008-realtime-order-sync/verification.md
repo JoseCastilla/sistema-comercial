@@ -1,6 +1,6 @@
 # SPEC-008 — Verificación
 
-**Estado:** `IMPLEMENTED`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `IMPLEMENTED`).
 **Fecha:** 2026-08-06
 
 ## Evidencia local

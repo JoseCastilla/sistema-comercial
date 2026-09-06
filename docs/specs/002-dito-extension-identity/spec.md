@@ -1,6 +1,9 @@
 # SPEC-002 — Identidad del remitente de la extensión DITO
 
-**Estado:** `APPROVED`  
+**Estado:** `ENTREGADA` — extensión 2.2.0 en uso; 3 tareas de validación abiertas (06/09/2026)
+
+> Antes: `APPROVED`
+
 **Versión:** 1.0  
 **Fecha:** 2026-08-05  
 **Fecha de aprobación:** 2026-08-05  

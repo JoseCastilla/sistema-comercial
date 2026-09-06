@@ -1,6 +1,9 @@
 # SPEC-018 — Modo oscuro escalable
 
-**Estado:** `IMPLEMENTED_LOCAL`
+**Estado:** `ENTREGADA` — en producción; SPEC-039 lo da por vigente (06/09/2026)
+
+> Antes: `IMPLEMENTED_LOCAL`
+
 **Fecha:** 2026-08-11
 
 ## Problema

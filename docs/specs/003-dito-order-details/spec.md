@@ -1,6 +1,9 @@
 # SPEC-003 — Detalles comerciales y logísticos de órdenes DITO
 
-**Estado:** `APPROVED`  
+**Estado:** `ENTREGADA` — sin plan.md; 2 tareas abiertas (06/09/2026)
+
+> Antes: `APPROVED`
+
 **Versión:** 1.0  
 **Fecha:** 2026-08-05  
 **Responsable de producto:** José Castilla

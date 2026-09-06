@@ -1,6 +1,9 @@
 # SPEC-011 — Jerarquía de acciones en la bandeja
 
-**Estado:** `VERIFIED`
+**Estado:** `VERIFICADA` — BR-005 sustituida por SPEC-041 BR-008 (06/09/2026)
+
+> Antes: `VERIFIED`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-08
 
@@ -25,8 +28,10 @@ explícita del bloque de filtros.
 - **BR-003:** si Histórico o Rango está activo, el bloque avanzado inicia abierto
   y comunica el contexto actual.
 - **BR-004:** Estado y Equipo navegan inmediatamente al cambiar su selección.
-- **BR-005:** Buscar conserva una acción explícita y accesible por texto en
-  escritorio e icono etiquetado en móvil.
+- **BR-005 (sustituida por SPEC-041 BR-008 el 05/09/2026):** Buscar conserva
+  una acción explícita y accesible por texto en escritorio e icono etiquetado
+  en móvil. *Hoy la acción explícita es Enter y el botón desapareció; la
+  búsqueda aplica en vivo a los 300 ms.*
 - **BR-006:** los controles conservan período, rango, equipo, estado y búsqueda
   según las reglas existentes.
 - **BR-007:** las métricas se compactan en móvil sin ocultar valores.

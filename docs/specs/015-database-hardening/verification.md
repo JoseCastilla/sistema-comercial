@@ -1,6 +1,8 @@
 # Verificación — SPEC-015
 
-## Estado
+## Evidencia
+
+Estado: en `spec.md` (fuente única desde el 06/09/2026).
 
 VERIFIED_LOCAL — pendiente producción.
 

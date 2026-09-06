@@ -1,6 +1,9 @@
 # SPEC-009 — Ventas de ayer y por rango de fechas
 
-**Estado:** `VERIFIED`
+**Estado:** `VERIFICADA` — 1 tarea abierta (06/09/2026)
+
+> Antes: `VERIFIED`
+
 **Versión:** 1.1
 **Fecha:** 2026-08-11
 

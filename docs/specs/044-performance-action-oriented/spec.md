@@ -1,13 +1,8 @@
 # SPEC-044 — Rendimiento orientado a la acción
 
-Estado: **fases 1 a 6 entregadas y verificadas en producción** (05/09/2026).
-Queda la validación con un supervisor de varios equipos. Quedan las validaciones con sesión de supervisor
-que vende y supervisor multiequipo. Las vistas `SUPERVISOR` y `AGENT` se revisaron por
-lectura del código; el recorrido con sesión real sigue pendiente. Plan «Rendimiento orientado a
-la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`;
-las revisiones de `SUPERVISOR` y `AGENT` quedan pendientes. Se apoya en
-SPEC-027 (tablero), SPEC-032 (integridad de métricas), SPEC-034 (filtro por
-asesor), SPEC-038 (aceleradores y cuotas) y SPEC-041 (Pedidos y Recupero).
+**Estado:** `VERIFICADA` — fases 1 a 6 verificadas en producción; falta el supervisor multiequipo (06/09/2026)
+
+> Antes: **fases 1 a 6 entregadas y verificadas en producción** (05/09/2026). Queda la validación con un supervisor de varios equipos. Quedan las validaciones con sesión de supervisor que vende y supervisor multiequipo. Las vistas `SUPERVISOR` y `AGENT` se revisaron por lectura del código; el recorrido con sesión real sigue pendiente. Plan «Rendimiento orientado a la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`; las revisiones de `SUPERVISOR` y `AGENT` quedan pendientes. Se apoya en SPEC-027 (tablero), SPEC-032 (integridad de métricas), SPEC-034 (filtro por asesor), SPEC-038 (aceleradores y cuotas) y SPEC-041 (Pedidos y Recupero).
 
 ## 1. Origen
 

@@ -1,6 +1,9 @@
 # SPEC-017 — Directorio de personas y equipos
 
-**Estado:** `READY_FOR_VALIDATION`
+**Estado:** `SUSTITUIDA` — SPEC-043 reconstruyó Personas y Equipos sobre esta base (06/09/2026)
+
+> Antes: `READY_FOR_VALIDATION`
+
 **Fecha:** 2026-08-11
 
 ## Problema

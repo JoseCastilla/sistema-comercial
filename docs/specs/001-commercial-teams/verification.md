@@ -86,7 +86,7 @@ Cada tarea implementada debe registrar:
 
 ## 4. Resultado
 
-**Estado de verificación:** `IN_PROGRESS`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `IN_PROGRESS`).
 
 ### Resumen final
 

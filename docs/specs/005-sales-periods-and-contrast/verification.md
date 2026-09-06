@@ -1,6 +1,6 @@
 # SPEC-005 — Verificación
 
-**Estado:** `IMPLEMENTED_PENDING_PRODUCTION`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `IMPLEMENTED_PENDING_PRODUCTION`).
 
 ## Evidencia local
 

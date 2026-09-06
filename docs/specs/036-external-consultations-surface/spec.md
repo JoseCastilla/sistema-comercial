@@ -1,6 +1,9 @@
 # SPEC-036 — Superficie de consultas externas
 
-**Estado:** `IMPLEMENTED_LOCAL`
+**Estado:** `ENTREGADA` — queda la decisión de unificar con /dni (06/09/2026)
+
+> Antes: `IMPLEMENTED_LOCAL`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-30
 

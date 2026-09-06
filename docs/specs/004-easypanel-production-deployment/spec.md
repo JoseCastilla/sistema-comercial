@@ -1,6 +1,9 @@
 # SPEC-004 — Despliegue seguro en EasyPanel
 
-**Estado:** `VERIFIED`
+**Estado:** `VERIFICADA` — BR-008 añadido tras el incidente del 01/09/2026 (06/09/2026)
+
+> Antes: `VERIFIED`
+
 **Versión:** 1.0  
 **Fecha:** 2026-08-06  
 **Responsable de producto:** José Castilla

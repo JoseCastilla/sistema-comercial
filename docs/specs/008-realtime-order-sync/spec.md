@@ -1,6 +1,9 @@
 # SPEC-008 — Sincronización en tiempo real de la bandeja
 
-**Estado:** `IMPLEMENTED`
+**Estado:** `ENTREGADA` — 4 tareas menores abiertas (06/09/2026)
+
+> Antes: `IMPLEMENTED`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-06
 

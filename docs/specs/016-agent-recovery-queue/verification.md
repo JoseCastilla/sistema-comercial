@@ -1,6 +1,6 @@
 # SPEC-016 — Verificación
 
-**Estado:** `READY_FOR_VALIDATION`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `READY_FOR_VALIDATION`).
 **Fecha:** 2026-08-11
 
 ## Evidencia esperada

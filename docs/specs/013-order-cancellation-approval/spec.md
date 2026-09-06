@@ -1,6 +1,9 @@
 # SPEC-013 — Solicitud y aprobación de cancelaciones
 
-**Estado:** `VERIFIED`
+**Estado:** `VERIFICADA` — desplegada el 09/08/2026 (06/09/2026)
+
+> Antes: `VERIFIED`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-09
 

@@ -1,6 +1,9 @@
 # SPEC-030 — Recuperación sobre base nacional
 
-**Estado:** `DRAFT`
+**Estado:** `ENTREGADA` — es el módulo Campañas, en producción desde el 27/08 y verificado el 02/09 y el 05/09; 18 tareas abiertas; AC-021 corregido; conviene partirla por fases (06/09/2026)
+
+> Antes: `DRAFT`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-26
 **Responsable de producto:** José Castilla
@@ -927,9 +930,11 @@ dos se resuelve con su palabra: los resuelve la evidencia.
 - **AC-019:** resolver como `RECOVERED` sin vincular una orden DITO es
   rechazado; la sugerencia por documento y servicio requiere confirmación.
 - **AC-020:** resolver como `LOST` sin motivo estructurado es rechazado.
-- **AC-021:** un asesor ve `Papa`, `Mama` y `Nacimiento` solo en un caso con
-  `Validacion = false` y tras registrar un intento `INTERESADO`; en un caso ya
-  validado nunca se muestran; cada revelación queda auditada.
+- **AC-021 (corregido el 06/09/2026 conforme a BR-045 revisada y BR-046
+  retirada):** un asesor ve `Papa`, `Mama` y `Nacimiento` en la cola y en la
+  ficha de los casos que gestiona, durante la llamada; `Validacion` sigue
+  indicando si la identidad ya fue validada. Las revelaciones auditadas antes
+  del cambio se conservan y se muestran en la ficha donde ocurrieron.
 - **AC-022:** ninguna exportación incluye esos tres campos.
 - **AC-023:** un asesor no puede liberar, descartar ni reasignar casos.
 - **AC-024:** el tablero muestra avance, cobertura y efectividad del día por

@@ -1,6 +1,6 @@
 # Verificacion — SPEC-031
 
-Estado: IMPLEMENTADO · ACTIVACION PENDIENTE
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `IMPLEMENTADO · ACTIVACION PENDIENTE`).
 
 ## Evidencia automatizada
 

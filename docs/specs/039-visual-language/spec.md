@@ -1,6 +1,9 @@
 # SPEC-039 — Lenguaje visual del Sistema Comercial
 
-**Estado:** `DRAFT`
+**Estado:** `EN_CURSO` — aplicada en Preparar campaña y, vía SPEC-041/043/044, en filtros; BR-005 corregida para coincidir con BR-003 (06/09/2026)
+
+> Antes: `DRAFT`
+
 **Versión:** 1.1
 **Fecha:** 2026-09-01
 **Responsable de producto:** José Castilla
@@ -105,9 +108,10 @@ sidebar; color únicamente semántico.
   alineación a la derecha y la etiqueta pequeña.
 - **BR-004 (P-2):** etiquetas de campos y KPI en 11px, peso fuerte,
   mayúsculas, color atenuado, uniforme en toda la plataforma.
-- **BR-005 (P-4):** los KPI usan etiqueta + número grande monoespaciado +
-  una línea de contexto con objetivo o delta; los estados asociados son
-  chips dentro de la misma tarjeta.
+- **BR-005 (P-4)** (corregido el 06/09/2026 conforme a BR-003): los KPI usan
+  etiqueta + número grande con cifras tabulares **en la familia de la
+  interfaz** + una línea de contexto con objetivo o delta; los estados
+  asociados son chips dentro de la misma tarjeta.
 - **BR-006 (P-5):** la barra de filtros usa el mismo orden y componentes en
   todas las vistas que filtran (bandeja, triage, distribución, rendimiento).
 - **BR-007 (P-5):** una elección de dos o tres opciones se presenta como
@@ -158,7 +162,8 @@ Primera pasada sobre las superficies de mayor uso diario, en este orden:
   una línea que se apila sola en móvil (BR-001).
 - `.ui-label-eyebrow`: etiqueta de andamiaje en 11px, versales, atenuada
   (BR-004).
-- `.ui-data`: dato operativo en monoespaciada con cifras tabulares (BR-003).
+- `.ui-data`: dato operativo con cifras tabulares en la familia de la interfaz
+  (BR-003; en el código es solo `font-variant-numeric: tabular-nums`).
 - `.ui-file-input`: selector de archivo compacto y legible en ambos temas.
 
 ## 7. Criterios de aceptación
