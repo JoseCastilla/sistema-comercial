@@ -18,6 +18,19 @@ export interface DirectoryFilterSelect {
 }
 
 /**
+ * Campo de mes (SPEC-044 REN-06): aplica al cambiar como un selector, pero
+ * no es un filtro que se «quite»: siempre hay un mes, así que no sale como
+ * ficha ni lo borra «Limpiar filtros».
+ */
+export interface DirectoryFilterMonthField {
+  key: string;
+  label: string;
+  value: string;
+  min?: string;
+  max?: string;
+}
+
+/**
  * Barra de filtros en vivo de los directorios administrativos — SPEC-043
  * UX-06 (BR-010).
  *
@@ -30,39 +43,44 @@ export interface DirectoryFilterSelect {
 export function DirectoryFilters({
   basePath,
   search,
+  fields = [],
   selects,
   preserve = {},
   resultLabel,
 }: {
   basePath: string;
-  search: { value: string; label: string; placeholder: string };
+  /** Sin búsqueda, la barra solo tiene selectores y campos. */
+  search?: { value: string; label: string; placeholder: string };
+  fields?: DirectoryFilterMonthField[];
   selects: DirectoryFilterSelect[];
   /** Parámetros que viajan intactos con cualquier cambio (p. ej. `persona`). */
   preserve?: Record<string, string>;
   resultLabel: string;
 }) {
   const router = useRouter();
-  const [term, setTerm] = useState(search.value);
+  const searchValue = search?.value ?? "";
+  const [term, setTerm] = useState(searchValue);
   const [pending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sentSearch = useRef(search.value);
+  const sentSearch = useRef(searchValue);
 
   useEffect(() => () => clearTimer(timer), []);
 
   // El servidor manda cuando el cambio no vino de aquí (Atrás, un enlace).
   useEffect(() => {
-    if (search.value !== sentSearch.current) {
-      sentSearch.current = search.value;
-      setTerm(search.value);
+    if (searchValue !== sentSearch.current) {
+      sentSearch.current = searchValue;
+      setTerm(searchValue);
     }
-  }, [search.value]);
+  }, [searchValue]);
 
   function navigate(overrides: Record<string, string>) {
     clearTimer(timer);
 
     const next = new URLSearchParams();
     const values: Record<string, string> = {
-      q: term,
+      ...(search ? { q: term } : {}),
+      ...Object.fromEntries(fields.map((field) => [field.key, field.value])),
       ...Object.fromEntries(
         selects.map((select) => [select.key, select.value]),
       ),
@@ -96,7 +114,7 @@ export function DirectoryFilters({
     term.length === 0 || term.trim().length >= minimumSearchLength;
 
   const chips: Array<{ key: string; label: string }> = [
-    ...(search.value ? [{ key: "q", label: `Busca «${search.value}»` }] : []),
+    ...(searchValue ? [{ key: "q", label: `Busca «${searchValue}»` }] : []),
     ...selects
       .filter((select) => select.value)
       .map((select) => ({
@@ -111,51 +129,70 @@ export function DirectoryFilters({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
-        <label className="block">
-          <span className="ui-label-eyebrow">{search.label}</span>
-          <div className="flex items-center gap-1">
+        {fields.map((field) => (
+          <label className="block" key={field.key}>
+            <span className="ui-label-eyebrow">{field.label}</span>
             <input
-              aria-busy={pending}
-              className="block w-64 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
-              maxLength={100}
-              name="q"
+              className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
+              max={field.max}
+              min={field.min}
               onChange={(event) => {
-                const value = event.target.value;
-                setTerm(value);
-
-                if (
-                  value.length === 0 ||
-                  value.trim().length >= minimumSearchLength
-                ) {
-                  scheduleSearch(value);
-                } else {
-                  clearTimer(timer);
-                }
+                if (!event.target.value) return;
+                navigate({ [field.key]: event.target.value });
               }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter") return;
-                event.preventDefault();
-                navigate({ q: term });
-              }}
-              placeholder={search.placeholder}
-              type="search"
-              value={term}
+              type="month"
+              value={field.value}
             />
-            {term.length > 0 ? (
-              <button
-                className="ui-button ui-button--quiet px-2 py-2"
-                onClick={() => {
-                  setTerm("");
-                  navigate({ q: "" });
+          </label>
+        ))}
+
+        {search ? (
+          <label className="block">
+            <span className="ui-label-eyebrow">{search.label}</span>
+            <div className="flex items-center gap-1">
+              <input
+                aria-busy={pending}
+                className="block w-64 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
+                maxLength={100}
+                name="q"
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setTerm(value);
+
+                  if (
+                    value.length === 0 ||
+                    value.trim().length >= minimumSearchLength
+                  ) {
+                    scheduleSearch(value);
+                  } else {
+                    clearTimer(timer);
+                  }
                 }}
-                title="Limpiar la búsqueda"
-                type="button"
-              >
-                ✕
-              </button>
-            ) : null}
-          </div>
-        </label>
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  navigate({ q: term });
+                }}
+                placeholder={search.placeholder}
+                type="search"
+                value={term}
+              />
+              {term.length > 0 ? (
+                <button
+                  className="ui-button ui-button--quiet px-2 py-2"
+                  onClick={() => {
+                    setTerm("");
+                    navigate({ q: "" });
+                  }}
+                  title="Limpiar la búsqueda"
+                  type="button"
+                >
+                  ✕
+                </button>
+              ) : null}
+            </div>
+          </label>
+        ) : null}
 
         {selects.map((select) => (
           <label className="block" key={select.key}>
@@ -207,7 +244,7 @@ export function DirectoryFilters({
             onClick={() => {
               setTerm("");
               navigate({
-                q: "",
+                ...(search ? { q: "" } : {}),
                 ...Object.fromEntries(
                   selects.map((select) => [select.key, ""]),
                 ),

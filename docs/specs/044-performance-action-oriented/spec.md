@@ -1,7 +1,8 @@
 # SPEC-044 — Rendimiento orientado a la acción
 
-Estado: **fases 1 y 2 entregadas y verificadas en producción** (05/09/2026);
-fase 3 pendiente. Plan «Rendimiento orientado a
+Estado: **fase 3 construida** (05/09/2026); fases 1 y 2 entregadas y
+verificadas en producción. Las vistas `SUPERVISOR` y `AGENT` se revisaron por
+lectura del código; el recorrido con sesión real sigue pendiente. Plan «Rendimiento orientado a
 la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`;
 las revisiones de `SUPERVISOR` y `AGENT` quedan pendientes. Se apoya en
 SPEC-027 (tablero), SPEC-032 (integridad de métricas), SPEC-034 (filtro por
@@ -113,6 +114,41 @@ comisiones; alcance e importes por rol.
   → avance individual → análisis detallado; matriz con «últimos 7 días /
   mes completo» que no altera la cohorte de los indicadores.
 
+#### Decisiones de la fase 3 (asumidas y escritas, 05/09/2026)
+
+- **La barra en vivo es `DirectoryFilters`**, extendida con campos de mes
+  (`fields`) y con la búsqueda opcional: el mes aplica al cambiar pero no es
+  un filtro que se «quite» (siempre hay un mes), así que no sale como ficha y
+  «Limpiar filtros» lo conserva. Las flechas de mes anterior/siguiente se
+  mantienen.
+- **Búsqueda por nombre (`q=`)**: acota el desglose y la matriz, nunca los
+  indicadores ni el resumen por equipo; compara sin tildes ni mayúsculas y
+  exige dos caracteres. La fila «Sin asesor» se oculta mientras hay búsqueda
+  o filtro de gestión.
+- **El nombre del asesor siempre filtra por él**; «Ver todo el equipo» es un
+  enlace propio en la cabecera que quita asesor y búsqueda y conserva mes,
+  equipo, orden, gestión y ventana de la matriz. La ficha «Asesor: …» de la
+  barra también lo quita.
+- **Orden de pantalla**: controles → indicadores → [resumen por equipo |
+  avance del mes] + pendientes → desglose por asesor → comisión → «Análisis
+  detallado» (tendencia diaria, matriz por asesor y día, conversión y
+  composición; pulso diario en la vista personal). Con un asesor aislado o en
+  la vista personal no hay resumen por equipo: en su lugar va el avance del
+  mes, como antes.
+- **Ventana de la matriz (`matriz=7D|MES`)**: «últimos 7 días» son los
+  últimos siete días transcurridos del mes elegido (en un mes cerrado, del
+  25 al fin de mes); por defecto 7 días en el mes en curso y mes completo en
+  uno cerrado; la URL manda. La columna total suma solo los días visibles y
+  se llama «7 días» o «Mes» según la ventana; la cabecera lo dice y recuerda
+  que los indicadores siguen contando el mes completo.
+- **Vista `SUPERVISOR`** (por lectura del código): la barra ofrece «Mis
+  equipos» y sus asesores; el resumen por equipo lista sus equipos y sus
+  pedidos propios en otro equipo caen en «Otros equipos»; el selector «Vista»
+  aparece solo si también vende. **Vista `AGENT`/personal**: barra con solo
+  el mes (y «Vista» si aplica), sin búsqueda; sin resumen por equipo, sin
+  desglose ni matriz; el orden es controles → indicadores → avance del mes +
+  pendientes → comisión → análisis (pulso diario, conversión, composición).
+
 ## 5. Criterios de aceptación de la fase 1
 
 - **AC-001:** con asesor y equipo filtrados, «Entregadas por activar = N»
@@ -140,3 +176,17 @@ comisiones; alcance e importes por rol.
   `gestion=<clave>` acota el desglose y la matriz, muestra la definición y
   «N de M asesores»; volver a elegir el filtro lo quita.
 - **AC-011:** los enlaces a Pedidos conservan `orden` y `gestion` en `volver=`.
+
+## 7. Criterios de aceptación de la fase 3
+
+- **AC-012:** escribir dos letras en «Buscar asesor» acota el desglose y la
+  matriz sin botón, la URL lleva `q=` y los indicadores no cambian.
+- **AC-013:** el mes, el equipo y el asesor aplican al cambiar; los filtros
+  activos se ven como fichas y se quitan uno a uno; «Limpiar filtros»
+  conserva el mes.
+- **AC-014:** el nombre de un asesor ya filtrado sigue filtrando por él;
+  «Ver todo el equipo» vuelve al conjunto conservando mes y orden.
+- **AC-015:** la matriz cambia entre 7 días y mes completo por URL, con los
+  días exactos en la cabecera; «Ventas ingresadas» no cambia.
+- **AC-016:** el resumen por equipo y los pendientes van antes del desglose;
+  el análisis detallado, al final.

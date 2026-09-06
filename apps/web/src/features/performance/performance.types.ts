@@ -3,6 +3,7 @@ import type { PerformanceMetrics } from "@repo/validation";
 import type {
   BreakdownSortKey,
   ManagementFilterKey,
+  MatrixRangeKey,
 } from "./performance-management";
 
 export type PerformanceRole = "ADMIN" | "SUPERVISOR" | "AGENT" | "BACKOFFICE";
@@ -151,6 +152,12 @@ export interface PerformanceDashboardData {
   sort: BreakdownSortKey;
   /** Filtro de gestión (`gestion=`), SPEC-044 REN-05. */
   management: ManagementFilterKey | null;
+  /** Búsqueda por nombre de asesor (`q=`), SPEC-044 REN-06. */
+  search: string;
+  /** Ventana de la matriz por día (`matriz=`), SPEC-044 REN-07. */
+  matrixRange: MatrixRangeKey;
+  /** Lo que pidió la URL, para que los enlaces lo conserven tal cual. */
+  matrixRangeRequested: MatrixRangeKey | null;
   /** Resumen por equipo; vacío en la vista personal o con un asesor aislado. */
   teams: PerformanceTeamSummary[];
   workforce: {

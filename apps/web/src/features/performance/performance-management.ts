@@ -198,3 +198,75 @@ export function sortBreakdown<T extends SortSubject>(
       );
   }
 }
+
+/**
+ * SPEC-044 REN-06: la búsqueda por nombre acota el desglose y la matriz sin
+ * tocar los indicadores. Compara sin tildes ni mayúsculas, como se escribe
+ * deprisa; menos de dos caracteres no es una búsqueda.
+ */
+export const minimumSearchLength = 2;
+
+export function normalizeSearchTerm(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const term = value.trim().slice(0, 100);
+  return term.length >= minimumSearchLength ? term : "";
+}
+
+function foldName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es");
+}
+
+export function filterBreakdownBySearch<T extends { name: string }>(
+  items: readonly T[],
+  search: string,
+): T[] {
+  const term = foldName(normalizeSearchTerm(search));
+  if (!term) return [...items];
+  return items.filter((item) => foldName(item.name).includes(term));
+}
+
+/**
+ * SPEC-044 REN-07: la matriz por día puede mostrar los últimos 7 días
+ * transcurridos o el mes completo. No altera la cohorte de los indicadores:
+ * solo la ventana de lectura de la matriz. En el mes en curso la lectura
+ * útil es la semana; en un mes cerrado, el mes.
+ */
+export const matrixRangeKeys = ["7D", "MES"] as const;
+
+export type MatrixRangeKey = (typeof matrixRangeKeys)[number];
+
+export const matrixRangeOptions: ReadonlyArray<{
+  key: MatrixRangeKey;
+  label: string;
+}> = [
+  { key: "7D", label: "Últimos 7 días" },
+  { key: "MES", label: "Mes completo" },
+];
+
+export function parseMatrixRange(value: unknown): MatrixRangeKey | null {
+  return typeof value === "string" &&
+    (matrixRangeKeys as readonly string[]).includes(value)
+    ? (value as MatrixRangeKey)
+    : null;
+}
+
+export function resolveMatrixRange(
+  requested: MatrixRangeKey | null,
+  isCurrentMonth: boolean,
+): MatrixRangeKey {
+  return requested ?? (isCurrentMonth ? "7D" : "MES");
+}
+
+/** Índices de los días visibles en la matriz para el rango elegido. */
+export function selectMatrixDays<T extends { isFuture: boolean }>(
+  days: readonly T[],
+  range: MatrixRangeKey,
+): number[] {
+  const indexes = days.map((_, index) => index);
+  if (range === "MES") return indexes;
+  const elapsed = indexes.filter((index) => !days[index]?.isFuture);
+  return elapsed.slice(-7);
+}

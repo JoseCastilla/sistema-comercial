@@ -33,9 +33,18 @@
 - [x] Lectura de solo lectura en producción (278/24/83/70 reconciliados;
       3 de 20 sin producción; orden por cuota).
 
-## Fase 3 · Filtros vivos y jerarquía
+## Fase 3 · Filtros vivos y jerarquía (05/09/2026)
 
-- [ ] REN-06 · `DirectoryFilters` en el tablero; nombre del asesor siempre
-      filtra; «Ver todo el equipo» aparte.
-- [ ] REN-07 · Reordenación de secciones; matriz 7 días / mes.
-- [ ] Revisiones de las vistas `SUPERVISOR` y `AGENT`.
+- [x] `DirectoryFilters` con campos de mes y búsqueda opcional; reglas de
+      búsqueda y ventana de matriz en `performance-management.ts`; 7 pruebas.
+- [x] REN-06 · Barra en vivo en el tablero (mes, búsqueda, vista, equipo,
+      asesor); el nombre del asesor siempre filtra; «Ver todo el equipo».
+- [x] REN-07 · Secciones reordenadas (equipos y pendientes → desglose →
+      comisión → análisis detallado); matriz «últimos 7 días / mes completo»
+      por URL sin tocar la cohorte.
+- [x] Revisión por lectura del código de las vistas `SUPERVISOR` y `AGENT`
+      (decisiones escritas en la spec).
+- [x] Recorrido local con sesión de administrador.
+- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [ ] Recorrido con sesión real de supervisor y de asesor (pendiente de una
+      cuenta de prueba; de José).

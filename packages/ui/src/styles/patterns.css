@@ -1144,6 +1144,23 @@
     font-size: var(--ui-text-2xs);
   }
 
+  /* REN-07: separa lo que decide de lo que explica. */
+  .performance-section-heading {
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--ui-border);
+  }
+
+  .performance-section-heading h2 {
+    margin-top: 0.25rem;
+    font-size: var(--ui-text-md);
+  }
+
+  .performance-daily-matrix
+    .performance-panel__header
+    .performance-management__row {
+    flex: none;
+  }
+
   .performance-teams tfoot td {
     border-top: 2px solid var(--ui-border);
     font-weight: 700;

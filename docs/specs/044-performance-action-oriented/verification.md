@@ -118,3 +118,40 @@ La limitación declarada en local («N sin producción» por equipo) queda cerra
 con la lectura de producción. **Hallazgo operativo**, ya conocido: dos equipos
 siguen sin supervisor (MAGISTERIAL 01, EXTERNOS); ahora el tablero lo dice en
 la cabecera del resumen.
+
+## Fase 3 (05/09/2026)
+
+1. **Pruebas** — 164 en verde en `apps/web`, 7 nuevas
+   (`rendimiento-filtros-vivos.test.tsx`): el mes aplica al cambiar y
+   conserva `orden`, `gestion` y el equipo; «Limpiar filtros» conserva el
+   mes; sin búsqueda declarada no hay caja ni `q`; la búsqueda ignora tildes y
+   mayúsculas y exige dos caracteres; el nombre del asesor siempre filtra y
+   «Ver todo el equipo» quita asesor y búsqueda; `q` y `matriz` viajan; la
+   ventana por defecto es 7 días en el mes en curso y mes completo en uno
+   cerrado; «últimos 7 días» excluye los futuros. `rendimiento-enlaces`
+   ajustado (el nombre ya no alterna). Los tres tests de
+   `directorio-filtros` siguen en verde. Tipos y lint limpios.
+2. **Recorrido local con sesión de administrador**, agosto 2026:
+   - Barra: «Mes de la venta · Buscar asesor · Equipo · Asesor», sin botón
+     «Aplicar»; «14 de 14 asesores».
+   - Escribir «cuya» (clic real y teclado): la URL pasa a `?q=cuya&month=…`
+     sin botón, ficha «Busca «cuya» ✕», desglose y matriz con solo Jimena
+     Cuya, «1 de 14 asesores»; «Ventas ingresadas 177» no cambia (AC-012).
+   - Clic en «Últimos 7 días»: `matriz=7D`, columnas 25–31 y «7 días»,
+     cabecera «Últimos 7 días transcurridos (del 25 al 31). Los indicadores
+     siguen contando el mes completo.»; la búsqueda se conserva (AC-015).
+   - Clic en el nombre de Jimena en el desglose: `agent=<id>` se añade a la
+     URL conservando `q` y `matriz`; fichas «Busca «cuya»» y «Asesor: Jimena
+     Cuya»; aparece «Ver todo el equipo» → `/performance?month=2026-08&
+     matriz=7D`; los accesos de Pendientes llevan `advisor=` y `volver=` con
+     `agent`, `q` y `matriz` (AC-014).
+   - Hallazgo corregido en el recorrido: con un asesor aislado el resumen por
+     equipo mostraba una fila «Otros equipos» huérfana; sin equipos que
+     resumir ya no hay resumen.
+   - Orden de pantalla: cabecera → controles → indicadores → [resumen por
+     equipo + pendientes] → desglose → comisión → «Análisis detallado» →
+     tendencia → matriz → conversión y composición (AC-016).
+
+**Limitación declarada**: las vistas de supervisor y de asesor se revisaron
+por lectura del código, no con sesión real (no hay cuenta de prueba con esos
+roles y las contraseñas no se escriben). Queda en tareas.

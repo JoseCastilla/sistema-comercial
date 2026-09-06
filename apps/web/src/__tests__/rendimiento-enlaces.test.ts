@@ -81,12 +81,12 @@ describe("Enlaces del tablero de Rendimiento", () => {
     );
   });
 
-  it("el nombre del asesor filtra por él y, si ya lo está, vuelve al conjunto", () => {
+  it("el nombre del asesor filtra por él, también si ya lo está (REN-06)", () => {
     expect(advisorHref({ ...alcance, agentFilter: "ALL" }, "u-ana")).toBe(
       "/performance?month=2026-09&team=t-lima&agent=u-ana",
     );
     expect(advisorHref(alcance, "u-ana")).toBe(
-      "/performance?month=2026-09&team=t-lima",
+      "/performance?month=2026-09&team=t-lima&agent=u-ana",
     );
     expect(performanceHref(alcance, "2026-08")).toBe(
       "/performance?month=2026-08&team=t-lima&agent=u-ana",

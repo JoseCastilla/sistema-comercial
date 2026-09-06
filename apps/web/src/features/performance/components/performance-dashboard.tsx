@@ -1,4 +1,3 @@
-import Form from "next/form";
 import Link from "next/link";
 
 import { getPotentialBaseCommissionCents } from "@repo/validation";
@@ -11,23 +10,30 @@ import {
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 
+import { DirectoryFilters } from "@/features/admin/components/directory-filters";
 import { OrderRealtimeStatus } from "@/features/orders/components/order-realtime-status";
 
 import {
   advisorHref,
   managementHref,
+  matrixHref,
   ordersHref,
   performanceHref,
   quotasHref,
   reconciliationHref,
   recoveryCasesHref,
   sortHref,
+  teamHref,
 } from "../performance-links";
 import {
   breakdownSortOptions,
+  defaultBreakdownSort,
   filterBreakdown,
+  filterBreakdownBySearch,
   getManagementFilterOption,
   managementFilterOptions,
+  matrixRangeOptions,
+  selectMatrixDays,
   sortBreakdown,
 } from "../performance-management";
 
@@ -441,16 +447,39 @@ function PersonalMonthlyProgress({ data }: { data: PerformanceDashboardData }) {
   );
 }
 
-function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
-  // La matriz sigue el mismo filtro de gestión y el mismo orden que el
-  // desglose: una sola lista de asesores por pantalla (REN-05).
-  const advisors = sortBreakdown(
-    filterBreakdown(data.breakdown, data.management).filter(
-      (advisor) => advisor.isActiveSeller || advisor.metrics.entered > 0,
+/**
+ * Una sola lista de asesores por pantalla: el filtro de gestión (REN-05), la
+ * búsqueda por nombre (REN-06) y el orden (REN-04) rigen igual el desglose y
+ * la matriz por día.
+ */
+function visibleAdvisors(data: PerformanceDashboardData) {
+  return sortBreakdown(
+    filterBreakdownBySearch(
+      filterBreakdown(data.breakdown, data.management),
+      data.search,
     ),
     data.sort,
   );
+}
+
+function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
+  const advisors = visibleAdvisors(data).filter(
+    (advisor) => advisor.isActiveSeller || advisor.metrics.entered > 0,
+  );
   if (data.view === "SELF" || advisors.length === 0) return null;
+
+  // REN-07: la ventana de la matriz no toca la cohorte de los indicadores.
+  const dayIndexes = selectMatrixDays(
+    data.monthProgress.days,
+    data.matrixRange,
+  );
+  const visibleDays = dayIndexes.map((index) => data.monthProgress.days[index]);
+  const firstDay = visibleDays[0]?.day;
+  const lastDay = visibleDays[visibleDays.length - 1]?.day;
+  const rangeLabel =
+    data.matrixRange === "7D"
+      ? `Últimos 7 días transcurridos (del ${firstDay} al ${lastDay})`
+      : `Mes completo de ${data.monthLabel}`;
 
   return (
     <section
@@ -463,10 +492,23 @@ function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
           <h2 id="daily-matrix-title">Ventas por asesor y día</h2>
           <p>
             Identifica continuidad, días sin producción y concentración de
-            ventas durante {data.monthLabel}.
+            ventas. {rangeLabel}. Los indicadores siguen contando el mes
+            completo.
           </p>
         </div>
-        <span className="performance-panel__note">Desliza para ver el mes</span>
+        <div className="performance-management__row" aria-label="Ventana">
+          {matrixRangeOptions.map((option) => (
+            <Link
+              aria-current={
+                data.matrixRange === option.key ? "true" : undefined
+              }
+              href={matrixHref(data, option.key)}
+              key={option.key}
+            >
+              {option.label}
+            </Link>
+          ))}
+        </div>
       </header>
 
       <div className="performance-daily-matrix__wrap">
@@ -474,18 +516,29 @@ function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
           <thead>
             <tr>
               <th scope="col">Asesor</th>
-              {data.monthProgress.days.map((day) => (
-                <th
-                  data-future={day.isFuture ? "true" : undefined}
-                  data-today={day.isToday ? "true" : undefined}
-                  key={day.key}
-                  scope="col"
-                  title={day.label}
-                >
-                  {day.day}
-                </th>
-              ))}
-              <th scope="col">Total</th>
+              {visibleDays.map((day) =>
+                day ? (
+                  <th
+                    data-future={day.isFuture ? "true" : undefined}
+                    data-today={day.isToday ? "true" : undefined}
+                    key={day.key}
+                    scope="col"
+                    title={day.label}
+                  >
+                    {day.day}
+                  </th>
+                ) : null,
+              )}
+              <th
+                scope="col"
+                title={
+                  data.matrixRange === "7D"
+                    ? "Ventas ingresadas en los días visibles"
+                    : "Ventas ingresadas en el mes"
+                }
+              >
+                {data.matrixRange === "7D" ? "7 días" : "Mes"}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -497,7 +550,8 @@ function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
                   </Link>
                   <small>{advisor.teamName ?? "Sin equipo"}</small>
                 </th>
-                {advisor.dailyEntered.map((value, index) => {
+                {dayIndexes.map((index) => {
+                  const value = advisor.dailyEntered[index] ?? 0;
                   const day = data.monthProgress.days[index];
                   const isFuture = day?.isFuture ?? false;
                   return (
@@ -518,7 +572,13 @@ function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
                     </td>
                   );
                 })}
-                <td>{advisor.metrics.entered}</td>
+                <td>
+                  {dayIndexes.reduce(
+                    (total, index) =>
+                      total + (advisor.dailyEntered[index] ?? 0),
+                    0,
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -922,7 +982,9 @@ function ManagementBar({
       <p aria-live="polite" className="performance-management__meaning">
         {active
           ? `${active.label}: ${active.definition} ${shown} de ${total} asesores.`
-          : `${total} asesores en el alcance.`}
+          : data.search
+            ? `Busca «${data.search}»: ${shown} de ${total} asesores.`
+            : `${total} asesores en el alcance.`}
       </p>
     </div>
   );
@@ -931,10 +993,7 @@ function ManagementBar({
 function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
   if (data.breakdown.length === 0 && !data.unattributed) return null;
 
-  const rows = sortBreakdown(
-    filterBreakdown(data.breakdown, data.management),
-    data.sort,
-  );
+  const rows = visibleAdvisors(data);
   const showsEstimate = data.showCommission && data.role !== "AGENT";
   const columns = 7 + (data.quotaWindow ? 1 : 0) + (showsEstimate ? 1 : 0);
 
@@ -1052,7 +1111,7 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                 </td>
               </tr>
             ) : null}
-            {data.unattributed && data.management === null ? (
+            {data.unattributed && data.management === null && !data.search ? (
               <tr data-unattributed="true">
                 <td>
                   <strong>Sin asesor</strong>
@@ -1099,6 +1158,10 @@ export function PerformanceDashboard({
       : data.role === "BACKOFFICE"
         ? "Prioriza los bloqueos operativos que afectan la entrega y activación de las ventas."
         : "Compara resultados, identifica desvíos y abre las órdenes que requieren intervención.";
+  const visibleRows = visibleAdvisors(data).length;
+  // REN-07: arriba lo que decide (equipos y pendientes); si el alcance es un
+  // asesor o la vista personal, en su lugar va el avance del mes.
+  const showsTeams = data.teams.length > 0;
 
   return (
     <div className="ui-page-stack performance-dashboard">
@@ -1107,6 +1170,11 @@ export function PerformanceDashboard({
         eyebrow={data.scopeLabel}
         meta={
           <span className="flex flex-wrap items-center justify-end gap-2">
+            {data.view !== "SELF" && data.agentFilter !== "ALL" ? (
+              <Link className="ui-directory__manage" href={teamHref(data)}>
+                Ver todo el equipo
+              </Link>
+            ) : null}
             <OrderRealtimeStatus />
             <span>Actualizado: {data.generatedAt}</span>
           </span>
@@ -1145,57 +1213,89 @@ export function PerformanceDashboard({
           )}
         </div>
 
-        <Form action="/performance" className="performance-filter">
-          {data.canSwitchView ? (
-            <label>
-              <span>Vista</span>
-              <select defaultValue={data.view} name="view">
-                <option value="SELF">Mi rendimiento</option>
-                <option value="TEAM">Mi equipo</option>
-              </select>
-            </label>
-          ) : null}
-          <label>
-            <span>Mes</span>
-            <input
-              defaultValue={data.month}
-              max={data.currentMonth}
-              name="month"
-              type="month"
-            />
-          </label>
-          {data.showTeamFilter ? (
-            <label>
-              <span>Equipo</span>
-              <select defaultValue={data.teamFilter} name="team">
-                <option value="ALL">
-                  {data.role === "SUPERVISOR"
-                    ? "Mis equipos"
-                    : "Toda la organización"}
-                </option>
-                {data.teamOptions.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {data.showAdvisorFilter ? (
-            <label>
-              <span>Asesor</span>
-              <select defaultValue={data.agentFilter} name="agent">
-                <option value="ALL">Todos los asesores</option>
-                {data.advisorOptions.map((advisor) => (
-                  <option key={advisor.id} value={advisor.id}>
-                    {advisor.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          <button type="submit">Aplicar</button>
-        </Form>
+        {/*
+         * SPEC-044 REN-06: la misma barra en vivo de los directorios. El mes,
+         * el equipo y el asesor aplican al cambiar; la búsqueda acota el
+         * desglose y la matriz; los filtros activos se ven y se quitan uno a
+         * uno. El orden, el filtro de gestión y la ventana de la matriz viajan
+         * intactos.
+         */}
+        <DirectoryFilters
+          basePath="/performance"
+          fields={[
+            {
+              key: "month",
+              label: "Mes de la venta",
+              value: data.month,
+              max: data.currentMonth,
+            },
+          ]}
+          preserve={{
+            ...(data.sort !== defaultBreakdownSort ? { orden: data.sort } : {}),
+            ...(data.management ? { gestion: data.management } : {}),
+            ...(data.matrixRangeRequested
+              ? { matriz: data.matrixRangeRequested }
+              : {}),
+          }}
+          resultLabel={
+            data.view === "SELF"
+              ? "Solo tus ventas"
+              : `${visibleRows} de ${data.breakdown.length} asesores`
+          }
+          search={
+            data.view === "SELF"
+              ? undefined
+              : {
+                  value: data.search,
+                  label: "Buscar asesor",
+                  placeholder: "Nombre del asesor",
+                }
+          }
+          selects={[
+            ...(data.canSwitchView
+              ? [
+                  {
+                    key: "view",
+                    label: "Vista",
+                    value: data.view === "SELF" ? "SELF" : "",
+                    emptyLabel: "Mi equipo",
+                    options: [{ value: "SELF", label: "Mi rendimiento" }],
+                  },
+                ]
+              : []),
+            ...(data.showTeamFilter
+              ? [
+                  {
+                    key: "team",
+                    label: "Equipo",
+                    value: data.teamFilter === "ALL" ? "" : data.teamFilter,
+                    emptyLabel:
+                      data.role === "SUPERVISOR"
+                        ? "Mis equipos"
+                        : "Toda la organización",
+                    options: data.teamOptions.map((team) => ({
+                      value: team.id,
+                      label: team.name,
+                    })),
+                  },
+                ]
+              : []),
+            ...(data.showAdvisorFilter
+              ? [
+                  {
+                    key: "agent",
+                    label: "Asesor",
+                    value: data.agentFilter === "ALL" ? "" : data.agentFilter,
+                    emptyLabel: "Todos los asesores",
+                    options: data.advisorOptions.map((advisor) => ({
+                      value: advisor.id,
+                      label: advisor.name,
+                    })),
+                  },
+                ]
+              : []),
+          ]}
+        />
       </section>
 
       {/*
@@ -1254,7 +1354,9 @@ export function PerformanceDashboard({
       </MetricGroup>
 
       <div className="performance-decision-grid">
-        {data.view === "SELF" ? (
+        {showsTeams ? (
+          <TeamSummaryPanel data={data} />
+        ) : data.view === "SELF" ? (
           <PersonalMonthlyProgress data={data} />
         ) : (
           <SalesTrendOverview data={data} />
@@ -1293,28 +1395,7 @@ export function PerformanceDashboard({
         </section>
       </div>
 
-      <TeamSummaryPanel data={data} />
-
       <AdvisorBreakdown data={data} />
-
-      <TeamDailyMatrix data={data} />
-
-      <div className="performance-insight-grid">
-        <section className="performance-panel">
-          <header className="performance-panel__header">
-            <div>
-              <p className="performance-panel__eyebrow">Conversión</p>
-              <h2>Avance de las ventas ingresadas</h2>
-            </div>
-            <span className="performance-panel__note">Todas las ventas</span>
-          </header>
-          <Funnel data={data} />
-        </section>
-
-        <SalesOperationMix data={data} />
-      </div>
-
-      {data.view === "SELF" ? <DailyPerformancePulse data={data} /> : null}
 
       {data.showCommission ? (
         <section className="performance-panel performance-commission">
@@ -1339,7 +1420,7 @@ export function PerformanceDashboard({
               {data.role !== "AGENT" ? (
                 <Link
                   className="performance-commission__review"
-                  href={`/performance/quotas?period=${data.month}`}
+                  href={quotasHref(data, data.quotaWindow?.key)}
                 >
                   Asignar cuotas
                 </Link>
@@ -1401,6 +1482,35 @@ export function PerformanceDashboard({
           </p>
         </section>
       ) : null}
+
+      {/* REN-07: el análisis va después de lo que decide. */}
+      <header className="performance-section-heading">
+        <p className="performance-panel__eyebrow">Análisis detallado</p>
+        <h2>Ritmo, conversión y composición</h2>
+      </header>
+
+      {showsTeams && data.view !== "SELF" ? (
+        <SalesTrendOverview data={data} />
+      ) : null}
+
+      <TeamDailyMatrix data={data} />
+
+      <div className="performance-insight-grid">
+        <section className="performance-panel">
+          <header className="performance-panel__header">
+            <div>
+              <p className="performance-panel__eyebrow">Conversión</p>
+              <h2>Avance de las ventas ingresadas</h2>
+            </div>
+            <span className="performance-panel__note">Todas las ventas</span>
+          </header>
+          <Funnel data={data} />
+        </section>
+
+        <SalesOperationMix data={data} />
+      </div>
+
+      {data.view === "SELF" ? <DailyPerformancePulse data={data} /> : null}
     </div>
   );
 }
