@@ -61,7 +61,9 @@
 - [x] «Asignar cuotas» solo en la vista de equipo.
 - [x] SV-02 · Un supervisor no fija su propia cuota (página y acción).
 - [x] Verificación de destinos en producción con la sesión: Pedidos con advisor=<él> devuelve 0 (= 0 por recuperar); Recupero con advisor=<él> «Casos abiertos 1» (= 1); conciliación con agent=<él> muestra su nombre y 0 órdenes (= 0 ingresadas).
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción tras el despliegue (casos 1 = 1,
+      por recuperar 0 = 0, conciliación a su nombre, fila propia de Cuotas
+      deshabilitada).
 
 ## Fase 4 · Supervisor (05/09/2026)
 

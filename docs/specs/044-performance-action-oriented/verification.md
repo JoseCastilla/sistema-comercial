@@ -300,3 +300,18 @@ también para vender y supervisor con varios equipos.
    equipo. Tipos y lint limpios.
 2. **Destinos comprobados en producción con su sesión antes de entregar**
    (solo lectura): Pedidos con advisor=<él> devuelve 0 (= 0 por recuperar); Recupero con advisor=<él> «Casos abiertos 1» (= 1); conciliación con agent=<él> muestra su nombre y 0 órdenes (= 0 ingresadas).
+
+3. **Lectura de producción con la sesión del supervisor que vende** (solo
+   lectura, Francis Pary, tras el despliegue de `50dba3d`):
+   - «Mi rendimiento»: los tres accesos llevan `advisor=<él>`; «Casos de
+     recupero abiertos 1» → Recupero «Casos abiertos 1»; «Pedidos por
+     recuperar 0» → Pedidos «0 órdenes»; «Revisar cálculo» →
+     `reason=ALL&agent=<él>` con cabecera a su nombre y «Órdenes del mes 0»
+     (AC-028).
+   - Comisión en «Mi rendimiento»: solo «Revisar cálculo»; en «Mi equipo»:
+     «Revisar cálculo · Asignar cuotas» (AC-029).
+   - Cuotas: su fila «Francis Pary · AYACUCHO - MAGISTERIAL 02 · Es tu propia
+     cuota: la fija administración.» (AC-030).
+
+**Pendiente**: validación con un supervisor de varios equipos (en producción
+hoy cada supervisor tiene un solo equipo).
