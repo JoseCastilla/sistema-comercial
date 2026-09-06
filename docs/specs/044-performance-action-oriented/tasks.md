@@ -45,6 +45,7 @@
 - [x] Revisión por lectura del código de las vistas `SUPERVISOR` y `AGENT`
       (decisiones escritas en la spec).
 - [x] Recorrido local con sesión de administrador.
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción (barra en vivo, búsqueda «cuya»
+      1 de 19 sin tocar 278 ingresadas, matriz de días transcurridos).
 - [ ] Recorrido con sesión real de supervisor y de asesor (pendiente de una
       cuenta de prueba; de José).

@@ -155,3 +155,19 @@ la cabecera del resumen.
 **Limitación declarada**: las vistas de supervisor y de asesor se revisaron
 por lectura del código, no con sesión real (no hay cuenta de prueba con esos
 roles y las contraseñas no se escriben). Queda en tareas.
+
+3. **Lectura de producción** (solo lectura, sesión de administrador, tras el
+   despliegue de `6456c46`, setiembre 2026, día 5):
+   - Barra en vivo «Mes de la venta · Buscar asesor · Equipo · Asesor», sin
+     «Aplicar»; «19 de 19 asesores».
+   - Escribir «cuya» (clic y teclado reales): URL `?q=cuya&month=2026-09`,
+     ficha «Busca «cuya» ✕», desglose y matriz con solo Jimena Cuya («1 de 19
+     asesores»); «Ventas ingresadas 278» y el resumen por equipo (4 filas) no
+     cambian (AC-012).
+   - Orden de pantalla igual al local: controles → indicadores → resumen por
+     equipo + pendientes → desglose → comisión → «Análisis detallado» →
+     tendencia → matriz → conversión y composición (AC-016).
+   - Matriz por defecto en 7 días con solo cinco días transcurridos: columnas
+     1–5 y «7 días». La cabecera decía «Últimos 7 días transcurridos (del 1 al
+     5)»; se ajustó a «Días transcurridos del mes (del 1 al 5)» cuando hay
+     menos de siete (AC-015).

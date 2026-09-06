@@ -1,7 +1,7 @@
 # SPEC-044 — Rendimiento orientado a la acción
 
-Estado: **fase 3 construida** (05/09/2026); fases 1 y 2 entregadas y
-verificadas en producción. Las vistas `SUPERVISOR` y `AGENT` se revisaron por
+Estado: **fases 1, 2 y 3 entregadas y verificadas en producción**
+(05/09/2026). Las vistas `SUPERVISOR` y `AGENT` se revisaron por
 lectura del código; el recorrido con sesión real sigue pendiente. Plan «Rendimiento orientado a
 la acción» v1.0, revisado con José el 05/09/2026 sobre la vista de `ADMIN`;
 las revisiones de `SUPERVISOR` y `AGENT` quedan pendientes. Se apoya en

@@ -478,7 +478,9 @@ function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
   const lastDay = visibleDays[visibleDays.length - 1]?.day;
   const rangeLabel =
     data.matrixRange === "7D"
-      ? `Últimos 7 días transcurridos (del ${firstDay} al ${lastDay})`
+      ? visibleDays.length < 7
+        ? `Días transcurridos del mes (del ${firstDay} al ${lastDay})`
+        : `Últimos 7 días transcurridos (del ${firstDay} al ${lastDay})`
       : `Mes completo de ${data.monthLabel}`;
 
   return (
