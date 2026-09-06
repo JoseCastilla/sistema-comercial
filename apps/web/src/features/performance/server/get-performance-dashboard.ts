@@ -24,6 +24,7 @@ import { database } from "@/server/database";
 import { toMetricInput } from "./order-metric-input";
 
 import { describeAcceleratorWindows } from "../accelerator-windows";
+import { buildDeliveryTrend } from "../delivery-trend";
 import {
   normalizeSearchTerm,
   parseBreakdownSort,
@@ -124,6 +125,7 @@ function buildQuotaProgress(
   windowKey: "ONE" | "TWO" | null,
   target: number,
   individual: boolean,
+  source: PerformanceQuotaProgress["source"],
 ): PerformanceQuotaProgress | null {
   if (!windowKey) return null;
   const window = metrics.accelerators.find((item) => item.key === windowKey);
@@ -137,6 +139,64 @@ function buildQuotaProgress(
     reached: delivered >= target,
     nextTarget: individual ? (window?.nextTarget ?? null) : null,
     missingForNextTarget: individual ? (window?.missingForNextTarget ?? 0) : 0,
+    ratio: quotaRatio(delivered, target),
+    source,
+  };
+}
+
+function quotaRatio(delivered: number, target: number): number {
+  if (target > 0) return delivered / target;
+  return delivered > 0 ? 1 : 0;
+}
+
+/**
+ * SPEC-047 BR-008: la cuota del alcance es la suma de las cuotas de los
+ * equipos resumidos; su origen es «mezcla» cuando unos la tienen asignada y
+ * otros van por defecto. Sin equipos que sumar no hay agregado.
+ */
+function aggregateTeamQuota(teams: readonly PerformanceTeamSummary[]): {
+  quota: PerformanceQuotaProgress;
+  teams: { total: number; assigned: number };
+} | null {
+  const rows = teams.filter(
+    (
+      team,
+    ): team is PerformanceTeamSummary & { quota: PerformanceQuotaProgress } =>
+      team.kind === "TEAM" && team.quota !== null,
+  );
+  if (rows.length === 0) return null;
+
+  const target = rows.reduce((total, team) => total + team.quota.target, 0);
+  const delivered = rows.reduce(
+    (total, team) => total + team.quota.delivered,
+    0,
+  );
+  const confirmed = rows.reduce(
+    (total, team) => total + team.quota.confirmed,
+    0,
+  );
+  const assigned = rows.filter(
+    (team) => team.quota.source === "ASSIGNED",
+  ).length;
+
+  return {
+    quota: {
+      target,
+      delivered,
+      confirmed,
+      missing: Math.max(0, target - delivered),
+      reached: delivered >= target,
+      nextTarget: null,
+      missingForNextTarget: 0,
+      ratio: quotaRatio(delivered, target),
+      source:
+        assigned === rows.length
+          ? "ASSIGNED"
+          : assigned === 0
+            ? "DEFAULT"
+            : "MIXED",
+    },
+    teams: { total: rows.length, assigned },
   };
 }
 
@@ -215,7 +275,13 @@ function buildTeamSummaries(input: TeamSummaryInput): PerformanceTeamSummary[] {
       sellersWithoutSales: sellers.size - sellersWithSales,
       metrics,
       openRecoveryCases: input.openRecoveryCasesByTeam.get(team.id) ?? 0,
-      quota: buildQuotaProgress(metrics, input.quotaWindowKey, target, false),
+      quota: buildQuotaProgress(
+        metrics,
+        input.quotaWindowKey,
+        target,
+        false,
+        input.teamQuotaTargets.has(team.id) ? "ASSIGNED" : "DEFAULT",
+      ),
     };
   });
 
@@ -366,6 +432,7 @@ function groupByAgent(
             ? (quotaTargets.get(id) ?? getDefaultQuotaTarget(quotaWindowKey))
             : 0,
           true,
+          quotaTargets.has(id) ? "ASSIGNED" : "DEFAULT",
         ),
       };
     })
@@ -722,69 +789,90 @@ export async function getPerformanceDashboard(
     todayRange.start.getTime() - 6 * 24 * 60 * 60 * 1000,
   );
 
-  const [orders, previousOrders, activityOrders, confirmationOrders] =
-    await Promise.all([
-      database.ditoOrder.findMany({
-        where: {
-          organizationId,
-          AND: [
-            accessWhere,
-            teamWhere,
-            {
-              registeredAt: { gte: currentRange.start, lt: currentRange.end },
-            },
-          ],
-        },
-        select: orderSelect,
-      }),
-      database.ditoOrder.findMany({
-        where: {
-          organizationId,
-          AND: [
-            accessWhere,
-            teamWhere,
-            {
-              registeredAt: { gte: previousRange.start, lt: previousRange.end },
-            },
-          ],
-        },
-        select: orderSelect,
-      }),
-      showDailyPulse
-        ? database.ditoOrder.findMany({
-            where: {
-              organizationId,
-              AND: [
-                accessWhere,
-                teamWhere,
-                {
-                  registeredAt: {
-                    gte: lastSevenDaysStart,
-                    lt: todayRange.end,
-                  },
+  const [
+    orders,
+    previousOrders,
+    activityOrders,
+    confirmationOrders,
+    deliveryOrders,
+  ] = await Promise.all([
+    database.ditoOrder.findMany({
+      where: {
+        organizationId,
+        AND: [
+          accessWhere,
+          teamWhere,
+          {
+            registeredAt: { gte: currentRange.start, lt: currentRange.end },
+          },
+        ],
+      },
+      select: orderSelect,
+    }),
+    database.ditoOrder.findMany({
+      where: {
+        organizationId,
+        AND: [
+          accessWhere,
+          teamWhere,
+          {
+            registeredAt: { gte: previousRange.start, lt: previousRange.end },
+          },
+        ],
+      },
+      select: orderSelect,
+    }),
+    showDailyPulse
+      ? database.ditoOrder.findMany({
+          where: {
+            organizationId,
+            AND: [
+              accessWhere,
+              teamWhere,
+              {
+                registeredAt: {
+                  gte: lastSevenDaysStart,
+                  lt: todayRange.end,
                 },
-              ],
-            },
-            select: orderSelect,
-          })
-        : Promise.resolve([]),
-      database.ditoOrder.findMany({
-        where: {
-          organizationId,
-          AND: [
-            accessWhere,
-            teamWhere,
-            {
-              closedAt: {
-                gte: currentRange.start,
-                lt: currentRange.end,
               },
+            ],
+          },
+          select: orderSelect,
+        })
+      : Promise.resolve([]),
+    database.ditoOrder.findMany({
+      where: {
+        organizationId,
+        AND: [
+          accessWhere,
+          teamWhere,
+          {
+            closedAt: {
+              gte: currentRange.start,
+              lt: currentRange.end,
             },
-          ],
-        },
-        select: orderSelect,
-      }),
-    ]);
+          },
+        ],
+      },
+      select: orderSelect,
+    }),
+    // SPEC-047 BR-009: entregas registradas en el mes, de cualquier mes de
+    // venta. Es actividad, no cohorte.
+    database.ditoOrder.findMany({
+      where: {
+        organizationId,
+        AND: [
+          accessWhere,
+          teamWhere,
+          {
+            deliveryStatus: "DELIVERED",
+            deliveredAt: { gte: currentRange.start, lt: currentRange.end },
+          },
+        ],
+      },
+      select: { deliveryStatus: true, deliveredAt: true, registeredAt: true },
+    }),
+  ]);
 
   /*
    * SPEC-044 REN-03: los casos de Recupero de ventas no son pedidos. Se
@@ -1121,6 +1209,53 @@ export async function getPerformanceDashboard(
     monthProgress.days.length,
   );
 
+  const teams = buildTeamSummaries({
+    orders,
+    teams: summarizedTeams,
+    supervisorNames,
+    sellersByTeam,
+    membersByTeam,
+    openRecoveryCasesByTeam,
+    unassignedRecoveryCases,
+    quotaWindowKey: relevantWindow?.key ?? null,
+    teamQuotaTargets,
+    redact: access.role === "BACKOFFICE",
+  });
+  const breakdown = isIndividualScope
+    ? []
+    : groupByAgent(
+        orders,
+        comparablePreviousOrders,
+        access.role,
+        primaryTeamNames,
+        activeSellers,
+        monthProgress.days.map((day) => day.key),
+        relevantWindow?.key ?? null,
+        quotaTargets,
+        openRecoveryCasesByAgent,
+      );
+  // ASE-01: la misma cuota que ve supervisión para esta persona y ventana.
+  const personalQuota =
+    isIndividualScope && relevantWindow
+      ? buildQuotaProgress(
+          scopedMetrics,
+          relevantWindow.key,
+          quotaTargets.get(access.userId) ??
+            getDefaultQuotaTarget(relevantWindow.key),
+          true,
+          quotaTargets.has(access.userId) ? "ASSIGNED" : "DEFAULT",
+        )
+      : null;
+  // SPEC-047 BR-008: la cuota del alcance —equipos sumados, asesor aislado o
+  // la propia— para la tarjeta y la barra.
+  const aggregatedQuota = aggregateTeamQuota(teams);
+  const scopeQuota =
+    aggregatedQuota?.quota ??
+    (selectedAdvisor
+      ? (breakdown.find((item) => item.id === selectedAdvisor.id)?.quota ??
+        null)
+      : personalQuota);
+
   return {
     generatedAt: formatLimaDateTimeWithYear(now),
     role: access.role,
@@ -1211,7 +1346,8 @@ export async function getPerformanceDashboard(
       ? {
           key: relevantWindow.key,
           label: relevantWindow.label,
-          isActive: currentWindow !== null,
+          // Un mes cerrado no tiene tramo en curso, aunque hoy sí lo haya.
+          isActive: currentWindow !== null && currentRange.key === currentMonth,
           startDay: relevantWindow.windowStartDay,
           endDay: relevantWindow.windowEndDay ?? monthProgress.days.length,
         }
@@ -1228,48 +1364,23 @@ export async function getPerformanceDashboard(
       selectedAdvisor !== null &&
       teamFilter !== "ALL" &&
       !allActiveSellers.has(selectedAdvisor.id),
-    // ASE-01: la misma cuota que ve supervisión para esta persona y ventana.
-    personalQuota:
-      isIndividualScope && relevantWindow
-        ? buildQuotaProgress(
-            scopedMetrics,
-            relevantWindow.key,
-            quotaTargets.get(access.userId) ??
-              getDefaultQuotaTarget(relevantWindow.key),
-            true,
-          )
-        : null,
+    personalQuota,
     acceleratorWindows,
     todayDay,
     pendingBeforeMonth,
     selfAdvisorId:
       isIndividualScope && access.role === "SUPERVISOR" ? access.userId : null,
     adminPending,
-    teams: buildTeamSummaries({
-      orders,
-      teams: summarizedTeams,
-      supervisorNames,
-      sellersByTeam,
-      membersByTeam,
-      openRecoveryCasesByTeam,
-      unassignedRecoveryCases,
-      quotaWindowKey: relevantWindow?.key ?? null,
-      teamQuotaTargets,
-      redact: access.role === "BACKOFFICE",
-    }),
+    teams,
     openRecoveryCases,
-    breakdown: isIndividualScope
-      ? []
-      : groupByAgent(
-          orders,
-          comparablePreviousOrders,
-          access.role,
-          primaryTeamNames,
-          activeSellers,
-          monthProgress.days.map((day) => day.key),
-          relevantWindow?.key ?? null,
-          quotaTargets,
-          openRecoveryCasesByAgent,
-        ),
+    breakdown,
+    deliveryTrend: buildDeliveryTrend(
+      deliveryOrders,
+      currentRange.start,
+      currentRange.end,
+      now,
+    ),
+    scopeQuota,
+    scopeQuotaTeams: aggregatedQuota?.teams ?? null,
   };
 }

@@ -13,16 +13,21 @@
 - [x] BR-005 · Filtro `SIN_ENTREGAS`.
 - [x] BR-006 · Nota de fecha en cada bloque; prueba del cruce de meses.
 - [x] Pruebas, tipos y lint en verde; recorrido local.
-- [ ] Verificación en producción.
+- [x] Verificación en producción (06/09/2026).
 
 ## Fase 2 — Cumplimiento y resumen visual (RD-02, RD-03)
 
-- [ ] BR-007 · Origen y porcentaje de la cuota en todas las celdas.
-- [ ] BR-008 · Cuatro tarjetas con «Cuota del tramo».
-- [ ] BR-009 · Tendencia de entregadas por día de entrega registrada.
-- [ ] BR-010 · Barras de cumplimiento por equipo.
-- [ ] BR-011 · Avisos prioritarios.
-- [ ] BR-012 · Accesos al detalle.
+- [x] BR-007 · Origen y porcentaje de la cuota en todas las celdas
+      (06/09/2026).
+- [x] BR-008 · Cuatro tarjetas con «Cuota del tramo».
+- [x] BR-009 · Tendencia de entregadas por día de entrega registrada.
+- [x] BR-010 · Barras de cumplimiento por equipo.
+- [x] BR-011 · Avisos prioritarios.
+- [x] BR-012 · Accesos al detalle.
+- [x] Corrección de paso: en un mes cerrado la ventana de cuota ya no se
+      llama «en curso» (`quotaWindow.isActive` exige el mes actual).
+- [x] Pruebas, tipos y lint en verde; recorrido local.
+- [ ] Verificación en producción.
 
 ## Fase 3 — Bloques separados (RD-05)
 

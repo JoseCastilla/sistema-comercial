@@ -56,6 +56,8 @@ function advisor(
           reached: quota.delivered >= quota.target,
           nextTarget: null,
           missingForNextTarget: 0,
+          ratio: quota.target > 0 ? quota.delivered / quota.target : 0,
+          source: "DEFAULT" as const,
         }
       : null,
   };

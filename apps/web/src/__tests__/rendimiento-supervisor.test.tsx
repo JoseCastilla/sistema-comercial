@@ -62,6 +62,8 @@ function advisor(
             reached: false,
             nextTarget: overrides.nextTarget,
             missingForNextTarget: overrides.missingForNextTarget ?? 0,
+            ratio: 0,
+            source: "DEFAULT" as const,
           },
   };
 }
