@@ -48,7 +48,8 @@
 - [x] PL-11 · Textos de «Checa tus líneas»; etiqueta accesible del selector
       de equipo del triage; reparto operable con teclado (fase 2).
 - [x] Recorrido local con sesión de administrador: DNI con «Tu actividad» (mes, hoy, DNI distintos; pista «0 nuevas al proveedor · 0 desde la ficha guardada») y «Toda la organización» aparte, saldo «que reportó el proveedor en la última consulta nueva, el 29 ago. 2026…; no es un saldo en tiempo real» (AC-011). Importar ventas DITO: «Ver el historial completo (6 cargas)» → «Historial de cargas · página 1 de 1», tabla sin ningún formulario de borrado (AC-012). «Checa tus líneas» con el texto sobre lo no auditado y la salida externa; a 375 px sin desbordamiento horizontal, marco de 323 × 841 con el botón «Abrir fuera del sistema» visible (AC-013).
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción (organización 255 = 229 nuevas +
+      26 guardadas; saldo 389 del 06/09 8:27; historial 0 cargas; textos).
 
 ## Fase 0 · Operación (spec propia, pendiente de abrir)
 
