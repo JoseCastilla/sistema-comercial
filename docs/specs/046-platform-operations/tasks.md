@@ -12,6 +12,7 @@
       y retención, script de ensayo de restauración.
 - [x] BR-005 · Migración que retira las tablas y tipos `mobile_debt`.
 - [x] BR-006 · `.env.example` y `turbo.json` saneado.
+- [x] BR-007 · Cuatro consultas automáticas a Máximo (08, 12, 15, 18).
 - [x] Verificación local: rutas 401/200, copia de 2,2 MB verificada, ensayo
       de restauración 1 / 177 / 1 992 = origen, migración aplicada.
 

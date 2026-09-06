@@ -29,6 +29,7 @@ import {
   resolveMatrixRange,
 } from "../performance-management";
 
+import { getAdminPendingSummary } from "./get-admin-pending-summary";
 import {
   getPerformanceAccessWhere,
   resolveRequestedAdvisor,
@@ -1037,6 +1038,16 @@ export async function getPerformanceDashboard(
     ]).values(),
   ].sort((left, right) => left.name.localeCompare(right.name, "es"));
 
+  // PL-01: el resumen administrativo solo tiene sentido con el alcance de
+  // toda la organización; filtrado, sus destinos ya no coincidirían.
+  const adminPending =
+    access.role === "ADMIN" &&
+    !isIndividualScope &&
+    teamFilter === "ALL" &&
+    selectedAdvisor === null
+      ? await getAdminPendingSummary(organizationId, access.userId, now)
+      : null;
+
   const scopedMetrics = calculateScopedMetrics(orders, isIndividualScope);
   const scopedPreviousMetrics = calculateScopedMetrics(
     comparablePreviousOrders,
@@ -1221,6 +1232,7 @@ export async function getPerformanceDashboard(
     pendingBeforeMonth,
     selfAdvisorId:
       isIndividualScope && access.role === "SUPERVISOR" ? access.userId : null,
+    adminPending,
     teams: buildTeamSummaries({
       orders,
       teams: summarizedTeams,

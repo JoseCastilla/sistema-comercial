@@ -1376,6 +1376,82 @@ function EarlierPendingBlock({ data }: { data: PerformanceDashboardData }) {
   );
 }
 
+/**
+ * SPEC-045 PL-01: lo que administración tiene que resolver o cubrir hoy,
+ * por bloque y sin sumar poblaciones que se solapan. Los pedidos del mes ya
+ * están en «Pendientes de intervención»; aquí van casos, personas y
+ * logística, cada uno con su definición, su alcance temporal y su dueño.
+ */
+function AdminPendingSummary({ data }: { data: PerformanceDashboardData }) {
+  const groups = data.adminPending;
+  if (!groups) return null;
+
+  return (
+    <section
+      className="performance-panel performance-admin-pending"
+      aria-labelledby="admin-pending-title"
+    >
+      <header className="performance-panel__header">
+        <div>
+          <p className="performance-panel__eyebrow">Administración</p>
+          <h2 id="admin-pending-title">Pendientes por resolver o cubrir</h2>
+          <p>
+            Casos, personas y logística con su definición, su alcance en el
+            tiempo y quién los resuelve. Los pedidos del mes están arriba, en
+            «Pendientes de intervención». No hay un total: son poblaciones que
+            se solapan.
+          </p>
+        </div>
+      </header>
+      <div className="ui-table-wrap">
+        <table className="ui-table ui-table--figures">
+          <thead>
+            <tr>
+              <th scope="col">Pendiente</th>
+              <th scope="col">Qué cuenta</th>
+              <th scope="col">Cantidad</th>
+              <th scope="col">Quién lo resuelve</th>
+            </tr>
+          </thead>
+          {groups.map((group) => (
+            <tbody key={group.key}>
+              <tr className="performance-admin-pending__group">
+                <th colSpan={4} scope="rowgroup">
+                  {group.title}
+                  <small>{group.scope}</small>
+                </th>
+              </tr>
+              {group.items.map((item) => (
+                <tr
+                  data-attention={item.count > 0 ? "true" : undefined}
+                  key={item.key}
+                >
+                  <td>
+                    <strong>{item.label}</strong>
+                  </td>
+                  <td className="performance-admin-pending__definition">
+                    {item.definition}
+                  </td>
+                  <td>
+                    {item.count > 0 ? (
+                      <Link href={item.href}>{item.count}</Link>
+                    ) : (
+                      0
+                    )}
+                  </td>
+                  <td className="performance-admin-pending__definition">
+                    {item.responsible}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          ))}
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function PerformanceDashboard({
   data,
 }: {
@@ -1639,6 +1715,8 @@ export function PerformanceDashboard({
           </div>
         </section>
       </div>
+
+      <AdminPendingSummary data={data} />
 
       {/* ASE-05: la actividad de hoy va antes del análisis, aparte del mes. */}
       {data.view === "SELF" ? <DailyPerformancePulse data={data} /> : null}

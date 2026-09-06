@@ -1,6 +1,7 @@
 import type { PerformanceMetrics } from "@repo/validation";
 
 import type { AcceleratorWindowView } from "./accelerator-windows";
+import type { AdminPendingGroup } from "./admin-pending";
 import type {
   BreakdownSortKey,
   ManagementFilterKey,
@@ -192,6 +193,11 @@ export interface PerformanceDashboardData {
   } | null;
   /** Resumen por equipo; vacío en la vista personal o con un asesor aislado. */
   teams: PerformanceTeamSummary[];
+  /**
+   * Resumen administrativo de pendientes (SPEC-045 PL-01): solo para ADMIN
+   * con alcance de organización; `null` en cualquier otro caso.
+   */
+  adminPending: AdminPendingGroup[] | null;
   workforce: {
     activeSellers: number;
     sellersWithSales: number;

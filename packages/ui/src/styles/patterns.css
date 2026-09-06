@@ -1179,6 +1179,34 @@
     flex: none;
   }
 
+  /* PL-01: bloques del resumen administrativo dentro de una sola tabla. */
+  .performance-admin-pending__group th {
+    padding-top: 0.9rem;
+    text-align: left;
+    font-size: var(--ui-text-sm);
+    font-weight: 700;
+    background: var(--ui-surface-subtle);
+  }
+
+  .performance-admin-pending__group th small {
+    display: block;
+    margin-top: 0.1rem;
+    color: var(--ui-text-soft);
+    font-size: var(--ui-text-3xs);
+    font-weight: 400;
+  }
+
+  .performance-admin-pending__definition {
+    white-space: normal !important;
+    text-align: left !important;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-2xs);
+  }
+
+  .performance-admin-pending tr[data-attention="true"] td strong {
+    color: var(--ui-warning);
+  }
+
   .performance-teams tfoot td {
     border-top: 2px solid var(--ui-border);
     font-weight: 700;

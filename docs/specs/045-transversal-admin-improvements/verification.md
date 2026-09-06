@@ -46,3 +46,22 @@
      enlazan a su tarjeta (AC-003).
    - PL-06: «Pedidos que requieren acción 347» → `/orders?status=LOGISTICS`
      → «50 en esta página de **347** encontradas» (AC-004).
+
+## Fase 2 (06/09/2026)
+
+1. **Pruebas** — 187 en verde en `apps/web` (5 nuevas,
+   `campanas-reparto-carga`): el reparto equitativo da el residuo a quien
+   menos abiertos tiene y suma lo seleccionado; sin participantes no hay
+   reparto; la directa carga todo a una persona; cada pendiente del resumen
+   tiene definición, responsable y destino propio; sin integración logística
+   el bloque no aparece y ningún bloque tiene total. Tipos y lint limpios.
+2. **Recorrido local con sesión de administrador**:
+   - Tablero: panel «Pendientes por resolver o cubrir» entre «Pendientes de
+     intervención» y el desglose, con Recupero de ventas (casos vencidos 1 →
+     `vence=vencido`; críticas sin responsable 1 → `prioridad=CRITICA&estado=
+     OPEN`), Campañas (asignados sin gestión 36 → `distribute?view=unworked`;
+     próxima acción vencida 38 → `follow-up?next=vencida`), Personas y
+     equipos (equipos sin supervisor 1 → `admin/teams?sinSupervisor=1`) y
+     Logística (9 → `orders?status=LOGISTICS`). Los ceros no enlazan. Con
+     `team=<id>` el panel no aparece (AC-006).
+   - {local}

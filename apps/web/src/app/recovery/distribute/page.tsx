@@ -189,6 +189,8 @@ export default async function RecoveryDistributePage({
     teams,
     advisorMemberships,
     advisorOpenCounts,
+    advisorUnworkedCounts,
+    advisorOverdueCounts,
   ] = await Promise.all([
     database.recoveryCase.count({ where: { ...scopeWhere, status: "OPEN" } }),
     database.recoveryCase.count({
@@ -273,11 +275,45 @@ export default async function RecoveryDistributePage({
       },
       _count: { _all: true },
     }),
+    // PL-04: carga real por asesor antes de repartir —sin primer contacto y
+    // con la próxima acción vencida—, con las mismas definiciones que
+    // Seguimiento.
+    database.recoveryCase.groupBy({
+      by: ["assignedUserId"],
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
+        assignedUserId: { not: null },
+        firstContactAt: null,
+      },
+      _count: { _all: true },
+    }),
+    database.recoveryCase.groupBy({
+      by: ["assignedUserId"],
+      where: {
+        organizationId: membership.organization.id,
+        source: "NATIONAL_BASE",
+        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
+        assignedUserId: { not: null },
+        nextActionAt: { lt: new Date() },
+      },
+      _count: { _all: true },
+    }),
   ]);
 
   const now = new Date();
   const openByUser = new Map(
     advisorOpenCounts.map((item) => [item.assignedUserId, item._count._all]),
+  );
+  const unworkedByUser = new Map(
+    advisorUnworkedCounts.map((item) => [
+      item.assignedUserId,
+      item._count._all,
+    ]),
+  );
+  const overdueByUser = new Map(
+    advisorOverdueCounts.map((item) => [item.assignedUserId, item._count._all]),
   );
 
   const rows: DistributeRecoveryRow[] = cases.map((item) => ({
@@ -307,6 +343,8 @@ export default async function RecoveryDistributePage({
       teamId: item.teamId,
       teamName: item.team.name,
       openCases: openByUser.get(item.userId) ?? 0,
+      unworkedCases: unworkedByUser.get(item.userId) ?? 0,
+      overdueCases: overdueByUser.get(item.userId) ?? 0,
     }))
     .sort((left, right) => left.name.localeCompare(right.name, "es"));
 

@@ -20,11 +20,22 @@
 - **Logística**: `Metric` con `href="/orders?status=LOGISTICS"` y pista.
 - **Pruebas**: `campanas-etapas.test.ts` (2).
 
+## Fase 2
+
+- **`features/performance/admin-pending.ts`** (puro): bloques, definiciones,
+  responsables y destinos; `get-admin-pending-summary.ts` obtiene los doce
+  conteos con las mismas condiciones que las pantallas que abren; el tablero
+  lo incluye solo para ADMIN sin filtros (`adminPending`).
+- **`AdminPendingSummary`** en el tablero, después de los pendientes del mes.
+- **`features/recovery/distribution-preview.ts`** (puro):
+  `previewEquitableLoad` y `previewDirectLoad` sobre `distributeCasesEquitably`;
+  Repartir suma dos `groupBy` (sin primer contacto, vencidos) por asesor y el
+  formulario muestra la vista previa en los tres modos (selectores ahora con
+  etiqueta accesible).
+- **Pruebas**: `campanas-reparto-carga.test.ts` (5).
+
 ## Fases siguientes
 
-- Fase 2: resumen administrativo (datos nuevos: casos de campaña por etapa,
-  equipos sin supervisor, asesores sin equipo, logística) y vista previa de
-  carga en `distribute-recovery-form`.
 - Fase 3: `agr-delivery` con hora de fuente y ventana siguiente; columnas
   fijas en el resumen por equipo; enlaces de actividad en el tablero de
   campañas.

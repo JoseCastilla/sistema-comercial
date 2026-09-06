@@ -139,7 +139,7 @@ export default async function LogisticsAdminPage() {
           </SectionPanel>
           <SectionPanel
             title="Sincronización"
-            description="Automática después de las 08:15, 13:15 y 18:15; también puedes ejecutarla manualmente."
+            description="Automática cuatro veces al día, a las 08:00, 12:00, 15:00 y 18:00 (hora de Lima); cualquier otra consulta es manual."
           >
             <div className="space-y-4">
               {lastRun ? (
