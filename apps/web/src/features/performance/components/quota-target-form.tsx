@@ -55,9 +55,9 @@ export function QuotaTargetForm({
           {pending ? "…" : "Guardar"}
         </button>
       )}
-      {isDefault ? (
-        <span className="text-xs text-ui-muted">por defecto</span>
-      ) : null}
+      <span className="text-xs text-ui-muted">
+        {isDefault ? "por defecto" : "asignada"}
+      </span>
       {state.type !== "idle" ? (
         <span
           aria-live="polite"

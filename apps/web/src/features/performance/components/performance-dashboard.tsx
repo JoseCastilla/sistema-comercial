@@ -35,6 +35,7 @@ import {
   matrixRangeOptions,
   selectMatrixDays,
   sortBreakdown,
+  summarizeAdvisorActivity,
 } from "../performance-management";
 
 import type {
@@ -59,20 +60,26 @@ function percentage(value: number | null): string {
     : formatPercent(value);
 }
 
-function delta(
+/**
+ * SUP-06: la variación va con sus volúmenes —«95 frente a 13 en los días 1–5
+ * del mes pasado (+630.8%)»— y una base de cero se dice como tal, no como un
+ * porcentaje imposible.
+ */
+function comparedVolumes(
+  current: number,
+  previous: number,
   value: number | null,
   comparedThroughDay: number | null,
-  points = false,
 ): string {
-  if (value === null) return "No hubo ventas el mes pasado para comparar";
-  const sign = value > 0 ? "+" : "";
   const baseline =
     comparedThroughDay === null
-      ? "vs. el mes pasado"
-      : `vs. los días 1–${comparedThroughDay} del mes pasado`;
-  return points
-    ? `${sign}${formatDecimal(value * 100)} puntos ${baseline}`
-    : `${sign}${percentage(value)} ${baseline}`;
+      ? "el mes pasado"
+      : `los días 1–${comparedThroughDay} del mes pasado`;
+  if (value === null) {
+    return `${current} este mes; sin ventas en ${baseline} para comparar`;
+  }
+  const sign = value > 0 ? "+" : "";
+  return `${current} frente a ${previous} en ${baseline} (${sign}${percentage(value)})`;
 }
 
 function shortDelta(value: number | null): string {
@@ -452,10 +459,17 @@ function PersonalMonthlyProgress({ data }: { data: PerformanceDashboardData }) {
  * búsqueda por nombre (REN-06) y el orden (REN-04) rigen igual el desglose y
  * la matriz por día.
  */
+function todayIndex(data: PerformanceDashboardData): number | null {
+  const index = data.monthProgress.days.findIndex((day) => day.isToday);
+  return index === -1 ? null : index;
+}
+
 function visibleAdvisors(data: PerformanceDashboardData) {
   return sortBreakdown(
     filterBreakdownBySearch(
-      filterBreakdown(data.breakdown, data.management),
+      filterBreakdown(data.breakdown, data.management, {
+        todayIndex: todayIndex(data),
+      }),
       data.search,
     ),
     data.sort,
@@ -955,7 +969,11 @@ function ManagementBar({
           Todos
         </Link>
         {managementFilterOptions
-          .filter((option) => !option.requiresQuota || data.quotaWindow)
+          .filter(
+            (option) =>
+              (!option.requiresQuota || data.quotaWindow) &&
+              (!option.requiresCurrentMonth || data.isCurrentMonth),
+          )
           .map((option) => (
             <Link
               aria-current={data.management === option.key ? "true" : undefined}
@@ -970,7 +988,11 @@ function ManagementBar({
       <div className="performance-management__row">
         <span>Ordenar por</span>
         {breakdownSortOptions
-          .filter((option) => option.key !== "CUOTA" || data.quotaWindow)
+          .filter(
+            (option) =>
+              (option.key !== "CUOTA" && option.key !== "BONO") ||
+              data.quotaWindow,
+          )
           .map((option) => (
             <Link
               aria-current={data.sort === option.key ? "true" : undefined}
@@ -992,12 +1014,50 @@ function ManagementBar({
   );
 }
 
+/**
+ * SUP-02: última venta y días con ventas del mes elegido. Se dice «sin
+ * ventas registradas», no «sin actividad»: el tablero no mide asistencia.
+ */
+function ActivityCell({
+  dailyEntered,
+  data,
+  elapsedDays,
+}: {
+  dailyEntered: readonly number[];
+  data: PerformanceDashboardData;
+  elapsedDays: number;
+}) {
+  const activity = summarizeAdvisorActivity(
+    dailyEntered,
+    data.monthProgress.days,
+  );
+  return (
+    <td>
+      <strong>
+        {activity.lastSaleDay === null
+          ? "Sin ventas en el mes"
+          : `Día ${activity.lastSaleDay}`}
+      </strong>
+      <small>
+        {activity.productiveDays} de {elapsedDays} días con ventas
+      </small>
+    </td>
+  );
+}
+
 function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
   if (data.breakdown.length === 0 && !data.unattributed) return null;
 
   const rows = visibleAdvisors(data);
   const showsEstimate = data.showCommission && data.role !== "AGENT";
-  const columns = 7 + (data.quotaWindow ? 1 : 0) + (showsEstimate ? 1 : 0);
+  const columns =
+    8 +
+    (data.isCurrentMonth ? 1 : 0) +
+    (data.quotaWindow ? 1 : 0) +
+    (showsEstimate ? 1 : 0);
+  const elapsedDays = data.monthProgress.days.filter(
+    (day) => !day.isFuture,
+  ).length;
 
   return (
     <details className="performance-panel performance-breakdown" open>
@@ -1026,7 +1086,12 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
           <thead>
             <tr>
               <th>Asesor</th>
-              <th>Ingresadas</th>
+              {data.isCurrentMonth ? (
+                <th title="Ventas registradas hoy, hora de Lima">Hoy</th>
+              ) : null}
+              <th title={`Ventas registradas en ${data.monthLabel}`}>
+                Ingresadas
+              </th>
               <th
                 title={
                   data.comparison.comparedThroughDay === null
@@ -1035,6 +1100,11 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                 }
               >
                 Vs. mes pasado
+              </th>
+              <th
+                title={`Último día del mes con ventas registradas y días con ventas de los ${elapsedDays} transcurridos. No mide asistencia.`}
+              >
+                Última venta
               </th>
               <th>Tasa de entrega</th>
               {data.quotaWindow ? (
@@ -1074,8 +1144,30 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                     {!item.isActiveSeller ? " · histórico" : ""}
                   </small>
                 </td>
+                {data.isCurrentMonth ? (
+                  <td>
+                    {summarizeAdvisorActivity(
+                      item.dailyEntered,
+                      data.monthProgress.days,
+                    ).today ?? 0}
+                  </td>
+                ) : null}
                 <td>{item.metrics.entered}</td>
-                <td>{shortDelta(item.enteredDelta)}</td>
+                <td
+                  title={comparedVolumes(
+                    item.metrics.entered,
+                    item.previousMetrics.entered,
+                    item.enteredDelta,
+                    data.comparison.comparedThroughDay,
+                  )}
+                >
+                  {shortDelta(item.enteredDelta)}
+                </td>
+                <ActivityCell
+                  dailyEntered={item.dailyEntered}
+                  data={data}
+                  elapsedDays={elapsedDays}
+                />
                 <td>{percentage(item.metrics.deliveryRate)}</td>
                 {data.quotaWindow ? (
                   <QuotaCell individual quota={item.quota} />
@@ -1119,8 +1211,10 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                   <strong>Sin asesor</strong>
                   <small>Asignar antes de medir desempeño</small>
                 </td>
+                {data.isCurrentMonth ? <td>—</td> : null}
                 <td>{data.unattributed.metrics.entered}</td>
                 <td>{shortDelta(data.unattributed.enteredDelta)}</td>
+                <td>—</td>
                 <td>{percentage(data.unattributed.metrics.deliveryRate)}</td>
                 {data.quotaWindow ? <td>—</td> : null}
                 <td>{data.unattributed.metrics.payable}</td>
@@ -1279,6 +1373,8 @@ export function PerformanceDashboard({
                       value: team.id,
                       label: team.name,
                     })),
+                    // SUP-06: cambiar de equipo quita el asesor del anterior.
+                    resets: ["agent"],
                   },
                 ]
               : []),
@@ -1300,6 +1396,17 @@ export function PerformanceDashboard({
         />
       </section>
 
+      {data.advisorOutsideTeam ? (
+        <p className="rounded-lg border border-ui-warning-border bg-ui-warning-soft px-4 py-3 text-sm text-ui-warning">
+          {data.scopeLabel} no está entre los vendedores activos del equipo
+          filtrado: los indicadores muestran solo sus ventas asignadas a ese
+          equipo.{" "}
+          <Link className="underline" href={teamHref(data)}>
+            Ver todo el equipo
+          </Link>
+        </p>
+      ) : null}
+
       {/*
        * La jerarquia va por tamano, no por color. Antes las cuatro tarjetas
        * llevaban un `tone` distinto —primary, info, positive, attention— para
@@ -1310,7 +1417,9 @@ export function PerformanceDashboard({
       <MetricGroup label="Indicadores principales">
         <Metric
           emphasis="hero"
-          hint={delta(
+          hint={comparedVolumes(
+            data.metrics.entered,
+            data.previousMetrics.entered,
             data.comparison.enteredDelta,
             data.comparison.comparedThroughDay,
           )}

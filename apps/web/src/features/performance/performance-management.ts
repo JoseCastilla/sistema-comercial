@@ -11,6 +11,7 @@ import type { PerformanceBreakdownItem } from "./performance.types";
 export const breakdownSortKeys = [
   "PAGABLES",
   "CUOTA",
+  "BONO",
   "INGRESADAS",
   "POR_ACTIVAR",
   "POR_RECUPERAR",
@@ -27,6 +28,7 @@ export const breakdownSortOptions: ReadonlyArray<{
 }> = [
   { key: "PAGABLES", label: "Más pagables" },
   { key: "CUOTA", label: "Cuota: más cerca de llegar" },
+  { key: "BONO", label: "Bono: más cerca del siguiente tramo" },
   { key: "INGRESADAS", label: "Más ingresadas" },
   { key: "POR_ACTIVAR", label: "Más por activar" },
   { key: "POR_RECUPERAR", label: "Más por recuperar" },
@@ -41,6 +43,7 @@ export function parseBreakdownSort(value: unknown): BreakdownSortKey {
 }
 
 export const managementFilterKeys = [
+  "SIN_VENTAS_HOY",
   "SIN_PRODUCCION",
   "POR_ACTIVAR",
   "POR_RECUPERAR",
@@ -56,15 +59,30 @@ export interface ManagementFilterOption {
   definition: string;
   /** Solo tiene sentido con una ventana de cuota sobre la que hablar. */
   requiresQuota: boolean;
+  /** Solo tiene sentido en el mes en curso: «hoy» no existe en un mes cerrado. */
+  requiresCurrentMonth: boolean;
 }
 
+/*
+ * SUP-02: la ausencia de ventas se dice como lo que es —ventas registradas—
+ * y con su período; nunca como ausencia laboral.
+ */
 export const managementFilterOptions: readonly ManagementFilterOption[] = [
   {
-    key: "SIN_PRODUCCION",
-    label: "Sin producción",
+    key: "SIN_VENTAS_HOY",
+    label: "Sin ventas hoy",
     definition:
-      "Vendedores activos y habilitados para vender con cero ventas ingresadas en el mes.",
+      "Vendedores activos sin ventas registradas en el día de hoy (hora de Lima). Es un dato de ventas, no de presencia.",
     requiresQuota: false,
+    requiresCurrentMonth: true,
+  },
+  {
+    key: "SIN_PRODUCCION",
+    label: "Sin ventas en el mes",
+    definition:
+      "Vendedores activos y habilitados para vender con cero ventas registradas en el mes elegido.",
+    requiresQuota: false,
+    requiresCurrentMonth: false,
   },
   {
     key: "POR_ACTIVAR",
@@ -72,6 +90,7 @@ export const managementFilterOptions: readonly ManagementFilterOption[] = [
     definition:
       "Asesores con al menos una venta entregada que aún no cierra y por eso todavía no paga.",
     requiresQuota: false,
+    requiresCurrentMonth: false,
   },
   {
     key: "POR_RECUPERAR",
@@ -79,6 +98,7 @@ export const managementFilterOptions: readonly ManagementFilterOption[] = [
     definition:
       "Asesores con al menos un pedido del mes no entregado o cancelado.",
     requiresQuota: false,
+    requiresCurrentMonth: false,
   },
   {
     key: "CUOTA_PENDIENTE",
@@ -86,6 +106,7 @@ export const managementFilterOptions: readonly ManagementFilterOption[] = [
     definition:
       "Asesores con menos portabilidades entregadas que su cuota del tramo. Es el conteo real, sin proyección.",
     requiresQuota: true,
+    requiresCurrentMonth: false,
   },
 ];
 
@@ -108,14 +129,24 @@ export function getManagementFilterOption(
 
 type ManagementSubject = Pick<
   PerformanceBreakdownItem,
-  "isActiveSeller" | "metrics" | "quota"
+  "isActiveSeller" | "metrics" | "quota" | "dailyEntered"
 >;
+
+/** Posición del día de hoy en `dailyEntered`; `null` fuera del mes en curso. */
+export type ManagementContext = { todayIndex: number | null };
 
 export function matchesManagementFilter(
   item: ManagementSubject,
   filter: ManagementFilterKey | null,
+  context: ManagementContext = { todayIndex: null },
 ): boolean {
   if (filter === null) return true;
+  if (filter === "SIN_VENTAS_HOY") {
+    if (context.todayIndex === null) return false;
+    return (
+      item.isActiveSeller && (item.dailyEntered[context.todayIndex] ?? 0) === 0
+    );
+  }
   if (filter === "SIN_PRODUCCION") {
     return item.isActiveSeller && item.metrics.entered === 0;
   }
@@ -129,8 +160,42 @@ export function matchesManagementFilter(
 export function filterBreakdown<T extends ManagementSubject>(
   items: readonly T[],
   filter: ManagementFilterKey | null,
+  context: ManagementContext = { todayIndex: null },
 ): T[] {
-  return items.filter((item) => matchesManagementFilter(item, filter));
+  return items.filter((item) => matchesManagementFilter(item, filter, context));
+}
+
+/**
+ * SUP-02: lo que el supervisor necesita para acompañar. Todo sale de las
+ * ventas del mes elegido por día (hora de Lima): los días futuros no cuentan
+ * como días sin producción, y «hoy» solo existe en el mes en curso.
+ */
+export function summarizeAdvisorActivity(
+  dailyEntered: readonly number[],
+  days: ReadonlyArray<{ day: number; isFuture: boolean; isToday: boolean }>,
+): {
+  today: number | null;
+  lastSaleDay: number | null;
+  productiveDays: number;
+  elapsedDays: number;
+} {
+  let today: number | null = null;
+  let lastSaleDay: number | null = null;
+  let productiveDays = 0;
+  let elapsedDays = 0;
+
+  days.forEach((day, index) => {
+    if (day.isFuture) return;
+    const entered = dailyEntered[index] ?? 0;
+    elapsedDays += 1;
+    if (day.isToday) today = entered;
+    if (entered > 0) {
+      productiveDays += 1;
+      lastSaleDay = day.day;
+    }
+  });
+
+  return { today, lastSaleDay, productiveDays, elapsedDays };
 }
 
 type SortSubject = Pick<
@@ -161,6 +226,18 @@ function byQuota(left: SortSubject, right: SortSubject): number {
   return byName(left, right);
 }
 
+/**
+ * «Bono: más cerca del siguiente tramo» ordena por confirmadas que faltan
+ * para el siguiente bono, de menos a más; sin siguiente tramo, al final.
+ */
+function byBonus(left: SortSubject, right: SortSubject): number {
+  const missing = (item: SortSubject) =>
+    item.quota?.nextTarget === null || item.quota?.nextTarget === undefined
+      ? Number.POSITIVE_INFINITY
+      : item.quota.missingForNextTarget;
+  return missing(left) - missing(right) || byName(left, right);
+}
+
 export function sortBreakdown<T extends SortSubject>(
   items: readonly T[],
   sort: BreakdownSortKey,
@@ -169,6 +246,8 @@ export function sortBreakdown<T extends SortSubject>(
   switch (sort) {
     case "CUOTA":
       return copy.sort(byQuota);
+    case "BONO":
+      return copy.sort(byBonus);
     case "INGRESADAS":
       return copy.sort(
         (left, right) =>

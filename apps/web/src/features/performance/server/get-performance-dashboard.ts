@@ -1158,6 +1158,10 @@ export async function getPerformanceDashboard(
       currentRange.key === currentMonth,
     ),
     matrixRangeRequested: parseMatrixRange(query.matrix),
+    advisorOutsideTeam:
+      selectedAdvisor !== null &&
+      teamFilter !== "ALL" &&
+      !allActiveSellers.has(selectedAdvisor.id),
     teams: buildTeamSummaries({
       orders,
       teams: summarizedTeams,

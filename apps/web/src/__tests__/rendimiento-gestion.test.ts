@@ -28,11 +28,17 @@ function advisor(
   } = {},
 ): Pick<
   PerformanceBreakdownItem,
-  "name" | "metrics" | "quota" | "openRecoveryCases" | "isActiveSeller"
+  | "name"
+  | "metrics"
+  | "quota"
+  | "openRecoveryCases"
+  | "isActiveSeller"
+  | "dailyEntered"
 > {
   const quota = overrides.quota ?? null;
   return {
     name,
+    dailyEntered: [],
     isActiveSeller: overrides.active ?? true,
     openRecoveryCases: overrides.cases ?? 0,
     metrics: {
