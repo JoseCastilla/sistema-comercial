@@ -120,3 +120,18 @@ pone a la vista y cada cifra abre su lista.
    separación de nuevas y guardadas; la organización solo cuando se pide.
    Tipos y lint limpios.
 2. **Recorrido local con sesión de administrador**: DNI con «Tu actividad» (mes, hoy, DNI distintos; pista «0 nuevas al proveedor · 0 desde la ficha guardada») y «Toda la organización» aparte, saldo «que reportó el proveedor en la última consulta nueva, el 29 ago. 2026…; no es un saldo en tiempo real» (AC-011). Importar ventas DITO: «Ver el historial completo (6 cargas)» → «Historial de cargas · página 1 de 1», tabla sin ningún formulario de borrado (AC-012). «Checa tus líneas» con el texto sobre lo no auditado y la salida externa; a 375 px sin desbordamiento horizontal, marco de 323 × 841 con el botón «Abrir fuera del sistema» visible (AC-013).
+3. **Lectura de producción con sesión de administrador** (solo lectura, tras
+   el despliegue de `e9b69ee`):
+   - DNI: «Tu actividad» 0 / 0 / 0 (la cuenta de administración no consulta);
+     «Toda la organización»: **255** consultas del mes = **229 nuevas al
+     proveedor + 26 desde la ficha guardada**, 2 hoy, 231 DNI distintos;
+     saldo **389** «que reportó el proveedor en la última consulta nueva, el
+     6 set. 2026, 8:27; no es un saldo en tiempo real» (AC-011).
+   - Importar ventas DITO: «Ver el historial completo (0 cargas)» → «Historial
+     de cargas · página 1 de 1» sin filas ni formularios de borrado: en
+     producción las ventas entran por la extensión, no por XLSX (AC-012).
+   - «Checa tus líneas» con el texto sobre lo no auditado y la salida externa
+     (AC-013).
+
+Con esto el plan «Mejoras transversales de la plataforma comercial» queda
+completo: PL-01 a PL-11 entregados y verificados en producción el 06/09/2026.
