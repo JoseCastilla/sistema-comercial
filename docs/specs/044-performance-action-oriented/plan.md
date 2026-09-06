@@ -37,10 +37,25 @@
 - **CSS**: `.performance-management*` y `.performance-teams tfoot` en
   `patterns.css`.
 
-## Fase siguiente
+## Fase 3
 
-- Fase 3: `DirectoryFilters` en el tablero y reordenación de secciones;
-  matriz con rango de días visible.
+- **`DirectoryFilters`** gana `fields` (campos de mes que aplican al cambiar y
+  no se «quitan») y `search` opcional; los directorios administrativos no
+  cambian.
+- **`performance-management.ts`**: `normalizeSearchTerm`,
+  `filterBreakdownBySearch` (sin tildes ni mayúsculas), `matrixRangeKeys`,
+  `parseMatrixRange`, `resolveMatrixRange`, `selectMatrixDays`.
+- **Enlaces**: `performanceHref` conserva `q` y `matriz`; `advisorHref` ya no
+  alterna; `teamHref` («Ver todo el equipo»), `matrixHref`.
+- **Servidor**: acepta `search` y `matrix`; devuelve `search`, `matrixRange` y
+  `matrixRangeRequested`; sin equipos que resumir no hay filas residuales.
+- **Componente**: `visibleAdvisors` (gestión + búsqueda + orden) para desglose
+  y matriz; barra `DirectoryFilters` con mes, búsqueda, vista, equipo y
+  asesor; «Ver todo el equipo» en la cabecera; matriz con fichas de ventana y
+  días recortados; secciones reordenadas con el encabezado «Análisis
+  detallado».
+- **Pruebas**: `rendimiento-filtros-vivos.test.tsx` (7) y ajuste de
+  `rendimiento-enlaces.test.ts`.
 
 ## Verificación
 

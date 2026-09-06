@@ -19,8 +19,11 @@ import {
 import { database } from "@/server/database";
 
 import {
+  normalizeSearchTerm,
   parseBreakdownSort,
   parseManagementFilter,
+  parseMatrixRange,
+  resolveMatrixRange,
 } from "../performance-management";
 
 import {
@@ -58,6 +61,10 @@ interface PerformanceQuery {
   sort?: string;
   /** `gestion=`: filtro de gestión (SPEC-044 REN-05). */
   management?: string;
+  /** `q=`: búsqueda por nombre de asesor (SPEC-044 REN-06). */
+  search?: string;
+  /** `matriz=`: ventana de la matriz por día (SPEC-044 REN-07). */
+  matrix?: string;
 }
 
 const monthLabelFormatter = new Intl.DateTimeFormat("es-PE", {
@@ -179,6 +186,10 @@ interface TeamSummaryInput {
  * que el filtro de equipo.
  */
 function buildTeamSummaries(input: TeamSummaryInput): PerformanceTeamSummary[] {
+  // Sin equipos que resumir (vista personal o un asesor aislado) no hay
+  // resumen: las filas residuales solas dirían «Otros equipos» del asesor.
+  if (input.teams.length === 0) return [];
+
   const byTeam = new Map<string, PerformanceOrderRecord[]>();
   const unassigned: PerformanceOrderRecord[] = [];
   const other: PerformanceOrderRecord[] = [];
@@ -1141,6 +1152,12 @@ export async function getPerformanceDashboard(
       : null,
     sort: parseBreakdownSort(query.sort),
     management: parseManagementFilter(query.management),
+    search: isIndividualScope ? "" : normalizeSearchTerm(query.search),
+    matrixRange: resolveMatrixRange(
+      parseMatrixRange(query.matrix),
+      currentRange.key === currentMonth,
+    ),
+    matrixRangeRequested: parseMatrixRange(query.matrix),
     teams: buildTeamSummaries({
       orders,
       teams: summarizedTeams,

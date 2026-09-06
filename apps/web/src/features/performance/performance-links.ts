@@ -3,6 +3,7 @@ import { defaultBreakdownSort } from "./performance-management";
 import type {
   BreakdownSortKey,
   ManagementFilterKey,
+  MatrixRangeKey,
 } from "./performance-management";
 import type { PerformanceDashboardData } from "./performance.types";
 
@@ -26,7 +27,12 @@ type Scope = Pick<
   | "from"
   | "to"
 > &
-  Partial<Pick<PerformanceDashboardData, "sort" | "management">>;
+  Partial<
+    Pick<
+      PerformanceDashboardData,
+      "sort" | "management" | "search" | "matrixRangeRequested"
+    >
+  >;
 
 /** Cambios de lectura que un enlace puede pedir sobre el alcance vigente. */
 interface PerformanceHrefOverrides {
@@ -35,6 +41,9 @@ interface PerformanceHrefOverrides {
   sort?: BreakdownSortKey;
   /** `null` quita el filtro de gestión. */
   management?: ManagementFilterKey | null;
+  /** `""` quita la búsqueda. */
+  search?: string;
+  matrix?: MatrixRangeKey;
 }
 
 export function performanceHref(
@@ -50,6 +59,8 @@ export function performanceHref(
     overrides.management === undefined
       ? (data.management ?? null)
       : overrides.management;
+  const search = overrides.search ?? data.search ?? "";
+  const matrix = overrides.matrix ?? data.matrixRangeRequested ?? null;
 
   if (data.canSwitchView) parameters.set("view", data.view);
   if (team !== "ALL") parameters.set("team", team);
@@ -58,6 +69,8 @@ export function performanceHref(
   // enlace devuelvan la misma lectura (REN-04, REN-05).
   if (sort !== defaultBreakdownSort) parameters.set("orden", sort);
   if (management) parameters.set("gestion", management);
+  if (search) parameters.set("q", search);
+  if (matrix) parameters.set("matriz", matrix);
 
   return `/performance?${parameters.toString()}`;
 }
@@ -84,11 +97,23 @@ export function quotasHref(data: Scope, window?: "ONE" | "TWO"): string {
   return `/performance/quotas?${parameters.toString()}`;
 }
 
-/** El nombre de un asesor filtra por él; si ya lo está, vuelve al conjunto. */
+/**
+ * El nombre de un asesor siempre filtra por él (SPEC-044 REN-06). Antes, si
+ * ya estaba filtrado, el mismo clic quitaba el filtro en silencio; volver al
+ * conjunto tiene ahora su propio enlace: `teamHref`.
+ */
 export function advisorHref(data: Scope, agentId: string): string {
-  return performanceHref(data, data.month, {
-    agent: data.agentFilter === agentId ? "ALL" : agentId,
-  });
+  return performanceHref(data, data.month, { agent: agentId });
+}
+
+/** «Ver todo el equipo»: quita el asesor y la búsqueda, conserva lo demás. */
+export function teamHref(data: Scope): string {
+  return performanceHref(data, data.month, { agent: "ALL", search: "" });
+}
+
+/** Cambia la ventana de la matriz por día sin tocar la cohorte. */
+export function matrixHref(data: Scope, matrix: MatrixRangeKey): string {
+  return performanceHref(data, data.month, { matrix });
 }
 
 export function reconciliationHref(data: Scope, reason: string): string {
