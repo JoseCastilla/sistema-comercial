@@ -31,7 +31,15 @@
    código lee más las 6 nuevas de mantenimiento y copia; `turbo.json` ya no
    declara `AUTH_BOOTSTRAP_TOKEN`.
 
-## Producción
+## Producción (06/09/2026, tras el despliegue de `e12ee4e`)
+
+- Web: `/api/health` 200; `POST /api/internal/maintenance` → **503**
+  «MAINTENANCE_INTERNAL_SECRET no está configurado» (cerrada hasta que se
+  configure el secreto, como manda BR-001).
+- API: `/api/v1/health/ready` **200**, lo que confirma que la migración de
+  limpieza se aplicó en el arranque (la API no acepta tráfico si falla);
+  `POST /api/v1/internal/maintenance/webhooks-retry` → **503** por el mismo
+  motivo.
 
 Pendiente de que José cree los servicios **worker** y **backup** en EasyPanel
 y ponga `MAINTENANCE_INTERNAL_SECRET` en web y api (spec §4). Hasta entonces
