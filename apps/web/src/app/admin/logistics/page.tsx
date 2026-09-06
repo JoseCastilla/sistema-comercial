@@ -100,8 +100,17 @@ export default async function LogisticsAdminPage() {
         </p>
 
         <MetricGroup>
+          {/*
+           * SPEC-045 PL-06: la cifra es el acumulado de pedidos con
+           * oportunidad logística abierta desde el 10/08 —no el resultado de
+           * la última ejecución— y abre exactamente esa lista en Pedidos
+           * («Entregas fallidas por gestionar» ignora el período, SPEC-029
+           * BR-025). Navegar no dispara ninguna sincronización.
+           */}
           <Metric
             emphasis="hero"
+            hint="Acumulado desde el 10/08 con oportunidad abierta, no solo la última ejecución · abre Pedidos"
+            href="/orders?status=LOGISTICS"
             label="Pedidos que requieren acción"
             tone={opportunityCount > 0 ? "warning" : "neutral"}
             value={opportunityCount}

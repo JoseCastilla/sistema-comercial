@@ -4,6 +4,7 @@ import { formatCount } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import {
+  internalRecoveryDueFilterOptions,
   internalRecoveryDueOptions,
   salesRecoveryOpenStatusOptions,
   salesRecoveryPriorityOptions,
@@ -23,11 +24,17 @@ import type {
   SalesRecoveryInboxData,
   SalesRecoveryInboxFilters,
 } from "../server/get-sales-recovery-inbox";
-import type { InternalRecoveryDue } from "@repo/validation";
+import type {
+  InternalRecoveryDue,
+  InternalRecoveryDueFilter,
+} from "@repo/validation";
 
 const dueLabels = Object.fromEntries(
-  internalRecoveryDueOptions.map((option) => [option.value, option.label]),
-) as Record<InternalRecoveryDue, string>;
+  internalRecoveryDueFilterOptions.map((option) => [
+    option.value,
+    option.label,
+  ]),
+) as Record<InternalRecoveryDueFilter, string>;
 const dueHints = Object.fromEntries(
   internalRecoveryDueOptions.map((option) => [option.value, option.hint]),
 ) as Record<InternalRecoveryDue, string>;
@@ -224,7 +231,7 @@ export function SalesRecoveryInbox({ data }: { data: SalesRecoveryInboxData }) {
                       key: "vence",
                       label: "Vencimiento",
                       emptyLabel: "Cualquiera",
-                      options: internalRecoveryDueOptions,
+                      options: internalRecoveryDueFilterOptions,
                     },
                   ]),
             ],

@@ -160,7 +160,8 @@ function describeTriageOutcome(
   decision: "EN_ESPERA" | "LIBERADO",
   tally: TriageTally,
 ): RecoveryTriageActionState {
-  const estado = decision === "EN_ESPERA" ? "en espera" : "listos para repartir";
+  const estado =
+    decision === "EN_ESPERA" ? "en espera" : "listos para repartir";
   const restos: string[] = [];
 
   if (tally.alreadyThere > 0) {
@@ -198,7 +199,8 @@ function describeTriageOutcome(
   if (restos.length === 0) {
     return {
       type: "error",
-      message: "No encontramos esos casos. Recarga la página y vuelve a intentarlo.",
+      message:
+        "No encontramos esos casos. Recarga la página y vuelve a intentarlo.",
     };
   }
 
@@ -240,10 +242,7 @@ async function assignTeam(
         status: { in: ["TRIAGE", "WAITING", "OPEN"] },
         // Cuidado con el NULL de SQL: `NOT (columna = X)` también excluye a
         // los casos sin equipo, que son justamente los recién cargados.
-        OR: [
-          { assignedTeamId: null },
-          { assignedTeamId: { not: team.id } },
-        ],
+        OR: [{ assignedTeamId: null }, { assignedTeamId: { not: team.id } }],
       },
       select: { id: true, status: true, assignedTeamId: true },
     });

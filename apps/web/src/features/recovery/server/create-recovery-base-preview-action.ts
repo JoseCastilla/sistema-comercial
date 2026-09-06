@@ -72,17 +72,20 @@ export async function createRecoveryBasePreviewAction(
   let response: Response;
 
   try {
-    response = await fetch(`${getRecoveryApiBaseUrl()}/internal/recovery-base/preview`, {
-      method: "POST",
-      headers: {
-        "x-recovery-organization-id": membership.organization.id,
-        "x-recovery-actor-user-id": session.user.id,
-        "x-recovery-timestamp": timestamp,
-        "x-recovery-signature": signature,
+    response = await fetch(
+      `${getRecoveryApiBaseUrl()}/internal/recovery-base/preview`,
+      {
+        method: "POST",
+        headers: {
+          "x-recovery-organization-id": membership.organization.id,
+          "x-recovery-actor-user-id": session.user.id,
+          "x-recovery-timestamp": timestamp,
+          "x-recovery-signature": signature,
+        },
+        body: outbound,
+        cache: "no-store",
       },
-      body: outbound,
-      cache: "no-store",
-    });
+    );
   } catch {
     return {
       type: "error",

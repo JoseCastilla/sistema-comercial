@@ -24,7 +24,9 @@ export function PortabilityCrossForm() {
     <form action={formAction} className="space-y-2">
       <div className="ui-form-row">
         <label className="ui-form-row__grow">
-          <span className="ui-label-eyebrow">Archivo del reporte de portabilidad</span>
+          <span className="ui-label-eyebrow">
+            Archivo del reporte de portabilidad
+          </span>
           <input
             accept=".csv,.txt,text/csv,text/plain"
             className="ui-file-input"

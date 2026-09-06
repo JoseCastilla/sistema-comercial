@@ -171,7 +171,8 @@ export async function assignSalesRecoveryCaseAction(
   if (outcome.kind === "NOT_FOUND") {
     return {
       type: "error",
-      message: "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
+      message:
+        "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
     };
   }
   if (outcome.kind === "ORIGINATOR_BLOCKED") {

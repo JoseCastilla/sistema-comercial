@@ -42,7 +42,10 @@ export async function takeRecoveryPoolBlockAction(
   );
   const blockSize = Math.min(
     baseRecoveryPoolTakeLimit,
-    Math.max(1, Number.isNaN(requestedRaw) ? baseRecoveryPoolTakeLimit : requestedRaw),
+    Math.max(
+      1,
+      Number.isNaN(requestedRaw) ? baseRecoveryPoolTakeLimit : requestedRaw,
+    ),
   );
   const department =
     String(formData.get("department") ?? "")
@@ -186,9 +189,10 @@ export async function takeRecoveryPoolBlockAction(
   if (outcome.kind === "EMPTY") {
     return {
       type: "error",
-      message: department || planContains
-        ? "Tu equipo no tiene casos libres que cumplan ese filtro."
-        : "Tu equipo no tiene casos libres por ahora.",
+      message:
+        department || planContains
+          ? "Tu equipo no tiene casos libres que cumplan ese filtro."
+          : "Tu equipo no tiene casos libres por ahora.",
     };
   }
   if (outcome.kind === "RACED") {

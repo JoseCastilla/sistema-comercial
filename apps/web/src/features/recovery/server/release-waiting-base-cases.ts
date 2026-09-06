@@ -68,7 +68,10 @@ export async function releaseWaitingBaseCases(
 
   await database.$transaction(async (transaction) => {
     const affected = await transaction.recoveryCase.updateMany({
-      where: { id: { in: releasable.map((item) => item.id) }, status: "WAITING" },
+      where: {
+        id: { in: releasable.map((item) => item.id) },
+        status: "WAITING",
+      },
       data: { status: "TRIAGE" },
     });
 

@@ -86,10 +86,7 @@ export async function openInternalRecoveryCase(
     where: {
       organizationId: input.organizationId,
       status: { notIn: [...resolvedStatuses] },
-      OR: [
-        { sourceDitoOrderId: input.order.id },
-        { documentNumber },
-      ],
+      OR: [{ sourceDitoOrderId: input.order.id }, { documentNumber }],
     },
     orderBy: { createdAt: "asc" },
     select: {

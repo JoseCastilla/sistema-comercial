@@ -45,6 +45,47 @@ export function parseInternalRecoveryDue(
     : null;
 }
 
+/**
+ * SPEC-045 PL-02: la alerta flotante cuenta los tres vencimientos juntos, así
+ * que la bandeja necesita un filtro que abra exactamente esa unión. Es un
+ * valor de filtro, no un cuarto vencimiento: un caso sigue teniendo uno solo.
+ */
+export const internalRecoveryAnyDue = "vencido" as const;
+
+export type InternalRecoveryDueFilter =
+  InternalRecoveryDue | typeof internalRecoveryAnyDue;
+
+export const internalRecoveryDueFilterOptions: ReadonlyArray<{
+  value: InternalRecoveryDueFilter;
+  label: string;
+  hint: string;
+}> = [
+  {
+    value: internalRecoveryAnyDue,
+    label: "Cualquier vencimiento",
+    hint: "Primer contacto, seguimiento o agenda ya vencidos",
+  },
+  ...internalRecoveryDueOptions,
+];
+
+export function parseInternalRecoveryDueFilter(
+  value: string | null | undefined,
+): InternalRecoveryDueFilter | null {
+  const text = String(value ?? "").trim();
+  if (text === internalRecoveryAnyDue) return internalRecoveryAnyDue;
+  return parseInternalRecoveryDue(text);
+}
+
+/** Si el caso cumple el filtro de vencimiento elegido. */
+export function matchesInternalRecoveryDueFilter(
+  due: InternalRecoveryDue | null,
+  filter: InternalRecoveryDueFilter | null,
+): boolean {
+  if (filter === null) return true;
+  if (filter === internalRecoveryAnyDue) return due !== null;
+  return due === filter;
+}
+
 export interface InternalRecoveryDueInput {
   status: string;
   /** Primer intento registrado; `null` si nadie ha llamado. */

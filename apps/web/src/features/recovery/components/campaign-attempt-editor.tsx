@@ -24,7 +24,9 @@ const channelLabels: Record<string, string> = {
 
 const otherPhone = "__otro__";
 
-export type ConfirmedAttempt = NonNullable<CampaignAttemptInlineState["attempt"]>;
+export type ConfirmedAttempt = NonNullable<
+  CampaignAttemptInlineState["attempt"]
+>;
 
 /**
  * Registro de una gestión sin salir de la fila (BR-090).
@@ -88,14 +90,15 @@ export function CampaignAttemptEditor({
       ? phoneOptions[0]!
       : defaultPhone && phoneOptions.includes(defaultPhone)
         ? defaultPhone
-        : phoneOptions[0] ?? otherPhone,
+        : (phoneOptions[0] ?? otherPhone),
   );
   const [otherNumber, setOtherNumber] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<{ message: string; detail: string } | null>(
-    null,
-  );
+  const [saved, setSaved] = useState<{
+    message: string;
+    detail: string;
+  } | null>(null);
 
   const dirty =
     result !== "SIN_RESPUESTA" ||
@@ -169,7 +172,8 @@ export function CampaignAttemptEditor({
     resultRef.current?.focus();
   }
 
-  const phoneUsed = phoneChoice === otherPhone ? otherNumber.trim() : phoneChoice;
+  const phoneUsed =
+    phoneChoice === otherPhone ? otherNumber.trim() : phoneChoice;
   const showPause = result === "RECHAZA" || result === "CANCELADO";
 
   if (saved) {
@@ -193,7 +197,11 @@ export function CampaignAttemptEditor({
         >
           Registrar otro intento
         </button>
-        <button className="ui-button ui-button--quiet" onClick={onCancel} type="button">
+        <button
+          className="ui-button ui-button--quiet"
+          onClick={onCancel}
+          type="button"
+        >
           Cerrar
         </button>
       </div>

@@ -232,7 +232,10 @@ export async function distributeRecoveryCasesAction(
     };
   }
   if (outcome.kind === "TEAM_INVALID") {
-    return { type: "error", message: "El equipo destino no está activo o no es uno de tus equipos." };
+    return {
+      type: "error",
+      message: "El equipo destino no está activo o no es uno de tus equipos.",
+    };
   }
   if (outcome.kind === "TARGET_INVALID") {
     return {
@@ -541,7 +544,9 @@ async function applyEquitableMode(
     eligibleMembers.map((item) => [item.userId, item.user.name]),
   );
   const summary = [...byUser.entries()]
-    .map(([userId, list]) => `${nameByUser.get(userId) ?? userId}: ${list.length}`)
+    .map(
+      ([userId, list]) => `${nameByUser.get(userId) ?? userId}: ${list.length}`,
+    )
     .join(", ");
 
   return {
