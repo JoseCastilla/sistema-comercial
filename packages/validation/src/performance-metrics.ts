@@ -50,6 +50,10 @@ export interface PerformanceMetrics {
   newLines: number;
   unknownProduct: number;
   delivered: number;
+  /** Entregadas que son portabilidades (SPEC-047 BR-001). */
+  deliveredPortability: number;
+  /** Entregadas que son altas nuevas: cuentan como resultado, no pagan. */
+  deliveredNewLines: number;
   activated: number;
   payable: number;
   deliveredPendingActivation: number;
@@ -176,6 +180,27 @@ export function filterOrdersRegisteredThroughLimaDay<
   T extends { registeredAt: Date },
 >(orders: readonly T[], day: number): T[] {
   return orders.filter((order) => getLimaDayOfMonth(order.registeredAt) <= day);
+}
+
+/**
+ * SPEC-047 BR-003: para comparar entregadas con maduración equivalente, la
+ * cohorte del mes pasado se cuenta como estaba en el mismo instante —solo lo
+ * entregado antes del corte—, porque a hoy ya tuvo semanas más para entregar.
+ * `deliveredAt` es la fecha en que la plataforma registró la entrega.
+ */
+export function countOrdersDeliveredBefore(
+  orders: readonly Pick<
+    PerformanceOrderInput,
+    "deliveryStatus" | "deliveredAt"
+  >[],
+  cutoff: Date,
+): number {
+  return orders.filter(
+    (order) =>
+      order.deliveryStatus === "DELIVERED" &&
+      order.deliveredAt !== null &&
+      order.deliveredAt.getTime() < cutoff.getTime(),
+  ).length;
 }
 
 export function evaluatePerformanceOrderPayment(
@@ -308,6 +333,8 @@ export function calculatePerformanceMetrics(
   let newLines = 0;
   let unknownProduct = 0;
   let delivered = 0;
+  let deliveredPortability = 0;
+  let deliveredNewLines = 0;
   let activated = 0;
   let payable = 0;
   let deliveredPendingActivation = 0;
@@ -334,7 +361,11 @@ export function calculatePerformanceMetrics(
     const isActivated = order.status === "CLOSED" && order.closedAt !== null;
     const payment = evaluatePerformanceOrderPayment(order);
 
-    if (isDelivered) delivered += 1;
+    if (isDelivered) {
+      delivered += 1;
+      if (isPortability(order.commercialOperation)) deliveredPortability += 1;
+      else if (order.commercialOperation === "NEW_LINE") deliveredNewLines += 1;
+    }
     if (isActivated) activated += 1;
     if (payment.payable) {
       payable += 1;
@@ -371,6 +402,8 @@ export function calculatePerformanceMetrics(
     newLines,
     unknownProduct,
     delivered,
+    deliveredPortability,
+    deliveredNewLines,
     activated,
     payable,
     deliveredPendingActivation,

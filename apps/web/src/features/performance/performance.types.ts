@@ -139,6 +139,14 @@ export interface PerformanceDashboardData {
     enteredDelta: number | null;
     payableDelta: number | null;
     payableRateDelta: number | null;
+    /**
+     * SPEC-047 BR-003: entregadas de la cohorte del mes pasado que ya
+     * estaban entregadas en el mismo día del mes pasado (maduración
+     * equivalente) y con cuántas terminó esa cohorte a hoy.
+     */
+    deliveredComparable: number;
+    deliveredMatured: number;
+    deliveredDelta: number | null;
   };
   unattributed: {
     metrics: PerformanceMetrics;

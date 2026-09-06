@@ -577,9 +577,10 @@ function getStatusFilter(
         NOT: { status: "CLOSED", closedAt: { not: null } },
       };
     case "DELIVERED":
-      return {
-        OR: [{ status: "CLOSED" }, { sentSubstatus: "DELIVERED" }],
-      };
+      // SPEC-047 BR-001: la misma definición que «Ventas entregadas» en
+      // Rendimiento: estado de entrega entregado con fecha. Cerrar deriva
+      // entregado, así que las cerradas siguen dentro.
+      return { deliveryStatus: "DELIVERED", deliveredAt: { not: null } };
     case "FINAL":
       return { status: { in: ["CLOSED", "CANCELLED"] } };
     case "ALL":

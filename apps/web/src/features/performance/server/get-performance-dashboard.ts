@@ -3,6 +3,7 @@ import { formatLimaDateTimeWithYear, formatLimaMonth } from "@repo/ui/format";
 
 import {
   calculatePerformanceMetrics,
+  countOrdersDeliveredBefore,
   evaluatePerformanceOrderPayment,
   filterOrdersRegisteredThroughLimaDay,
   formatAdvisorDisplayName,
@@ -929,6 +930,18 @@ export async function getPerformanceDashboard(
           previousOrders,
           comparedThroughDay,
         );
+  /*
+   * SPEC-047 BR-003: las entregadas del mes pasado se cuentan como estaban
+   * en el mismo día (registradas y entregadas hasta ese día); en un mes
+   * cerrado no hay corte y las dos cohortes se comparan a hoy.
+   */
+  const previousDeliveryCutoff =
+    comparedThroughDay === null
+      ? null
+      : new Date(
+          previousRange.start.getTime() +
+            comparedThroughDay * 24 * 60 * 60 * 1000,
+        );
   const unattributedOrders = orders.filter(
     (order) => order.agentUserId === null,
   );
@@ -1052,6 +1065,12 @@ export async function getPerformanceDashboard(
       ? redactCommission(scopedPreviousMetrics)
       : scopedPreviousMetrics;
   const hasBase = previousMetrics.entered > 0;
+  const deliveredComparable = previousDeliveryCutoff
+    ? countOrdersDeliveredBefore(
+        comparablePreviousOrders,
+        previousDeliveryCutoff,
+      )
+    : previousMetrics.delivered;
   const selectedTeam = teamOptions.find((team) => team.id === teamFilter);
   const monthProgress = buildMonthlyPerformanceProgress(
     orders,
@@ -1151,6 +1170,9 @@ export async function getPerformanceDashboard(
       payableRateDelta: hasBase
         ? pointsDelta(metrics.payableRate, previousMetrics.payableRate)
         : null,
+      deliveredComparable,
+      deliveredMatured: previousMetrics.delivered,
+      deliveredDelta: percentDelta(metrics.delivered, deliveredComparable),
     },
     unattributed:
       !isIndividualScope &&

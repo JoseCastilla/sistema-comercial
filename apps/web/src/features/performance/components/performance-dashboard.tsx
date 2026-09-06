@@ -87,6 +87,48 @@ function comparedVolumes(
   return `${current} frente a ${previous} en ${baseline} (${sign}${percentage(value)})`;
 }
 
+/**
+ * SPEC-047 BR-003: la comparación de entregadas dice contra qué compara —la
+ * cohorte del mes pasado como estaba el mismo día— y con cuántas terminó esa
+ * cohorte, para que la diferencia de maduración no pase por diferencia de
+ * resultado.
+ */
+function comparedDeliveries(data: PerformanceDashboardData): string {
+  const { comparison, metrics } = data;
+  const day = comparison.comparedThroughDay;
+  const baseline =
+    day === null
+      ? `${comparison.deliveredComparable} del mes pasado`
+      : `${comparison.deliveredComparable} entregadas hasta el día ${day} del mes pasado`;
+  const matured =
+    day !== null &&
+    comparison.deliveredMatured !== comparison.deliveredComparable
+      ? ` · esa cohorte terminó con ${comparison.deliveredMatured}`
+      : "";
+  if (comparison.deliveredDelta === null) {
+    return day === null
+      ? `${metrics.delivered} este mes; sin entregas el mes pasado para comparar`
+      : `${metrics.delivered} este mes; sin entregas hasta el día ${day} del mes pasado para comparar${matured}`;
+  }
+  const sign = comparison.deliveredDelta > 0 ? "+" : "";
+  return `${metrics.delivered} frente a ${baseline} (${sign}${percentage(comparison.deliveredDelta)})${matured}`;
+}
+
+function deliveredMixLabel(
+  metrics: PerformanceDashboardData["metrics"],
+): string {
+  const parts = [
+    `${metrics.deliveredPortability} ${metrics.deliveredPortability === 1 ? "portabilidad" : "portabilidades"}`,
+    `${metrics.deliveredNewLines} ${metrics.deliveredNewLines === 1 ? "alta nueva" : "altas nuevas"}`,
+  ];
+  const other =
+    metrics.delivered -
+    metrics.deliveredPortability -
+    metrics.deliveredNewLines;
+  if (other > 0) parts.push(`${other} sin clasificar`);
+  return parts.join(" y ");
+}
+
 function shortDelta(value: number | null): string {
   if (value === null) return "—";
   const sign = value > 0 ? "+" : "";
@@ -309,7 +351,10 @@ function SalesTrendOverview({ data }: { data: PerformanceDashboardData }) {
         <div>
           <p className="performance-panel__eyebrow">Tendencia comercial</p>
           <h2 id="sales-trend-title">Actividad diaria</h2>
-          <p>Ingresos y cierres registrados durante {data.monthLabel}.</p>
+          <p>
+            Ingresos y cierres registrados durante {data.monthLabel}. Agrupa las
+            ingresadas por fecha de ingreso y los cierres por fecha de cierre.
+          </p>
         </div>
         <div className="performance-sales-trend__legend" aria-hidden="true">
           <span data-series="entered">Ingresadas</span>
@@ -396,8 +441,8 @@ function PersonalMonthlyProgress({ data }: { data: PerformanceDashboardData }) {
           <p className="performance-panel__eyebrow">Tu avance diario</p>
           <h2 id="month-progress-title">Ritmo de {data.monthLabel}</h2>
           <p>
-            Cada barra representa las ventas ingresadas ese día; el acumulado
-            muestra tu avance real del mes.
+            Cada barra representa las ventas ingresadas ese día, por fecha de
+            ingreso; el acumulado muestra tu avance real del mes.
           </p>
         </div>
       </header>
@@ -519,8 +564,8 @@ function TeamDailyMatrix({ data }: { data: PerformanceDashboardData }) {
           <h2 id="daily-matrix-title">Ventas por asesor y día</h2>
           <p>
             Identifica continuidad, días sin producción y concentración de
-            ventas. {rangeLabel}. Los indicadores siguen contando el mes
-            completo.
+            ventas, por fecha de ingreso. {rangeLabel}. Los indicadores siguen
+            contando el mes completo.
           </p>
         </div>
         <div className="performance-management__row" aria-label="Ventana">
@@ -771,12 +816,13 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
   const totals = data.teams.reduce(
     (sum, team) => ({
       entered: sum.entered + team.metrics.entered,
+      delivered: sum.delivered + team.metrics.delivered,
       payable: sum.payable + team.metrics.payable,
       pending: sum.pending + team.metrics.deliveredPendingActivation,
       recovery: sum.recovery + team.metrics.recovery,
       cases: sum.cases + team.openRecoveryCases,
     }),
-    { entered: 0, payable: 0, pending: 0, recovery: 0, cases: 0 },
+    { entered: 0, delivered: 0, payable: 0, pending: 0, recovery: 0, cases: 0 },
   );
   const teamsWithoutSupervisor = data.teams.filter(
     (team) => team.kind === "TEAM" && team.supervisorName === null,
@@ -793,6 +839,7 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
           <h2 id="teams-summary-title">Resumen por equipo</h2>
           <p>
             Quién responde por cada equipo, cuántos venden y cómo va la cuota.
+            Cohorte por fecha de ingreso.
             {teamsWithoutSupervisor > 0 ? (
               <>
                 {" "}
@@ -831,6 +878,9 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
                 Vendedores
               </th>
               <th>Ingresadas</th>
+              <th title="Ventas del mes entregadas con fecha: la cifra del resultado; abre Pedidos">
+                Entregadas
+              </th>
               <th>Tasa de entrega</th>
               <th>Pagables</th>
               <th title="Entregadas sin cerrar: aún no generan pago; abre Pedidos">
@@ -913,6 +963,16 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
                     )}
                   </td>
                   <td>{team.metrics.entered}</td>
+                  <td>
+                    <CountLink
+                      href={
+                        scope
+                          ? ordersHref(data, "DELIVERED", { team: scope })
+                          : null
+                      }
+                      value={team.metrics.delivered}
+                    />
+                  </td>
                   <td>{percentage(team.metrics.deliveryRate)}</td>
                   <td>{team.metrics.payable}</td>
                   <td>
@@ -962,6 +1022,7 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
               </td>
               <td>—</td>
               <td>{totals.entered}</td>
+              <td>{totals.delivered}</td>
               <td>{percentage(data.metrics.deliveryRate)}</td>
               <td>{totals.payable}</td>
               <td>{totals.pending}</td>
@@ -1087,7 +1148,7 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
   const rows = visibleAdvisors(data);
   const showsEstimate = data.showCommission && data.role !== "AGENT";
   const columns =
-    8 +
+    9 +
     (data.isCurrentMonth ? 1 : 0) +
     (data.quotaWindow ? 1 : 0) +
     (showsEstimate ? 1 : 0);
@@ -1103,7 +1164,7 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
           <h2>Indicadores por asesor</h2>
           <p>
             Cuánto entrega, cuánto llega a comisión y cuánto tiene pendiente
-            cada asesor.
+            cada asesor. Cohorte por fecha de ingreso.
             {data.quotaWindow ? ` Cuota: ${quotaCohortLabel(data)}` : ""}
           </p>
         </div>
@@ -1127,6 +1188,9 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
               ) : null}
               <th title={`Ventas registradas en ${data.monthLabel}`}>
                 Ingresadas
+              </th>
+              <th title="Ventas del mes entregadas con fecha: la cifra del resultado; abre Pedidos">
+                Entregadas
               </th>
               <th
                 title={
@@ -1189,6 +1253,12 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                   </td>
                 ) : null}
                 <td>{item.metrics.entered}</td>
+                <td>
+                  <CountLink
+                    href={ordersHref(data, "DELIVERED", { advisor: item.id })}
+                    value={item.metrics.delivered}
+                  />
+                </td>
                 <td
                   title={comparedVolumes(
                     item.metrics.entered,
@@ -1249,6 +1319,12 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                 </td>
                 {data.isCurrentMonth ? <td>—</td> : null}
                 <td>{data.unattributed.metrics.entered}</td>
+                <td>
+                  <CountLink
+                    href={ordersHref(data, "DELIVERED", { team: "UNASSIGNED" })}
+                    value={data.unattributed.metrics.delivered}
+                  />
+                </td>
                 <td>{shortDelta(data.unattributed.enteredDelta)}</td>
                 <td>—</td>
                 <td>{percentage(data.unattributed.metrics.deliveryRate)}</td>
@@ -1626,22 +1702,28 @@ export function PerformanceDashboard({
        * que el color dejaba de significar estado. Ahora la cifra que define el
        * mes encabeza, y el color queda reservado para lo que exige atencion.
        */}
+      {/*
+       * SPEC-047 BR-001/BR-002: el resultado es lo entregado, así que
+       * encabeza y abre exactamente sus órdenes; lo ingresado es actividad y
+       * va segundo con su comparación pro-rata de siempre.
+       */}
       <MetricGroup label="Indicadores principales">
         <Metric
           emphasis="hero"
-          hint={comparedVolumes(
+          hint={`${deliveredMixLabel(data.metrics)} · ${comparedDeliveries(data)} · ver en Pedidos`}
+          href={ordersHref(data, "DELIVERED")}
+          label="Ventas entregadas"
+          value={data.metrics.delivered}
+        />
+        <Metric
+          hint={`${data.metrics.deliveryRate === null ? "" : `${percentage(data.metrics.deliveryRate)} entregadas · `}${comparedVolumes(
             data.metrics.entered,
             data.previousMetrics.entered,
             data.comparison.enteredDelta,
             data.comparison.comparedThroughDay,
-          )}
+          )}`}
           label="Ventas ingresadas"
           value={data.metrics.entered}
-        />
-        <Metric
-          hint={`${percentage(data.metrics.deliveryRate)} de ${data.metrics.entered} ingresadas`}
-          label="Ventas entregadas"
-          value={data.metrics.delivered}
         />
         <Metric
           href={reconciliationHref(data, "PAYABLE")}
@@ -1878,7 +1960,9 @@ export function PerformanceDashboard({
               <p className="performance-panel__eyebrow">Conversión</p>
               <h2>Avance de las ventas ingresadas</h2>
             </div>
-            <span className="performance-panel__note">Todas las ventas</span>
+            <span className="performance-panel__note">
+              Todas las ventas · por fecha de ingreso
+            </span>
           </header>
           <Funnel data={data} />
         </section>
