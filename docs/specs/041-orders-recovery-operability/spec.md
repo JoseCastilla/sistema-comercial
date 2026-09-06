@@ -1,8 +1,8 @@
 # SPEC-041 — Pedidos y Recupero de ventas: encontrar, acotar y abrir
 
-Estado: en construcción (05/09/2026). Fases 2 y 3 del plan «Mejoras de
-Pedidos y Recupero de ventas», revisado y corregido el 05/09/2026. La fase 1
-del mismo plan quedó registrada como SPEC-030 BR-095.
+**Estado:** `VERIFICADA` — fases 1 a 3 verificadas en producción el 05/09/2026 (06/09/2026)
+
+> Antes: en construcción (05/09/2026). Fases 2 y 3 del plan «Mejoras de Pedidos y Recupero de ventas», revisado y corregido el 05/09/2026. La fase 1 del mismo plan quedó registrada como SPEC-030 BR-095.
 
 ## 1. Origen
 

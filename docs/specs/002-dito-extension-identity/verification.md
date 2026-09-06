@@ -1,6 +1,6 @@
 # SPEC-002 — Verificación
 
-**Estado:** `IN_PROGRESS`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `IN_PROGRESS`).
 
 | Criterio | Evidencia prevista                        |
 | -------- | ----------------------------------------- |

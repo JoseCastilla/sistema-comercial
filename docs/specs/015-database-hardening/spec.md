@@ -1,8 +1,8 @@
 # SPEC-015 — Endurecimiento de base de datos
 
-## Estado
+**Estado:** `ENTREGADA` — migraciones en producción desde agosto; las diez restricciones NOT VALID siguen sin validar (SPEC-046) (06/09/2026)
 
-IMPLEMENTED_LOCAL
+> Antes: IMPLEMENTED_LOCAL
 
 ## Problema
 

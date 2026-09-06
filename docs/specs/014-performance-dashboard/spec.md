@@ -1,6 +1,9 @@
 # SPEC-014 — Desempeño y comisiones del contact center
 
-**Estado:** `IN_PROGRESS`
+**Estado:** `EN_CURSO` — el tablero está en producción y evolucionado por SPEC-027/032/034/038/044; queda la liquidación mensual y la fecha de corte; BR-011 sustituida por BR-019 (06/09/2026)
+
+> Antes: `IN_PROGRESS`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-09
 
@@ -75,9 +78,11 @@ permitir que el usuario modifique los resultados calculados.
   por rol que la bandeja: AGENT propio, SUPERVISOR equipos supervisados,
   ADMIN/BACKOFFICE organización.
 - **BR-010:** BACKOFFICE ve operación, calidad y SLA, pero no montos de comisión.
-- **BR-011:** AGENT ve únicamente su estimación; SUPERVISOR ve el total estimado
-  de sus equipos, sin revelar el pago individual; ADMIN puede conciliar el
-  detalle financiero.
+- **BR-011 (sustituida por BR-019 el 31/08/2026):** AGENT ve únicamente su
+  estimación; ADMIN puede conciliar el detalle financiero. La parte «SUPERVISOR
+  ve el total estimado de sus equipos, sin revelar el pago individual» quedó
+  sin efecto: el supervisor **sí** ve el importe individual (BR-019), y es lo
+  implementado.
 - **BR-012:** ninguna métrica ni comisión se edita directamente. Toda cifra se
   deriva de órdenes, reglas versionadas y eventos auditados.
 

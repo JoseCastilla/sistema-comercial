@@ -1,5 +1,7 @@
 # SPEC-024 — Bandeja operativa con tarjeta de gestión persistente
 
+**Estado:** `ENTREGADA` — sin estado hasta hoy; SPEC-029 §8 pide revisar su contrato de columnas en una spec propia, aún no escrita (06/09/2026)
+
 ## Problema
 
 La tabla anterior ocultaba datos útiles, pero el reemplazo mediante formularios

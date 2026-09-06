@@ -1,6 +1,6 @@
 # SPEC-013 — Verificación
 
-**Estado:** `DEPLOYED`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `DEPLOYED`).
 **Fecha:** 2026-08-09
 
 ## Evidencia obtenida

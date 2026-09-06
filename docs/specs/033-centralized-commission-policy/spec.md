@@ -1,6 +1,9 @@
 # SPEC-033 — Política de comisiones centralizada
 
-**Estado:** `IMPLEMENTED_LOCAL`
+**Estado:** `VERIFICADA` — en producción; SPEC-044 la nombra invariante vigente (06/09/2026)
+
+> Antes: `IMPLEMENTED_LOCAL`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-30
 

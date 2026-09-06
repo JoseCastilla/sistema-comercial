@@ -1,5 +1,7 @@
 # SPEC-027 — Dashboard de rendimiento orientado a decisiones
 
+**Estado:** `SUSTITUIDA` — SPEC-032, 034 y 044 la reemplazaron; su regla «Por recuperar» quedó anotada (06/09/2026)
+
 ## Problema
 
 El dashboard existente contiene datos correctos, pero el pulso diario domina la
@@ -22,7 +24,9 @@ de ventas.
 - Los indicadores mensuales usan cohortes por `registeredAt` en Lima.
 - Conversión de entrega = entregadas / ventas ingresadas.
 - Conversión pagable = portabilidades pagables / portabilidades ingresadas.
-- Por recuperar = canceladas + enviadas no entregadas de la cohorte.
+- Por recuperar = canceladas + enviadas no entregadas de la cohorte. *SPEC-030
+  BR-070 lo convirtió en par pendientes/recuperadas y SPEC-044 BR-004 lo
+  separó en «Pedidos por recuperar» y «Casos de recupero abiertos».*
 - Los cierres diarios se atribuyen a `closedAt` y se denominan “cierres
   registrados”.
 - La tabla incluye vendedores primarios, activos y habilitados para vender,

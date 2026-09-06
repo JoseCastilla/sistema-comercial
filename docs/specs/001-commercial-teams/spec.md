@@ -1,6 +1,9 @@
 # SPEC-001 — Equipos comerciales, visibilidad y reasignación
 
-**Estado:** `APPROVED`
+**Estado:** `EN_CURSO` — el núcleo (equipos, membresías, pool, alias) está en producción; quedan 46 tareas de reasignación, solicitudes y visibilidad jerárquica; la matriz §10 se actualizó con el supervisor vendedor y los casos de recupero (06/09/2026)
+
+> Antes: `APPROVED`
+
 **Versión:** 1.1
 **Fecha:** 2026-08-05
 **Fecha de aprobación:** 2026-08-05
@@ -307,6 +310,13 @@ SYSTEM_REVIEW
 | Aprobar/rechazar solicitud | Sí | Sí, en sus equipos | No | No |
 | Actualizar logística DITO | Sí | Sí | Sí | Solo propias |
 | Editar lead por acceso contextual derivado | Según permiso normal | Según permiso normal | Según permiso operativo | No |
+| Ver sus propias ventas además de sus equipos (supervisor que vende, SPEC-019/032) | N/A | Sí, si tiene venta habilitada | N/A | N/A |
+| Cerrar o cancelar la propia venta (SPEC-012/013/019) | No aplica | No, sobre las propias | No aplica | No |
+| Asignar o repartir casos de recupero de campañas (SPEC-030 BR-022b/BR-029) | Sí | Sí, en sus equipos | Sí, a cualquier equipo | No; toma bloques de la cola |
+| Fijar cuotas (SPEC-038 BR-009, SPEC-044 BR-025) | Organización, equipo y asesor | Asesores de sus equipos, nunca la propia | Equipo | No |
+
+*Filas añadidas el 06/09/2026 (higiene documental): la matriz es la fuente
+única de permisos por rol; SPEC-019, 030, 038 y 044 la completan.*
 
 ## 11. Requisitos no funcionales
 

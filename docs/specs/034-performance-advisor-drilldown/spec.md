@@ -1,6 +1,9 @@
 # SPEC-034 — Filtro por asesor y evidencia de pagables
 
-**Estado:** `IN_PROGRESS`
+**Estado:** `ENTREGADA` — BR-006 y AC-005 corregidos para coincidir con SPEC-014 BR-019 (06/09/2026)
+
+> Antes: `IN_PROGRESS`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-30
 
@@ -39,10 +42,12 @@ persona sin salir del dashboard.
   pagables" hacia la conciliación, cuyo alcance deja de ser exclusivo de
   ADMIN: cada rol ve las órdenes que ya puede ver en la bandeja — AGENT las
   propias, SUPERVISOR las de sus equipos, ADMIN y BACKOFFICE la organización.
-- **BR-006:** la conciliación respeta las reglas económicas vigentes de
-  SPEC-014: BACKOFFICE no ve importes; SUPERVISOR ve el detalle operativo de
-  sus equipos sin el importe individual de cada asesor; AGENT ve su propio
-  importe; ADMIN concilia todo.
+- **BR-006 (corregida el 06/09/2026):** la conciliación respeta las reglas
+  económicas vigentes de SPEC-014 BR-019: BACKOFFICE no ve importes;
+  SUPERVISOR ve el detalle operativo de sus equipos **con** el importe
+  individual de cada asesor; AGENT ve su propio importe; ADMIN concilia todo.
+  (La redacción anterior decía «sin el importe individual»: era la
+  recomendación original de SPEC-014, reemplazada el 31/08/2026.)
 - **BR-007:** ninguna métrica ni fórmula cambia en este incremento. El filtro
   restringe el conjunto de órdenes, no la manera de calcular.
 
@@ -56,8 +61,9 @@ persona sin salir del dashboard.
   filtro conservando mes y equipo.
 - **AC-004:** un AGENT abre desde su KPI de pagables la lista de sus órdenes
   pagables del período, con el motivo de cada una.
-- **AC-005:** un SUPERVISOR abre la evidencia de su equipo sin ver el importe
-  individual por asesor; BACKOFFICE la abre sin importes.
+- **AC-005 (corregido el 06/09/2026):** un SUPERVISOR abre la evidencia de su
+  equipo con el importe individual por asesor (SPEC-014 BR-019); BACKOFFICE la
+  abre sin importes.
 - **AC-006:** un AGENT que solicita la conciliación de otro asesor no obtiene
   sus datos.
 - **AC-007:** los totales del dashboard filtrado por asesor coinciden con la

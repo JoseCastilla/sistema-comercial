@@ -1,8 +1,8 @@
 # SPEC-019: Supervisor que también vende
 
-## Estado
+**Estado:** `VERIFICADA` — verificada en producción con la sesión de Francis Pary en SPEC-044 fase 6; la convención de membresía única fue sustituida por SPEC-043 BR-006 (06/09/2026)
 
-IMPLEMENTED, pendiente de verificación operativa local y despliegue.
+> Antes: IMPLEMENTED, pendiente de verificación operativa local y despliegue.
 
 ## Problema
 

@@ -1,6 +1,6 @@
 # SPEC-007 — Verificación
 
-**Estado:** `LOCAL_CONFIRMATION_VALIDATED`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `LOCAL_CONFIRMATION_VALIDATED`).
 **Fecha:** 2026-08-08
 
 ## Incremento 1 — Parser y catálogos

@@ -1,6 +1,9 @@
 # SPEC-010 — Alcance y filtro de órdenes por equipo
 
-**Estado:** `APPROVED`
+**Estado:** `ENTREGADA` — BR-003 anotada con el alcance del supervisor vendedor (SPEC-019/032) (06/09/2026)
+
+> Antes: `APPROVED`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-08
 
@@ -25,7 +28,9 @@ Backoffice conservarán el alcance completo. Agente seguirá viendo solo sus
 - **BR-002:** Admin y Backoffice pueden consultar toda la organización y
   seleccionar cualquier equipo activo.
 - **BR-003:** Supervisor solo ve órdenes asignadas a equipos que supervisa
-  activamente y el pool de órdenes con agente y equipo nulos.
+  activamente y el pool de órdenes con agente y equipo nulos. *(Ampliada por
+  SPEC-019 y SPEC-032 BR-003: un supervisor que también vende ve además sus
+  ventas propias —alcance `SUPERVISED_TEAMS_WITH_OWN_AND_ORPHANS`—.)*
 - **BR-004:** Supervisor sin equipos activos no ve órdenes ni el pool huérfano.
 - **BR-005:** Agente solo ve órdenes cuyo `agentUserId` coincide con su usuario.
 - **BR-006:** `team=UNASSIGNED` representa exclusivamente órdenes con

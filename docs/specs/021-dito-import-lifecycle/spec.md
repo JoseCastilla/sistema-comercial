@@ -1,5 +1,7 @@
 # SPEC-021 — Ciclo de vida de cargas DITO
 
+**Estado:** `ENTREGADA` — sin estado hasta hoy; SPEC-045 PL-10 añadió el historial paginado (06/09/2026)
+
 ## Objetivo
 
 Permitir que un administrador retire vistas previas obsoletas sin perder la trazabilidad de ventas ya incorporadas.

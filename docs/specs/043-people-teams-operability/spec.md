@@ -1,11 +1,8 @@
 # SPEC-043 — Personas y Equipos operativos
 
-Estado: **fases 1 a 3 desplegadas; PE-07 («Mi equipo») construido** (05/09/2026). Une dos planes revisados
-con José el mismo día: «Plan actualizado de Personas y Equipos» (PE-01 a
-PE-07) y «Plan de mejora UX de Personas y Equipos» (UX-01 a UX-08). Se apoya
-en SPEC-001 (equipos), SPEC-017 (directorios), SPEC-019 (supervisor que
-vende) y SPEC-042 (baja, reingreso, promoción); no reconstruye nada de lo que
-esas specs ya entregaron.
+**Estado:** `ENTREGADA` — fases 1 a 3 en producción; PE-07 («Mi equipo») sin recorrido con sesión de supervisor (06/09/2026)
+
+> Antes: **fases 1 a 3 desplegadas; PE-07 («Mi equipo») construido** (05/09/2026). Une dos planes revisados con José el mismo día: «Plan actualizado de Personas y Equipos» (PE-01 a PE-07) y «Plan de mejora UX de Personas y Equipos» (UX-01 a UX-08). Se apoya en SPEC-001 (equipos), SPEC-017 (directorios), SPEC-019 (supervisor que vende) y SPEC-042 (baja, reingreso, promoción); no reconstruye nada de lo que esas specs ya entregaron.
 
 ## 1. Origen
 

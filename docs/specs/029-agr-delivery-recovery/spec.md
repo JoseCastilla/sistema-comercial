@@ -1,6 +1,9 @@
 # SPEC-029 — Recuperación logística AGR
 
-**Estado:** `READY_FOR_VALIDATION`
+**Estado:** `ENTREGADA` — en producción y en uso; AC-001 a AC-005 siguen sin observarse por la credencial; SPEC-046 BR-007 fijó cuatro consultas al día (06/09/2026)
+
+> Antes: `READY_FOR_VALIDATION`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-23
 **Responsable de producto:** José Castilla

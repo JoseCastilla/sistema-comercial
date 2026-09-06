@@ -1,6 +1,6 @@
 # Verificación — SPEC-035
 
-**Estado:** `DISCOVERY — SIN IMPLEMENTACIÓN`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `DISCOVERY — SIN IMPLEMENTACIÓN`).
 
 ## Evidencia disponible — 31/08/2026
 

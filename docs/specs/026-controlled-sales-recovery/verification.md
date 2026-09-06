@@ -1,6 +1,8 @@
 # Verificación — SPEC-026
 
-## Estado actual
+## Evidencia
+
+Estado: en `spec.md` (fuente única desde el 06/09/2026).
 
 - El filtro vigente incluye `SENT + NOT_DELIVERED` y `CANCELLED`.
 - La orden local `1942469714A` está `OPEN`, pertenece a Steven y al equipo

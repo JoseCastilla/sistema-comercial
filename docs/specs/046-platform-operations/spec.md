@@ -1,10 +1,8 @@
 # SPEC-046 — Operación de la plataforma: reloj, copias y acceso
 
-Estado: **entregada; rutas verificadas en producción, servicios worker y
-backup pendientes de crear en EasyPanel** (06/09/2026). Fase 0 del plan transversal
-(SPEC-045), abierta como spec propia porque toca operación y no producto.
-Nace de la revisión de integridad del 05/09/2026
-(`docs/revisiones/2026-09-05-integridad-plataforma.md`, hallazgos 1 a 9).
+**Estado:** `ENTREGADA` — rutas verificadas en producción; servicios worker y backup pendientes en EasyPanel (06/09/2026)
+
+> Antes: **entregada; rutas verificadas en producción, servicios worker y backup pendientes de crear en EasyPanel** (06/09/2026). Fase 0 del plan transversal (SPEC-045), abierta como spec propia porque toca operación y no producto. Nace de la revisión de integridad del 05/09/2026 (`docs/revisiones/2026-09-05-integridad-plataforma.md`, hallazgos 1 a 9).
 
 ## 1. Origen
 

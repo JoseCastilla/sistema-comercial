@@ -1,6 +1,6 @@
 # SPEC-029 — Verificación
 
-**Estado:** `READY_FOR_VALIDATION`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `READY_FOR_VALIDATION`).
 **Fecha de verificación local:** 2026-08-23
 
 > **Alcance de esta evidencia.** Todo lo registrado en las secciones 1 a 5

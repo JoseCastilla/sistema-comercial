@@ -1,6 +1,6 @@
 # SPEC-006 — Verificación
 
-**Estado:** `DEPLOYED_PENDING_DITO_VALIDATION`
+Estado: en `spec.md` (fuente única desde el 06/09/2026; aquí constaba `DEPLOYED_PENDING_DITO_VALIDATION`).
 
 ## Evidencia inicial
 

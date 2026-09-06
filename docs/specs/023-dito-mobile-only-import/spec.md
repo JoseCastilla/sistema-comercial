@@ -1,5 +1,7 @@
 # SPEC-023 — Importación DITO limitada a ventas móviles
 
+**Estado:** `ENTREGADA` — sin estado hasta hoy; 1 tarea abierta (06/09/2026)
+
 ## Problema
 
 La descarga de DITO contiene productos móviles y fijos. El importador móvil interpretaba una venta Movistar Hogar como una venta móvil incompleta, por lo que podía aparecer como inválida y bloquear la confirmación del lote.

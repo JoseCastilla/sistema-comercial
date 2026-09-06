@@ -1,6 +1,9 @@
 # SPEC-035 — Plataforma propia de voz sobre troncal SIP
 
-**Estado:** `DISCOVERY`
+**Estado:** `BORRADOR` — descubrimiento; 8 decisiones pendientes del carrier (06/09/2026)
+
+> Antes: `DISCOVERY`
+
 **Versión:** 0.1
 **Fecha:** 2026-08-30
 

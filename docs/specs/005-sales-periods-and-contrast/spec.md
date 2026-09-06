@@ -1,6 +1,9 @@
 # SPEC-005 — Ventas por período y contraste operativo
 
-**Estado:** `IMPLEMENTED`
+**Estado:** `ENTREGADA` — en producción desde agosto; la validación en producción no quedó registrada; es la fuente única de períodos y cohortes (06/09/2026)
+
+> Antes: `IMPLEMENTED`
+
 **Versión:** 1.1
 **Fecha:** 2026-08-06
 **Responsable de producto:** José Castilla
@@ -32,7 +35,7 @@ base de datos.
   vez mediante `registeredAt`.
 - **Zona horaria comercial:** `America/Lima`.
 - **Hoy:** desde las 00:00 del día comercial hasta el inicio del día siguiente.
-- **Semana actual:** desde el mayor valor entre lunes 00:00 y el primer día del mes; nunca arrastra ventas del mes anterior.
+- **Semana actual:** desde el mayor valor entre lunes 00:00 y el primer día del mes; nunca arrastra ventas del mes anterior. *Confirmada el 06/09/2026 contra `getOrderPeriodRange("WEEK")`: es la definición canónica; SPEC-022 decía lo contrario y se corrigió.*
 - **Mes actual:** desde el primer día del mes 00:00 hasta el primer día del mes siguiente.
 - **Histórico:** acceso secundario y explícito; nunca se carga al entrar a la bandeja.
 - Los intervalos son semiabiertos: inicio incluido y fin excluido.
@@ -51,7 +54,7 @@ base de datos.
 - **BR-010:** texto secundario normal apunta a contraste 7:1; texto esencial nunca baja de 4.5:1.
 - **BR-011:** bordes de controles, foco y estados interactivos alcanzan al menos 3:1 respecto del fondo adyacente.
 - **BR-012:** estado, selección o severidad nunca dependen únicamente del color.
-- **BR-013:** ninguna consulta inicial de `/orders` devuelve registros cuyo `registeredAt` sea anterior al primer día del mes comercial en curso.
+- **BR-013:** ninguna consulta inicial de `/orders` devuelve registros cuyo `registeredAt` sea anterior al primer día del mes comercial en curso. *Excepciones posteriores, todas explícitas en la URL: rangos `period=RANGE` (SPEC-009/016), «Entregas fallidas por gestionar» que ignora el período (SPEC-029 BR-025, SPEC-041 BR-015) y «pendientes de meses anteriores» (SPEC-044 BR-020).*
 
 ## Alcance funcional
 

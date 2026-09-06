@@ -1,5 +1,7 @@
 # SPEC-025 — Navegación colapsable según rol
 
+**Estado:** `ENTREGADA` — sin estado hasta hoy; 1 tarea abierta (06/09/2026)
+
 ## Problema
 
 La navegación fija reduce el ancho operativo de la bandeja y muestra a los

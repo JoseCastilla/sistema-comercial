@@ -1,6 +1,9 @@
 # SPEC-006 — Calidad de captura y corrección de órdenes DITO
 
-**Estado:** `IMPLEMENTED`
+**Estado:** `ENTREGADA` — desplegada; validación con DITO pendiente de registrar (06/09/2026)
+
+> Antes: `IMPLEMENTED`
+
 **Versión:** 1.0
 **Fecha:** 2026-08-06
 

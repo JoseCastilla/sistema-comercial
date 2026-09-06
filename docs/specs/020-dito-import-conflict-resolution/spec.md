@@ -1,5 +1,7 @@
 # SPEC-020 — Normalización y resolución de conflictos DITO
 
+**Estado:** `ENTREGADA` — sin estado hasta hoy; 1 tarea abierta (06/09/2026)
+
 ## Objetivo
 
 Permitir que un administrador importe archivos DITO sin falsos conflictos por pérdida de ceros iniciales y resuelva diferencias reales antes de confirmar el lote.

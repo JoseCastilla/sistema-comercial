@@ -1,7 +1,8 @@
 # SPEC-040 — Seguimiento de la campaña: del indicador al cliente
 
-Estado: en construcción (05/09/2026). Fase 3 del plan de usabilidad de
-Campañas, revisado el 05/09/2026.
+**Estado:** `VERIFICADA` — 281 pruebas y lectura de producción registradas (06/09/2026)
+
+> Antes: en construcción (05/09/2026). Fase 3 del plan de usabilidad de Campañas, revisado el 05/09/2026.
 
 ## 1. Origen
 
