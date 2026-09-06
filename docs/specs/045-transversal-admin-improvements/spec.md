@@ -1,7 +1,7 @@
 # SPEC-045 — Mejoras transversales de la plataforma
 
-Estado: **fase 1 entregada y verificada en producción** (06/09/2026); fases
-2 a 4 pendientes. Plan «Mejoras transversales de
+Estado: **fase 2 en construcción** (06/09/2026); fase 1 entregada y
+verificada en producción; fases 3 y 4 pendientes. Plan «Mejoras transversales de
 la plataforma comercial» v1.0 propuesto por José el 06/09/2026 (rol ADMIN,
 revisión de lectura de diez módulos), contrastado con la revisión de
 integridad del 05/09/2026 (`docs/revisiones/2026-09-05-integridad-plataforma.md`)
@@ -68,6 +68,30 @@ tratar en una spec propia de operación; no bloquean esta.
   contacto y vencidos por participante y la carga resultante; el equitativo
   sigue identificado; no se reasigna nada por observar carga alta.
 
+#### Decisiones de la fase 2 (asumidas y escritas, 06/09/2026)
+
+- **Dónde vive el resumen (PL-01)**: en el tablero de Rendimiento, como
+  panel «Pendientes por resolver o cubrir», solo para ADMIN con alcance de
+  organización (sin equipo ni asesor filtrado: con filtro, los destinos ya
+  no coincidirían). Cuatro bloques —Recupero de ventas, Campañas, Personas y
+  equipos, Logística— cada uno con su alcance temporal escrito; los pedidos
+  del mes no se repiten porque ya están en «Pendientes de intervención». No
+  hay total: las poblaciones se solapan. Cada fila lleva definición, cantidad
+  enlazada a la lista con la misma definición y quién lo resuelve.
+- **Definiciones reutilizadas**: casos vencidos = `countOverdueInternalCases`
+  (la de la alerta y la bandeja); críticas sin responsable = internas `OPEN`
+  con prioridad `CRITICA`; campañas = las de `campaign-stage-labels` más
+  «próxima acción vencida» (`nextActionAt` pasado, como Seguimiento);
+  equipos sin supervisor y asesores sin equipo = las de SPEC-043 UX-03/04;
+  incidencias = escalamientos `OPEN`/`ACKNOWLEDGED`; logística = la de PL-06,
+  solo si hay integración configurada.
+- **Vista previa del reparto (PL-04)**: el formulario calcula «recibiría» y
+  «quedaría» con `distributeCasesEquitably`, la misma regla del servidor, y
+  muestra por participante abiertos, sin primer contacto (`firstContactAt`
+  nulo) y vencidos (`nextActionAt` pasado) de casos de campaña. La
+  asignación directa muestra la carga de la persona elegida; la cola, la del
+  equipo. Solo informa: ninguna carga alta cambia la asignación.
+
 ### Fase 3 — Fuente, columnas y actividad (PL-07, PL-08, PL-09)
 
 - **BR-007** Hora de consulta de Máximo distinta de la de pantalla; siguiente
@@ -98,3 +122,13 @@ tratar en una spec propia de operación; no bloquean esta.
   lo cubre y ofrece «Asignar supervisor» y «Repartir su cuota».
 - **AC-004:** «Pedidos que requieren acción = N» abre Pedidos con N órdenes.
 - **AC-005:** tipos, lint y pruebas en verde.
+
+## 5. Criterios de aceptación de la fase 2
+
+- **AC-006:** con sesión de administrador sin filtros, el tablero muestra el
+  panel con cuatro bloques; cada cantidad mayor que cero abre una lista que
+  cuenta lo mismo; con equipo o asesor filtrado el panel no aparece.
+- **AC-007:** en Repartir, al elegir un asesor o un equipo aparece su carga
+  (abiertos, sin primer contacto, vencidos) y lo que recibiría; la tabla del
+  reparto equitativo muestra «recibiría» y «quedaría» por participante y
+  cambia al desmarcar a alguien.

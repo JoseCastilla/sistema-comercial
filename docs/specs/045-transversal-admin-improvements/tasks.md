@@ -17,10 +17,14 @@
       270 = 270; Logística 347 = 347); «En gestión» de Preparar alineado con
       Repartir.
 
-## Fase 2 · Resumen administrativo y reparto con carga
+## Fase 2 · Resumen administrativo y reparto con carga (06/09/2026)
 
-- [ ] PL-01 · Resumen de pendientes para ADMIN.
-- [ ] PL-04 · Vista previa de carga por participante antes de confirmar.
+- [x] PL-01 · Panel «Pendientes por resolver o cubrir» para ADMIN sin filtros,
+      cuatro bloques con definición, alcance, cantidad enlazada y responsable.
+- [x] PL-04 · Carga por asesor (abiertos, sin primer contacto, vencidos) y
+      vista previa «recibiría / quedaría» en directa, equitativa y cola.
+- [x] Recorrido local con sesión de administrador: Repartir: al elegir un asesor aparece «Hoy carga 0 abiertos (0 sin primer contacto, 0 vencidos). Recibiría 0 y quedaría con 0»; al elegir un equipo para la cola, «El equipo carga hoy 38 abiertos entre 7 asesores (36 sin primer contacto, 38 vencidos)», cifras iguales a Seguimiento (Cartera 38 · Sin primer contacto 36); la tabla equitativa muestra Participa · Abiertos · Sin 1.er contacto · Vencidos · Recibiría · Quedaría (AC-007). Paridad del resumen: críticas 1 = 1, próxima acción vencida 38 = 38, equipos sin supervisor 1 = 1.
+- [ ] Lectura de solo lectura en producción tras el despliegue.
 
 ## Fase 3 · Fuente, columnas y actividad
 

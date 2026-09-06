@@ -12,6 +12,11 @@ import { distributeRecoveryCasesAction } from "../server/distribute-recovery-cas
 
 import { CopyValue } from "./copy-value";
 
+import {
+  previewDirectLoad,
+  previewEquitableLoad,
+} from "../distribution-preview";
+
 import type { RecoveryTriageActionState } from "../server/recovery-action.types";
 
 const initialState: RecoveryTriageActionState = {
@@ -44,6 +49,10 @@ export interface DistributeAdvisorOption {
   teamId: string;
   teamName: string;
   openCases: number;
+  /** Con dueño y sin ningún intento (PL-04). */
+  unworkedCases: number;
+  /** En gestión con la próxima acción ya vencida (PL-04). */
+  overdueCases: number;
 }
 
 export function DistributeRecoveryForm({
@@ -66,6 +75,8 @@ export function DistributeRecoveryForm({
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [takeCount, setTakeCount] = useState("50");
   const [equitableTeamId, setEquitableTeamId] = useState(teams[0]?.id ?? "");
+  const [directTargetId, setDirectTargetId] = useState("");
+  const [poolTeamId, setPoolTeamId] = useState("");
   const [excludedParticipants, setExcludedParticipants] = useState<
     ReadonlySet<string>
   >(new Set());
@@ -121,6 +132,37 @@ export function DistributeRecoveryForm({
   const participantIds = equitableAdvisors
     .filter((advisor) => !excludedParticipants.has(advisor.id))
     .map((advisor) => advisor.id);
+
+  // PL-04: la vista previa usa la misma regla que aplica el servidor.
+  const equitablePreview = useMemo(
+    () =>
+      new Map(
+        previewEquitableLoad(
+          selected.size,
+          equitableAdvisors.filter(
+            (advisor) => !excludedParticipants.has(advisor.id),
+          ),
+        ).map((row) => [row.id, row]),
+      ),
+    [selected.size, equitableAdvisors, excludedParticipants],
+  );
+  const directTarget = directTargets.find(
+    (advisor) => advisor.id === directTargetId,
+  );
+  const directPreview = directTarget
+    ? previewDirectLoad(selected.size, directTarget)
+    : null;
+  const poolTeamAdvisors = advisors.filter(
+    (advisor) => advisor.teamId === poolTeamId,
+  );
+  const poolLoad = poolTeamAdvisors.reduce(
+    (sum, advisor) => ({
+      open: sum.open + advisor.openCases,
+      unworked: sum.unworked + advisor.unworkedCases,
+      overdue: sum.overdue + advisor.overdueCases,
+    }),
+    { open: 0, unworked: 0, overdue: 0 },
+  );
 
   function toggleAll() {
     lastIndexRef.current = null;
@@ -208,9 +250,11 @@ export function DistributeRecoveryForm({
           </p>
           <div className="flex gap-2">
             <select
+              aria-label="Asesor destino"
               className="block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
-              defaultValue=""
               name="targetUserId"
+              onChange={(event) => setDirectTargetId(event.target.value)}
+              value={directTargetId}
             >
               <option disabled value="">
                 Asesor destino…
@@ -232,6 +276,15 @@ export function DistributeRecoveryForm({
               Asignar
             </Button>
           </div>
+          {directPreview ? (
+            <p className="mt-2 text-xs leading-5 text-ui-text" role="status">
+              Hoy carga {directPreview.openCases} abiertos (
+              {directPreview.unworkedCases} sin primer contacto,{" "}
+              {directPreview.overdueCases} vencidos). Recibiría{" "}
+              {directPreview.receives} y quedaría con{" "}
+              <strong>{directPreview.resulting}</strong>.
+            </p>
+          ) : null}
           <p className="mt-2 text-xs leading-5 text-ui-muted">
             Todos los casos marcados van a un solo asesor, de cualquiera de tus
             equipos.
@@ -244,6 +297,7 @@ export function DistributeRecoveryForm({
           </p>
           <div className="flex gap-2">
             <select
+              aria-label="Equipo para el reparto equitativo"
               className="block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
               name="teamId-equitativa-selector"
               onChange={(event) => {
@@ -274,34 +328,90 @@ export function DistributeRecoveryForm({
               Este equipo no tiene asesores activos con venta habilitada.
             </p>
           ) : (
-            <ul className="mt-2 space-y-1">
-              {equitableAdvisors.map((advisor) => {
-                const participates = !excludedParticipants.has(advisor.id);
-                return (
-                  <li key={advisor.id}>
-                    <label className="flex items-center gap-2 text-xs text-ui-text">
-                      <input
-                        checked={participates}
-                        onChange={() => toggleParticipant(advisor.id)}
-                        type="checkbox"
-                      />
-                      <span>
-                        {advisor.name}
-                        <span className="text-ui-muted">
-                          {" "}
-                          · {advisor.openCases} abiertos
-                          {advisor.id === viewerUserId ? " · tú" : ""}
-                        </span>
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
+            <table className="mt-2 w-full text-xs text-ui-text">
+              <thead className="text-ui-muted">
+                <tr>
+                  <th className="py-1 text-left font-medium" scope="col">
+                    Participa
+                  </th>
+                  <th
+                    className="py-1 text-right font-medium"
+                    scope="col"
+                    title="Casos de campaña que ya carga"
+                  >
+                    Abiertos
+                  </th>
+                  <th
+                    className="py-1 text-right font-medium"
+                    scope="col"
+                    title="Con dueño y sin ningún intento"
+                  >
+                    Sin 1.er contacto
+                  </th>
+                  <th
+                    className="py-1 text-right font-medium"
+                    scope="col"
+                    title="Próxima acción ya vencida"
+                  >
+                    Vencidos
+                  </th>
+                  <th className="py-1 text-right font-medium" scope="col">
+                    Recibiría
+                  </th>
+                  <th className="py-1 text-right font-medium" scope="col">
+                    Quedaría
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {equitableAdvisors.map((advisor) => {
+                  const participates = !excludedParticipants.has(advisor.id);
+                  const preview = equitablePreview.get(advisor.id);
+                  return (
+                    <tr key={advisor.id}>
+                      <td className="py-1">
+                        <label className="flex items-center gap-2">
+                          <input
+                            checked={participates}
+                            onChange={() => toggleParticipant(advisor.id)}
+                            type="checkbox"
+                          />
+                          <span>
+                            {advisor.name}
+                            {advisor.id === viewerUserId ? (
+                              <span className="text-ui-muted"> · tú</span>
+                            ) : null}
+                          </span>
+                        </label>
+                      </td>
+                      <td className="py-1 text-right tabular-nums">
+                        {advisor.openCases}
+                      </td>
+                      <td className="py-1 text-right tabular-nums">
+                        {advisor.unworkedCases}
+                      </td>
+                      <td className="py-1 text-right tabular-nums">
+                        {advisor.overdueCases}
+                      </td>
+                      <td className="py-1 text-right tabular-nums">
+                        {participates ? (preview?.receives ?? 0) : "—"}
+                      </td>
+                      <td className="py-1 text-right tabular-nums font-semibold">
+                        {participates
+                          ? (preview?.resulting ?? advisor.openCases)
+                          : advisor.openCases}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
           <p className="mt-2 text-xs leading-5 text-ui-muted">
-            Se reparte parejo (a lo más un caso de diferencia). Desmarca a quien
-            no trabaja hoy; queda registrado quién quedó fuera.
+            Reparto equitativo: parejo, a lo más un caso de diferencia, y el
+            residuo a quien menos abiertos tiene. La vista previa solo informa;
+            desmarca a quien no trabaja hoy y queda registrado quién quedó
+            fuera. Nadie se reasigna por tener carga alta.
           </p>
         </div>
 
@@ -311,9 +421,11 @@ export function DistributeRecoveryForm({
           </p>
           <div className="flex gap-2">
             <select
+              aria-label="Equipo destino de la cola"
               className="block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
-              defaultValue=""
               name="poolTeamId"
+              onChange={(event) => setPoolTeamId(event.target.value)}
+              value={poolTeamId}
             >
               <option disabled value="">
                 Equipo destino…
@@ -334,6 +446,15 @@ export function DistributeRecoveryForm({
               Enviar
             </Button>
           </div>
+          {poolTeamId ? (
+            <p className="mt-2 text-xs leading-5 text-ui-text" role="status">
+              El equipo carga hoy {poolLoad.open} abiertos entre{" "}
+              {poolTeamAdvisors.length}{" "}
+              {poolTeamAdvisors.length === 1 ? "asesor" : "asesores"} (
+              {poolLoad.unworked} sin primer contacto, {poolLoad.overdue}{" "}
+              vencidos). A la cola irían {selected.size}.
+            </p>
+          ) : null}
           <p className="mt-2 text-xs leading-5 text-ui-muted">
             Sin nominar asesor: cada asesor toma hasta 10 casos y nadie puede
             tomar los mismos.

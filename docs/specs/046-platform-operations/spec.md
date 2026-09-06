@@ -8,8 +8,8 @@ Nace de la revisión de integridad del 05/09/2026
 
 ## 1. Origen
 
-La plataforma promete reglas con reloj —sincronizar con Máximo a las 08:15,
-13:15 y 18:15; vencer casos sin verificar a los siete días; devolver al pool
+La plataforma promete reglas con reloj —sincronizar con Máximo cuatro veces
+al día; vencer casos sin verificar a los siete días; devolver al pool
 los asignados sin gestión; liberar los que esperaban un pedido— y las cumplía
 solo cuando alguien abría una página. Los eventos de GHL que fallaban al
 proyectarse quedaban en `FAILED` sin motivo y sin reintento. No existía
@@ -52,6 +52,11 @@ variables de entorno no tenían fuente de verdad.
 - **BR-006 · Fuente única de variables.** `.env.example` en la raíz lista
   todas las variables por servicio con su propósito; `turbo.json` deja de
   declarar `AUTH_BOOTSTRAP_TOKEN` (sin uso) y declara las que faltaban.
+
+- **BR-007 · Cuatro consultas automáticas a Máximo (José, 06/09/2026).** A
+  las 08:00, 12:00, 15:00 y 18:00 de Lima; el worker las dispara en los
+  cinco minutos siguientes a cada hora. Cualquier otra consulta es manual,
+  desde Logística. Antes eran tres (08:15, 13:15, 18:15).
 
 ## 3. Decisiones asumidas
 

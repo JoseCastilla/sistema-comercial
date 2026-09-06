@@ -201,7 +201,9 @@ function currentLimaScheduleKey(now = new Date()): string | null {
   const read = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((part) => part.type === type)?.value ?? "00";
   const minutes = Number(read("hour")) * 60 + Number(read("minute"));
-  const slot = [18 * 60 + 15, 13 * 60 + 15, 8 * 60 + 15].find(
+  // SPEC-046 BR-007 (José, 06/09/2026): cuatro consultas automáticas al día
+  // —08:00, 12:00, 15:00 y 18:00 de Lima—; cualquier otra es manual.
+  const slot = [18 * 60, 15 * 60, 12 * 60, 8 * 60].find(
     (candidate) => minutes >= candidate,
   );
   if (slot === undefined) return null;
