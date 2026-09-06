@@ -184,11 +184,3 @@ export const ghlIncomingSnapshotSchema: z.ZodType<GhlIncomingSnapshot> =
     ghlCommercialCaseSnapshotV2Schema,
     legacyGhlSnapshotV1Schema,
   ]);
-
-export function parseGhlIncomingSnapshot(value: unknown): GhlIncomingSnapshot {
-  return ghlIncomingSnapshotSchema.parse(value);
-}
-
-export function safeParseGhlIncomingSnapshot(value: unknown) {
-  return ghlIncomingSnapshotSchema.safeParse(value);
-}

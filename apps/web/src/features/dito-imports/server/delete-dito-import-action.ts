@@ -24,7 +24,8 @@ export async function deleteDitoImportAction(
   if (!parsed.success) {
     return {
       type: "error",
-      message: "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
+      message:
+        "Esta página está desactualizada. Recárgala y vuelve a intentarlo.",
     };
   }
 

@@ -6,12 +6,9 @@ import { canPromotePerson } from "@repo/validation";
 
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
+import { readText } from "@/server/forms/read-form";
 
 import type { PersonLifecycleActionState } from "./person-lifecycle.types";
-
-function readText(value: FormDataEntryValue | null): string {
-  return typeof value === "string" ? value.trim() : "";
-}
 
 /**
  * Promoción a supervisor — SPEC-042 BR-011, BR-012 (sobre SPEC-019).

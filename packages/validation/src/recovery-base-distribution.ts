@@ -71,6 +71,10 @@ export const baseRecoveryPoolReturnDays = 2;
  */
 export const recoveryConsultationMaxAgeDays = 7;
 
+/*
+ * Conservada a propósito (SPEC-037 AC-004): regla de SPEC-030 BR-084 con
+ * pruebas; `expire-unverified-cases` usa la constante en su consulta.
+ */
 export function isRecoveryConsultationExpired(
   firstRegisteredAt: Date,
   now: Date,

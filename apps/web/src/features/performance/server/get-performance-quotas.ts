@@ -12,6 +12,7 @@ import {
 } from "@repo/validation";
 
 import { database } from "@/server/database";
+import { formatLimaMonth } from "@repo/ui/format";
 
 import { resolvePerformanceScope } from "./performance-access";
 
@@ -75,12 +76,6 @@ export interface PerformanceQuotasData {
   canAssignAdvisors: boolean;
   teams: QuotaTeamRow[];
 }
-
-const monthLabelFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  month: "long",
-  year: "numeric",
-});
 
 export async function getPerformanceQuotas(
   organizationId: string,
@@ -211,9 +206,7 @@ export async function getPerformanceQuotas(
 
   return {
     periodKey,
-    periodLabel: monthLabelFormatter.format(
-      new Date(`${periodKey}-01T12:00:00.000Z`),
-    ),
+    periodLabel: formatLimaMonth(new Date(`${periodKey}-01T12:00:00.000Z`)),
     currentPeriodKey,
     planningLimit: getQuotaPlanningLimit(now),
     editable: isQuotaPeriodEditable(periodKey, currentPeriodKey),

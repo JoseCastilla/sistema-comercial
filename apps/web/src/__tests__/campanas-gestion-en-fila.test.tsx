@@ -1,6 +1,12 @@
 import { webcrypto } from "node:crypto";
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CampaignAttemptEditor } from "@/features/recovery/components/campaign-attempt-editor";
@@ -52,12 +58,14 @@ function successFor(formData: FormData) {
 beforeEach(() => {
   inlineAction.mockReset();
   replace.mockReset();
-  inlineAction.mockImplementation(async (_previous: unknown, formData: FormData) =>
-    successFor(formData),
+  inlineAction.mockImplementation(
+    async (_previous: unknown, formData: FormData) => successFor(formData),
   );
 });
 
-function renderEditor(overrides: Partial<Parameters<typeof CampaignAttemptEditor>[0]> = {}) {
+function renderEditor(
+  overrides: Partial<Parameters<typeof CampaignAttemptEditor>[0]> = {},
+) {
   const onSaved = vi.fn();
   const onCancel = vi.fn();
   const onUnmanageable = vi.fn();
@@ -82,14 +90,19 @@ function renderEditor(overrides: Partial<Parameters<typeof CampaignAttemptEditor
   return {
     onSaved,
     onCancel,
-    form: () => screen.getByRole("button", { name: /Guardar gestión/ }).closest("form")!,
+    form: () =>
+      screen.getByRole("button", { name: /Guardar gestión/ }).closest("form")!,
     resultado: () => screen.getByLabelText("Resultado") as HTMLSelectElement,
     observacion: () =>
-      screen.getByPlaceholderText("Qué dijo el cliente hoy") as HTMLInputElement,
+      screen.getByPlaceholderText(
+        "Qué dijo el cliente hoy",
+      ) as HTMLInputElement,
     telefonoOculto: () =>
       document.querySelector('input[name="phoneUsed"]') as HTMLInputElement,
     claveOculta: () =>
-      document.querySelector('input[name="clientRequestId"]') as HTMLInputElement,
+      document.querySelector(
+        'input[name="clientRequestId"]',
+      ) as HTMLInputElement,
   };
 }
 
@@ -192,9 +205,13 @@ describe("Gestión en fila · guardar", () => {
 
     const { form, observacion } = renderEditor();
 
-    fireEvent.change(observacion(), { target: { value: "No contesta, buzón" } });
+    fireEvent.change(observacion(), {
+      target: { value: "No contesta, buzón" },
+    });
     await enviar(form());
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/conexión/));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/conexión/),
+    );
 
     // El error conserva lo escrito y el formulario sigue ahí para reintentar.
     expect(observacion().value).toBe("No contesta, buzón");
@@ -209,7 +226,9 @@ describe("Gestión en fila · guardar", () => {
     );
     expect(screen.getByText(/cambiará de posición/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Registrar otro intento/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Registrar otro intento/ }),
+    );
     await enviar(form());
     await waitFor(() => expect(inlineAction).toHaveBeenCalledTimes(3));
     expect(claveEnviada(2)).not.toBe(claveEnviada(1));
@@ -295,7 +314,9 @@ describe("Borrador de la bandeja · una sola gestión abierta", () => {
     expect(screen.getByTestId("editando")).toHaveTextContent("A");
 
     fireEvent.click(screen.getByRole("button", { name: "Abrir B" }));
-    fireEvent.click(screen.getByRole("button", { name: "Descartar y cambiar" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Descartar y cambiar" }),
+    );
     expect(screen.getByTestId("editando")).toHaveTextContent("B");
   });
 

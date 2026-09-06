@@ -1,10 +1,7 @@
 import { getLimaIsoDate } from "./order-period.js";
 
 export type RecoveryPortabilityState =
-  | "PORTADO"
-  | "NO_PORTADO"
-  | "PROGRAMADO"
-  | "DESCONOCIDO";
+  "PORTADO" | "NO_PORTADO" | "PROGRAMADO" | "DESCONOCIDO";
 
 export type RecoveryPortabilityOutcome =
   | "DISCARD_ALREADY_ACTIVE"

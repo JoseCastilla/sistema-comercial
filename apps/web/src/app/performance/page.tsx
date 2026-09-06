@@ -3,13 +3,10 @@ import { parsePerformanceMonth } from "@repo/validation";
 import { PerformanceDashboard } from "@/features/performance/components/performance-dashboard";
 import { getPerformanceDashboard } from "@/features/performance/server/get-performance-dashboard";
 import { requireCommercialAccess } from "@/server/auth/access";
+import { firstValue } from "@/server/search-params";
 
 interface PerformancePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-function firstValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
 }
 
 export default async function PerformancePage({

@@ -66,8 +66,7 @@ export function resolveRecoveryBoardPeriod(
   const today = limaDayStart(now, 0);
   const tomorrow = limaDayStart(now, 1);
   const label =
-    recoveryBoardPeriods.find((period) => period.value === key)?.label ??
-    "Hoy";
+    recoveryBoardPeriods.find((period) => period.value === key)?.label ?? "Hoy";
 
   switch (key) {
     case "hoy":

@@ -84,22 +84,6 @@ export const resolveDitoImportConflictSchema = z.object({
       });
     }),
 });
-
-export type ResolveDitoAgentIdentityInput = z.infer<
-  typeof resolveDitoAgentIdentitySchema
->;
 export type ConfirmDitoImportBatchInput = z.infer<
   typeof confirmDitoImportBatchSchema
->;
-export type DeleteDitoImportBatchInput = z.infer<
-  typeof deleteDitoImportBatchSchema
->;
-export type MarkDitoAgentIdentitySharedInput = z.infer<
-  typeof markDitoAgentIdentitySharedSchema
->;
-export type AssignSharedDitoImportRowsInput = z.infer<
-  typeof assignSharedDitoImportRowsSchema
->;
-export type ResolveDitoImportConflictInput = z.infer<
-  typeof resolveDitoImportConflictSchema
 >;

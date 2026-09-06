@@ -33,7 +33,3 @@ export const ditoOrderCancellationReviewSchema = z
       });
     }
   });
-
-export type DitoOrderCancellationReviewInput = z.infer<
-  typeof ditoOrderCancellationReviewSchema
->;

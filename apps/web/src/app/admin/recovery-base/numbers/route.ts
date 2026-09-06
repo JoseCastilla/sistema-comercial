@@ -71,21 +71,21 @@ export async function GET(request: Request) {
             case: { status: "WAITING", source: "NATIONAL_BASE" },
           }
         : days > 0
-        ? {
-            // Barrido: todo lo cargado al sistema en los últimos N días,
-            // consultado o no. La fecha comercial del pedido no sirve aquí:
-            // una base subida hoy trae pedidos de hace varios días.
-            case: {
-              ...openCase,
-              createdAt: {
-                gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+          ? {
+              // Barrido: todo lo cargado al sistema en los últimos N días,
+              // consultado o no. La fecha comercial del pedido no sirve aquí:
+              // una base subida hoy trae pedidos de hace varios días.
+              case: {
+                ...openCase,
+                createdAt: {
+                  gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+                },
               },
-            },
-          }
-        : {
-            OR: [{ portabilityCheckedAt: null }, { needsRevalidation: true }],
-            case: openCase,
-          }),
+            }
+          : {
+              OR: [{ portabilityCheckedAt: null }, { needsRevalidation: true }],
+              case: openCase,
+            }),
     },
     select: {
       serviceNumber: true,

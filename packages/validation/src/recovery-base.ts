@@ -58,9 +58,7 @@ function digitsOf(value: unknown): string {
  * Normaliza el documento a la llave de identidad del caso (BR-006), con la
  * misma regla del consolidado actual: solo dígitos, relleno a ocho ceros.
  */
-export function normalizeRecoveryDocumentNumber(
-  value: unknown,
-): string | null {
+export function normalizeRecoveryDocumentNumber(value: unknown): string | null {
   const digits = digitsOf(value);
 
   if (digits.length === 0 || digits.length > 15) {

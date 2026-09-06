@@ -23,6 +23,7 @@ import {
 import { ReturnFocus } from "@/features/users/components/return-focus";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
+import { firstValueOrEmpty as firstValue } from "@/server/search-params";
 
 const auditActionLabels: Record<string, string> = {
   TEAM_CREATED: "Equipo creado",
@@ -32,10 +33,6 @@ const auditActionLabels: Record<string, string> = {
   MEMBER_ASSIGNED: "Integrante asignado",
   MEMBER_REMOVED: "Supervisión retirada",
 };
-
-function firstValue(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
 
 function describeAudit(action: string, values: unknown): string | null {
   if (!values || typeof values !== "object") return null;

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  calculateAcceleratorOne,
+  calculateAccelerators,
   calculatePerformanceMetrics,
   evaluatePerformanceOrderPayment,
   filterOrdersRegisteredThroughLimaDay,
@@ -10,6 +10,9 @@ import {
   getPerformanceCommissionPolicy,
   getPotentialBaseCommissionCents,
 } from "../dist/performance-metrics.js";
+
+/** SPEC-037: `calculateAcceleratorOne` se retiró; la primera ventana es la primera de la lista. */
+const acceleratorOne = (orders) => calculateAccelerators(orders)[0];
 
 function order(overrides = {}) {
   return {
@@ -26,9 +29,7 @@ function order(overrides = {}) {
 }
 
 test("41 portabilidades confirmadas de la primera quincena generan S/ 310", () => {
-  const result = calculateAcceleratorOne(
-    Array.from({ length: 41 }, () => order()),
-  );
+  const result = acceleratorOne(Array.from({ length: 41 }, () => order()));
 
   assert.deepEqual(result, {
     key: "ONE",
@@ -44,7 +45,7 @@ test("41 portabilidades confirmadas de la primera quincena generan S/ 310", () =
 });
 
 test("la fecha de cierre no cambia la cohorte del acelerador", () => {
-  const result = calculateAcceleratorOne([
+  const result = acceleratorOne([
     order({ registeredAt: new Date("2026-08-15T23:30:00.000Z") }),
     order({ registeredAt: new Date("2026-08-16T05:00:00.000Z") }),
   ]);
@@ -54,7 +55,7 @@ test("la fecha de cierre no cambia la cohorte del acelerador", () => {
 });
 
 test("una orden ingresada en la ventana permanece provisional hasta entrega y cierre", () => {
-  const result = calculateAcceleratorOne([
+  const result = acceleratorOne([
     order({
       status: "SENT",
       deliveryStatus: "IN_TRANSIT",

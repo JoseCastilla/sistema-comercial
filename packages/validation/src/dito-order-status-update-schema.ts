@@ -78,7 +78,3 @@ export const ditoOrderStatusUpdateSchema = z
       });
     }
   });
-
-export type DitoOrderStatusUpdateInput = z.infer<
-  typeof ditoOrderStatusUpdateSchema
->;

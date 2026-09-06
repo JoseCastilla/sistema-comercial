@@ -20,7 +20,3 @@ export const ditoOrderOrphanClaimSchema = z
       });
     }
   });
-
-export type DitoOrderOrphanClaimInput = z.infer<
-  typeof ditoOrderOrphanClaimSchema
->;

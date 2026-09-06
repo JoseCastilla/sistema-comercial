@@ -7,6 +7,7 @@ import {
 } from "@repo/validation";
 
 import { database } from "@/server/database";
+import { formatLimaDateTime } from "@repo/ui/format";
 
 import { lossReasonLabels } from "../loss-reason-labels";
 
@@ -16,15 +17,6 @@ import type {
   LossReasonGate,
   RecoveryLossReasonOption,
 } from "@repo/validation";
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 
 export interface SalesRecoveryCaseDetail {
   id: string;
@@ -199,15 +191,15 @@ export async function getSalesRecoveryCase(
     isAssignedToViewer: recoveryCase.assignedUserId === access.userId,
     originalAgentName: recoveryCase.originalAgent?.name ?? null,
     originalTeamName: recoveryCase.originalTeam?.name ?? null,
-    noveltyAtLabel: dateTimeFormatter.format(recoveryCase.lastSightingAt),
+    noveltyAtLabel: formatLimaDateTime(recoveryCase.lastSightingAt),
     claimedAtLabel: recoveryCase.claimedAt
-      ? dateTimeFormatter.format(recoveryCase.claimedAt)
+      ? formatLimaDateTime(recoveryCase.claimedAt)
       : null,
     firstContactAtLabel: recoveryCase.firstContactAt
-      ? dateTimeFormatter.format(recoveryCase.firstContactAt)
+      ? formatLimaDateTime(recoveryCase.firstContactAt)
       : null,
     nextActionAtLabel: recoveryCase.nextActionAt
-      ? dateTimeFormatter.format(recoveryCase.nextActionAt)
+      ? formatLimaDateTime(recoveryCase.nextActionAt)
       : null,
     nextActionOverdue:
       recoveryCase.nextActionAt !== null &&
@@ -252,12 +244,12 @@ export async function getSalesRecoveryCase(
       phoneUsed: attempt.phoneUsed,
       observation: attempt.observation,
       actorName: attempt.actor.name,
-      createdAtLabel: dateTimeFormatter.format(attempt.createdAt),
+      createdAtLabel: formatLimaDateTime(attempt.createdAt),
     })),
     recoveredOrderSuggestions: suggestions.map((order) => ({
       id: order.id,
       orderCode: order.orderCodeRaw,
-      registeredAtLabel: dateTimeFormatter.format(order.registeredAt),
+      registeredAtLabel: formatLimaDateTime(order.registeredAt),
       status: String(order.status),
     })),
     lossReasonGates: evaluateInternalLossReasonGates(recoveryCase.attempts),

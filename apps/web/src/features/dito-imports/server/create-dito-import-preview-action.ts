@@ -5,6 +5,7 @@ import { createHash, createHmac } from "node:crypto";
 import { redirect } from "next/navigation";
 
 import { requireAdminAccess } from "@/server/auth/access";
+import { readApiError } from "./read-api-error";
 
 import type { DitoImportPreviewActionState } from "./dito-import-action.types";
 
@@ -118,17 +119,4 @@ function isPreviewResponse(value: unknown): value is PreviewResponse {
     "batchId" in value &&
     typeof value.batchId === "string"
   );
-}
-
-function readApiError(value: unknown): string | null {
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "message" in value &&
-    typeof value.message === "string"
-  ) {
-    return value.message;
-  }
-
-  return null;
 }

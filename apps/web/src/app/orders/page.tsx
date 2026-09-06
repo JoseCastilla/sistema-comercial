@@ -10,13 +10,10 @@ import { maybeRunScheduledAgrDeliverySync } from "@/features/agr-delivery/server
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import type { OrderFilter } from "@/features/orders/order-inbox.types";
+import { firstValue } from "@/server/search-params";
 
 interface OrdersPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-function firstValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
 }
 
 function parseOrderFilter(

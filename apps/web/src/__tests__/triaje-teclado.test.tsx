@@ -321,7 +321,9 @@ describe("Triage · la selección no sobrevive al cambio de lista", () => {
     const { view, rows } = renderTriage(4);
 
     fireEvent.keyDown(rows[1]!, { key: " ", shiftKey: true });
-    expect(view.container.querySelectorAll('input[name="caseIds"]')).toHaveLength(1);
+    expect(
+      view.container.querySelectorAll('input[name="caseIds"]'),
+    ).toHaveLength(1);
 
     view.rerender(
       <RecoveryTriageForm
@@ -331,7 +333,9 @@ describe("Triage · la selección no sobrevive al cambio de lista", () => {
       />,
     );
 
-    expect(view.container.querySelectorAll('input[name="caseIds"]')).toHaveLength(0);
+    expect(
+      view.container.querySelectorAll('input[name="caseIds"]'),
+    ).toHaveLength(0);
     expect(screen.getByRole("status")).toHaveTextContent(/se limpió/);
   });
 
@@ -356,10 +360,16 @@ describe("Triage · la selección no sobrevive al cambio de lista", () => {
 
     // Misma lista, misma clave: el aviso de COR-05 no debe aparecer.
     view.rerender(
-      <RecoveryTriageForm canAssignTeams={false} rows={buildRows(2)} teams={[]} />,
+      <RecoveryTriageForm
+        canAssignTeams={false}
+        rows={buildRows(2)}
+        teams={[]}
+      />,
     );
 
     expect(screen.queryByText(/se limpió/)).toBeNull();
-    expect(view.container.querySelectorAll('input[name="caseIds"]')).toHaveLength(1);
+    expect(
+      view.container.querySelectorAll('input[name="caseIds"]'),
+    ).toHaveLength(1);
   });
 });

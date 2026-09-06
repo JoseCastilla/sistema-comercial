@@ -92,3 +92,50 @@ export function formatDecimal(
     useGrouping: false,
   }).format(value);
 }
+
+/*
+ * Fechas en hora de Lima (SPEC-037). Los tres formatos que más se repetían
+ * en el código —doce `Intl.DateTimeFormat` locales idénticos— viven aquí;
+ * los que llevan opciones propias siguen donde están.
+ */
+const TIME_ZONE = "America/Lima";
+
+const limaDateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+const limaDateTimeWithYearFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+const limaMonthFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: TIME_ZONE,
+  month: "long",
+  year: "numeric",
+});
+
+/** «06/09 14:30». */
+export function formatLimaDateTime(value: Date): string {
+  return limaDateTimeFormatter.format(value);
+}
+
+/** «06/09/2026 14:30». */
+export function formatLimaDateTimeWithYear(value: Date): string {
+  return limaDateTimeWithYearFormatter.format(value);
+}
+
+/** «setiembre de 2026». */
+export function formatLimaMonth(value: Date): string {
+  return limaMonthFormatter.format(value);
+}

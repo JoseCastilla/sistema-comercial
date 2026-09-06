@@ -65,7 +65,3 @@ export const ditoOrderCorrectionSchema = z.object({
     "Explica el motivo en al menos 10 caracteres",
   ),
 });
-
-export type DitoOrderCorrectionInput = z.infer<
-  typeof ditoOrderCorrectionSchema
->;

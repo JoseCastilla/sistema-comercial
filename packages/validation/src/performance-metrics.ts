@@ -267,7 +267,8 @@ export function calculateAcceleratorWindow(
     amountCents = reached.amountCents;
     // Superado el último tramo, cada confirmada adicional suma su extra.
     if (lastTier && reached.target === lastTier.target) {
-      amountCents += (confirmed - lastTier.target) * window.perExtraConfirmedCents;
+      amountCents +=
+        (confirmed - lastTier.target) * window.perExtraConfirmedCents;
     }
   }
 
@@ -296,15 +297,6 @@ export function calculateAccelerators(
   return commissionPolicy.acceleratorWindows.map((window) =>
     calculateAcceleratorWindow(orders, window),
   );
-}
-
-/** Compatibilidad: la primera ventana sigue siendo consultable por nombre. */
-export function calculateAcceleratorOne(
-  orders: readonly PerformanceOrderInput[],
-): PerformanceAccelerator {
-  const window = commissionPolicy.acceleratorWindows[0];
-  if (!window) throw new Error("No hay ventanas de acelerador configuradas.");
-  return calculateAcceleratorWindow(orders, window);
 }
 
 export function calculatePerformanceMetrics(

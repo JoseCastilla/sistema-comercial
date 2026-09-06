@@ -1,26 +1,14 @@
 "use server";
 
-import {
-  canActivateAgentAlias,
-  normalizeAgentAlias,
-} from "@repo/validation";
+import { canActivateAgentAlias, normalizeAgentAlias } from "@repo/validation";
 
 import { revalidatePath } from "next/cache";
 
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
+import { isUuid, readText } from "@/server/forms/read-form";
 
 import type { AssignAgentAliasActionState } from "./user-action.types";
-
-function readText(value: FormDataEntryValue | null): string {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
-  );
-}
 
 export async function assignAgentAliasAction(
   previousState: AssignAgentAliasActionState,
@@ -121,8 +109,7 @@ export async function assignAgentAliasAction(
         userStatus: targetMembership.user.status,
         organizationRole: targetMembership.role,
         primaryMembershipActive: primaryTeamMembership?.isActive ?? false,
-        primarySalesEnabled:
-          primaryTeamMembership?.salesEnabled ?? false,
+        primarySalesEnabled: primaryTeamMembership?.salesEnabled ?? false,
         primaryTeamStatus: primaryTeamMembership?.team.status ?? null,
       })
     ) {
@@ -164,26 +151,26 @@ export async function assignAgentAliasAction(
     }
 
     await database.agentAlias.upsert({
-        where: {
-          organizationId_userId_normalizedAlias: {
-            organizationId: membership.organization.id,
-            userId: targetMembership.user.id,
-            normalizedAlias,
-          },
-        },
-
-        update: {
-          alias,
-          isActive: true,
-        },
-
-        create: {
+      where: {
+        organizationId_userId_normalizedAlias: {
           organizationId: membership.organization.id,
           userId: targetMembership.user.id,
-          alias,
           normalizedAlias,
-          isActive: true,
         },
+      },
+
+      update: {
+        alias,
+        isActive: true,
+      },
+
+      create: {
+        organizationId: membership.organization.id,
+        userId: targetMembership.user.id,
+        alias,
+        normalizedAlias,
+        isActive: true,
+      },
     });
 
     revalidatePath("/admin/users");

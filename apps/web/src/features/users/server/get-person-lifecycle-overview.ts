@@ -3,21 +3,12 @@ import "server-only";
 import { personLifecycleActionLabels } from "@repo/validation";
 
 import { database } from "@/server/database";
+import { formatLimaDateTimeWithYear } from "@repo/ui/format";
 
 import type {
   PersonLifecycleHistoryItem,
   PersonLifecycleOverview,
 } from "./person-lifecycle.types";
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 
 const openOrderStatuses = ["OPEN", "SENT", "UNKNOWN"] as const;
 const openCaseStatuses = [
@@ -138,7 +129,7 @@ export async function getPersonLifecycleOverview(
       label: personLifecycleActionLabels[event.action],
       reason: event.reason,
       actorName: event.actor.name,
-      createdAtLabel: dateTimeFormatter.format(event.createdAt),
+      createdAtLabel: formatLimaDateTimeWithYear(event.createdAt),
       summary:
         describeSummary(event.releasedSummary) ??
         describeSummary(event.newValues),
