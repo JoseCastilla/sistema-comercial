@@ -27,7 +27,7 @@
 - [x] Corrección de paso: en un mes cerrado la ventana de cuota ya no se
       llama «en curso» (`quotaWindow.isActive` exige el mes actual).
 - [x] Pruebas, tipos y lint en verde; recorrido local.
-- [ ] Verificación en producción.
+- [x] Verificación en producción (06/09/2026).
 
 ## Fase 3 — Bloques separados (RD-05)
 
@@ -35,4 +35,4 @@
 - [x] BR-014 · Pendientes administrativos contraídos.
 - [x] BR-015 · Tabla compacta con `columnas=todas`.
 - [x] Pruebas, tipos y lint en verde; recorrido local.
-- [ ] Verificación en producción (fases 2 y 3).
+- [x] Verificación en producción (06/09/2026).
