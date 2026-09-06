@@ -24,7 +24,8 @@
 - [x] PL-04 · Carga por asesor (abiertos, sin primer contacto, vencidos) y
       vista previa «recibiría / quedaría» en directa, equitativa y cola.
 - [x] Recorrido local con sesión de administrador: Repartir: al elegir un asesor aparece «Hoy carga 0 abiertos (0 sin primer contacto, 0 vencidos). Recibiría 0 y quedaría con 0»; al elegir un equipo para la cola, «El equipo carga hoy 38 abiertos entre 7 asesores (36 sin primer contacto, 38 vencidos)», cifras iguales a Seguimiento (Cartera 38 · Sin primer contacto 36); la tabla equitativa muestra Participa · Abiertos · Sin 1.er contacto · Vencidos · Recibiría · Quedaría (AC-007). Paridad del resumen: críticas 1 = 1, próxima acción vencida 38 = 38, equipos sin supervisor 1 = 1.
-- [ ] Lectura de solo lectura en producción tras el despliegue.
+- [x] Lectura de solo lectura en producción (70 = 70, 302 = 302, 1 502 =
+      1 502, 347 = 347; tabla de carga en Repartir).
 
 ## Fase 3 · Fuente, columnas y actividad
 
