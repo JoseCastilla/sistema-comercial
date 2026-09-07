@@ -198,3 +198,33 @@ from recovery_portability_results r
 join recovery_portability_batches b on b.id = r.batch_id
 where r.service_number in ('937182102', '912068229')
 order by r.created_at desc;
+
+-- 10. De lo que cerró un cruce rápido, ¿qué dice el reporte completo?
+--     El cruce solo toca casos abiertos, así que un reporte real subido
+--     después ya no corrige lo que el rápido cerró. Esta consulta separa los
+--     cierres correctos de los equivocados y los que hay que reconsultar.
+with cierre as (
+  select c.id, s.service_number
+  from recovery_cases c
+  join recovery_case_services s on s.case_id = c.id
+  where c.resolved_at at time zone 'America/Lima'
+        between timestamp '2026-09-06 08:40' and timestamp '2026-09-06 09:40'
+),
+verdad as (
+  select distinct on (r.service_number)
+         r.service_number, r.is_movistar_receiver, r.receiver_raw
+  from recovery_portability_results r
+  join recovery_portability_batches b on b.id = r.batch_id
+  where b.kind = 'FULL'
+  order by r.service_number, r.created_at desc
+)
+select case
+         when v.service_number is null then 'sin reporte real: hay que reconsultar'
+         when v.is_movistar_receiver  then 'sí es Movistar: el cierre fue correcto'
+         else 'sigue en otro operador: cerrado por error'
+       end                       as veredicto,
+       count(distinct cierre.id) as casos
+from cierre
+left join verdad v on v.service_number = cierre.service_number
+group by 1
+order by casos desc;
