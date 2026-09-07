@@ -110,3 +110,47 @@ left join users u on u.id = o.agent_user_id
 where o.delivery_contact_phone like '%937182102%'
    or o.service_number like '%937182102%'
 order by o.registered_at desc;
+
+-- ---------------------------------------------------------------------------
+-- Alcance de un cierre automático (BR-059)
+--
+-- Cuando el cruce del reporte de portabilidad encuentra líneas ya portadas a
+-- Movistar, cierra los casos en la misma pasada: todos comparten el instante
+-- de `resolved_at`. Estas dos consultas dicen a cuántos alcanzó y cuáles
+-- tenían agenda, que es lo que el equipo nota como «desapareció el cliente».
+-- Ajustar la ventana de 5 minutos al momento del cierre que se investiga.
+-- ---------------------------------------------------------------------------
+
+-- 6. Cuántos casos cerró esa pasada, por asesor y por el estado que tenían
+select e.previous_status as estado_antes,
+       c.status         as quedo_como,
+       t.name           as equipo,
+       u.name           as asesor,
+       count(*)         as casos
+from recovery_cases c
+join recovery_case_events e
+  on e.case_id = c.id
+ and e.type in ('CASE_RESOLVED', 'CASE_DISCARDED')
+left join users u on u.id = c.assigned_user_id
+left join commercial_teams t on t.id = c.assigned_team_id
+where c.resolved_at at time zone 'America/Lima'
+      between timestamp '2026-09-06 09:30' and timestamp '2026-09-06 09:35'
+group by 1, 2, 3, 4
+order by casos desc;
+
+-- 7. Las agendas que se perdieron con ese cierre. El caso ya no conserva su
+--    próxima acción (la regla la borra), pero el intento sí: es inmutable.
+select c.holder_name                             as cliente,
+       c.document_number                          as dni,
+       u.name                                     as asesor,
+       a.created_at    at time zone 'America/Lima' as ultimo_intento,
+       a.result                                   as tipificacion,
+       a.next_action_at at time zone 'America/Lima' as agenda_que_se_perdio,
+       c.id                                       as case_id
+from recovery_cases c
+join users u on u.id = c.assigned_user_id
+join recovery_case_attempts a on a.case_id = c.id
+where c.resolved_at at time zone 'America/Lima'
+      between timestamp '2026-09-06 09:30' and timestamp '2026-09-06 09:35'
+  and a.next_action_at is not null
+order by agenda_que_se_perdio;
