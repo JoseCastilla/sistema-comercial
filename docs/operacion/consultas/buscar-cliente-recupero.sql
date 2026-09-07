@@ -154,3 +154,47 @@ where c.resolved_at at time zone 'America/Lima'
       between timestamp '2026-09-06 09:30' and timestamp '2026-09-06 09:35'
   and a.next_action_at is not null
 order by agenda_que_se_perdio;
+
+-- ---------------------------------------------------------------------------
+-- ¿Qué archivo cerró esos casos? (BR-018/BR-018c)
+--
+-- El cruce acepta dos formatos. El **completo** trae numero, receptor,
+-- cedente, fecha_de_la_ventana y estado, y decide fila por fila. El
+-- **rápido** es una lista de números y se interpreta entera como «estos ya
+-- están en Movistar»: cada fila entra como PORTADO hacia Movistar y cierra
+-- su caso. Si `kind` dice QUICK, el cierre no vino del reporte de
+-- portabilidad sino de una lista de números.
+-- ---------------------------------------------------------------------------
+
+-- 8. Los cruces aplicados ese día, con su formato y lo que cerraron
+select b.uploaded_at at time zone 'America/Lima' as subido_el,
+       b.kind          as formato,
+       b.file_name     as archivo,
+       b.total_rows    as filas,
+       b.matched_services  as lineas_encontradas,
+       b.discarded_services as lineas_descartadas,
+       b.discarded_cases    as casos_cerrados,
+       u.name          as subido_por,
+       b.id            as batch_id
+from recovery_portability_batches b
+join users u on u.id = b.uploaded_by_user_id
+where b.uploaded_at at time zone 'America/Lima' >= timestamp '2026-09-06 00:00'
+order by b.uploaded_at desc;
+
+-- 9. Qué dijo el cruce exactamente sobre una línea concreta. En un reporte
+--    completo, receptor y cedente vienen del archivo; en uno rápido el
+--    sistema los inventa (receptor = MOVISTAR) porque el formato lo asume.
+select r.service_number   as linea,
+       b.kind             as formato,
+       b.file_name        as archivo,
+       r.state            as estado_leido,
+       r.receiver_raw     as receptor,
+       r.cedent_raw       as cedente,
+       r.window_date      as ventana,
+       r.is_movistar_receiver as tomado_como_movistar,
+       r.matched_case     as cruzo_con_un_caso,
+       r.raw_data         as fila_original
+from recovery_portability_results r
+join recovery_portability_batches b on b.id = r.batch_id
+where r.service_number in ('937182102', '912068229')
+order by r.created_at desc;
