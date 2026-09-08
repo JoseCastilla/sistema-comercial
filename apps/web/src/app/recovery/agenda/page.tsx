@@ -8,12 +8,18 @@ import {
 } from "@repo/validation";
 
 import { AdvisorCampaignNav } from "@/features/recovery/components/advisor-campaign-nav";
+import { CancelCommitmentForm } from "@/features/recovery/components/cancel-commitment-form";
 import { QueueFilters } from "@/features/recovery/components/queue-filters";
+import { RegisterAttemptForm } from "@/features/recovery/components/register-attempt-form";
+import { RescheduleCommitmentForm } from "@/features/recovery/components/reschedule-commitment-form";
 import {
+  agendaBaseHref,
   agendaKindFilters,
   agendaStateFilters,
+  commitmentPanelHref,
   getAgenda,
 } from "@/features/recovery/server/get-agenda";
+import { getAgendaCommitment } from "@/features/recovery/server/get-agenda-commitment";
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import { formatCount } from "@repo/ui/format";
@@ -85,6 +91,20 @@ export default async function RecoveryAgendaPage({
   );
   const { query, period } = agenda;
 
+  // CAM-F09: el panel de una cita se abre en la misma página (`cita=<id>`),
+  // con el caso, su contexto y las acciones; el resto de la agenda sigue
+  // debajo para no perder el sitio.
+  const openCommitmentId = (parameters.cita ?? "").trim().slice(0, 40);
+  const openCommitment = openCommitmentId
+    ? await getAgendaCommitment(
+        membership.organization.id,
+        session.user.id,
+        openCommitmentId,
+        now,
+      )
+    : null;
+  const closePanelHref = agendaBaseHref(query);
+
   const periodLabel =
     query.view === "dia"
       ? longDayFormatter.format(new Date(period.start.getTime() + 12 * 3600 * 1000))
@@ -112,6 +132,135 @@ export default async function RecoveryAgendaPage({
       />
 
       <AdvisorCampaignNav current="agenda" />
+
+      {openCommitmentId && !openCommitment ? (
+        <SectionPanel
+          title="Esta cita no está en tu agenda"
+          description="No existe o el caso ya no está a tu cargo."
+        >
+          <Link
+            className="text-ui-accent underline-offset-2 hover:underline"
+            href={closePanelHref}
+          >
+            Cerrar
+          </Link>
+        </SectionPanel>
+      ) : null}
+
+      {openCommitment ? (
+        <SectionPanel
+          title={`Llamada acordada con ${openCommitment.holderName}`}
+          description={`${openCommitment.scheduledAtLabel} · ${openCommitment.stateLabel} · caso ${openCommitment.caseStatusLabel.toLowerCase()}${
+            openCommitment.phone ? ` · ${openCommitment.phone}` : ""
+          }`}
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-3 text-sm">
+              <p className="flex flex-wrap gap-3">
+                <Link
+                  className="text-ui-accent underline-offset-2 hover:underline"
+                  href={`/recovery/campaigns/${openCommitment.caseId}?from=agenda&cita=${openCommitment.id}&fecha=${getLimaIsoDate(query.date)}${query.view !== "semana" ? `&view=${query.view}` : ""}`}
+                >
+                  Abrir ficha del cliente
+                </Link>
+                <Link
+                  className="text-ui-muted underline-offset-2 hover:underline"
+                  href={closePanelHref}
+                >
+                  Cerrar el panel
+                </Link>
+                {openCommitment.supersededById ? (
+                  <Link
+                    className="text-ui-accent underline-offset-2 hover:underline"
+                    href={commitmentPanelHref(openCommitment.supersededById, query)}
+                  >
+                    Ver la cita que la reemplazó
+                  </Link>
+                ) : null}
+              </p>
+              {openCommitment.reason ? (
+                <p className="text-ui-muted">Motivo: {openCommitment.reason}</p>
+              ) : null}
+
+              <div>
+                <p className="ui-label-eyebrow">Últimas gestiones</p>
+                {openCommitment.attempts.length === 0 ? (
+                  <p className="text-ui-muted">Sin gestión registrada.</p>
+                ) : (
+                  <ul className="mt-1 space-y-1">
+                    {openCommitment.attempts.map((attempt) => (
+                      <li key={attempt.id}>
+                        <span className="font-medium text-ui-text">
+                          {attempt.resultLabel}
+                        </span>
+                        <span className="ml-2 text-xs text-ui-muted">
+                          {attempt.createdAtLabel} · {attempt.actorName}
+                        </span>
+                        {attempt.observation ? (
+                          <span className="block text-xs text-ui-muted">
+                            {attempt.observation}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <p className="ui-label-eyebrow">Historial de la cita</p>
+                <ul className="mt-1 space-y-1">
+                  {openCommitment.history.map((item) => (
+                    <li key={item.id}>
+                      <span className="font-medium text-ui-text">
+                        {item.scheduledAtLabel}
+                      </span>
+                      <span className="ml-2 text-xs text-ui-muted">
+                        {item.stateLabel} · acordada el {item.createdAtLabel} ·{" "}
+                        {item.createdByName}
+                        {item.closedAtLabel ? ` · cerrada el ${item.closedAtLabel}` : ""}
+                      </span>
+                      {item.reason ? (
+                        <span className="block text-xs text-ui-muted">
+                          {item.reason}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {openCommitment.isPending ? (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-ui-border p-3">
+                  <p className="ui-label-eyebrow">Registrar el resultado de la llamada</p>
+                  <p className="mb-2 text-xs text-ui-muted">
+                    Atender la cita es registrar qué pasó; no existe «marcar como
+                    hecha».
+                  </p>
+                  <RegisterAttemptForm
+                    caseId={openCommitment.caseId}
+                    returnTo={closePanelHref}
+                  />
+                </div>
+                <div className="rounded-xl border border-ui-border p-3">
+                  <p className="ui-label-eyebrow">Reprogramar</p>
+                  <RescheduleCommitmentForm commitmentId={openCommitment.id} />
+                </div>
+                <div className="rounded-xl border border-ui-border p-3">
+                  <p className="ui-label-eyebrow">Cancelar y definir qué sigue</p>
+                  <CancelCommitmentForm commitmentId={openCommitment.id} />
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-ui-muted">
+                Esta cita ya no está pendiente; se conserva como historial.
+              </p>
+            )}
+          </div>
+        </SectionPanel>
+      ) : null}
 
       <MetricGroup>
         <Metric
@@ -371,6 +520,9 @@ function EntryCards({ entries }: { entries: AgendaEntry[] }) {
             ) : null}
             <span className="font-medium text-ui-text">{entry.holderName}</span>
             <span className="block text-ui-muted">{entry.kindLabel}</span>
+            {entry.clash ? (
+              <span className="block text-ui-warning">⚠ a la misma hora</span>
+            ) : null}
           </Link>
         </li>
       ))}

@@ -30,6 +30,16 @@ va a comprobar y cómo, para que cada casilla de `tasks.md` tenga su prueba.
 | Tipos y lint de la página, el cargador, el carril del asesor, la bandeja y la ficha | `check-types` y `eslint` | limpios. |
 | La cita aparece el día y la hora correctos en Semana y Día; la lista la ordena; los vencidos siguen visibles con un filtro puesto; «Compromisos por atender» ignora los filtros de la bandeja (AC-002, AC-007) | recorrido con cuenta de asesor de prueba | pendiente: exige aplicar en local la migración de la fase 1 (permiso denegado en esta sesión). |
 
+## Fase 3 — Gestionar desde la agenda (08/09/2026)
+
+| Comprobación | Cómo | Resultado |
+|---|---|---|
+| Tipos y lint de las dos acciones, los dos formularios, el predicado de acceso, el panel y la ficha | `check-types` y `eslint` | limpios. |
+| Reprogramar deja la anterior `RESCHEDULED` con motivo, crea una `PENDING` enlazada, no añade intentos, mueve la próxima acción; un reenvío con la misma clave no duplica (AC-003) | recorrido con cuenta de asesor de prueba y consulta a `recovery_case_commitments` | pendiente (migración de la fase 1 sin aplicar en local). |
+| Cancelar exige motivo y qué sigue; el caso queda `IN_PROGRESS` con próxima acción hoy o tras la pausa | recorrido | pendiente. |
+| Cancelar una cita ya atendida devuelve «esta cita ya cambió» y conserva lo escrito (AC-009) | dos pestañas con la misma cita | pendiente. |
+| Dos citas a las 10:00 y 10:10 muestran «a la misma hora» sin rechazo (AC-008) | recorrido | pendiente. |
+
 ## Lista de validación de la propuesta
 
 Con una cuenta de asesor de prueba ficticia; nunca con una persona real.

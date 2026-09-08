@@ -84,7 +84,7 @@ export default async function CampaignCasePage({
   const fromAgenda = context.from === "agenda";
   const agendaContext = new URLSearchParams();
   if (fromAgenda) {
-    for (const key of ["view", "fecha", "q", "age", "tipo", "estado"]) {
+    for (const key of ["view", "fecha", "q", "age", "tipo", "estado", "cita"]) {
       const value = (context as Record<string, string | undefined>)[key];
       if (value) agendaContext.set(key, value.slice(0, 40));
     }
@@ -372,6 +372,16 @@ export default async function CampaignCasePage({
                 : "Sin cita vigente."
             }
           >
+            {detail.pendingCommitment && detail.isAssignedToViewer ? (
+              <p className="mb-2 text-sm">
+                <Link
+                  className="text-ui-accent underline-offset-2 hover:underline"
+                  href={`/recovery/agenda?cita=${detail.pendingCommitment.id}`}
+                >
+                  Reprogramar o cancelar desde mi agenda
+                </Link>
+              </p>
+            ) : null}
             <ul className="space-y-2">
               {detail.commitments.map((commitment) => (
                 <li

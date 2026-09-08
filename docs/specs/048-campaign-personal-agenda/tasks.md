@@ -74,14 +74,27 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 3 — Gestionar desde la agenda (CAM-F09, P1)
 
-- [ ] `reschedule-commitment-action.ts`: motivo, clave de idempotencia,
-      solo sobre `PENDING`, evento, `next_action_at` del caso.
-- [ ] `cancel-commitment-action.ts`: motivo + siguiente acción (cadencia hoy
-      o pausa 1–2 días), mismas garantías.
-- [ ] Panel del evento con `cita=<id>` en la URL: contexto del caso,
-      registrar gestión, reprogramar, cancelar, historial, abrir ficha;
-      borrador conservado ante error.
-- [ ] Advertencia «a la misma hora» al agendar y reprogramar (BR-016).
+- [x] `recovery-case-access.ts`: un solo predicado de acceso para
+      tipificar, resolver, reprogramar y cancelar (los dos primeros
+      refactorizados sin cambio de conducta).
+- [x] `reschedule-commitment-action.ts`: hora de Lima, motivo, clave de
+      idempotencia, solo sobre `PENDING` (`updateMany … count === 1`),
+      cita nueva enlazada desde la anterior, `next_action_at` del caso,
+      evento `COMMITMENT_RESCHEDULED`.
+- [x] `cancel-commitment-action.ts`: motivo + siguiente acción (volver hoy o
+      pausa 1–2 días), caso a `IN_PROGRESS` con su próxima acción, evento
+      `COMMITMENT_CANCELLED`; mismas garantías.
+- [x] Panel de la cita con `cita=<id>` en la URL de la agenda: caso,
+      teléfono, últimas gestiones, historial de la cita (cadena de
+      reprogramaciones), registrar resultado (`RegisterAttemptForm` que
+      vuelve a la agenda), reprogramar, cancelar, abrir ficha; los
+      formularios conservan lo escrito ante error (`useActionState`).
+      Las citas de la cuadrícula y la lista abren el panel; la ficha enlaza
+      «Reprogramar o cancelar desde mi agenda».
+- [x] Advertencia «a la misma hora» al agendar (ficha y bandeja) y al
+      reprogramar, y marca ⚠ en la cuadrícula (BR-016); nunca bloquea.
+- [ ] Recorrido local con cuenta de asesor de prueba (exige aplicar en
+      local las migraciones de la fase 1).
 
 ## Fase 4 — Recordatorios y carga (CAM-F10, P1)
 
