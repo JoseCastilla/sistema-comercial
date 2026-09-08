@@ -282,6 +282,13 @@ export default async function RecoveryAgendaPage({
           tone="warning"
           value={agenda.noDateCount}
         />
+        <Metric
+          hideWhenZero
+          hint="Dos o más citas en el mismo tramo de 15 minutos; se avisa, no se mueve nada."
+          label="A la misma hora"
+          tone="warning"
+          value={agenda.periodEntries.filter((entry) => entry.clash).length}
+        />
       </MetricGroup>
 
       <div className="flex flex-wrap items-center gap-3">

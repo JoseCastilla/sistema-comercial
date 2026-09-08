@@ -40,6 +40,15 @@ va a comprobar y cómo, para que cada casilla de `tasks.md` tenga su prueba.
 | Cancelar una cita ya atendida devuelve «esta cita ya cambió» y conserva lo escrito (AC-009) | dos pestañas con la misma cita | pendiente. |
 | Dos citas a las 10:00 y 10:10 muestran «a la misma hora» sin rechazo (AC-008) | recorrido | pendiente. |
 
+## Fase 4 — Recordatorios y carga (08/09/2026)
+
+| Comprobación | Cómo | Resultado |
+|---|---|---|
+| Tipos y lint del sondeo, el aviso flotante y la cabecera de la agenda | `check-types` y `eslint` | limpios. |
+| `/api/order-escalations/notifications` devuelve `agendaDue` al asesor sin exponer incidencias ni recuperos ajenos | lectura de la respuesta con sesión de asesor | pendiente. |
+| El aviso aparece con una cita a menos de quince minutos y desaparece al registrar el resultado | recorrido con cuenta de asesor de prueba | pendiente (migración de la fase 1 sin aplicar en local). |
+| La cabecera no muestra «horas ocupadas»; «A la misma hora» cuenta las citas en el mismo tramo | lectura de la agenda | pendiente. |
+
 ## Lista de validación de la propuesta
 
 Con una cuenta de asesor de prueba ficticia; nunca con una persona real.
