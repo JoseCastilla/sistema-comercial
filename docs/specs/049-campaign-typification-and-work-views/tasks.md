@@ -71,10 +71,24 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 3 — Panel y «Guardar y siguiente» (CAM-T05)
 
-- [ ] «Guardar y siguiente» que avanza solo tras confirmación; foco al
-      siguiente exigible; teclado con foco visible; contexto en la fila.
-- [ ] Prueba de componente: no avanza sin confirmación, borrador
-      conservado, doble envío sin duplicado.
+- [x] «Guardar y siguiente» en el editor de fila: envía por el mismo camino
+      que Enter y avanza solo cuando el servidor confirmó; la bandeja pasa a
+      cada fila el siguiente caso de la lista visible; la gestión del
+      siguiente se abre con el foco en el resultado y la fila entra en
+      pantalla; el aviso de lo guardado se queda en la fila anterior. El
+      servidor vuelve a comprobar permiso y elegibilidad al guardar el
+      siguiente (BR-090 «actualiza la cola»).
+- [x] Teclado: Enter guarda, Esc cierra, N/I/R/A eligen, flechas arriba y
+      abajo mueven el foco entre filas (`data-case-row` / `data-row-action`);
+      leyenda visible en el editor.
+- [x] Contexto en la fila: teléfonos válidos y errados tachados, dirección y
+      las tres últimas gestiones en «Ver datos».
+- [x] Prueba de componente (`campanas-guardar-y-siguiente.test.tsx`): avanza
+      solo tras confirmar; ante error no avanza y conserva el borrador;
+      «Guardar gestión» no avanza; sin siguiente no hay botón; Esc cierra.
+      4 pruebas (218 en la web). El doble envío sin duplicado ya lo cubre
+      la prueba de la clave de idempotencia (BR-090).
+- [ ] Recorrido local con cuenta de asesor de prueba (AC-010).
 
 ## Fase 4 — Rectificación (CAM-T06)
 

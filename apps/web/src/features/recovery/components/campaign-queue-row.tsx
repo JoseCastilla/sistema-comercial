@@ -50,6 +50,12 @@ export interface CampaignQueueRowData {
   habilitationOverdue: boolean;
   resolutionDue: boolean;
   interestedWithOrder: boolean;
+  /** SPEC-049 BR-016: las últimas gestiones, para decidir sin salir de la fila. */
+  recentAttempts: Array<{
+    resultLabel: string;
+    observation: string | null;
+    createdAtLabel: string;
+  }>;
   /** SPEC-049 BR-007: qué toca ahora, de dónde sale y, en espera, cómo termina. */
   work: {
     label: string;
@@ -73,8 +79,13 @@ export function CampaignQueueRow({
   minimumDailyAttempts,
   queueContext,
   justVisited,
+  nextId = null,
+  nextName = null,
 }: {
   row: CampaignQueueRowData;
+  /** SPEC-049 BR-016: el siguiente caso de la lista, para «Guardar y siguiente». */
+  nextId?: string | null;
+  nextName?: string | null;
   /** Filtros y página de la cola, para volver aquí desde la ficha. */
   queueContext?: string;
   /** El asesor acaba de consultar esta ficha y vuelve buscándola. */
@@ -108,9 +119,51 @@ export function CampaignQueueRow({
     : row.nextActionAtLabel;
   const tone = lastResult ? attemptResultTones[lastResult] : undefined;
 
-  const handleSaved = useCallback((attempt: ConfirmedAttempt) => {
-    setConfirmed(attempt);
-  }, []);
+  /** Lo que el servidor dijo al guardar; se queda en la fila aunque el foco avance. */
+  const [savedNote, setSavedNote] = useState<string | null>(null);
+
+  const handleSaved = useCallback(
+    (attempt: ConfirmedAttempt, message: string, detail: string) => {
+      setConfirmed(attempt);
+      setSavedNote([message, detail].filter(Boolean).join(" "));
+    },
+    [],
+  );
+
+  /**
+   * BR-016: tras confirmar el guardado, la gestión del siguiente caso se abre
+   * y su fila entra en pantalla; el editor pone el foco en el resultado al
+   * montarse. El servidor vuelve a comprobar permiso y elegibilidad al
+   * guardar ese caso: si dejó de ser del asesor, lo dice ahí.
+   */
+  const openNext = useCallback(() => {
+    if (!nextId) return;
+    draft.startEditing(nextId);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`caso-${nextId}`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }, [draft, nextId]);
+
+  /** Flechas arriba y abajo mueven el foco entre filas (BR-016). */
+  function rowKeys(event: React.KeyboardEvent<HTMLTableRowElement>) {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const target = event.target as HTMLElement;
+    if (["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
+    const rows = Array.from(
+      event.currentTarget.parentElement?.querySelectorAll<HTMLTableRowElement>(
+        "tr[data-case-row]",
+      ) ?? [],
+    );
+    const index = rows.indexOf(event.currentTarget);
+    const sibling = rows[index + (event.key === "ArrowDown" ? 1 : -1)];
+    const action = sibling?.querySelector<HTMLElement>("[data-row-action]");
+    if (action) {
+      event.preventDefault();
+      action.focus();
+    }
+  }
 
   // Teléfonos de contacto primero, luego las líneas; sin repetir.
   const phoneOptions = [
@@ -131,8 +184,10 @@ export function CampaignQueueRow({
       <tr
         aria-selected={editing || undefined}
         className={editing ? "scroll-mt-24 bg-ui-accent-soft" : "scroll-mt-24"}
+        data-case-row
         data-result-tone={tone}
         id={`caso-${row.id}`}
+        onKeyDown={rowKeys}
       >
         {/* Tipificación: el último resultado, y desde aquí se registra el
             siguiente. Va primero porque es lo que el asesor escribe. */}
@@ -153,6 +208,11 @@ export function CampaignQueueRow({
               {row.lastAttemptAtLabel}
             </span>
           ) : null}
+          {savedNote && !editing ? (
+            <span className="block text-2xs text-ui-success" role="status">
+              ✓ {savedNote}
+            </span>
+          ) : null}
           {unmanageableReason ? (
             <span className="block text-2xs text-ui-danger">
               {unmanageableReason}
@@ -162,6 +222,7 @@ export function CampaignQueueRow({
               aria-controls={editorId}
               aria-expanded={false}
               className="ui-row-toggle mt-1"
+              data-row-action
               onClick={() => draft.startEditing(row.id)}
               type="button"
             >
@@ -322,6 +383,8 @@ export function CampaignQueueRow({
               lastResult={lastResult}
               onCancel={draft.stopEditing}
               onSaved={handleSaved}
+              nextName={nextName}
+              onNext={nextId ? openNext : undefined}
               onUnmanageable={setUnmanageableReason}
               phoneOptions={phoneOptions}
               serviceNumbers={row.services.map((service) => service.serviceNumber)}
@@ -366,6 +429,42 @@ export function CampaignQueueRow({
                   <p className="mt-1 text-ui-muted">
                     Sin teléfono de contacto registrado.
                   </p>
+                )}
+                {row.invalidPhones.length > 0 ? (
+                  <p className="mt-1 text-2xs text-ui-muted">
+                    Errados:{" "}
+                    {row.invalidPhones.map((numero, index) => (
+                      <span key={numero}>
+                        {index > 0 ? " · " : ""}
+                        <s>{numero}</s>
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
+              </section>
+
+              <section>
+                <h3 className="ui-label-eyebrow">Últimas gestiones</h3>
+                {row.recentAttempts.length > 0 ? (
+                  <ul className="mt-1 space-y-1">
+                    {row.recentAttempts.map((attempt, index) => (
+                      <li key={index}>
+                        <span className="font-medium text-ui-text">
+                          {attempt.resultLabel}
+                        </span>
+                        <span className="ml-1 text-2xs text-ui-muted">
+                          {attempt.createdAtLabel}
+                        </span>
+                        {attempt.observation ? (
+                          <span className="block text-2xs text-ui-muted">
+                            {attempt.observation}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-ui-muted">Sin gestión registrada.</p>
                 )}
               </section>
 

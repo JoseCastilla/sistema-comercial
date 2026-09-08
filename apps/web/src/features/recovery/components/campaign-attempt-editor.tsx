@@ -68,6 +68,8 @@ export function CampaignAttemptEditor({
   onSaved,
   onCancel,
   onUnmanageable,
+  onNext,
+  nextName,
 }: {
   caseId: string;
   holderName: string;
@@ -82,6 +84,12 @@ export function CampaignAttemptEditor({
   onCancel: () => void;
   /** El servidor dijo que el caso ya no es gestionable por quien lo intenta. */
   onUnmanageable: (reason: string) => void;
+  /**
+   * SPEC-049 BR-016: «Guardar y siguiente». Se llama solo cuando el servidor
+   * confirmó el guardado; abre la gestión del siguiente caso exigible.
+   */
+  onNext?: () => void;
+  nextName?: string | null;
 }) {
   const draft = useCampaignDraft();
   const [state, action, pending] = useActionState(
@@ -133,6 +141,8 @@ export function CampaignAttemptEditor({
   }, []);
 
   const notifiedRef = useRef<CampaignAttemptInlineState | null>(null);
+  /** El asesor pidió avanzar al siguiente en cuanto el servidor confirme. */
+  const advanceRef = useRef(false);
 
   useEffect(() => {
     if (state === notifiedRef.current) return;
@@ -146,12 +156,20 @@ export function CampaignAttemptEditor({
       });
       onSaved(state.attempt, state.message, state.detail ?? "");
       draft.finishAfterSave();
+
+      // BR-016: avanzar únicamente después de confirmar el guardado. Un
+      // error deja el borrador en su sitio y no mueve el foco.
+      if (advanceRef.current && onNext) {
+        advanceRef.current = false;
+        onNext();
+      }
     }
 
-    if (state.type === "error" && state.unmanageable) {
-      onUnmanageable(state.message);
+    if (state.type === "error") {
+      advanceRef.current = false;
+      if (state.unmanageable) onUnmanageable(state.message);
     }
-  }, [draft, onSaved, onUnmanageable, state]);
+  }, [draft, onNext, onSaved, onUnmanageable, state]);
 
   function choose(next: string) {
     setResult(next);
@@ -249,6 +267,12 @@ export function CampaignAttemptEditor({
    * desplegable. No actúan mientras se escribe en un campo de texto.
    */
   function hotkeys(event: React.KeyboardEvent<HTMLFormElement>) {
+    // Esc cierra la gestión, como el botón Cancelar (BR-016).
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCancel();
+      return;
+    }
     const target = event.target as HTMLElement;
     if (
       target.tagName === "INPUT" &&
@@ -534,10 +558,33 @@ export function CampaignAttemptEditor({
         <button
           className="ui-button ui-button--primary"
           disabled={pending || state.unmanageable === true}
+          onClick={() => {
+            advanceRef.current = false;
+          }}
           type="submit"
         >
           {pending ? "Guardando…" : "Guardar gestión"}
         </button>
+        {onNext ? (
+          <button
+            className="ui-button ui-button--secondary"
+            disabled={pending || state.unmanageable === true}
+            onClick={() => {
+              // Envía por el mismo camino que Enter: la validación del
+              // formulario y la acción; el avance espera la confirmación.
+              advanceRef.current = true;
+              formRef.current?.requestSubmit();
+            }}
+            title={
+              nextName
+                ? `Guardar y abrir la gestión de ${nextName}`
+                : "Guardar y abrir la gestión del siguiente caso"
+            }
+            type="button"
+          >
+            Guardar y siguiente
+          </button>
+        ) : null}
         <button
           className="ui-button ui-button--quiet"
           onClick={onCancel}
@@ -545,6 +592,9 @@ export function CampaignAttemptEditor({
         >
           Cancelar
         </button>
+        <span className="text-2xs text-ui-muted">
+          Enter guarda · Esc cierra · N, I, R, A eligen el resultado
+        </span>
       </div>
     </form>
   );
