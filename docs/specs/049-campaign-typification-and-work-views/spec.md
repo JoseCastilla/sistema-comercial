@@ -1,6 +1,6 @@
 # SPEC-049 — Gestión ágil y tipificación de campañas
 
-**Estado:** `EN_CURSO` — decisiones de §5 confirmadas por José el 08/09/2026; fases 1 (consecuencias y tipificación) y 2 (estado operativo y vistas) entregadas el 08/09/2026, pendientes de recorrido local y lectura de producción; fases 3 a 5 sin construir
+**Estado:** `EN_CURSO` — decisiones de §5 confirmadas por José el 08/09/2026; fases 1 (consecuencias y tipificación), 2 (estado operativo y vistas) y 3 (Guardar y siguiente) entregadas el 08/09/2026, pendientes de recorrido local y lectura de producción; fases 4 y 5 sin construir
 
 > Propuesta «Gestión ágil y tipificación de campañas» (08/09/2026). Conserva
 > la agenda de SPEC-048 y el plan «Filtros y ranking por recencia comercial»

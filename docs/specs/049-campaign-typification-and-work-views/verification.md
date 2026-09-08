@@ -36,7 +36,8 @@ Con una cuenta de asesor de prueba ficticia; nunca con una persona real.
 | 2 | Cada espera dice por qué y cómo termina (pausa, verificación, habilitación) | misma prueba | **En verde**. |
 | 2 | Tipos y lint de la bandeja, la fila, los filtros, el cargador y la ficha; suite de la web | `check-types`, `eslint`, `vitest` | limpios; 214 pruebas en verde. |
 | 2 | Los contadores suman la cartera abierta más 30 días de resueltos (AC-011); bandeja, ficha y agenda muestran la misma siguiente acción (AC-007) | recorrido con cuenta de asesor de prueba y lectura de producción | pendiente (migraciones locales sin aplicar). |
-| 3 | «Guardar y siguiente» avanza solo tras confirmación; doble envío sin duplicado; caso ajeno devuelve «actualiza la cola» sin perder el borrador (AC-010) | prueba de componente y recorrido con dos pestañas | pendiente |
+| 3 | «Guardar y siguiente» avanza solo tras confirmación; ante error no avanza y conserva el borrador; «Guardar gestión» no avanza; sin siguiente no hay botón; Esc cierra | `apps/web/src/__tests__/campanas-guardar-y-siguiente.test.tsx` | **En verde** (08/09/2026): 4 pruebas, 218 en la web; tipos y lint limpios. |
+| 3 | Caso ajeno al guardar el siguiente devuelve «actualiza la cola» sin perder el borrador; flechas mueven el foco entre filas con foco visible (AC-010) | recorrido con cuenta de asesor de prueba y dos pestañas | pendiente. |
 | 4 | `effectiveAttempts`: la cadencia, la cobertura y las puertas leen el resultado efectivo; la rectificación no cuenta como contacto | pruebas puras | pendiente |
 | 4 | Ventana de rectificación por rol en hora de Lima; caso resuelto no se rectifica | pruebas puras y recorrido | pendiente |
 | 5 | La consulta de discrepancias no cambia nada; la vista de Seguimiento enlaza a la ficha | lectura de producción y recorrido con supervisor | pendiente |

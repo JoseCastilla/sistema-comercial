@@ -32,6 +32,7 @@ import {
 } from "@/features/recovery/components/campaign-draft-context";
 import { CampaignInboxFilters } from "@/features/recovery/components/campaign-inbox-filters";
 import { TakePoolBlockForm } from "@/features/recovery/components/take-pool-block-form";
+import { attemptResultLabels } from "@/features/recovery/attempt-result-labels";
 import { lossReasonLabels } from "@/features/recovery/loss-reason-labels";
 import { buildRecoverySearchWhere } from "@/features/recovery/server/recovery-search-where";
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
@@ -347,6 +348,12 @@ export default async function RecoveryCampaignsPage({
       lastResult,
       lastObservation: last?.observation ?? null,
       lastAttemptAtLabel: last ? formatLimaDateTime(last.createdAt) : null,
+      recentAttempts: item.attempts.slice(0, 3).map((attempt) => ({
+        resultLabel:
+          attemptResultLabels[String(attempt.result)] ?? String(attempt.result),
+        observation: attempt.observation,
+        createdAtLabel: formatLimaDateTime(attempt.createdAt),
+      })),
       holderName: item.holderName,
       documentNumber: item.documentNumber,
       fatherName: item.fatherName,
@@ -728,11 +735,13 @@ export default async function RecoveryCampaignsPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row) => (
+                    {rows.map((row, index) => (
                       <CampaignQueueRow
                         justVisited={row.id === justVisited}
                         key={row.id}
                         minimumDailyAttempts={baseRecoveryMinimumDailyAttempts}
+                        nextId={rows[index + 1]?.id ?? null}
+                        nextName={rows[index + 1]?.holderName ?? null}
                         queueContext={queueContextQuery}
                         row={row}
                       />
