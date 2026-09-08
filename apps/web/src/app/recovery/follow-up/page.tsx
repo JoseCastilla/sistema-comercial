@@ -350,6 +350,15 @@ export default async function RecoveryFollowUpPage({
       />
       <CampaignNav current="seguimiento" role={membership.role} />
 
+      <p className="text-sm">
+        <Link
+          className="text-ui-accent underline-offset-2 hover:underline"
+          href="/recovery/follow-up/calidad"
+        >
+          Revisar tipificaciones: observaciones que contradicen al resultado →
+        </Link>
+      </p>
+
       <MetricGroup>
         <Metric
           href={href({ contact: null, next: null, worked: null })}

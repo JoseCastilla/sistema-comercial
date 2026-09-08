@@ -119,9 +119,22 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 5 — Calidad de datos (CAM-T07)
 
-- [ ] Consulta `tipificaciones-discrepantes.sql` y su lectura de
-      producción.
-- [ ] Seguimiento: vista «Revisar tipificaciones» por equipo y período.
+- [x] `recovery-attempt-quality.ts`: detección de seis discrepancias entre
+      resultado y observación (conversación como no contesta, interés o
+      impedimento como rechazo, «ya es Movistar» sin verificar, número
+      equivocado sin marcar, llamada acordada sin agendar), sin acentos ni
+      mayúsculas y sin contar «no quiere» como interés; solo detecta, nada
+      cambia. 5 pruebas (372 en el paquete).
+- [x] Consulta `docs/operacion/consultas/tipificaciones-discrepantes.sql`
+      (solo lectura, mismas heurísticas, últimos 30 días, excluye
+      rectificados).
+- [ ] Lectura de producción de esa consulta (cuántas hay por tipo).
+- [x] `/recovery/follow-up/calidad`: «Revisar tipificaciones» para
+      administración, backoffice y supervisión, con el alcance de
+      Seguimiento (la URL solo estrecha), período del tablero, equipo,
+      asesor y tipo de discrepancia; cada fila abre la ficha para
+      rectificar; excluye rectificados. Enlace desde Seguimiento.
+- [ ] Recorrido con sesión de supervisor.
 
 ## Verificación
 
