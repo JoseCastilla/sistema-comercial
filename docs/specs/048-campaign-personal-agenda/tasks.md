@@ -17,11 +17,10 @@ Una casilla se marca solo con evidencia en `verification.md`.
 - [x] Ejecutar `docs/operacion/consultas/horas-agendadas-lima.sql` en
       producción y anotar la distribución de horas (08/09/2026: 45 citas,
       todas corridas cinco horas; 30 vigentes; ver `verification.md`).
-- [ ] `parseLimaDateTimeLocal` en `@repo/validation` con pruebas en
-      `TZ=UTC` y `TZ=America/Lima` (escrito; pendiente de evidencia de
-      pruebas en verde).
-- [ ] `register-recovery-attempt-action.ts` deja de usar `new Date(raw)`
-      (escrito; pendiente de tipos y lint).
+- [x] `parseLimaDateTimeLocal` en `@repo/validation` con pruebas en
+      `TZ=UTC` y `TZ=America/Lima` (326 pruebas en verde, 08/09/2026).
+- [x] `register-recovery-attempt-action.ts` deja de usar `new Date(raw)`
+      (tipos y lint limpios; en `main` 787d26b).
 - [ ] `ENV TZ=America/Lima` en los Dockerfiles de `web`, `api` y `worker`
       (escrito; pendiente de ver el primer arranque en producción).
 - [ ] Migración `add_next_action_corrected_event` aplicada en local y en
