@@ -5,7 +5,21 @@ import {
   describeRecoveryCommitmentState,
   selectRecoveryAgendaItem,
   shareRecoveryAgendaSlot,
+  summarizeRecoveryAgendaByDay,
 } from "../dist/recovery-agenda.js";
+
+test("el resumen por día cuenta citas y tareas por separado y las citas vencidas", () => {
+  const resumen = summarizeRecoveryAgendaByDay([
+    { dayIso: "2026-09-09", timed: true, overdue: false },
+    { dayIso: "2026-09-09", timed: true, overdue: true },
+    { dayIso: "2026-09-09", timed: false },
+    { dayIso: "2026-09-10", timed: false },
+    { dayIso: null, timed: false },
+  ]);
+  assert.deepEqual(resumen["2026-09-09"], { commitments: 2, tasks: 1, overdue: 1 });
+  assert.deepEqual(resumen["2026-09-10"], { commitments: 0, tasks: 1, overdue: 0 });
+  assert.equal(Object.keys(resumen).length, 2);
+});
 
 // Martes 08/09/2026 a las 12:00 en Lima (17:00 UTC).
 const ahora = new Date("2026-09-08T17:00:00.000Z");

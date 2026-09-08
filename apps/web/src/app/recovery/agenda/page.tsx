@@ -5,6 +5,7 @@ import {
   recoveryAgendaGridHours,
   recoveryAgendaViewLabels,
   recoveryAgendaViews,
+  summarizeRecoveryAgendaByDay,
 } from "@repo/validation";
 
 import { AdvisorCampaignNav } from "@/features/recovery/components/advisor-campaign-nav";
@@ -22,7 +23,7 @@ import {
 import { getAgendaCommitment } from "@/features/recovery/server/get-agenda-commitment";
 import { requireCommercialAccess } from "@/server/auth/access";
 
-import { formatCount } from "@repo/ui/format";
+import { formatCount, formatLimaMonth } from "@repo/ui/format";
 import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
@@ -108,7 +109,19 @@ export default async function RecoveryAgendaPage({
   const periodLabel =
     query.view === "dia"
       ? longDayFormatter.format(new Date(period.start.getTime() + 12 * 3600 * 1000))
-      : `${weekdayFormatter.format(new Date(period.start.getTime() + 12 * 3600 * 1000))} → ${weekdayFormatter.format(new Date(period.end.getTime() - 12 * 3600 * 1000))}`;
+      : query.view === "mes" && period.monthStart
+        ? formatLimaMonth(new Date(period.monthStart.getTime() + 12 * 3600 * 1000))
+        : `${weekdayFormatter.format(new Date(period.start.getTime() + 12 * 3600 * 1000))} → ${weekdayFormatter.format(new Date(period.end.getTime() - 12 * 3600 * 1000))}`;
+
+  // CAM-F11: el mes cuenta por día desde los mismos elementos que dibujan
+  // Día y Semana; por construcción no pueden discrepar.
+  const daySummary = summarizeRecoveryAgendaByDay(agenda.periodEntries);
+  const monthWeeks: Date[][] = [];
+  if (query.view === "mes") {
+    for (let index = 0; index < period.days.length; index += 7) {
+      monthWeeks.push(period.days.slice(index, index + 7));
+    }
+  }
 
   const entriesByDay = new Map<string, AgendaEntry[]>();
   for (const entry of agenda.periodEntries) {
@@ -419,15 +432,78 @@ export default async function RecoveryAgendaPage({
             ? "Próximas acciones"
             : query.view === "dia"
               ? "El día"
-              : "La semana"
+              : query.view === "mes"
+                ? "El mes"
+                : "La semana"
         }
         description={
           query.view === "lista"
             ? "Siete días desde la fecha elegida, en orden."
-            : "Las llamadas acordadas en su hora; las tareas sin hora, arriba de cada día."
+            : query.view === "mes"
+              ? "Cuántas llamadas acordadas y cuántas tareas caen cada día. Pulsa un día para verlo."
+              : "Las llamadas acordadas en su hora; las tareas sin hora, arriba de cada día."
         }
       >
-        {agenda.periodEntries.length === 0 ? (
+        {query.view === "mes" ? (
+          <div className="overflow-x-auto rounded-xl border border-ui-border">
+            <table className="ui-table">
+              <thead>
+                <tr>
+                  {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((label) => (
+                    <th key={label}>{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {monthWeeks.map((week) => (
+                  <tr key={getLimaIsoDate(week[0] as Date)}>
+                    {week.map((day) => {
+                      const iso = getLimaIsoDate(day);
+                      const inMonth =
+                        period.monthStart !== undefined &&
+                        period.monthEnd !== undefined &&
+                        day.getTime() >= period.monthStart.getTime() &&
+                        day.getTime() < period.monthEnd.getTime();
+                      const summary = daySummary[iso];
+                      return (
+                        <td
+                          className={`align-top ${inMonth ? "" : "opacity-50"}`}
+                          key={iso}
+                        >
+                          <Link
+                            className={`block rounded-lg px-2 py-1 text-xs hover:bg-ui-surface-muted ${
+                              iso === agenda.todayIso ? "font-semibold text-ui-accent" : "text-ui-text"
+                            }`}
+                            href={agendaHref(query, { view: "dia", date: day })}
+                          >
+                            <span className="block">{Number(iso.slice(8, 10))}</span>
+                            {summary ? (
+                              <>
+                                {summary.commitments > 0 ? (
+                                  <span
+                                    className={`block ${summary.overdue > 0 ? "text-ui-danger" : ""}`}
+                                  >
+                                    {summary.commitments} llamada(s)
+                                    {summary.overdue > 0 ? ` · ${summary.overdue} vencida(s)` : ""}
+                                  </span>
+                                ) : null}
+                                {summary.tasks > 0 ? (
+                                  <span className="block text-ui-muted">
+                                    {summary.tasks} tarea(s)
+                                  </span>
+                                ) : null}
+                              </>
+                            ) : null}
+                          </Link>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : agenda.periodEntries.length === 0 ? (
           <p className="text-sm text-ui-muted">
             Nada en este período.{" "}
             {query.kind || query.state || query.q || query.age

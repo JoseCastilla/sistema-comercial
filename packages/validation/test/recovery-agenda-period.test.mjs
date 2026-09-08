@@ -17,7 +17,8 @@ const lima = (texto) => new Date(`${texto}-05:00`);
 
 test("la vista desconocida cae en semana", () => {
   assert.equal(parseRecoveryAgendaView("dia"), "dia");
-  assert.equal(parseRecoveryAgendaView("mes"), "semana");
+  assert.equal(parseRecoveryAgendaView("mes"), "mes");
+  assert.equal(parseRecoveryAgendaView("año"), "semana");
   assert.equal(parseRecoveryAgendaView(undefined), "semana");
 });
 
@@ -58,6 +59,28 @@ test("el día es un solo día y la lista son siete desde la fecha", () => {
   const lista = recoveryAgendaPeriod("lista", lima("2026-09-10T00:00"));
   assert.equal(lista.start.toISOString(), lima("2026-09-10T00:00").toISOString());
   assert.equal(lista.days.length, 7);
+});
+
+test("el mes es una rejilla de semanas completas que cubre el mes elegido", () => {
+  // Setiembre de 2026: empieza martes 1 y termina miércoles 30.
+  const periodo = recoveryAgendaPeriod("mes", lima("2026-09-10T00:00"));
+  assert.equal(periodo.monthStart.toISOString(), lima("2026-09-01T00:00").toISOString());
+  assert.equal(periodo.monthEnd.toISOString(), lima("2026-10-01T00:00").toISOString());
+  // Lunes 31/08 → domingo 04/10: cinco semanas.
+  assert.equal(periodo.start.toISOString(), lima("2026-08-31T00:00").toISOString());
+  assert.equal(periodo.end.toISOString(), lima("2026-10-05T00:00").toISOString());
+  assert.equal(periodo.days.length, 35);
+  assert.equal(periodo.previous.toISOString(), lima("2026-08-01T00:00").toISOString());
+  assert.equal(periodo.next.toISOString(), lima("2026-10-01T00:00").toISOString());
+});
+
+test("cambiar de mes cruza el año sin perder el día 1", () => {
+  const periodo = recoveryAgendaPeriod("mes", lima("2026-12-15T00:00"));
+  assert.equal(periodo.next.toISOString(), lima("2027-01-01T00:00").toISOString());
+  assert.equal(
+    recoveryAgendaPeriod("mes", lima("2027-01-15T00:00")).previous.toISOString(),
+    lima("2026-12-01T00:00").toISOString(),
+  );
 });
 
 test("hora y minuto de Lima no dependen de la zona del proceso", () => {

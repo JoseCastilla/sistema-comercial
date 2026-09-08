@@ -7,13 +7,14 @@
  */
 import { getLimaIsoDate } from "./order-period.js";
 
-export const recoveryAgendaViews = ["semana", "dia", "lista"] as const;
+export const recoveryAgendaViews = ["semana", "dia", "lista", "mes"] as const;
 export type RecoveryAgendaView = (typeof recoveryAgendaViews)[number];
 
 export const recoveryAgendaViewLabels: Record<RecoveryAgendaView, string> = {
   semana: "Semana",
   dia: "Día",
   lista: "Lista",
+  mes: "Mes",
 };
 
 export function parseRecoveryAgendaView(
@@ -71,12 +72,59 @@ export interface RecoveryAgendaPeriod {
   /** La fecha del período anterior y siguiente, para navegar. */
   previous: Date;
   next: Date;
+  /** Solo en el mes: el mes propiamente dicho, dentro de la rejilla. */
+  monthStart?: Date;
+  monthEnd?: Date;
+}
+
+/** Medianoche de Lima del primer día del mes que contiene `date`. */
+export function limaMonthStart(date: Date): Date {
+  const iso = getLimaIsoDate(date);
+
+  return limaDayStartFromIso(`${iso.slice(0, 7)}-01`) as Date;
+}
+
+/** El primer día del mes desplazado `delta` meses. */
+export function limaAddMonths(monthStart: Date, delta: number): Date {
+  const [year, month] = getLimaIsoDate(monthStart).split("-").map(Number);
+  const shifted = new Date(Date.UTC(year as number, (month as number) - 1 + delta, 1));
+  const iso = `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-01`;
+
+  return limaDayStartFromIso(iso) as Date;
 }
 
 export function recoveryAgendaPeriod(
   view: RecoveryAgendaView,
   date: Date,
 ): RecoveryAgendaPeriod {
+  if (view === "mes") {
+    // Rejilla de semanas completas, de lunes a domingo, que cubre el mes.
+    const monthStart = limaMonthStart(date);
+    const monthEnd = limaAddMonths(monthStart, 1);
+    const start = new Date(
+      monthStart.getTime() - limaWeekdayIndex(monthStart) * dayMs,
+    );
+    const lastDay = new Date(monthEnd.getTime() - dayMs);
+    const end = new Date(
+      lastDay.getTime() + (7 - limaWeekdayIndex(lastDay)) * dayMs,
+    );
+    const length = Math.round((end.getTime() - start.getTime()) / dayMs);
+
+    return {
+      view,
+      start,
+      end,
+      days: Array.from(
+        { length },
+        (_, index) => new Date(start.getTime() + index * dayMs),
+      ),
+      previous: limaAddMonths(monthStart, -1),
+      next: monthEnd,
+      monthStart,
+      monthEnd,
+    };
+  }
+
   const length = view === "dia" ? 1 : 7;
   const start =
     view === "semana"

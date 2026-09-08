@@ -49,6 +49,13 @@ va a comprobar y cómo, para que cada casilla de `tasks.md` tenga su prueba.
 | El aviso aparece con una cita a menos de quince minutos y desaparece al registrar el resultado | recorrido con cuenta de asesor de prueba | pendiente (migración de la fase 1 sin aplicar en local). |
 | La cabecera no muestra «horas ocupadas»; «A la misma hora» cuenta las citas en el mismo tramo | lectura de la agenda | pendiente. |
 
+## Fase 5 — Mes (08/09/2026)
+
+| Comprobación | Cómo | Resultado |
+|---|---|---|
+| Setiembre de 2026 se dibuja del lunes 31/08 al domingo 04/10 (35 días); Anterior y Siguiente cambian de mes y cruzan el año; el resumen por día separa llamadas, vencidas y tareas | `recovery-agenda-period.test.mjs` y `recovery-agenda.test.mjs` | **En verde**: 4 pruebas nuevas, 348 en el paquete; tipos y lint limpios. |
+| Los conteos del mes coinciden con Día y Semana (AC-002) | recorrido con cuenta de asesor de prueba | pendiente: por construcción salen de los mismos elementos, pero falta verlo. |
+
 ## Lista de validación de la propuesta
 
 Con una cuenta de asesor de prueba ficticia; nunca con una persona real.
