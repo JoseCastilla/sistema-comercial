@@ -8,6 +8,7 @@ import {
   parseRecoverySearchTerm,
 } from "@repo/validation";
 
+import { AdvisorCampaignNav } from "@/features/recovery/components/advisor-campaign-nav";
 import { CampaignQueueRow } from "@/features/recovery/components/campaign-queue-row";
 import {
   buildMapsUrl,
@@ -83,6 +84,28 @@ export default async function RecoveryCampaignsPage({
   await returnStaleBaseCasesToPool(membership.organization.id);
 
   const now = new Date();
+
+  // SPEC-048 BR-012: las citas vencidas o que vencen en las próximas dos
+  // horas se ven encima de la lista y fuera del alcance de los filtros.
+  const dueCommitments = await database.recoveryCaseCommitment.findMany({
+    where: {
+      organizationId: membership.organization.id,
+      status: "PENDING",
+      scheduledAt: { lt: new Date(now.getTime() + 2 * 60 * 60 * 1000) },
+      case: {
+        source: "NATIONAL_BASE",
+        assignedUserId: session.user.id,
+        status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
+      },
+    },
+    orderBy: { scheduledAt: "asc" },
+    take: 20,
+    select: {
+      id: true,
+      scheduledAt: true,
+      case: { select: { id: true, holderName: true } },
+    },
+  });
 
   /**
    * "Hoy solo llamo Lima": la bandeja propia se filtra igual que el pool.
@@ -387,6 +410,8 @@ export default async function RecoveryCampaignsPage({
           description="Tus casos de base asignados y los casos libres de tu equipo. Un caso sin respuesta exige tres intentos en el día."
         />
 
+        <AdvisorCampaignNav current="cola" />
+
         {attemptNotice ? (
           <p
             className="rounded-lg border border-ui-success bg-ui-success-soft px-3 py-2 text-sm text-ui-success"
@@ -444,6 +469,51 @@ export default async function RecoveryCampaignsPage({
             </p>
           </SectionPanel>
         )}
+
+        {dueCommitments.length > 0 ? (
+          <SectionPanel
+            title="Compromisos por atender"
+            description="Llamadas acordadas que ya vencieron o vencen en las próximas dos horas. No dependen de los filtros de abajo."
+          >
+            <ul className="space-y-1 text-sm">
+              {dueCommitments.map((commitment) => (
+                <li
+                  className="flex flex-wrap items-center gap-2"
+                  key={commitment.id}
+                >
+                  <span
+                    className={
+                      commitment.scheduledAt.getTime() < now.getTime()
+                        ? "font-medium text-ui-danger"
+                        : "font-medium text-ui-text"
+                    }
+                  >
+                    {formatLimaDateTime(commitment.scheduledAt)}
+                  </span>
+                  <Link
+                    className="text-ui-accent underline-offset-2 hover:underline"
+                    href={`/recovery/campaigns/${commitment.case.id}${queueContextQuery ? `?${queueContextQuery}` : ""}`}
+                  >
+                    {commitment.case.holderName}
+                  </Link>
+                  <span className="text-xs text-ui-muted">
+                    {commitment.scheduledAt.getTime() < now.getTime()
+                      ? "vencida"
+                      : "en las próximas dos horas"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs">
+              <Link
+                className="text-ui-accent underline-offset-2 hover:underline"
+                href="/recovery/agenda"
+              >
+                Ver mi agenda
+              </Link>
+            </p>
+          </SectionPanel>
+        ) : null}
 
         <SectionPanel
           title="Mis casos"

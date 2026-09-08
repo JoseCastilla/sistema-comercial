@@ -30,6 +30,8 @@ describe("sectionForPath", () => {
     expect(sectionForPath("/recovery/triage")).toBe("recovery");
     expect(sectionForPath("/recovery/board")).toBe("recovery");
     expect(sectionForPath("/recovery/campaigns")).toBe("recovery");
+    // SPEC-048: la agenda del asesor es una superficie más de Campañas.
+    expect(sectionForPath("/recovery/agenda")).toBe("recovery");
   });
 
   it("separa las cuatro superficies de administración", () => {

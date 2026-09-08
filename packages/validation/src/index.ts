@@ -27,6 +27,7 @@ export * from "./sales-recovery-filters.js";
 export * from "./recovery-queue-filters.js";
 export * from "./recovery-follow-up.js";
 export * from "./recovery-agenda.js";
+export * from "./recovery-agenda-period.js";
 export * from "./recovery-board-period.js";
 export * from "./recovery-selection.js";
 export * from "./recovery-internal-due.js";
