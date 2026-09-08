@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CopyValue } from "@/features/recovery/components/copy-value";
+import { CorrectAttemptForm } from "@/features/recovery/components/correct-attempt-form";
 import { RegisterAttemptForm } from "@/features/recovery/components/register-attempt-form";
 import { ResolveCaseForm } from "@/features/recovery/components/resolve-case-form";
 import { VerifyReportedForm } from "@/features/recovery/components/verify-reported-form";
@@ -469,7 +470,18 @@ export default async function CampaignCasePage({
                   key={attempt.id}
                 >
                   <p className="font-medium text-ui-text">
+                    {attempt.correction ? (
+                      <s className="mr-2 font-normal text-ui-muted">
+                        {attemptResultLabels[attempt.originalResult] ??
+                          attempt.originalResult}
+                      </s>
+                    ) : null}
                     {attemptResultLabels[attempt.result] ?? attempt.result}
+                    {attempt.reasonLabel ? (
+                      <span className="ml-1 font-normal text-ui-muted">
+                        · {attempt.reasonLabel}
+                      </span>
+                    ) : null}
                     <span className="ml-2 text-xs font-normal text-ui-muted">
                       {channelLabels[attempt.channel] ?? attempt.channel} ·{" "}
                       {attempt.createdAtLabel} · {attempt.actorName}
@@ -480,6 +492,21 @@ export default async function CampaignCasePage({
                     <p className="mt-1 text-xs text-ui-muted">
                       {attempt.observation}
                     </p>
+                  ) : null}
+                  {attempt.correction ? (
+                    <p className="mt-1 text-xs text-ui-muted">
+                      Rectificado por {attempt.correction.actorName} el{" "}
+                      {attempt.correction.createdAtLabel}:{" "}
+                      {attempt.correction.correctionReason}
+                    </p>
+                  ) : attempt.canCorrect.allowed ? (
+                    <CorrectAttemptForm
+                      attemptId={attempt.id}
+                      originalLabel={
+                        attemptResultLabels[attempt.originalResult] ??
+                        attempt.originalResult
+                      }
+                    />
                   ) : null}
                 </li>
               ))}

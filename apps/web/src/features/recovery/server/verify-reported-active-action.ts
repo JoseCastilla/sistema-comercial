@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { effectiveAttemptResult } from "@repo/validation";
+
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -73,12 +75,20 @@ export async function verifyReportedActiveAction(
         attempts: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: { result: true },
+          select: {
+            result: true,
+            correction: { select: { effectiveResult: true } },
+          },
         },
       },
     });
 
-    if (!recoveryCase || recoveryCase.attempts[0]?.result !== "YA_ACTIVO") {
+    // SPEC-049 BR-017: un «ya es Movistar» rectificado ya no está en verificación.
+    if (
+      !recoveryCase ||
+      !recoveryCase.attempts[0] ||
+      effectiveAttemptResult(recoveryCase.attempts[0]) !== "YA_ACTIVO"
+    ) {
       return { kind: "NOT_FOUND" as const };
     }
 

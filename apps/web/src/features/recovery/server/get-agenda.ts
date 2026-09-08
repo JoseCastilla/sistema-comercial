@@ -3,6 +3,7 @@ import "server-only";
 import {
   allOf,
   describeRecoveryCommitmentState,
+  effectiveAttemptResult,
   getLimaIsoDate,
   limaHourMinute,
   parseRecoveryAgeBucket,
@@ -241,7 +242,13 @@ export async function getAgenda(
       attempts: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { result: true, observation: true, createdAt: true },
+        select: {
+          result: true,
+          observation: true,
+          createdAt: true,
+          followUpAt: true,
+          correction: { select: { effectiveResult: true, effectiveReason: true } },
+        },
       },
       commitments: {
         where: {
@@ -274,7 +281,8 @@ export async function getAgenda(
       phone:
         item.phones[0]?.phoneNumber ?? item.services[0]?.serviceNumber ?? null,
       lastResultLabel: last
-        ? (attemptResultLabels[String(last.result)] ?? String(last.result))
+        ? (attemptResultLabels[effectiveAttemptResult(last)] ??
+          effectiveAttemptResult(last))
         : null,
       lastObservation: last?.observation ?? null,
       recencyLabel: recencyLabel(item.lastSightingAt, now),
@@ -286,9 +294,10 @@ export async function getAgenda(
         status: String(item.status),
         nextActionAt: item.nextActionAt,
         portabilityEligibleAt: item.portabilityEligibleAt,
-        lastResult: last ? String(last.result) : null,
+        lastResult: last ? effectiveAttemptResult(last) : null,
         lastAttemptAt: last?.createdAt ?? null,
         pendingCommitmentAt: pending?.scheduledAt ?? null,
+        lastFollowUpAt: last?.followUpAt ?? null,
       },
       now,
     );

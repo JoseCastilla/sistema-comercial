@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { evaluateInternalLossReasonGates } from "@repo/validation";
+import {
+  effectiveAttempts,
+  evaluateInternalLossReasonGates,
+} from "@repo/validation";
 
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
@@ -107,7 +110,13 @@ export async function resolveRecoveryCaseAction(
         sourceDitoOrderId: true,
         createdAt: true,
         holderName: true,
-        attempts: { select: { result: true, createdAt: true } },
+        attempts: {
+          select: {
+            result: true,
+            createdAt: true,
+            correction: { select: { effectiveResult: true } },
+          },
+        },
       },
     });
 
@@ -117,7 +126,10 @@ export async function resolveRecoveryCaseAction(
     // expresa del cliente habilita RECHAZO_DEFINITIVO de inmediato, siempre
     // que exista al menos un intento donde se haya escuchado.
     if (resolution === "LOST") {
-      const gates = evaluateInternalLossReasonGates(recoveryCase.attempts);
+      // SPEC-049 BR-017: las puertas leen el resultado efectivo.
+      const gates = evaluateInternalLossReasonGates(
+        effectiveAttempts(recoveryCase.attempts),
+      );
       const gate = gates[lossReason as RecoveryLossReasonOption];
       const expressPath =
         lossReason === "RECHAZO_DEFINITIVO" &&

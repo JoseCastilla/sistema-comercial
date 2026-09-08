@@ -31,6 +31,7 @@ import {
   recoveryNextActionBuckets,
   recoveryTeamFilterNone,
   selectFollowUpCases,
+  effectiveAttemptResult,
   type FollowUpFilters,
   type RecoveryFollowUpStatus,
   type RecoveryNextActionBucket,
@@ -210,7 +211,12 @@ export default async function RecoveryFollowUpPage({
         attempts: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: { result: true, observation: true, createdAt: true },
+          select: {
+            result: true,
+            observation: true,
+            createdAt: true,
+            correction: { select: { effectiveResult: true } },
+          },
         },
       },
     }),
@@ -262,7 +268,8 @@ export default async function RecoveryFollowUpPage({
         )
       : "Sin asesor",
     teamName: item.assignedTeam?.name ?? "—",
-    lastResult: item.attempts[0] ? String(item.attempts[0].result) : null,
+    // SPEC-049 BR-017: lo que vale es el resultado efectivo.
+    lastResult: item.attempts[0] ? effectiveAttemptResult(item.attempts[0]) : null,
     lastObservation: item.attempts[0]?.observation ?? null,
     lastAttemptAt: item.attempts[0]?.createdAt ?? null,
     attemptsToday: countOnSameLimaDay(attemptsByCase.get(item.id) ?? [], now),

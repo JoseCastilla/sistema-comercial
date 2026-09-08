@@ -92,12 +92,30 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 4 — Rectificación (CAM-T06)
 
-- [ ] Migración `add_recovery_case_attempt_corrections` y evento
-      `ATTEMPT_CORRECTED`.
-- [ ] `effectiveAttempts` en `@repo/validation` con pruebas; cadencia,
-      cobertura, «intentos hoy» y puertas lo usan.
-- [ ] `correct-recovery-attempt-action.ts` con ventana por rol; formulario
-      y historial en la ficha.
+- [x] Migración `add_recovery_case_attempt_corrections` (una rectificación
+      por intento, índice único) y evento `ATTEMPT_CORRECTED`.
+- [x] `recovery-attempt-corrections.ts`: `effectiveAttempts`,
+      `effectiveAttemptResult`, `correctableResults` (sin agenda, antigüedad
+      ni impedimento: piden datos que la rectificación no tiene) y
+      `canCorrectAttempt` (autor el mismo día de Lima, supervisor de su
+      equipo siete días, admin siempre; resuelto o ya rectificado, no);
+      5 pruebas (367 en el paquete), incluida la puerta de rechazo
+      definitivo que deja de habilitarse al rectificar un rechazo.
+- [x] Lectores del resultado efectivo: bandeja, ficha (último resultado,
+      «Qué toca», puertas, historial), agenda, Seguimiento, resolución y
+      verificación de «ya es Movistar». «Intentos hoy», cobertura y la
+      cadencia siguen contando el intento original: la rectificación no es
+      un contacto nuevo.
+- [x] `correct-recovery-attempt-action.ts`: ventana por rol en el servidor,
+      registro aparte, teléfono errado marcado o desmarcado según la verdad
+      efectiva, cita nacida de un `AGENDA` rectificado cancelada con motivo,
+      consecuencia del resultado efectivo aplicada desde ahora y solo si es
+      el intento más reciente (BR-018), evento con origen y destino.
+- [x] Ficha: «Rectificar» junto a cada intento cuando la ventana lo
+      permite; el historial muestra el original tachado, el efectivo, el
+      motivo, quién y cuándo.
+- [ ] Recorrido local con cuenta de asesor de prueba (AC-006) y lectura de
+      producción.
 
 ## Fase 5 — Calidad de datos (CAM-T07)
 

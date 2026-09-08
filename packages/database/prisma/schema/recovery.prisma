@@ -138,6 +138,8 @@ enum RecoveryCaseEventType {
   /// SPEC-048 BR-008/BR-009: una cita acordada se reprogramó o se canceló.
   COMMITMENT_RESCHEDULED
   COMMITMENT_CANCELLED
+  /// SPEC-049 BR-017: un intento fue rectificado (el original no se toca).
+  ATTEMPT_CORRECTED
   /// Corrección administrativa de la próxima acción con evidencia (SPEC-048
   /// fase 0: citas guardadas cinco horas antes). Lo escribe un script, no la UI.
   NEXT_ACTION_CORRECTED
@@ -371,6 +373,7 @@ model RecoveryCase {
   records   RecoveryBaseRecord[]
   attempts  RecoveryCaseAttempt[]
   commitments RecoveryCaseCommitment[]
+  attemptCorrections RecoveryCaseAttemptCorrection[]
 
   @@index([organizationId, status, nextActionAt], map: "recovery_cases_org_status_next_action_idx")
   @@index([organizationId, documentNumber], map: "recovery_cases_org_document_idx")
@@ -584,6 +587,8 @@ model RecoveryCaseAttempt {
   case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
   actor        User         @relation("RecoveryCaseAttemptActor", fields: [actorUserId], references: [id], onDelete: Restrict)
   affectedService RecoveryCaseService? @relation("RecoveryAttemptAffectedService", fields: [affectedServiceId], references: [id], onDelete: SetNull)
+  /// SPEC-049 BR-017: la rectificación, si la hay; el intento sigue intacto.
+  correction RecoveryCaseAttemptCorrection?
 
   /// SPEC-048: la cita que este intento AGENDA creó y la que atendió.
   originatedCommitments RecoveryCaseCommitment[] @relation("RecoveryCommitmentOrigin")
@@ -650,4 +655,35 @@ model RecoveryCaseCommitment {
   @@index([caseId, createdAt], map: "recovery_case_commitments_case_created_idx")
   @@index([organizationId, status, scheduledAt], map: "recovery_case_commitments_org_status_scheduled_idx")
   @@map("recovery_case_commitments")
+}
+
+/// Rectificación de un intento — SPEC-049 BR-017/BR-018. El intento original
+/// es inmutable (SPEC-030 BR-035); la rectificación es un registro aparte que
+/// declara el resultado efectivo, con autor, motivo y momento. Una por
+/// intento. No cuenta como contacto: la cadencia, las puertas y los
+/// contadores leen el resultado efectivo con la fecha del original.
+model RecoveryCaseAttemptCorrection {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  caseId         String @map("case_id") @db.Uuid
+  attemptId      String @unique @map("attempt_id") @db.Uuid
+
+  effectiveResult RecoveryAttemptResult  @map("effective_result")
+  effectiveReason RecoveryAttemptReason? @map("effective_reason")
+  /// Observación corregida, si el asesor la reescribió.
+  observation String? @db.Text
+  /// Por qué se rectifica: obligatorio.
+  correctionReason String @map("correction_reason") @db.Text
+
+  actorUserId String   @map("actor_user_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  case         RecoveryCase        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  attempt      RecoveryCaseAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  actor        User                @relation("RecoveryAttemptCorrectionActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([caseId, createdAt], map: "recovery_case_attempt_corrections_case_created_idx")
+  @@index([organizationId, createdAt], map: "recovery_case_attempt_corrections_org_created_idx")
+  @@map("recovery_case_attempt_corrections")
 }
