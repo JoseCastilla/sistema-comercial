@@ -4,12 +4,15 @@ import { revalidatePath } from "next/cache";
 
 import {
   countOnSameLimaDay,
-  getBaseRecoveryNextTouchAt,
+  eligibleFromReportedDate,
   getInternalRecoveryNextTouchAt,
-  getInternalRecoveryPauseUntil,
-  getNextLimaMorning,
+  impedimentReasons,
   isBaseRecoveryResolutionDue,
+  limaDayStartFromIso,
+  limaMorningFromIso,
+  noContactReasons,
   parseLimaDateTimeLocal,
+  resolveRecoveryAttemptConsequence,
 } from "@repo/validation";
 
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -26,15 +29,22 @@ import type {
   CampaignAttemptInlineState,
   SendOrderToRecoveryActionState,
 } from "./recovery-action.types";
+import type { RecoveryWorkView } from "@repo/validation";
 
 interface AttemptInput {
   caseId: string;
   channel: string;
   result: string;
+  reason: string;
   phoneUsed: string | null;
   observation: string | null;
   scheduledAtRaw: string;
   pauseDaysRaw: string;
+  interestedNext: string;
+  followUpDate: string;
+  reportedDate: string;
+  serviceNumber: string;
+  needsSupervisor: boolean;
   /** BR-090: clave de idempotencia; solo la bandeja la envía. */
   clientRequestId: string | null;
 }
@@ -57,37 +67,41 @@ type AttemptOutcome =
       isBaseCase: boolean;
       /** BR-016: otra cita del mismo asesor en el mismo tramo de 15 minutos. */
       slotClash: string | null;
+      /** SPEC-049 BR-001: la consecuencia en una frase y la vista destino. */
+      summary: string;
+      workView: RecoveryWorkView;
     };
 
 function readAttemptInput(formData: FormData): AttemptInput {
+  const text = (key: string, max: number) =>
+    String(formData.get(key) ?? "")
+      .trim()
+      .slice(0, max);
+
   return {
-    caseId: String(formData.get("caseId") ?? "").trim(),
-    channel: String(formData.get("channel") ?? "").trim(),
-    result: String(formData.get("result") ?? "").trim(),
-    phoneUsed:
-      String(formData.get("phoneUsed") ?? "")
-        .trim()
-        .slice(0, 15) || null,
-    observation:
-      String(formData.get("observation") ?? "")
-        .trim()
-        .slice(0, 2000) || null,
-    scheduledAtRaw: String(formData.get("scheduledAt") ?? "").trim(),
-    pauseDaysRaw: String(formData.get("pauseDays") ?? "").trim(),
+    caseId: text("caseId", 80),
+    channel: text("channel", 20),
+    result: text("result", 40),
+    reason: text("reason", 20),
+    phoneUsed: text("phoneUsed", 15) || null,
+    observation: text("observation", 2000) || null,
+    scheduledAtRaw: text("scheduledAt", 40),
+    pauseDaysRaw: text("pauseDays", 2),
+    interestedNext: text("interestedNext", 20),
+    followUpDate: text("followUpDate", 10),
+    reportedDate: text("reportedDate", 10),
+    serviceNumber: text("serviceNumber", 15),
+    needsSupervisor: formData.get("needsSupervisor") === "on",
     clientRequestId: readUuid(formData.get("clientRequestId")),
   };
 }
 
 /**
- * Registro de un intento de contacto — SPEC-030 BR-032 a BR-036, BR-066.
- * El intento es inmutable; sus efectos sobre el caso (estado, reloj, agenda,
- * pausa) se aplican en la misma transacción.
- *
- * BR-031: la cadencia es por fuente. El carril interno usa los toques
- * D1/D3/D7 desde la asignación; la base nacional exige tres intentos en el
- * día (BR-032) y reaparece a la mañana siguiente con el mínimo cumplido,
- * hasta la resolución obligatoria del séptimo día (BR-058). La agenda
- * (BR-034) y la pausa por rechazo (BR-033) valen igual en ambos carriles.
+ * Registro de un intento de contacto — SPEC-030 BR-032 a BR-036, BR-066;
+ * SPEC-049 BR-001 a BR-006. El intento es inmutable; sus efectos sobre el
+ * caso (estado, reloj, cita, pausa, teléfono, habilitación) salen de la
+ * tabla de consecuencias de `@repo/validation` y se aplican en la misma
+ * transacción.
  */
 const channels = new Set(["LLAMADA", "WHATSAPP", "SMS", "PRESENCIAL", "OTRO"]);
 
@@ -95,13 +109,17 @@ const results = new Set([
   "SIN_RESPUESTA",
   "INTERESADO",
   "INTERESADO_CON_PEDIDO",
+  "TIENE_PEDIDO",
   "RECHAZA",
+  "NO_CONTACTAR",
   "AGENDA",
   "NUMERO_ERRADO",
   "NO_CUMPLE_30D",
   "YA_ACTIVO",
   "DATOS_INVALIDOS",
   "VENDIDO",
+  "IMPEDIMENTO",
+  // Se acepta por compatibilidad con clientes viejos; ya no se ofrece.
   "CANCELADO",
 ]);
 
@@ -112,6 +130,10 @@ const openStatuses = [
   "SCHEDULED",
   "WAITING",
 ] as const;
+
+function invalid(message: string): AttemptOutcome {
+  return { kind: "INVALID", message };
+}
 
 async function registerRecoveryAttempt(
   input: AttemptInput,
@@ -127,35 +149,86 @@ async function registerRecoveryAttempt(
     pauseDaysRaw,
     clientRequestId,
   } = input;
+  const now = new Date();
 
-  if (!caseId || !channels.has(channel) || !results.has(result)) {
-    return {
-      kind: "INVALID",
-      message: "Completa el canal y el resultado del intento.",
-    };
+  if (!caseId || !channels.has(channel)) {
+    return invalid("Completa el canal y el resultado del intento.");
+  }
+  if (!results.has(result)) {
+    return invalid("Elige qué pasó en la llamada antes de guardar.");
   }
 
+  // Motivo: por qué no contestó (opcional, «no contesta» por defecto) o qué
+  // impide la venta (obligatorio).
+  let reason: string | null = null;
+  if (result === "SIN_RESPUESTA") {
+    reason = noContactReasons.includes(input.reason as never)
+      ? input.reason
+      : "NO_CONTESTA";
+  } else if (result === "IMPEDIMENTO") {
+    if (!impedimentReasons.includes(input.reason as never)) {
+      return invalid("Di qué impide la venta: problema de huella u otro.");
+    }
+    reason = input.reason;
+  }
+
+  // Hora acordada: AGENDA siempre; INTERESADO cuando eligió llamada acordada.
   let scheduledAt: Date | null = null;
-  if (result === "AGENDA") {
+  const wantsAppointment =
+    result === "AGENDA" ||
+    (result === "INTERESADO" && input.interestedNext === "cita");
+  if (wantsAppointment) {
     // SPEC-048 BR-001: la hora es de Lima, no de la zona del servidor.
-    scheduledAt = scheduledAtRaw
-      ? parseLimaDateTimeLocal(scheduledAtRaw)
-      : null;
-    if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
-      return {
-        kind: "INVALID",
-        message: "Una agenda necesita fecha y hora de la próxima llamada.",
-      };
+    scheduledAt = scheduledAtRaw ? parseLimaDateTimeLocal(scheduledAtRaw) : null;
+    if (!scheduledAt) {
+      return invalid("Una llamada acordada necesita fecha y hora.");
     }
-    if (scheduledAt.getTime() <= Date.now()) {
-      return {
-        kind: "INVALID",
-        message: "La fecha agendada debe estar en el futuro.",
-      };
+    if (scheduledAt.getTime() <= now.getTime()) {
+      return invalid("La fecha acordada debe estar en el futuro.");
     }
   }
 
-  const pauseDays = pauseDaysRaw === "2" ? 2 : 1;
+  // Fecha de seguimiento: INTERESADO con seguimiento o IMPEDIMENTO.
+  let followUpDate: string | null = null;
+  const wantsFollowUp =
+    result === "IMPEDIMENTO" ||
+    (result === "INTERESADO" && input.interestedNext === "seguimiento");
+  if (wantsFollowUp) {
+    const morning = input.followUpDate
+      ? limaMorningFromIso(input.followUpDate)
+      : null;
+    if (!morning) {
+      return invalid("Indica la fecha del seguimiento.");
+    }
+    if (morning.getTime() <= now.getTime() && result === "IMPEDIMENTO") {
+      return invalid("La fecha del seguimiento debe ser posterior a hoy.");
+    }
+    followUpDate = input.followUpDate;
+  }
+
+  if (result === "NO_CONTACTAR" && (observation?.length ?? 0) < 10) {
+    return invalid(
+      "Escribe qué dijo el cliente (al menos 10 caracteres): es la evidencia para cerrarlo.",
+    );
+  }
+  if (result === "IMPEDIMENTO" && (observation?.length ?? 0) < 5) {
+    return invalid("Describe el impedimento en la observación.");
+  }
+  if (result === "NUMERO_ERRADO" && !phoneUsed) {
+    return invalid("Di qué número estaba errado.");
+  }
+
+  let reportedDate: string | null = null;
+  if (result === "NO_CUMPLE_30D" && input.reportedDate) {
+    const day = limaDayStartFromIso(input.reportedDate);
+    if (!day) return invalid("La fecha de portación no es válida.");
+    if (day.getTime() > now.getTime()) {
+      return invalid("La fecha de portación no puede ser futura.");
+    }
+    reportedDate = input.reportedDate;
+  }
+
+  const pauseDays: 1 | 2 = pauseDaysRaw === "2" ? 2 : 1;
 
   const outcome = await database.$transaction(async (transaction) => {
     // El asesor solo gestiona sus casos asignados (BR-029b); la supervisión,
@@ -181,6 +254,17 @@ async function registerRecoveryAttempt(
         firstContactAt: true,
         holderName: true,
         assignedUserId: true,
+        phones: {
+          select: { phoneNumber: true, invalidMarkedAt: true },
+        },
+        services: {
+          where: { discardedAt: null },
+          select: {
+            id: true,
+            serviceNumber: true,
+            portabilityEligibleAt: true,
+          },
+        },
         attempts: {
           orderBy: { createdAt: "desc" },
           take: 30,
@@ -192,7 +276,6 @@ async function registerRecoveryAttempt(
     if (!recoveryCase) return { kind: "NOT_FOUND" as const };
 
     const isBaseCase = recoveryCase.source === "NATIONAL_BASE";
-    const now = new Date();
 
     /**
      * BR-090: un reenvío del mismo formulario —doble clic, reintento tras un
@@ -205,11 +288,7 @@ async function registerRecoveryAttempt(
         where: {
           caseId_clientRequestId: { caseId: recoveryCase.id, clientRequestId },
         },
-        select: {
-          result: true,
-          observation: true,
-          phoneUsed: true,
-        },
+        select: { result: true, observation: true, phoneUsed: true },
       });
 
       if (replayed) {
@@ -236,6 +315,25 @@ async function registerRecoveryAttempt(
           mustResolve: false,
           isBaseCase,
           slotClash: null,
+          summary: "",
+          workView: "ahora" as const,
+        };
+      }
+    }
+
+    // NO_CUMPLE_30D: la línea afectada. Con una sola activa, es esa.
+    let affectedService: (typeof recoveryCase.services)[number] | null = null;
+    if (result === "NO_CUMPLE_30D") {
+      affectedService =
+        recoveryCase.services.length === 1
+          ? (recoveryCase.services[0] ?? null)
+          : (recoveryCase.services.find(
+              (service) => service.serviceNumber === input.serviceNumber,
+            ) ?? null);
+      if (!affectedService) {
+        return {
+          kind: "INVALID" as const,
+          message: "Di cuál de las líneas del caso no cumple los 30 días.",
         };
       }
     }
@@ -247,9 +345,13 @@ async function registerRecoveryAttempt(
         actorUserId: session.user.id,
         channel: channel as never,
         result: result as never,
+        reason: reason as never,
         phoneUsed,
         observation,
         nextActionAt: scheduledAt,
+        followUpAt: followUpDate ? limaMorningFromIso(followUpDate) : null,
+        needsSupervisor: result === "IMPEDIMENTO" && input.needsSupervisor,
+        affectedServiceId: affectedService?.id ?? null,
         clientRequestId,
       },
       select: { id: true },
@@ -257,9 +359,8 @@ async function registerRecoveryAttempt(
 
     /**
      * SPEC-048 BR-003/BR-005: registrar cualquier resultado atiende la cita
-     * pendiente del caso —hubo llamada—, y una AGENDA crea la cita nueva en
-     * la misma transacción, después de cerrar la anterior (un caso tiene a
-     * lo sumo una pendiente). Un reenvío con la misma clave no llega aquí.
+     * pendiente del caso —hubo llamada—, y una cita nueva se crea después
+     * de cerrar la anterior (un caso tiene a lo sumo una pendiente).
      */
     await transaction.recoveryCaseCommitment.updateMany({
       where: { caseId: recoveryCase.id, status: "PENDING" },
@@ -271,9 +372,112 @@ async function registerRecoveryAttempt(
       },
     });
 
+    const managedSince = recoveryCase.claimedAt ?? recoveryCase.createdAt;
+    // Incluye el intento recién creado en el conteo del día (BR-032).
+    const attemptsToday =
+      countOnSameLimaDay(
+        recoveryCase.attempts.map((attempt) => attempt.createdAt),
+        now,
+      ) + 1;
+
+    // BR-002: el teléfono errado queda marcado; se cuenta qué queda.
+    let validPhonesLeft = 0;
+    if (result === "NUMERO_ERRADO" && phoneUsed) {
+      await transaction.recoveryCasePhone.updateMany({
+        where: {
+          caseId: recoveryCase.id,
+          phoneNumber: phoneUsed,
+          invalidMarkedAt: null,
+        },
+        data: { invalidMarkedAt: now },
+      });
+      const validContacts = recoveryCase.phones.filter(
+        (phone) => phone.invalidMarkedAt === null && phone.phoneNumber !== phoneUsed,
+      ).length;
+      const otherLines = recoveryCase.services.filter(
+        (service) => service.serviceNumber !== phoneUsed,
+      ).length;
+      validPhonesLeft = validContacts + otherLines;
+    }
+
+    // BR-003: fecha informada por el cliente y habilitación consolidada.
+    let caseEligibleAt: Date | null | undefined = undefined;
+    let anyWorkableLine = false;
+    if (result === "NO_CUMPLE_30D" && affectedService) {
+      const eligibleFromClient = reportedDate
+        ? eligibleFromReportedDate(reportedDate)
+        : null;
+      if (reportedDate) {
+        await transaction.recoveryCaseService.update({
+          where: { id: affectedService.id },
+          data: {
+            portabilityReportedAt: limaDayStartFromIso(reportedDate),
+            // La fecha verificada por el reporte manda sobre la informada.
+            portabilityEligibleAt:
+              affectedService.portabilityEligibleAt ?? eligibleFromClient,
+          },
+        });
+      }
+      const eligibles = recoveryCase.services.map((service) =>
+        service.id === affectedService!.id
+          ? (service.portabilityEligibleAt ?? eligibleFromClient)
+          : service.portabilityEligibleAt,
+      );
+      const known = eligibles.filter((value): value is Date => value !== null);
+      caseEligibleAt =
+        known.length > 0
+          ? new Date(Math.min(...known.map((value) => value.getTime())))
+          : null;
+      // BR-040: una línea sin dato es trabajable; la ausencia nunca detiene.
+      anyWorkableLine = recoveryCase.services.some(
+        (service) =>
+          service.id !== affectedService!.id &&
+          (service.portabilityEligibleAt === null ||
+            service.portabilityEligibleAt.getTime() <= now.getTime()),
+      );
+    }
+
+    const consequence = resolveRecoveryAttemptConsequence({
+      result,
+      reason,
+      now,
+      attemptsToday,
+      managedSince,
+      isBaseCase,
+      pauseDays,
+      scheduledAt,
+      followUpDate,
+      reportedDate,
+      caseEligibleAt: caseEligibleAt ?? null,
+      anyWorkableLine,
+      validPhonesLeft,
+      phoneUsed,
+      needsSupervisor: input.needsSupervisor,
+    });
+
+    // BR-085/BR-086/BR-005: las líneas entran a la próxima exportación.
+    if (isBaseCase && consequence.marksLinesForRevalidation) {
+      await transaction.recoveryCaseService.updateMany({
+        where: { caseId: recoveryCase.id, discardedAt: null },
+        data: { needsRevalidation: true },
+      });
+    }
+
+    await transaction.recoveryCase.update({
+      where: { id: recoveryCase.id },
+      data: {
+        status: consequence.status,
+        firstContactAt: recoveryCase.firstContactAt ?? now,
+        nextActionAt: consequence.nextActionAt,
+        ...(caseEligibleAt !== undefined
+          ? { portabilityEligibleAt: caseEligibleAt }
+          : {}),
+      },
+    });
+
     let slotClash: string | null = null;
 
-    if (result === "AGENDA" && scheduledAt) {
+    if (consequence.createsCommitment && scheduledAt) {
       const created = await transaction.recoveryCaseCommitment.create({
         data: {
           organizationId: membership.organization.id,
@@ -302,79 +506,13 @@ async function registerRecoveryAttempt(
         slotClash = clash?.case.holderName ?? null;
       }
     }
-    const managedSince = recoveryCase.claimedAt ?? recoveryCase.createdAt;
-    // Incluye el intento recién creado en el conteo del día (BR-032).
-    const attemptsToday =
-      countOnSameLimaDay(
-        recoveryCase.attempts.map((attempt) => attempt.createdAt),
-        now,
-      ) + 1;
 
-    /**
-     * BR-085: "ya es Movistar" es una afirmación, no una prueba — el caso
-     * pasa a verificación (WAITING, conserva a su asesor) y sus líneas
-     * entran a la próxima exportación. BR-086: "interesado con pedido en
-     * curso" agenda solo para mañana y también entra a revalidación diaria:
-     * el cruce vigila si el pedido ajeno prospera o cae.
-     */
-    if (
-      isBaseCase &&
-      (result === "YA_ACTIVO" || result === "INTERESADO_CON_PEDIDO")
-    ) {
-      await transaction.recoveryCaseService.updateMany({
-        where: { caseId: recoveryCase.id, discardedAt: null },
-        data: { needsRevalidation: true },
-      });
-
-      const verificationNextAction =
-        result === "YA_ACTIVO" ? null : getNextLimaMorning(now);
-
-      await transaction.recoveryCase.update({
-        where: { id: recoveryCase.id },
-        data: {
-          status: result === "YA_ACTIVO" ? "WAITING" : "SCHEDULED",
-          firstContactAt: recoveryCase.firstContactAt ?? now,
-          nextActionAt: verificationNextAction,
-        },
-      });
-
-      return {
-        kind: "DONE" as const,
-        replayed: false,
-        holderName: recoveryCase.holderName,
-        result,
-        observation,
-        phoneUsed,
-        status: result === "YA_ACTIVO" ? "WAITING" : "SCHEDULED",
-        attemptsToday,
-        nextActionAt: verificationNextAction,
-        mustResolve: false,
-        isBaseCase,
-        slotClash,
-      };
-    }
-
-    // BR-034: la agenda suspende la cadencia; BR-033: el rechazo pausa 1–2
-    // días; el resto sigue la cadencia de su fuente (BR-031). La cancelación
-    // pausa igual que el rechazo y no cierra el caso: si el resultado se
-    // registró por error se corrige sin perder el historial del intento.
-    const nextActionAt =
-      result === "AGENDA"
-        ? scheduledAt
-        : result === "RECHAZA" || result === "CANCELADO"
-          ? getInternalRecoveryPauseUntil(now, pauseDays)
-          : isBaseCase
-            ? getBaseRecoveryNextTouchAt(attemptsToday, now)
-            : (getInternalRecoveryNextTouchAt(managedSince, now) ?? now);
-
-    await transaction.recoveryCase.update({
-      where: { id: recoveryCase.id },
-      data: {
-        status: result === "AGENDA" ? "SCHEDULED" : "IN_PROGRESS",
-        firstContactAt: recoveryCase.firstContactAt ?? now,
-        nextActionAt,
-      },
-    });
+    const mustResolve =
+      consequence.status === "IN_PROGRESS" &&
+      consequence.workView === "ahora" &&
+      (isBaseCase
+        ? isBaseRecoveryResolutionDue(managedSince, now)
+        : getInternalRecoveryNextTouchAt(managedSince, now) === null);
 
     return {
       kind: "DONE" as const,
@@ -383,18 +521,14 @@ async function registerRecoveryAttempt(
       result,
       observation,
       phoneUsed,
-      status: result === "AGENDA" ? "SCHEDULED" : "IN_PROGRESS",
+      status: consequence.status,
       attemptsToday: isBaseCase ? attemptsToday : null,
-      nextActionAt,
+      nextActionAt: consequence.nextActionAt,
       isBaseCase,
       slotClash,
-      mustResolve:
-        result !== "AGENDA" &&
-        result !== "RECHAZA" &&
-        result !== "CANCELADO" &&
-        (isBaseCase
-          ? isBaseRecoveryResolutionDue(managedSince, now)
-          : getInternalRecoveryNextTouchAt(managedSince, now) === null),
+      summary: consequence.summary,
+      workView: consequence.workView,
+      mustResolve,
     };
   });
 
@@ -402,33 +536,24 @@ async function registerRecoveryAttempt(
 }
 
 /**
- * La consecuencia operativa del resultado, en una frase. Es lo que el asesor
- * necesita saber justo después de guardar: cuántos intentos van, si el caso
- * entró en verificación, si toca vincular la venta.
+ * La consecuencia operativa del resultado, en una frase (BR-001). Es lo que
+ * el asesor necesita saber justo después de guardar.
  */
 function describeAttemptOutcome(
   outcome: Extract<AttemptOutcome, { kind: "DONE" }>,
 ): string {
-  if (outcome.result === "VENDIDO") {
-    return "Vincula la orden nueva desde la ficha para resolverlo como recuperado.";
-  }
-  if (outcome.result === "YA_ACTIVO") {
-    return "Pasa a verificación: el caso no se cierra hasta que el reporte o tu supervisor lo confirmen.";
-  }
-  if (outcome.result === "AGENDA" && outcome.slotClash) {
-    return `Ojo: a esa misma hora ya tienes una llamada acordada con ${outcome.slotClash}.`;
-  }
-  if (outcome.result === "INTERESADO_CON_PEDIDO") {
-    return "Agendado para mañana: vuelve a llamarlo para ver si el pedido anterior cayó; el cruce lo vigila en paralelo.";
+  const parts: string[] = [];
+  if (outcome.summary) parts.push(outcome.summary);
+  if (outcome.slotClash) {
+    parts.push(
+      `Ojo: a esa misma hora ya tienes una llamada acordada con ${outcome.slotClash}.`,
+    );
   }
   if (outcome.mustResolve) {
-    return "La cadencia se agotó: este caso entra en resolución obligatoria.";
-  }
-  if (outcome.attemptsToday !== null && outcome.attemptsToday < 3) {
-    return `Llevas ${outcome.attemptsToday} de 3 intentos exigidos hoy.`;
+    parts.push("La cadencia se agotó: este caso entra en resolución obligatoria.");
   }
 
-  return "";
+  return parts.join(" ");
 }
 
 /**
@@ -457,6 +582,7 @@ export async function registerRecoveryAttemptAction(
 
   revalidatePath("/recovery/sales");
   revalidatePath("/recovery/campaigns");
+  revalidatePath("/recovery/agenda");
 
   const suffix = describeAttemptOutcome(outcome);
 
@@ -539,6 +665,7 @@ export async function registerCampaignAttemptInlineAction(
         ? formatLimaDateTime(outcome.nextActionAt)
         : null,
       mustResolve: outcome.mustResolve,
+      workView: outcome.workView,
     },
   };
 }

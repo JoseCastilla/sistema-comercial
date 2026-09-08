@@ -12,7 +12,10 @@ export const attemptResultLabels: Record<string, string> = {
   INTERESADO_CON_PEDIDO: "Interesado · tiene pedido en curso",
   RECHAZA: "No interesado",
   AGENDA: "Agenda una próxima llamada",
-  CANCELADO: "Cancelado",
+  CANCELADO: "Cancelado (registro anterior)",
+  NO_CONTACTAR: "Pide que no lo llamen",
+  TIENE_PEDIDO: "Tiene un pedido en curso · interés por confirmar",
+  IMPEDIMENTO: "Impedimento comercial",
   NUMERO_ERRADO: "Número errado",
   NO_CUMPLE_30D: "No cumple los 30 días de porta",
   YA_ACTIVO: "Ya está activo en Movistar",
@@ -24,12 +27,14 @@ export const attemptResultLabels: Record<string, string> = {
  * Rótulo con la consecuencia operativa, para el desplegable donde el asesor
  * elige qué pasó: ahí sí importa saber que la cadencia se pausa.
  */
-export const attemptResultChoiceLabels: Record<string, string> = {
-  ...attemptResultLabels,
-  RECHAZA: "No interesado (pausa 1–2 días)",
-  CANCELADO: "Cancelado (pausa 1–2 días)",
-  YA_ACTIVO: "Ya está activo en Movistar (pasa a verificación)",
-};
+export const attemptResultChoiceLabels: Record<string, string> = Object.fromEntries(
+  Object.entries({
+    ...attemptResultLabels,
+    RECHAZA: "No interesado (pausa 1–2 días)",
+    YA_ACTIVO: "Ya está activo en Movistar (pasa a verificación)",
+    // SPEC-049 BR-011: se conserva en el historial, no se ofrece.
+  }).filter(([value]) => value !== "CANCELADO"),
+);
 
 /**
  * Tono con el que se pinta la fila una vez registrado el resultado, para que
@@ -50,4 +55,7 @@ export const attemptResultTones: Record<
   CANCELADO: "danger",
   NUMERO_ERRADO: "danger",
   DATOS_INVALIDOS: "danger",
+  NO_CONTACTAR: "danger",
+  TIENE_PEDIDO: "info",
+  IMPEDIMENTO: "warning",
 };

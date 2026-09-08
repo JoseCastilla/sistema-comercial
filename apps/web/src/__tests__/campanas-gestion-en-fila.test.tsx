@@ -93,6 +93,11 @@ function renderEditor(
     form: () =>
       screen.getByRole("button", { name: /Guardar gestión/ }).closest("form")!,
     resultado: () => screen.getByLabelText("Resultado") as HTMLSelectElement,
+    // SPEC-049 BR-009: nada viene preseleccionado; elegir es un acto.
+    elegir: (value: string) =>
+      fireEvent.change(screen.getByLabelText("Resultado"), {
+        target: { value },
+      }),
     observacion: () =>
       screen.getByPlaceholderText(
         "Qué dijo el cliente hoy",
@@ -180,7 +185,8 @@ describe("Gestión en fila · el teléfono utilizado", () => {
   });
 
   it("otro número exige escribirlo antes de guardar", async () => {
-    const { form } = renderEditor();
+    const { form, elegir } = renderEditor();
+    elegir("SIN_RESPUESTA");
 
     fireEvent.change(screen.getByLabelText("Teléfono utilizado"), {
       target: { value: "__otro__" },
@@ -203,7 +209,8 @@ describe("Gestión en fila · guardar", () => {
         successFor(formData),
       );
 
-    const { form, observacion } = renderEditor();
+    const { form, observacion, elegir } = renderEditor();
+    elegir("SIN_RESPUESTA");
 
     fireEvent.change(observacion(), {
       target: { value: "No contesta, buzón" },
@@ -229,13 +236,16 @@ describe("Gestión en fila · guardar", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /Registrar otro intento/ }),
     );
+    // Otro intento arranca en blanco: hay que volver a elegir qué pasó.
+    elegir("SIN_RESPUESTA");
     await enviar(form());
     await waitFor(() => expect(inlineAction).toHaveBeenCalledTimes(3));
     expect(claveEnviada(2)).not.toBe(claveEnviada(1));
   });
 
   it("la fila recibe los datos confirmados por el servidor, no los escritos", async () => {
-    const { form, onSaved, observacion } = renderEditor();
+    const { form, onSaved, observacion, elegir } = renderEditor();
+    elegir("SIN_RESPUESTA");
 
     fireEvent.change(observacion(), { target: { value: "  con espacios  " } });
     await enviar(form());
@@ -363,5 +373,67 @@ describe("Borrador de la bandeja · una sola gestión abierta", () => {
     expect(screen.getByTestId("editando")).toHaveTextContent("A");
 
     confirmar.mockRestore();
+  });
+});
+
+/**
+ * SPEC-049 BR-009/BR-010: tres preguntas, nada preseleccionado, la
+ * consecuencia se lee antes de guardar.
+ */
+describe("Gestión en fila · tipificación (SPEC-049)", () => {
+  it("sin resultado elegido no se guarda nada", async () => {
+    const { form, resultado } = renderEditor();
+
+    expect(resultado().value).toBe("");
+    await enviar(form());
+
+    expect(inlineAction).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Elige qué pasó/);
+  });
+
+  it("la tecla N elige «No contesta» sin abrir el desplegable", () => {
+    const { form, resultado } = renderEditor();
+
+    fireEvent.keyDown(form(), { key: "n" });
+
+    expect(resultado().value).toBe("SIN_RESPUESTA");
+    expect(screen.getByTestId("consecuencia")).toHaveTextContent(/3 del día/);
+  });
+
+  it("no interesado muestra la pausa y su consecuencia antes de guardar", () => {
+    const { elegir } = renderEditor();
+
+    elegir("RECHAZA");
+
+    expect(screen.getByLabelText("Pausa antes de reintentar")).toBeInTheDocument();
+    expect(screen.getByTestId("consecuencia")).toHaveTextContent(/pausado hasta/);
+  });
+
+  it("pedir que no lo llamen exige la observación como evidencia", async () => {
+    const { form, elegir } = renderEditor();
+
+    elegir("NO_CONTACTAR");
+    await enviar(form());
+
+    expect(inlineAction).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/qué dijo el cliente/);
+  });
+
+  it("interesado pregunta qué sigue; con llamada acordada pide la hora", () => {
+    const { elegir } = renderEditor();
+
+    elegir("INTERESADO");
+    expect(screen.getByText("Qué sigue")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Llamada acordada"));
+    expect(screen.getByLabelText("Fecha y hora acordadas")).toBeInTheDocument();
+  });
+
+  it("«Cancelado» ya no se ofrece", () => {
+    const { resultado } = renderEditor();
+
+    const values = Array.from(resultado().options).map((option) => option.value);
+    expect(values).not.toContain("CANCELADO");
+    expect(values).toContain("NO_CONTACTAR");
   });
 });

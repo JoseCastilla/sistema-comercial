@@ -289,6 +289,7 @@ export function CampaignQueueRow({
               onSaved={handleSaved}
               onUnmanageable={setUnmanageableReason}
               phoneOptions={phoneOptions}
+              serviceNumbers={row.services.map((service) => service.serviceNumber)}
             />
           </td>
         </tr>

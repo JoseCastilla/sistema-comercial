@@ -46,8 +46,25 @@ enum RecoveryAttemptResult {
   DATOS_INVALIDOS
   VENDIDO
   /// El cliente cancela la gestión. Pausa la cadencia como RECHAZA; no cierra
-  /// el caso, de modo que un error se corrige sin perder el registro.
+  /// el caso. Desde SPEC-049 BR-011 ya no se ofrece; se conserva en el
+  /// historial.
   CANCELADO
+  /// SPEC-049 BR-001: el cliente pide que no lo llamen (habilita el cierre,
+  /// no cierra); tiene un pedido ajeno sin interés confirmado; hay un
+  /// impedimento comercial (huella u otro) que no es rechazo.
+  NO_CONTACTAR
+  TIENE_PEDIDO
+  IMPEDIMENTO
+}
+
+/// Motivo del intento (SPEC-049 BR-009/BR-010): por qué no hubo contacto o
+/// cuál es el impedimento. Nulo en los registros anteriores.
+enum RecoveryAttemptReason {
+  NO_CONTESTA
+  APAGADO
+  OCUPADO
+  HUELLA
+  OTRO
 }
 
 enum RecoveryCaseStatus {
@@ -391,12 +408,16 @@ model RecoveryCaseService {
   portabilityWindowAt  DateTime?                 @map("portability_window_at") @db.Timestamptz(3)
   portabilityReceiver  String?                   @map("portability_receiver") @db.VarChar(150)
   needsRevalidation    Boolean                   @default(false) @map("needs_revalidation")
+  /// SPEC-049 BR-003: fecha de portación que informó el cliente, distinta
+  /// de la ventana verificada por el reporte.
+  portabilityReportedAt DateTime? @map("portability_reported_at") @db.Timestamptz(3)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  affectedAttempts RecoveryCaseAttempt[] @relation("RecoveryAttemptAffectedService")
 
   @@unique([caseId, serviceNumber], map: "recovery_case_services_case_service_key")
   @@index([organizationId, serviceNumber], map: "recovery_case_services_org_service_idx")
@@ -545,6 +566,13 @@ model RecoveryCaseAttempt {
   observation  String?   @db.Text
   nextActionAt DateTime? @map("next_action_at") @db.Timestamptz(3)
 
+  /// SPEC-049: motivo (no contacto o impedimento), fecha de seguimiento que
+  /// dio el asesor, si pidió apoyo del supervisor y la línea afectada.
+  reason            RecoveryAttemptReason?
+  followUpAt        DateTime? @map("follow_up_at") @db.Timestamptz(3)
+  needsSupervisor   Boolean   @default(false) @map("needs_supervisor")
+  affectedServiceId String?   @map("affected_service_id") @db.Uuid
+
   /// Clave que genera el cliente al abrir la gestión (BR-090). Un reenvío del
   /// mismo formulario —doble clic, reintento tras un corte— trae la misma
   /// clave y encuentra el intento ya guardado en vez de crear otro.
@@ -555,6 +583,7 @@ model RecoveryCaseAttempt {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
   actor        User         @relation("RecoveryCaseAttemptActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  affectedService RecoveryCaseService? @relation("RecoveryAttemptAffectedService", fields: [affectedServiceId], references: [id], onDelete: SetNull)
 
   /// SPEC-048: la cita que este intento AGENDA creó y la que atendió.
   originatedCommitments RecoveryCaseCommitment[] @relation("RecoveryCommitmentOrigin")

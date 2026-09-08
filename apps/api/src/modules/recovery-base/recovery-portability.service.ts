@@ -248,6 +248,10 @@ export class RecoveryPortabilityService {
     });
 
     if (decision.isPlantLine) counters.plantLineServices += 1;
+
+    // SPEC-048 BR-006 / SPEC-049 BR-003: la habilitación del caso es la más
+    // temprana de sus líneas activas; la bandeja y la toma de bloques la leen.
+    await this.consolidateCaseEligibility(transaction, service.caseId);
     if (decision.outcome === 'SCHEDULE_UNTIL_ELIGIBLE') {
       counters.scheduledServices += 1;
     }
@@ -362,6 +366,27 @@ export class RecoveryPortabilityService {
         },
       });
     }
+  }
+
+  private async consolidateCaseEligibility(
+    transaction: Prisma.TransactionClient,
+    caseId: string,
+  ): Promise<void> {
+    const earliest = await transaction.recoveryCaseService.aggregate({
+      where: {
+        caseId,
+        discardedAt: null,
+        portabilityEligibleAt: { not: null },
+      },
+      _min: { portabilityEligibleAt: true },
+    });
+
+    await transaction.recoveryCase.update({
+      where: { id: caseId },
+      data: {
+        portabilityEligibleAt: earliest._min.portabilityEligibleAt ?? null,
+      },
+    });
   }
 
   /**
