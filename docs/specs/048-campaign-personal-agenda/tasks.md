@@ -112,8 +112,14 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 5 — Mes (CAM-F11, P2)
 
-- [ ] Vista mensual con conteos por día y tipo; un día abre la vista Día;
-      prueba de que los conteos coinciden con Día y Semana.
+- [x] Vista mensual: rejilla de semanas completas (lunes a domingo) que
+      cubre el mes, con llamadas, vencidas y tareas por día desde
+      `summarizeRecoveryAgendaByDay` sobre los mismos elementos que dibujan
+      Día y Semana (no pueden discrepar por construcción); pulsar un día
+      abre la vista Día; Anterior / Siguiente cambian de mes y cruzan el
+      año. 4 pruebas nuevas (348 en el paquete).
+- [ ] Recorrido local con cuenta de asesor de prueba: los conteos del mes
+      coinciden con lo que muestra cada día.
 
 ## Verificación
 

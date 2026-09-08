@@ -214,6 +214,47 @@ export function describeRecoveryCommitmentState(
   }
 }
 
+export interface RecoveryAgendaDaySummary {
+  /** Llamadas acordadas (ocupan hora). */
+  commitments: number;
+  /** Tareas sin hora. */
+  tasks: number;
+  /** Cuántas de las llamadas ya vencieron. */
+  overdue: number;
+}
+
+/**
+ * BR-015 / CAM-F11: cantidades por día, citas y tareas por separado, desde
+ * los mismos elementos que dibujan Día y Semana: por construcción no pueden
+ * decir cosas distintas.
+ */
+export function summarizeRecoveryAgendaByDay(
+  entries: ReadonlyArray<{
+    dayIso: string | null;
+    timed: boolean;
+    overdue?: boolean;
+  }>,
+): Record<string, RecoveryAgendaDaySummary> {
+  const summary: Record<string, RecoveryAgendaDaySummary> = {};
+
+  for (const entry of entries) {
+    if (!entry.dayIso) continue;
+    const day = (summary[entry.dayIso] ??= {
+      commitments: 0,
+      tasks: 0,
+      overdue: 0,
+    });
+    if (entry.timed) {
+      day.commitments += 1;
+      if (entry.overdue) day.overdue += 1;
+    } else {
+      day.tasks += 1;
+    }
+  }
+
+  return summary;
+}
+
 /** BR-016: dos citas «a la misma hora» si caen en el mismo tramo de 15 minutos. */
 export const recoveryAgendaSlotMinutes = 15;
 
