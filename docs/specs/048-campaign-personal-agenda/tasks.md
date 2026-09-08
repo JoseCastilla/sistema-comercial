@@ -98,10 +98,17 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 4 — Recordatorios y carga (CAM-F10, P1)
 
-- [ ] Sondeo de avisos devuelve `agendaDue` al asesor; aviso flotante con
-      enlace a la agenda, visible para `AGENT`.
-- [ ] Cabecera con citas y tareas separadas; coincidencias marcadas en la
-      cuadrícula; ninguna cifra de «horas ocupadas».
+- [x] El sondeo de avisos devuelve `agendaDue` (citas pendientes del propio
+      usuario vencidas o a menos de quince minutos) para cualquier rol con
+      casos propios; el aviso flotante «llamada(s) acordada(s) por atender»
+      enlaza a la agenda. Se refresca cada minuto con la pestaña visible, al
+      volver a ella y en cada cambio de página; desaparece al registrar el
+      resultado porque la cita deja de estar pendiente.
+- [x] Cabecera de la agenda: llamadas acordadas, tareas, vencidas, sin
+      gestión y «A la misma hora» por separado; ninguna cifra de horas
+      ocupadas; coincidencias marcadas en la cuadrícula (fase 3).
+- [ ] Recorrido local con cuenta de asesor de prueba: el aviso aparece
+      quince minutos antes y desaparece al registrar el resultado.
 
 ## Fase 5 — Mes (CAM-F11, P2)
 

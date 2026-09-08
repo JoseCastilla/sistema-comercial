@@ -9,8 +9,26 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { session, membership } = await requireCommercialAccess();
+
+    // SPEC-048 BR-017: llamadas acordadas del propio usuario vencidas o a
+    // menos de quince minutos. Vale para cualquier rol con casos propios
+    // (asesor, supervisor vendedor); el aviso desaparece al registrar el
+    // resultado porque la cita deja de estar pendiente.
+    const agendaDue = await database.recoveryCaseCommitment.count({
+      where: {
+        organizationId: membership.organization.id,
+        status: "PENDING",
+        scheduledAt: { lt: new Date(Date.now() + 15 * 60 * 1000) },
+        case: {
+          source: "NATIONAL_BASE",
+          assignedUserId: session.user.id,
+          status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
+        },
+      },
+    });
+
     if (membership.role !== "ADMIN" && membership.role !== "SUPERVISOR") {
-      return NextResponse.json({ count: 0 });
+      return NextResponse.json({ count: 0, agendaDue });
     }
 
     const supervisedTeamIds =
@@ -49,7 +67,7 @@ export async function GET() {
         role: membership.role,
       }),
     ]);
-    return NextResponse.json({ count, recoveryOverdue });
+    return NextResponse.json({ count, recoveryOverdue, agendaDue });
   } catch {
     return NextResponse.json({ count: 0 }, { status: 401 });
   }
