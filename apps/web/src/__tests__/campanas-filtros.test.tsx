@@ -155,7 +155,8 @@ describe("Filtros de campaña · búsqueda en vivo", () => {
   it("el departamento filtra al cambiarlo, sin botón", () => {
     renderFilters();
 
-    fireEvent.change(screen.getByRole("combobox"), {
+    // Hay dos selectores desde SPEC-049 (departamento y recencia).
+    fireEvent.change(screen.getByRole("combobox", { name: "Departamento" }), {
       target: { value: "Huancayo" },
     });
 

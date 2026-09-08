@@ -138,6 +138,25 @@ export default async function CampaignCasePage({
           </Link>
         </p>
 
+        {detail.work ? (
+          <p
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              detail.work.overdue
+                ? "border-ui-danger bg-ui-danger-soft text-ui-danger"
+                : "border-ui-border bg-ui-surface text-ui-text"
+            }`}
+          >
+            <span className="ui-label-eyebrow">Qué toca</span>{" "}
+            <span className="font-medium">{detail.work.label}</span>
+            <span className="text-ui-muted"> · {detail.work.detail}</span>
+            {detail.work.wait ? (
+              <span className="block text-xs text-ui-muted">
+                {detail.work.wait.reason}. {detail.work.wait.ends}.
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+
         {detail.isResolved ? (
           <SectionPanel
             title="Caso resuelto"

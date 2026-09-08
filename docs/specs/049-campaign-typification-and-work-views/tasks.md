@@ -47,14 +47,27 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 2 — Estado operativo y vistas (CAM-T02, CAM-T04)
 
-- [ ] Selector ampliado: «devuelto de verificación» y «sin teléfonos
-      válidos»; `recovery-work-views.ts` con clasificación y orden BR-013;
-      pruebas.
-- [ ] Bandeja con `vista=ahora|completar|espera|historial`, contadores por
-      población, columnas «Qué toca» y «Último resultado».
-- [ ] En espera explica motivo, salida y fecha; Historial muestra
-      resolución y orden (30 días).
-- [ ] Ficha con el mismo estado operativo y teléfonos tachados.
+- [x] Selector de SPEC-048 ampliado: elementos «Cerrar como rechazo
+      definitivo» y «Resolver: datos inválidos»; orígenes «devuelto de
+      verificación» (evento `CASE_REOPENED` posterior al último intento),
+      «falta la fecha de portación», «seguimiento del impedimento» y
+      «seguimiento acordado». `recovery-work-views.ts`: vistas, un caso en
+      una sola vista, rango y orden de Trabajar ahora (BR-013), por qué y
+      cómo termina cada espera (BR-015); 5 pruebas (362 en el paquete).
+- [x] Bandeja con `vista=ahora|completar|espera|historial` en un carril con
+      contadores por población (no por página ni por recencia), columna
+      «Qué toca» separada de «Último resultado», filtro de recencia `age=`
+      aplicado en memoria (BR-014), orden BR-013 en Trabajar ahora,
+      paginación en memoria; el carril y los filtros conservan la vista.
+- [x] En espera muestra por qué y cuándo vuelve; Historial lista los
+      resueltos de 30 días con resolución, motivo, quién, cuándo y orden,
+      solo lectura.
+- [x] Ficha con «Qué toca» arriba (mismo selector), teléfonos errados
+      tachados (fase 1). Suite de la web en verde (214) tras precisar la
+      prueba de filtros por el selector nuevo de recencia.
+- [ ] Recorrido local con cuenta de asesor de prueba (AC-004, AC-005,
+      AC-007, AC-011) y lectura de producción: suma de vistas = cartera
+      abierta.
 
 ## Fase 3 — Panel y «Guardar y siguiente» (CAM-T05)
 

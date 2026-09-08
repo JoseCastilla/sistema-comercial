@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { parseRecoverySearchTerm } from "@repo/validation";
+import { parseRecoverySearchTerm, recoveryAgeBuckets } from "@repo/validation";
 
 import { useCampaignDraft } from "./campaign-draft-context";
 
@@ -31,12 +31,18 @@ export function CampaignInboxFilters({
   plan,
   departments,
   resultLabel,
+  age = "",
+  vista = "ahora",
 }: {
   search: string;
   department: string;
   plan: string;
   departments: string[];
   resultLabel: string;
+  /** SPEC-049 BR-014: recencia comercial (tramos de BR-092); estrecha la lista. */
+  age?: string;
+  /** SPEC-049 BR-012: la vista se conserva al filtrar. */
+  vista?: string;
 }) {
   const router = useRouter();
   const { confirmLeave } = useCampaignDraft();
@@ -69,6 +75,7 @@ export function CampaignInboxFilters({
     search?: string;
     department?: string;
     plan?: string;
+    age?: string;
   }) {
     clearTimer(timer);
 
@@ -81,10 +88,13 @@ export function CampaignInboxFilters({
     const nextSearch = next.search ?? term;
     const nextDepartment = next.department ?? department;
     const nextPlan = next.plan ?? planTerm;
+    const nextAge = next.age ?? age;
 
+    if (vista && vista !== "ahora") query.set("vista", vista);
     if (nextSearch) query.set("q", nextSearch);
     if (nextDepartment) query.set("department", nextDepartment);
     if (nextPlan) query.set("plan", nextPlan);
+    if (nextAge) query.set("age", nextAge);
 
     // Sin `page`: cambiar el filtro empieza por el principio, porque la
     // página tres del filtro anterior no significa nada en el nuevo. Sin
@@ -197,6 +207,22 @@ export function CampaignInboxFilters({
           placeholder="49.9"
           value={planTerm}
         />
+      </label>
+
+      <label className="block">
+        <span className="ui-label-eyebrow">Apareció en la base</span>
+        <select
+          className="block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
+          onChange={(event) => navigate({ age: event.target.value })}
+          value={age}
+        >
+          <option value="">Cualquier día</option>
+          {recoveryAgeBuckets.map((bucket) => (
+            <option key={bucket.value} value={bucket.value}>
+              {bucket.label}
+            </option>
+          ))}
+        </select>
       </label>
 
       <span aria-live="polite" className="pb-2 text-xs text-ui-muted">

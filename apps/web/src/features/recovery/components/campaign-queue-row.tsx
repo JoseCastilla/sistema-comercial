@@ -26,6 +26,8 @@ export interface CampaignQueueRowData {
   motherName: string | null;
   birthPlace: string | null;
   phones: string[];
+  /** SPEC-049 BR-002: marcados como errados; se muestran tachados. */
+  invalidPhones: string[];
   services: Array<{
     serviceNumber: string;
     planRaw: string | null;
@@ -48,6 +50,13 @@ export interface CampaignQueueRowData {
   habilitationOverdue: boolean;
   resolutionDue: boolean;
   interestedWithOrder: boolean;
+  /** SPEC-049 BR-007: qué toca ahora, de dónde sale y, en espera, cómo termina. */
+  work: {
+    label: string;
+    detail: string;
+    overdue: boolean;
+    wait: { reason: string; ends: string } | null;
+  } | null;
 }
 
 /**
@@ -61,13 +70,11 @@ export interface CampaignQueueRowData {
  */
 export function CampaignQueueRow({
   row,
-  statusLabel,
   minimumDailyAttempts,
   queueContext,
   justVisited,
 }: {
   row: CampaignQueueRowData;
-  statusLabel: string;
   /** Filtros y página de la cola, para volver aquí desde la ficha. */
   queueContext?: string;
   /** El asesor acaba de consultar esta ficha y vuelve buscándola. */
@@ -138,8 +145,8 @@ export function CampaignQueueRow({
               ? (attemptResultLabels[lastResult] ?? lastResult)
               : "Sin gestión"}
           </span>
-          {status === "SCHEDULED" || status === "WAITING" ? (
-            <span className="block text-2xs text-ui-muted">{statusLabel}</span>
+          {status === "WAITING" ? (
+            <span className="block text-2xs text-ui-muted">En verificación</span>
           ) : null}
           {row.lastAttemptAtLabel && !confirmed ? (
             <span className="block text-2xs text-ui-muted">
@@ -160,6 +167,34 @@ export function CampaignQueueRow({
             >
               Registrar gestión
             </button>
+          )}
+        </td>
+
+        {/* Qué toca (SPEC-049 BR-007): el estado operativo, separado del
+            último resultado. Tras guardar, lo confirmado manda. */}
+        <td className="text-xs">
+          {confirmed ? (
+            <span className="text-ui-muted">Actualiza la cola para ver qué toca.</span>
+          ) : row.work ? (
+            <>
+              <span
+                className={
+                  row.work.overdue
+                    ? "font-medium text-ui-danger"
+                    : "font-medium text-ui-text"
+                }
+              >
+                {row.work.label}
+              </span>
+              <span className="block text-2xs text-ui-muted">{row.work.detail}</span>
+              {row.work.wait ? (
+                <span className="block text-2xs text-ui-muted">
+                  {row.work.wait.ends}
+                </span>
+              ) : null}
+            </>
+          ) : (
+            <span className="text-ui-muted">—</span>
           )}
         </td>
 
@@ -273,7 +308,7 @@ export function CampaignQueueRow({
 
       {editing ? (
         <tr data-result-tone={tone}>
-          <td className="ui-row-panel" colSpan={9} id={editorId}>
+          <td className="ui-row-panel" colSpan={10} id={editorId}>
             {/* En pantalla pequeña el editor va debajo del cliente con su
                 nombre visible: las columnas fijas no existen ahí. */}
             <p className="mb-2 text-sm font-medium text-ui-text lg:hidden">
@@ -297,7 +332,7 @@ export function CampaignQueueRow({
 
       {open ? (
         <tr data-result-tone={tone}>
-          <td className="ui-row-panel" colSpan={9} id={panelId}>
+          <td className="ui-row-panel" colSpan={10} id={panelId}>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <section>
                 <h3 className="ui-label-eyebrow">Identidad del titular</h3>
