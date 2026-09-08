@@ -42,4 +42,6 @@ Con una cuenta de asesor de prueba ficticia; nunca con una persona real.
 | 4 | Ventana por rol en hora de Lima: autor el mismo día, supervisor siete días, admin siempre; resuelto o ya rectificado, no | misma prueba | **En verde**. |
 | 4 | Tipos y lint de la acción, el formulario, la ficha y los lectores del resultado efectivo; suite de la web | `check-types`, `eslint`, `vitest` | limpios; 218 pruebas en verde. |
 | 4 | Rectificar «No interesado» a «Interesado» levanta la pausa, no incrementa «intentos hoy», conserva el original visible y deja autor, motivo y momento (AC-006) | recorrido con cuenta de asesor de prueba | pendiente (migraciones locales sin aplicar). |
-| 5 | La consulta de discrepancias no cambia nada; la vista de Seguimiento enlaza a la ficha | lectura de producción y recorrido con supervisor | pendiente |
+| 5 | Detección: conversación o cita como «No contesta»; impedimento o interés como «No interesado»; «ya es Movistar» y número equivocado sin el resultado que corresponde; acentos y mayúsculas indiferentes; «no quiere» no es interés; resultados coherentes no se señalan | `packages/validation/test/recovery-attempt-quality.test.mjs` | **En verde** (08/09/2026): 5 pruebas, 372 en el paquete. |
+| 5 | Tipos y lint de la página de revisión y del enlace en Seguimiento | `check-types`, `eslint` | limpios. |
+| 5 | La consulta de discrepancias no cambia nada; cuántas hay por tipo en producción; la vista enlaza a la ficha y respeta el alcance del supervisor | lectura de producción y recorrido con supervisor | pendiente. |
