@@ -255,7 +255,7 @@ async function registerRecoveryAttempt(
       }
     }
 
-    await transaction.recoveryCaseAttempt.create({
+    const attempt = await transaction.recoveryCaseAttempt.create({
       data: {
         organizationId: membership.organization.id,
         caseId: recoveryCase.id,
@@ -267,7 +267,37 @@ async function registerRecoveryAttempt(
         nextActionAt: scheduledAt,
         clientRequestId,
       },
+      select: { id: true },
     });
+
+    /**
+     * SPEC-048 BR-003/BR-005: registrar cualquier resultado atiende la cita
+     * pendiente del caso —hubo llamada—, y una AGENDA crea la cita nueva en
+     * la misma transacción, después de cerrar la anterior (un caso tiene a
+     * lo sumo una pendiente). Un reenvío con la misma clave no llega aquí.
+     */
+    await transaction.recoveryCaseCommitment.updateMany({
+      where: { caseId: recoveryCase.id, status: "PENDING" },
+      data: {
+        status: "DONE",
+        resolvedAttemptId: attempt.id,
+        closedByUserId: session.user.id,
+        closedAt: now,
+      },
+    });
+
+    if (result === "AGENDA" && scheduledAt) {
+      await transaction.recoveryCaseCommitment.create({
+        data: {
+          organizationId: membership.organization.id,
+          caseId: recoveryCase.id,
+          scheduledAt,
+          originAttemptId: attempt.id,
+          createdByUserId: session.user.id,
+          clientRequestId,
+        },
+      });
+    }
     const managedSince = recoveryCase.claimedAt ?? recoveryCase.createdAt;
     // Incluye el intento recién creado en el conteo del día (BR-032).
     const attemptsToday =

@@ -11,9 +11,11 @@ import {
 import {
   baseRecoveryMinimumDailyAttempts,
   countOnSameLimaDay,
+  describeRecoveryCommitmentState,
   describeRecoveryLineOrigin,
   evaluateInternalLossReasonGates,
   isBaseRecoveryResolutionDue,
+  recoveryCommitmentStateLabels,
 } from "@repo/validation";
 
 import { database } from "@/server/database";
@@ -99,6 +101,18 @@ export interface CampaignCaseDetail {
     status: string;
   }>;
   lossReasonGates: Record<RecoveryLossReasonOption, LossReasonGate>;
+  /** SPEC-048 BR-005: la cita acordada vigente, si la hay. */
+  pendingCommitment: { scheduledAtLabel: string; overdue: boolean } | null;
+  /** Historial de citas, la más reciente primero. */
+  commitments: Array<{
+    id: string;
+    scheduledAtLabel: string;
+    stateLabel: string;
+    reason: string | null;
+    createdAtLabel: string;
+    createdByName: string;
+    closedAtLabel: string | null;
+  }>;
 }
 
 /**
@@ -194,6 +208,19 @@ export async function getCampaignCase(
           observation: true,
           createdAt: true,
           actor: { select: { name: true } },
+        },
+      },
+      commitments: {
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          scheduledAt: true,
+          status: true,
+          reason: true,
+          createdAt: true,
+          closedAt: true,
+          createdBy: { select: { name: true } },
         },
       },
     },
@@ -360,5 +387,34 @@ export async function getCampaignCase(
       status: String(order.status),
     })),
     lossReasonGates: evaluateInternalLossReasonGates(recoveryCase.attempts),
+    pendingCommitment: (() => {
+      const pending = recoveryCase.commitments.find(
+        (commitment) => String(commitment.status) === "PENDING",
+      );
+      return pending
+        ? {
+            scheduledAtLabel: formatLimaDateTime(pending.scheduledAt),
+            overdue: pending.scheduledAt.getTime() < now.getTime(),
+          }
+        : null;
+    })(),
+    commitments: recoveryCase.commitments.map((commitment) => ({
+      id: commitment.id,
+      scheduledAtLabel: formatLimaDateTime(commitment.scheduledAt),
+      stateLabel:
+        recoveryCommitmentStateLabels[
+          describeRecoveryCommitmentState(
+            String(commitment.status),
+            commitment.scheduledAt,
+            now,
+          )
+        ],
+      reason: commitment.reason,
+      createdAtLabel: formatLimaDateTime(commitment.createdAt),
+      createdByName: commitment.createdBy.name,
+      closedAtLabel: commitment.closedAt
+        ? formatLimaDateTime(commitment.closedAt)
+        : null,
+    })),
   };
 }

@@ -118,6 +118,9 @@ enum RecoveryCaseEventType {
   ASSIGNED_TO_TEAM
   ASSIGNED_TO_USER
   CASE_RESOLVED
+  /// SPEC-048 BR-008/BR-009: una cita acordada se reprogramó o se canceló.
+  COMMITMENT_RESCHEDULED
+  COMMITMENT_CANCELLED
   /// Corrección administrativa de la próxima acción con evidencia (SPEC-048
   /// fase 0: citas guardadas cinco horas antes). Lo escribe un script, no la UI.
   NEXT_ACTION_CORRECTED
@@ -138,6 +141,23 @@ enum RecoveryPortabilityState {
   NO_PORTADO
   PROGRAMADO
   DESCONOCIDO
+}
+
+/// Estado de una cita acordada con el cliente (SPEC-048 BR-005). Solo sale
+/// de PENDING hacia un estado terminal; nunca vuelve.
+enum RecoveryCommitmentStatus {
+  PENDING
+  DONE
+  RESCHEDULED
+  CANCELLED
+}
+
+/// Qué sigue al cancelar una cita (SPEC-048 BR-009): el caso nunca queda sin
+/// próxima acción.
+enum RecoveryCommitmentNextAction {
+  RESUME_TODAY
+  PAUSE_1D
+  PAUSE_2D
 }
 
 enum RecoveryPhoneKind {
@@ -333,6 +353,7 @@ model RecoveryCase {
   events    RecoveryCaseEvent[]
   records   RecoveryBaseRecord[]
   attempts  RecoveryCaseAttempt[]
+  commitments RecoveryCaseCommitment[]
 
   @@index([organizationId, status, nextActionAt], map: "recovery_cases_org_status_next_action_idx")
   @@index([organizationId, documentNumber], map: "recovery_cases_org_document_idx")
@@ -535,9 +556,69 @@ model RecoveryCaseAttempt {
   case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
   actor        User         @relation("RecoveryCaseAttemptActor", fields: [actorUserId], references: [id], onDelete: Restrict)
 
+  /// SPEC-048: la cita que este intento AGENDA creó y la que atendió.
+  originatedCommitments RecoveryCaseCommitment[] @relation("RecoveryCommitmentOrigin")
+  resolvedCommitments   RecoveryCaseCommitment[] @relation("RecoveryCommitmentResolvedBy")
+
   @@unique([caseId, clientRequestId], map: "recovery_case_attempts_case_request_key")
   @@index([caseId, createdAt], map: "recovery_case_attempts_case_created_idx")
   @@index([organizationId, createdAt], map: "recovery_case_attempts_org_created_idx")
   @@index([actorUserId, createdAt], map: "recovery_case_attempts_actor_created_idx")
   @@map("recovery_case_attempts")
+}
+
+/// Cita acordada con el cliente — SPEC-048 BR-002. Es el único compromiso que
+/// se guarda: reintentos, seguimientos, habilitaciones y verificación se
+/// derivan del caso. Registro de solo añadir: el estado sale de PENDING una
+/// vez y nada se edita ni se borra; reprogramar crea otra cita y enlaza la
+/// anterior por `supersededById`. Un caso tiene a lo sumo una cita PENDING
+/// (índice parcial en la migración `add_recovery_case_commitments`).
+model RecoveryCaseCommitment {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  caseId         String @map("case_id") @db.Uuid
+
+  /// Instante UTC de la hora de Lima acordada (BR-001).
+  scheduledAt DateTime @map("scheduled_at") @db.Timestamptz(3)
+  /// Reservado (spec §5): sin duración en esta versión.
+  durationMinutes Int? @map("duration_minutes")
+
+  status RecoveryCommitmentStatus @default(PENDING)
+
+  /// El intento AGENDA que la creó; nulo si se creó al reprogramar.
+  originAttemptId   String? @map("origin_attempt_id") @db.Uuid
+  /// El intento que la atendió (DONE), cualquiera sea su resultado (BR-005).
+  resolvedAttemptId String? @map("resolved_attempt_id") @db.Uuid
+  /// La cita nueva cuando esta quedó RESCHEDULED (BR-008).
+  supersededById    String? @map("superseded_by_id") @db.Uuid
+
+  /// Motivo de la reprogramación o de la cancelación.
+  reason           String?                       @db.Text
+  cancelNextAction RecoveryCommitmentNextAction? @map("cancel_next_action")
+
+  createdByUserId String    @map("created_by_user_id") @db.Uuid
+  closedByUserId  String?   @map("closed_by_user_id") @db.Uuid
+  closedAt        DateTime? @map("closed_at") @db.Timestamptz(3)
+
+  /// Clave de idempotencia (BR-003/BR-008): un reenvío devuelve la cita ya creada.
+  clientRequestId String? @map("client_request_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  case         RecoveryCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  originAttempt   RecoveryCaseAttempt? @relation("RecoveryCommitmentOrigin", fields: [originAttemptId], references: [id], onDelete: SetNull)
+  resolvedAttempt RecoveryCaseAttempt? @relation("RecoveryCommitmentResolvedBy", fields: [resolvedAttemptId], references: [id], onDelete: SetNull)
+
+  supersededBy RecoveryCaseCommitment?  @relation("RecoveryCommitmentSuccession", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes   RecoveryCaseCommitment[] @relation("RecoveryCommitmentSuccession")
+
+  createdBy User  @relation("RecoveryCommitmentCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  closedBy  User? @relation("RecoveryCommitmentClosedBy", fields: [closedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([caseId, clientRequestId], map: "recovery_case_commitments_case_request_key")
+  @@index([caseId, createdAt], map: "recovery_case_commitments_case_created_idx")
+  @@index([organizationId, status, scheduledAt], map: "recovery_case_commitments_org_status_scheduled_idx")
+  @@map("recovery_case_commitments")
 }

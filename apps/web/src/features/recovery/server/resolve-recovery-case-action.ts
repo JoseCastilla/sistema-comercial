@@ -187,6 +187,18 @@ export async function resolveRecoveryCaseAction(
       },
     });
 
+    // SPEC-048 BR-011: resolver el caso cancela su cita pendiente, con
+    // motivo, en la misma transacción. El historial de la cita se conserva.
+    await transaction.recoveryCaseCommitment.updateMany({
+      where: { caseId: recoveryCase.id, status: "PENDING" },
+      data: {
+        status: "CANCELLED",
+        reason: "Caso resuelto",
+        closedByUserId: session.user.id,
+        closedAt: now,
+      },
+    });
+
     await transaction.recoveryCaseEvent.create({
       data: {
         organizationId: membership.organization.id,
