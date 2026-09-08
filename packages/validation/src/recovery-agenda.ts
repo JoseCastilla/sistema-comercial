@@ -12,6 +12,8 @@ export type RecoveryAgendaItemKind =
   | "VERIFICACION"
   | "CITA_ACORDADA"
   | "COMPLETAR_VENTA"
+  | "CERRAR"
+  | "RESOLVER_DATOS"
   | "SEGUIMIENTO"
   | "HABILITACION"
   | "REINTENTO"
@@ -24,6 +26,10 @@ export type RecoveryAgendaOrigin =
   | "habilitacion"
   | "comercial"
   | "verificacion"
+  | "devuelto"
+  | "dato_pendiente"
+  | "impedimento"
+  | "seguimiento"
   | "sin_gestion";
 
 export const recoveryAgendaKindLabels: Record<RecoveryAgendaItemKind, string> =
@@ -31,6 +37,8 @@ export const recoveryAgendaKindLabels: Record<RecoveryAgendaItemKind, string> =
     VERIFICACION: "Pendiente de verificación",
     CITA_ACORDADA: "Llamada acordada",
     COMPLETAR_VENTA: "Completar venta",
+    CERRAR: "Cerrar como rechazo definitivo",
+    RESOLVER_DATOS: "Resolver: datos inválidos",
     SEGUIMIENTO: "Seguimiento pendiente",
     HABILITACION: "Ya puede portar",
     REINTENTO: "Volver a intentar",
@@ -45,6 +53,10 @@ export const recoveryAgendaOriginLabels: Record<RecoveryAgendaOrigin, string> =
     habilitacion: "habilitación de portabilidad",
     comercial: "gestión comercial",
     verificacion: "verificación",
+    devuelto: "devuelto de verificación: sigue portable",
+    dato_pendiente: "falta la fecha de portación",
+    impedimento: "seguimiento del impedimento",
+    seguimiento: "seguimiento acordado",
     sin_gestion: "nadie lo ha llamado",
   };
 
@@ -58,6 +70,12 @@ export interface RecoveryAgendaCaseLike {
   lastAttemptAt: Date | null;
   /** Hora de la cita PENDING del caso, si la hay. */
   pendingCommitmentAt: Date | null;
+  /** SPEC-049 BR-008: última devolución de verificación (`CASE_REOPENED`). */
+  returnedFromVerificationAt?: Date | null;
+  /** SPEC-049 BR-002: teléfonos válidos que quedan (contacto + líneas). */
+  validPhoneCount?: number | null;
+  /** Fecha de seguimiento que dio el asesor en el último intento. */
+  lastFollowUpAt?: Date | null;
 }
 
 export interface RecoveryAgendaItem {
@@ -80,6 +98,32 @@ const openStatuses = new Set([
 ]);
 
 const pausingResults = new Set(["RECHAZA", "CANCELADO"]);
+
+/**
+ * De dónde sale el reintento (SPEC-049 BR-008, BR-011): una devolución de
+ * verificación posterior al último intento manda sobre todo; después la
+ * pausa, el dato pendiente, el impedimento y el seguimiento acordado; y si
+ * no, la cadencia del día.
+ */
+function reintentoOrigin(recoveryCase: RecoveryAgendaCaseLike): RecoveryAgendaOrigin {
+  const returned = recoveryCase.returnedFromVerificationAt ?? null;
+  if (
+    returned &&
+    (recoveryCase.lastAttemptAt === null ||
+      returned.getTime() > recoveryCase.lastAttemptAt.getTime())
+  ) {
+    return "devuelto";
+  }
+  const last = recoveryCase.lastResult;
+  if (last && pausingResults.has(last)) return "pausa";
+  if (last === "NO_CUMPLE_30D" && recoveryCase.portabilityEligibleAt === null) {
+    return "dato_pendiente";
+  }
+  if (last === "IMPEDIMENTO") return "impedimento";
+  if (last === "INTERESADO" && recoveryCase.lastFollowUpAt) return "seguimiento";
+
+  return "cadencia";
+}
 
 function item(
   kind: RecoveryAgendaItemKind,
@@ -132,6 +176,25 @@ export function selectRecoveryAgendaItem(
     );
   }
 
+  // SPEC-049 BR-001: pidió que no lo llamen; el cierre es un clic explícito.
+  if (recoveryCase.lastResult === "NO_CONTACTAR") {
+    return item("CERRAR", "comercial", recoveryCase.nextActionAt, false, now);
+  }
+
+  // SPEC-049 BR-002: sin teléfonos válidos no hay a quién llamar.
+  if (
+    recoveryCase.lastResult === "DATOS_INVALIDOS" ||
+    recoveryCase.validPhoneCount === 0
+  ) {
+    return item(
+      "RESOLVER_DATOS",
+      "comercial",
+      recoveryCase.nextActionAt,
+      false,
+      now,
+    );
+  }
+
   if (
     recoveryCase.lastResult === "INTERESADO_CON_PEDIDO" ||
     recoveryCase.lastResult === "TIENE_PEDIDO"
@@ -165,9 +228,7 @@ export function selectRecoveryAgendaItem(
   if (recoveryCase.nextActionAt) {
     return item(
       "REINTENTO",
-      recoveryCase.lastResult && pausingResults.has(recoveryCase.lastResult)
-        ? "pausa"
-        : "cadencia",
+      reintentoOrigin(recoveryCase),
       recoveryCase.nextActionAt,
       false,
       now,

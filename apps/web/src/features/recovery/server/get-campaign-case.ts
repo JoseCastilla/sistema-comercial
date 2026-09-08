@@ -10,12 +10,17 @@ import {
 
 import {
   baseRecoveryMinimumDailyAttempts,
+  classifyRecoveryWorkItem,
   countOnSameLimaDay,
   describeRecoveryCommitmentState,
   describeRecoveryLineOrigin,
+  describeRecoveryWait,
   evaluateInternalLossReasonGates,
   isBaseRecoveryResolutionDue,
+  recoveryAgendaKindLabels,
+  recoveryAgendaOriginLabels,
   recoveryCommitmentStateLabels,
+  selectRecoveryAgendaItem,
 } from "@repo/validation";
 
 import { database } from "@/server/database";
@@ -106,6 +111,14 @@ export interface CampaignCaseDetail {
     status: string;
   }>;
   lossReasonGates: Record<RecoveryLossReasonOption, LossReasonGate>;
+  /** SPEC-049 BR-007: qué toca ahora y de dónde sale; nulo si está resuelto. */
+  work: {
+    label: string;
+    detail: string;
+    overdue: boolean;
+    view: "ahora" | "completar" | "espera";
+    wait: { reason: string; ends: string } | null;
+  } | null;
   /** SPEC-048 BR-005: la cita acordada vigente, si la hay. */
   pendingCommitment: {
     id: string;
@@ -216,6 +229,7 @@ export async function getCampaignCase(
           phoneUsed: true,
           observation: true,
           createdAt: true,
+          followUpAt: true,
           actor: { select: { name: true } },
         },
       },
@@ -231,6 +245,12 @@ export async function getCampaignCase(
           closedAt: true,
           createdBy: { select: { name: true } },
         },
+      },
+      events: {
+        where: { type: "CASE_REOPENED" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { createdAt: true, actor: { select: { name: true } } },
       },
     },
   });
@@ -403,6 +423,46 @@ export async function getCampaignCase(
       registeredAtLabel: formatLimaDateTime(order.registeredAt),
       status: String(order.status),
     })),
+    // SPEC-049 BR-007: el mismo selector que la bandeja y la agenda.
+    work: (() => {
+      if (isResolved) return null;
+      const last = recoveryCase.attempts[0] ?? null;
+      const returned = recoveryCase.events[0] ?? null;
+      const pending = recoveryCase.commitments.find(
+        (commitment) => String(commitment.status) === "PENDING",
+      );
+      const item = selectRecoveryAgendaItem(
+        {
+          status: String(recoveryCase.status),
+          nextActionAt: recoveryCase.nextActionAt,
+          portabilityEligibleAt: recoveryCase.services
+            .filter((service) => service.discardedAt === null && service.portabilityEligibleAt)
+            .map((service) => service.portabilityEligibleAt as Date)
+            .sort((left, right) => left.getTime() - right.getTime())[0] ?? null,
+          lastResult: last ? String(last.result) : null,
+          lastAttemptAt: last?.createdAt ?? null,
+          pendingCommitmentAt: pending?.scheduledAt ?? null,
+          returnedFromVerificationAt: returned?.createdAt ?? null,
+          validPhoneCount:
+            recoveryCase.phones.filter((phone) => phone.invalidMarkedAt === null).length +
+            recoveryCase.services.filter((service) => service.discardedAt === null).length,
+          lastFollowUpAt: last?.followUpAt ?? null,
+        },
+        now,
+      );
+      if (!item) return null;
+      const view = classifyRecoveryWorkItem(item, now);
+      return {
+        label: recoveryAgendaKindLabels[item.kind],
+        detail:
+          item.origin === "devuelto" && returned
+            ? `${recoveryAgendaOriginLabels[item.origin]} · ${returned.actor?.name ?? "el cruce"} · ${formatLimaDateTime(returned.createdAt)}`
+            : recoveryAgendaOriginLabels[item.origin],
+        overdue: item.overdue,
+        view,
+        wait: view === "espera" ? describeRecoveryWait(item) : null,
+      };
+    })(),
     // SPEC-049 BR-002: datos inválidos exige todos los teléfonos errados.
     lossReasonGates: evaluateInternalLossReasonGates(recoveryCase.attempts, {
       total: recoveryCase.phones.length,
