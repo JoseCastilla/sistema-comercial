@@ -21,12 +21,13 @@ Una casilla se marca solo con evidencia en `verification.md`.
       `TZ=UTC` y `TZ=America/Lima` (326 pruebas en verde, 08/09/2026).
 - [x] `register-recovery-attempt-action.ts` deja de usar `new Date(raw)`
       (tipos y lint limpios; en `main` 787d26b).
-- [ ] `ENV TZ=America/Lima` en los Dockerfiles de `web`, `api` y `worker`
-      (escrito; pendiente de ver el primer arranque en producción).
-- [ ] Migración `add_next_action_corrected_event` aplicada en local y en
-      producción.
-- [ ] José ejecuta `corregir-horas-agendadas-2026-09-08.sql` con el corte
-      del despliegue y anota el conteo (esperado: 30).
+- [x] `ENV TZ=America/Lima` en los Dockerfiles de `web`, `api` y `worker`
+      (en producción: las citas registradas tras el despliegue salen en hora
+      de jornada).
+- [x] Migración `add_next_action_corrected_event` aplicada en producción
+      (08/09/2026; en local pendiente de `db:migrate:deploy`).
+- [x] José ejecutó `corregir-horas-agendadas-2026-09-08.sql` con corte
+      16:42:00Z: 30 casos, 30 eventos (08/09/2026; ver `verification.md`).
 - [ ] El cruce de portabilidad consolida `portability_eligible_at` en el
       caso (mínimo de líneas activas).
 
