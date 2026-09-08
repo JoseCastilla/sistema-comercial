@@ -344,6 +344,44 @@ export default async function CampaignCasePage({
           </SectionPanel>
         ) : null}
 
+        {detail.pendingCommitment || detail.commitments.length > 0 ? (
+          <SectionPanel
+            title="Llamada acordada"
+            description={
+              detail.pendingCommitment
+                ? detail.pendingCommitment.overdue
+                  ? `Acordada para el ${detail.pendingCommitment.scheduledAtLabel}: ya pasó y sigue pendiente hasta que registres el resultado.`
+                  : `Acordada con el cliente para el ${detail.pendingCommitment.scheduledAtLabel}. Hasta entonces no exige gestión.`
+                : "Sin cita vigente."
+            }
+          >
+            <ul className="space-y-2">
+              {detail.commitments.map((commitment) => (
+                <li
+                  className="rounded-xl border border-ui-border p-3 text-sm"
+                  key={commitment.id}
+                >
+                  <p className="font-medium text-ui-text">
+                    {commitment.scheduledAtLabel}
+                    <span className="ml-2 text-xs font-normal text-ui-muted">
+                      {commitment.stateLabel} · acordada el{" "}
+                      {commitment.createdAtLabel} · {commitment.createdByName}
+                      {commitment.closedAtLabel
+                        ? ` · cerrada el ${commitment.closedAtLabel}`
+                        : ""}
+                    </span>
+                  </p>
+                  {commitment.reason ? (
+                    <p className="mt-1 text-xs text-ui-muted">
+                      {commitment.reason}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </SectionPanel>
+        ) : null}
+
         <SectionPanel
           title="Historial de intentos"
           description={`${formatCount(detail.attempts.length)} intento(s) registrados.`}

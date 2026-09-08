@@ -13,6 +13,14 @@ va a comprobar y cómo, para que cada casilla de `tasks.md` tenga su prueba.
 | Agendar 10:00 desde la bandeja en un servidor `TZ=UTC` muestra «10:00» en fila, ficha y agenda (AC-001) | recorrido local con `TZ=UTC` en el proceso de la web | pendiente |
 | El caso tiene `portability_eligible_at` igual al mínimo de sus líneas activas tras el cruce | consulta local sobre un lote cruzado | pendiente |
 
+## Fase 1 — Compromisos (08/09/2026)
+
+| Comprobación | Cómo | Resultado |
+|---|---|---|
+| Un caso, un elemento: verificación sin hora; la cita manda sobre el centinela; `SCHEDULED` sin cita no se inventa como cita; vencida conserva fecha; habilitación sin hora y trabajada por un intento posterior; pausa como origen; sin gestión → sin fecha; estados de la cita; tramo de 15 minutos | `packages/validation/test/recovery-agenda.test.mjs` | **En verde**: 12 pruebas nuevas, 338 en el paquete; tipos de la web y lint limpios. |
+| Registrar `AGENDA` crea la cita y fija la próxima acción; cualquier resultado atiende la pendiente; resolver la cancela (AC-003 parcial, AC-004, AC-006) | recorrido local con cuenta de asesor de prueba tras aplicar la migración | pendiente: la migración no pudo aplicarse en local desde esta sesión (permiso denegado). |
+| Relleno BR-007 en producción crea exactamente las citas vigentes (AC-010) | consulta tras el despliegue: `SELECT status, COUNT(*) FROM recovery_case_commitments GROUP BY 1` debe dar `PENDING` = citas vigentes del momento (30 el 08/09 más las nuevas) | pendiente |
+
 ## Lista de validación de la propuesta
 
 Con una cuenta de asesor de prueba ficticia; nunca con una persona real.

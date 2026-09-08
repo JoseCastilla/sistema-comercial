@@ -33,16 +33,22 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 1 — Compromisos (CAM-F07, P0)
 
-- [ ] Migración `add_recovery_case_commitments`: tabla, enums, índice
+- [x] Migración `add_recovery_case_commitments`: tabla, enums, índice
       parcial de una sola `PENDING` por caso, eventos
-      `COMMITMENT_RESCHEDULED` / `COMMITMENT_CANCELLED`, relleno BR-007.
-- [ ] `recovery-agenda.ts`: tipos de elemento, `selectAgendaItem`,
-      `commitmentState`, `sameSlot`, `agendaBuckets`; pruebas puras.
-- [ ] `AGENDA` crea la cita en la transacción del intento; cualquier
-      resultado cierra la `PENDING` como `DONE`; reenvío con la misma clave
-      no duplica.
-- [ ] Resolver el caso cancela la cita pendiente con motivo «caso resuelto».
-- [ ] Ficha: sección «Llamada acordada» con historial de la cita.
+      `COMMITMENT_RESCHEDULED` / `COMMITMENT_CANCELLED`, relleno BR-007
+      (escrita el 08/09/2026; se aplica en producción con el despliegue;
+      en local pendiente de `db:migrate:deploy`).
+- [x] `recovery-agenda.ts`: tipos de elemento y origen con sus etiquetas,
+      `selectRecoveryAgendaItem`, `describeRecoveryCommitmentState`,
+      `shareRecoveryAgendaSlot`; 12 pruebas puras (338 en el paquete).
+      `agendaBuckets` pasa a la fase 5, donde se usa.
+- [x] `AGENDA` crea la cita en la transacción del intento; cualquier
+      resultado cierra la `PENDING` como `DONE`; el reenvío con la misma
+      clave no llega al bloque (BR-090 lo devuelve antes). Vale para ambos
+      carriles: la cita pertenece al caso; la agenda filtra por fuente.
+- [x] Resolver el caso cancela la cita pendiente con motivo «Caso resuelto».
+- [x] Ficha de campaña: sección «Llamada acordada» con la cita vigente (o
+      vencida) y el historial con estado, autor y motivo.
 
 ## Fase 2 — Mi agenda: semana, día y lista (CAM-F08, P1)
 
