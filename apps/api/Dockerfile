@@ -26,6 +26,9 @@ RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build" \
   pnpm --filter api run build
 
 ENV NODE_ENV="production"
+# La operación es de Lima; el código no depende de TZ (SPEC-048 BR-001), pero
+# cualquier resto que sí lo haga debe fallar hacia la hora correcta.
+ENV TZ="America/Lima"
 ENV HOST="0.0.0.0"
 ENV PORT="3001"
 

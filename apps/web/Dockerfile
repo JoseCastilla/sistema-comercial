@@ -34,6 +34,9 @@ FROM node:22.13.1-bookworm-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV="production"
+# La operación es de Lima; el código no depende de TZ (SPEC-048 BR-001), pero
+# cualquier resto que sí lo haga debe fallar hacia la hora correcta.
+ENV TZ="America/Lima"
 ENV PORT="3000"
 ENV HOSTNAME="0.0.0.0"
 

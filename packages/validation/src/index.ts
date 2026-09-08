@@ -12,6 +12,7 @@ export * from "./dito-import-admin-schema.js";
 export * from "./order-inbox-filters.js";
 export * from "./person-lifecycle.js";
 export * from "./order-period.js";
+export * from "./lima-datetime.js";
 export * from "./advisor-display-name.js";
 
 export * from "./agent-alias.js";

@@ -9,6 +9,7 @@ import {
   getInternalRecoveryPauseUntil,
   getNextLimaMorning,
   isBaseRecoveryResolutionDue,
+  parseLimaDateTimeLocal,
 } from "@repo/validation";
 
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -129,7 +130,10 @@ async function registerRecoveryAttempt(
 
   let scheduledAt: Date | null = null;
   if (result === "AGENDA") {
-    scheduledAt = scheduledAtRaw ? new Date(scheduledAtRaw) : null;
+    // SPEC-048 BR-001: la hora es de Lima, no de la zona del servidor.
+    scheduledAt = scheduledAtRaw
+      ? parseLimaDateTimeLocal(scheduledAtRaw)
+      : null;
     if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
       return {
         kind: "INVALID",

@@ -16,6 +16,9 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter worker run build
 
 ENV NODE_ENV="production"
+# La operación es de Lima; el código no depende de TZ (SPEC-048 BR-001), pero
+# cualquier resto que sí lo haga debe fallar hacia la hora correcta.
+ENV TZ="America/Lima"
 
 # SPEC-046: el worker no abre puertos ni corre migraciones; solo llama al
 # mantenimiento interno de web y api con el secreto compartido. Necesita

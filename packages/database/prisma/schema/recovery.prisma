@@ -118,6 +118,9 @@ enum RecoveryCaseEventType {
   ASSIGNED_TO_TEAM
   ASSIGNED_TO_USER
   CASE_RESOLVED
+  /// Corrección administrativa de la próxima acción con evidencia (SPEC-048
+  /// fase 0: citas guardadas cinco horas antes). Lo escribe un script, no la UI.
+  NEXT_ACTION_CORRECTED
 }
 
 enum RecoveryPortabilityReportKind {
