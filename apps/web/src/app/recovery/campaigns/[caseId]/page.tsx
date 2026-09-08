@@ -324,6 +324,21 @@ export default async function CampaignCasePage({
               ))}
             </p>
           ) : null}
+          {detail.invalidPhones.length > 0 ? (
+            <p className="text-sm text-ui-muted">
+              Marcados como errados:{" "}
+              {detail.invalidPhones.map((phone, index) => (
+                <span key={phone}>
+                  {index > 0 ? " · " : ""}
+                  <s>{phone}</s>
+                </span>
+              ))}
+              {detail.contactPhones.length === 0 &&
+              detail.activeServiceNumbers.length === 0
+                ? " · No quedan teléfonos válidos: corresponde resolverlo como datos inválidos."
+                : ""}
+            </p>
+          ) : null}
         </SectionPanel>
 
         <SectionPanel
@@ -357,7 +372,17 @@ export default async function CampaignCasePage({
             title="Registrar intento"
             description="Lo que registres no se puede editar después. Si no contesta, intenta 3 veces en el día; si agendas, se pausa hasta la fecha acordada."
           >
-            <RegisterAttemptForm caseId={detail.id} returnTo={backHref} />
+            <RegisterAttemptForm
+              caseId={detail.id}
+              phoneOptions={[
+                ...detail.contactPhones,
+                ...detail.activeServiceNumbers.filter(
+                  (line) => !detail.contactPhones.includes(line),
+                ),
+              ]}
+              returnTo={backHref}
+              serviceNumbers={detail.activeServiceNumbers}
+            />
           </SectionPanel>
         ) : null}
 
@@ -444,6 +469,7 @@ export default async function CampaignCasePage({
         </SectionPanel>
 
         {detail.canManage && !detail.isResolved ? (
+          <div id="resolver">
           <SectionPanel
             title="Resolver el caso"
             description="Recuperado exige vincular la orden DITO nueva; para darlo por perdido debes elegir un motivo y cumplir lo que ese motivo pide."
@@ -455,6 +481,7 @@ export default async function CampaignCasePage({
               suggestions={detail.recoveredOrderSuggestions}
             />
           </SectionPanel>
+          </div>
         ) : null}
       </div>
     </>

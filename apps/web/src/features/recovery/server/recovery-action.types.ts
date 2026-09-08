@@ -38,5 +38,7 @@ export interface CampaignAttemptInlineState {
     attemptsToday: number | null;
     nextActionAtLabel: string | null;
     mustResolve: boolean;
+    /** SPEC-049 BR-001: vista de la bandeja a la que va el caso. */
+    workView: "ahora" | "agenda" | "completar" | "espera";
   };
 }

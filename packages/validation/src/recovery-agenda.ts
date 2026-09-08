@@ -132,7 +132,10 @@ export function selectRecoveryAgendaItem(
     );
   }
 
-  if (recoveryCase.lastResult === "INTERESADO_CON_PEDIDO") {
+  if (
+    recoveryCase.lastResult === "INTERESADO_CON_PEDIDO" ||
+    recoveryCase.lastResult === "TIENE_PEDIDO"
+  ) {
     return item(
       "SEGUIMIENTO",
       "comercial",

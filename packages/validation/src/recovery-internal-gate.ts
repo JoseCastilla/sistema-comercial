@@ -223,8 +223,20 @@ export interface RecoveryAttemptSummary {
     | "YA_ACTIVO"
     | "DATOS_INVALIDOS"
     | "VENDIDO"
-    | "CANCELADO";
+    | "CANCELADO"
+    | "NO_CONTACTAR"
+    | "TIENE_PEDIDO"
+    | "IMPEDIMENTO";
   createdAt: Date;
+}
+
+/**
+ * SPEC-049 BR-002: la puerta de datos inválidos mira los teléfonos del caso,
+ * no solo los intentos. Si no se pasan, vale el criterio anterior.
+ */
+export interface LossGatePhones {
+  total: number;
+  invalid: number;
 }
 
 export interface LossReasonGate {
@@ -242,9 +254,12 @@ const limaDayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
 const contactedResults = new Set([
   "INTERESADO",
   "INTERESADO_CON_PEDIDO",
+  "TIENE_PEDIDO",
   "RECHAZA",
   "AGENDA",
   "VENDIDO",
+  "NO_CONTACTAR",
+  "IMPEDIMENTO",
 ]);
 
 /**
@@ -255,7 +270,9 @@ const contactedResults = new Set([
  */
 export function evaluateInternalLossReasonGates(
   attempts: readonly RecoveryAttemptSummary[],
+  phones?: LossGatePhones,
 ): Record<RecoveryLossReasonOption, LossReasonGate> {
+  let noContactRequest = false;
   const noResponseDays = new Map<string, number>();
   const rejectionDays = new Set<string>();
   let contacted = 0;
@@ -268,6 +285,8 @@ export function evaluateInternalLossReasonGates(
       noResponseDays.set(day, (noResponseDays.get(day) ?? 0) + 1);
     }
     if (attempt.result === "RECHAZA") rejectionDays.add(day);
+    // SPEC-049 BR-001: pedir que no lo llamen habilita el cierre de inmediato.
+    if (attempt.result === "NO_CONTACTAR") noContactRequest = true;
     if (contactedResults.has(attempt.result)) contacted += 1;
     if (attempt.result === "NUMERO_ERRADO") wrongNumber += 1;
     if (attempt.result === "NO_CUMPLE_30D") notPortable += 1;
@@ -286,9 +305,9 @@ export function evaluateInternalLossReasonGates(
           : `Necesitas 3 días distintos con 3 o más intentos sin respuesta cada uno; llevas ${exhaustedDays}.`,
     },
     RECHAZO_DEFINITIVO: {
-      enabled: rejectionDays.size >= 2,
+      enabled: rejectionDays.size >= 2 || noContactRequest,
       missing:
-        rejectionDays.size >= 2
+        rejectionDays.size >= 2 || noContactRequest
           ? null
           : `Necesitas dos rechazos en días distintos (llevas ${rejectionDays.size}) o la solicitud expresa del cliente de no ser contactado.`,
     },
@@ -300,9 +319,14 @@ export function evaluateInternalLossReasonGates(
           : "Antes registra al menos un contacto efectivo que confirme la deuda sin fecha de solución.",
     },
     DATOS_INVALIDOS: {
-      enabled: wrongNumber >= 1,
-      missing:
-        wrongNumber >= 1
+      enabled: phones
+        ? phones.total > 0 && phones.invalid >= phones.total
+        : wrongNumber >= 1,
+      missing: phones
+        ? phones.total > 0 && phones.invalid >= phones.total
+          ? null
+          : `Todos los teléfonos del caso deben estar marcados como errados; quedan ${phones.total - phones.invalid} válido(s).`
+        : wrongNumber >= 1
           ? null
           : "Antes registra al menos un intento marcado como número errado.",
     },

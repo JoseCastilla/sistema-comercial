@@ -76,7 +76,12 @@ export interface CampaignCaseDetail {
     originOperator: string;
     originDetail: string | null;
   }>;
+  /** Teléfonos de contacto válidos, en orden. */
   contactPhones: string[];
+  /** SPEC-049 BR-002: marcados como errados; se muestran tachados. */
+  invalidPhones: string[];
+  /** Líneas activas, para «no cumple antigüedad». */
+  activeServiceNumbers: string[];
   sensitive: {
     requiresValidation: boolean;
 
@@ -198,8 +203,8 @@ export async function getCampaignCase(
         },
       },
       phones: {
-        where: { kind: "CONTACT", invalidMarkedAt: null },
-        select: { phoneNumber: true },
+        where: { kind: "CONTACT" },
+        select: { phoneNumber: true, invalidMarkedAt: true },
       },
       attempts: {
         orderBy: { createdAt: "desc" },
@@ -356,7 +361,15 @@ export async function getCampaignCase(
         originDetail: origin.detail,
       };
     }),
-    contactPhones: recoveryCase.phones.map((phone) => phone.phoneNumber),
+    contactPhones: recoveryCase.phones
+      .filter((phone) => phone.invalidMarkedAt === null)
+      .map((phone) => phone.phoneNumber),
+    invalidPhones: recoveryCase.phones
+      .filter((phone) => phone.invalidMarkedAt !== null)
+      .map((phone) => phone.phoneNumber),
+    activeServiceNumbers: recoveryCase.services
+      .filter((service) => service.discardedAt === null)
+      .map((service) => service.serviceNumber),
     /*
      * Los datos de identidad del titular se muestran sin compuerta.
      *
@@ -390,7 +403,13 @@ export async function getCampaignCase(
       registeredAtLabel: formatLimaDateTime(order.registeredAt),
       status: String(order.status),
     })),
-    lossReasonGates: evaluateInternalLossReasonGates(recoveryCase.attempts),
+    // SPEC-049 BR-002: datos inválidos exige todos los teléfonos errados.
+    lossReasonGates: evaluateInternalLossReasonGates(recoveryCase.attempts, {
+      total: recoveryCase.phones.length,
+      invalid: recoveryCase.phones.filter(
+        (phone) => phone.invalidMarkedAt !== null,
+      ).length,
+    }),
     pendingCommitment: (() => {
       const pending = recoveryCase.commitments.find(
         (commitment) => String(commitment.status) === "PENDING",

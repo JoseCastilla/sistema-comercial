@@ -1,13 +1,21 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef, useState } from "react";
-
+import Link from "next/link";
 import {
-  attemptResultChoiceLabels,
-  attemptResultLabels,
-  attemptResultTones,
-} from "../attempt-result-labels";
+  parseLimaDateTimeLocal,
+  previewRecoveryAttemptConsequence,
+  recoveryAttemptChoices,
+  recoveryAttemptFields,
+} from "@repo/validation";
+
+import { attemptResultLabels, attemptResultTones } from "../attempt-result-labels";
 import { registerCampaignAttemptInlineAction } from "../server/register-recovery-attempt-action";
+import {
+  AttemptResultFields,
+  emptyAttemptExtras,
+  type AttemptExtras,
+} from "./attempt-result-fields";
 import { useCampaignDraft } from "./campaign-draft-context";
 
 import type { CampaignAttemptInlineState } from "../server/recovery-action.types";
@@ -24,18 +32,26 @@ const channelLabels: Record<string, string> = {
 
 const otherPhone = "__otro__";
 
+const quickChoices = recoveryAttemptChoices.filter((choice) => choice.hotkey);
+
 export type ConfirmedAttempt = NonNullable<
   CampaignAttemptInlineState["attempt"]
 >;
 
 /**
- * Registro de una gestión sin salir de la fila (BR-090).
+ * Registro de una gestión sin salir de la fila (BR-090; SPEC-049 BR-009 a
+ * BR-011).
  *
  * Es el gesto del Excel: resultado y observación a la izquierda, se anota y
  * se sigue con el siguiente. Lo que cambia respecto a la hoja es que cada
  * guardado es un evento nuevo e inmutable, con autor y hora del servidor, y
  * que la fila se actualiza con lo que el servidor confirmó, no con lo que
  * el asesor escribió.
+ *
+ * Nada viene preseleccionado: un clic de más no guarda «no contesta» sin
+ * que haya pasado. Los resultados frecuentes tienen tecla (N, I, R, A); los
+ * campos adicionales aparecen solo para el resultado elegido, y la
+ * consecuencia se lee antes de guardar.
  *
  * La observación anterior se muestra como referencia y **nunca se copia** al
  * campo nuevo: copiarla sería registrar información vieja como si fuera del
@@ -46,6 +62,7 @@ export function CampaignAttemptEditor({
   holderName,
   phoneOptions,
   defaultPhone,
+  serviceNumbers = [],
   lastResult,
   lastObservation,
   onSaved,
@@ -57,6 +74,8 @@ export function CampaignAttemptEditor({
   /** Teléfonos de contacto y líneas, sin repetir. */
   phoneOptions: string[];
   defaultPhone: string | null;
+  /** Líneas activas del caso, para «no cumple antigüedad». */
+  serviceNumbers?: string[];
   lastResult: string | null;
   lastObservation: string | null;
   onSaved: (attempt: ConfirmedAttempt, message: string, detail: string) => void;
@@ -83,7 +102,7 @@ export function CampaignAttemptEditor({
     crypto.randomUUID(),
   );
 
-  const [result, setResult] = useState("SIN_RESPUESTA");
+  const [result, setResult] = useState("");
   const [observation, setObservation] = useState("");
   const [phoneChoice, setPhoneChoice] = useState(
     phoneOptions.length === 1
@@ -93,18 +112,16 @@ export function CampaignAttemptEditor({
         : (phoneOptions[0] ?? otherPhone),
   );
   const [otherNumber, setOtherNumber] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [extras, setExtras] = useState<AttemptExtras>(emptyAttemptExtras);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [saved, setSaved] = useState<{
     message: string;
     detail: string;
+    result: string;
   } | null>(null);
 
   const dirty =
-    result !== "SIN_RESPUESTA" ||
-    observation.length > 0 ||
-    scheduledAt.length > 0 ||
-    otherNumber.length > 0;
+    result.length > 0 || observation.length > 0 || otherNumber.length > 0;
 
   useEffect(() => {
     draft.setDirty(saved === null && dirty);
@@ -122,7 +139,11 @@ export function CampaignAttemptEditor({
     notifiedRef.current = state;
 
     if (state.type === "success" && state.attempt) {
-      setSaved({ message: state.message, detail: state.detail ?? "" });
+      setSaved({
+        message: state.message,
+        detail: state.detail ?? "",
+        result: state.attempt.result,
+      });
       onSaved(state.attempt, state.message, state.detail ?? "");
       draft.finishAfterSave();
     }
@@ -132,13 +153,29 @@ export function CampaignAttemptEditor({
     }
   }, [draft, onSaved, onUnmanageable, state]);
 
+  function choose(next: string) {
+    setResult(next);
+    setFieldError(null);
+  }
+
   function validate(event: React.FormEvent<HTMLFormElement>) {
     // Se valida aquí lo que el asesor puede corregir sin ida al servidor;
     // el servidor vuelve a validar todo, y su palabra es la que vale.
-    if (result === "AGENDA") {
-      const when = scheduledAt ? new Date(scheduledAt) : null;
+    if (!result) {
+      event.preventDefault();
+      setFieldError("Elige qué pasó en la llamada antes de guardar.");
+      return;
+    }
 
-      if (!when || Number.isNaN(when.getTime())) {
+    const needsAppointment =
+      result === "AGENDA" ||
+      (result === "INTERESADO" && extras.interestedNext === "cita");
+    if (needsAppointment) {
+      const when = extras.scheduledAt
+        ? parseLimaDateTimeLocal(extras.scheduledAt)
+        : null;
+
+      if (!when) {
         event.preventDefault();
         setFieldError("Indica la fecha y hora acordadas para agendar.");
         return;
@@ -149,6 +186,39 @@ export function CampaignAttemptEditor({
         setFieldError("La fecha agendada debe ser posterior a ahora.");
         return;
       }
+    }
+
+    const needsFollowUp =
+      result === "IMPEDIMENTO" ||
+      (result === "INTERESADO" && extras.interestedNext === "seguimiento");
+    if (needsFollowUp && !extras.followUpDate) {
+      event.preventDefault();
+      setFieldError("Indica la fecha del seguimiento.");
+      return;
+    }
+
+    if (result === "IMPEDIMENTO" && !extras.reason) {
+      event.preventDefault();
+      setFieldError("Di qué impide la venta: problema de huella u otro.");
+      return;
+    }
+
+    if (result === "NO_CONTACTAR" && observation.trim().length < 10) {
+      event.preventDefault();
+      setFieldError(
+        "Escribe qué dijo el cliente: es la evidencia para cerrarlo como rechazo definitivo.",
+      );
+      return;
+    }
+
+    if (
+      result === "NO_CUMPLE_30D" &&
+      serviceNumbers.length > 1 &&
+      !extras.serviceNumber
+    ) {
+      event.preventDefault();
+      setFieldError("Di cuál de las líneas no cumple los 30 días.");
+      return;
     }
 
     if (phoneChoice === otherPhone && otherNumber.trim().length === 0) {
@@ -162,19 +232,62 @@ export function CampaignAttemptEditor({
 
   function startAnother() {
     setClientRequestId(crypto.randomUUID());
-    setResult("SIN_RESPUESTA");
+    setResult("");
     setObservation("");
-    setScheduledAt("");
     setOtherNumber("");
+    setExtras(emptyAttemptExtras);
     setFieldError(null);
     setSaved(null);
-    notifiedRef.current = null;
+    // La marca de «ya notificado» se conserva: el estado de la acción sigue
+    // siendo el del envío anterior y no debe volver a mostrarse como guardado
+    // cuando el asesor cambie un campo del intento nuevo.
     resultRef.current?.focus();
+  }
+
+  /**
+   * Teclas directas (BR-009): N, I, R, A eligen el resultado sin abrir el
+   * desplegable. No actúan mientras se escribe en un campo de texto.
+   */
+  function hotkeys(event: React.KeyboardEvent<HTMLFormElement>) {
+    const target = event.target as HTMLElement;
+    if (
+      target.tagName === "INPUT" &&
+      !["radio", "checkbox"].includes((target as HTMLInputElement).type)
+    ) {
+      return;
+    }
+    if (target.tagName === "TEXTAREA" || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+    const key = event.key.toUpperCase();
+    const choice = quickChoices.find((item) => item.hotkey === key);
+    if (choice) {
+      event.preventDefault();
+      choose(choice.value);
+    }
   }
 
   const phoneUsed =
     phoneChoice === otherPhone ? otherNumber.trim() : phoneChoice;
-  const showPause = result === "RECHAZA" || result === "CANCELADO";
+  const requires = recoveryAttemptFields(result);
+  const observationRequired = requires.required.includes("observation");
+  const preview = previewRecoveryAttemptConsequence({
+    result,
+    reason: extras.reason,
+    pauseDays: extras.pauseDays === "2" ? 2 : 1,
+    scheduledAtRaw:
+      result === "AGENDA" || extras.interestedNext === "cita"
+        ? extras.scheduledAt
+        : "",
+    followUpDate:
+      result === "IMPEDIMENTO" || extras.interestedNext === "seguimiento"
+        ? extras.followUpDate
+        : "",
+    reportedDate: extras.reportedDate,
+    needsSupervisor: extras.needsSupervisor,
+    phoneUsed,
+    validPhonesLeft: phoneOptions.filter((phone) => phone !== phoneUsed).length,
+  });
 
   if (saved) {
     return (
@@ -186,6 +299,22 @@ export function CampaignAttemptEditor({
         <span className="font-medium text-ui-success">✓ {saved.message}</span>
         {saved.detail ? (
           <span className="text-ui-muted">{saved.detail}</span>
+        ) : null}
+        {saved.result === "NO_CONTACTAR" ? (
+          <Link
+            className="ui-button ui-button--danger"
+            href={`/recovery/campaigns/${caseId}#resolver`}
+          >
+            Cerrar ahora como rechazo definitivo
+          </Link>
+        ) : null}
+        {saved.result === "VENDIDO" ? (
+          <Link
+            className="ui-button ui-button--secondary"
+            href={`/recovery/campaigns/${caseId}#resolver`}
+          >
+            Vincular la orden
+          </Link>
         ) : null}
         <span className="text-xs text-ui-muted">
           Este caso cambiará de posición al actualizar la cola.
@@ -212,6 +341,7 @@ export function CampaignAttemptEditor({
     <form
       action={action}
       className="space-y-3"
+      onKeyDown={hotkeys}
       onSubmit={validate}
       ref={formRef}
     >
@@ -268,35 +398,72 @@ export function CampaignAttemptEditor({
         </div>
       ) : null}
 
+      <div
+        aria-label="Resultados frecuentes"
+        className="flex flex-wrap gap-2"
+        role="group"
+      >
+        {quickChoices.map((choice) => (
+          <button
+            aria-pressed={result === choice.value}
+            className={`ui-button ${result === choice.value ? "ui-button--primary" : "ui-button--secondary"}`}
+            key={choice.value}
+            onClick={() => choose(choice.value)}
+            title={`Tecla ${choice.hotkey}`}
+            type="button"
+          >
+            <span className="mr-1 rounded bg-ui-surface-muted px-1 text-xs">
+              {choice.hotkey}
+            </span>
+            {choice.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block text-sm">
           <span className="ui-label-eyebrow">Resultado</span>
           <select
             className="mt-1 block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
             name="result"
-            onChange={(event) => {
-              setResult(event.target.value);
-              setFieldError(null);
-            }}
+            onChange={(event) => choose(event.target.value)}
             ref={resultRef}
             value={result}
           >
-            {Object.entries(attemptResultChoiceLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
+            <option value="">Elige qué pasó…</option>
+            {recoveryAttemptChoices.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
               </option>
             ))}
           </select>
         </label>
 
+        <AttemptResultFields
+          errorId={fieldError ? `${ids}-error` : undefined}
+          extras={extras}
+          idPrefix={ids}
+          onChange={(next) => {
+            setExtras((current) => ({ ...current, ...next }));
+            setFieldError(null);
+          }}
+          result={result}
+          serviceNumbers={serviceNumbers}
+        />
+
         <label className="block text-sm lg:col-span-2">
-          <span className="ui-label-eyebrow">Observación del contacto</span>
+          <span className="ui-label-eyebrow">
+            {observationRequired
+              ? "Qué dijo el cliente (obligatorio)"
+              : "Observación del contacto"}
+          </span>
           <input
             className="mt-1 block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
             maxLength={2000}
             name="observation"
             onChange={(event) => setObservation(event.target.value)}
             placeholder="Qué dijo el cliente hoy"
+            required={observationRequired}
             value={observation}
           />
         </label>
@@ -344,39 +511,13 @@ export function CampaignAttemptEditor({
             />
           </label>
         ) : null}
-
-        {result === "AGENDA" ? (
-          <label className="block text-sm lg:col-span-2">
-            <span className="ui-label-eyebrow">Fecha y hora acordadas</span>
-            <input
-              aria-describedby={fieldError ? `${ids}-error` : undefined}
-              aria-invalid={fieldError ? true : undefined}
-              className="mt-1 block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-              name="scheduledAt"
-              onChange={(event) => {
-                setScheduledAt(event.target.value);
-                setFieldError(null);
-              }}
-              type="datetime-local"
-              value={scheduledAt}
-            />
-          </label>
-        ) : null}
-
-        {showPause ? (
-          <label className="block text-sm">
-            <span className="ui-label-eyebrow">Pausa antes de reintentar</span>
-            <select
-              className="mt-1 block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-              defaultValue="1"
-              name="pauseDays"
-            >
-              <option value="1">1 día</option>
-              <option value="2">2 días</option>
-            </select>
-          </label>
-        ) : null}
       </div>
+
+      {preview ? (
+        <p className="text-sm text-ui-muted" data-testid="consecuencia">
+          <span className="ui-label-eyebrow">Al guardar</span> {preview}
+        </p>
+      ) : null}
 
       {fieldError || state.type === "error" ? (
         <p
@@ -399,15 +540,11 @@ export function CampaignAttemptEditor({
         </button>
         <button
           className="ui-button ui-button--quiet"
-          disabled={pending}
           onClick={onCancel}
           type="button"
         >
           Cancelar
         </button>
-        <span className="text-xs text-ui-muted">
-          Lo que guardes no se puede editar después.
-        </span>
       </div>
     </form>
   );
