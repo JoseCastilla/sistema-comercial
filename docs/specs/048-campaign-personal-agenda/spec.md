@@ -1,6 +1,6 @@
 # SPEC-048 — Mi agenda: compromisos y próximas acciones del asesor de campaña
 
-**Estado:** `BORRADOR` — fase 0 (hora de Lima) entregada y datos corregidos en producción el 08/09/2026 (787d26b, 30 citas); fases 1 (compromisos), 2 (Mi agenda: semana, día, lista) , 3 (reprogramar y cancelar desde la agenda) y 4 (recordatorios y carga) entregadas el 08/09/2026, pendientes de recorrido local y lectura de producción; fase 5 (mes) sin construir y decisiones de §5 pendientes de confirmación
+**Estado:** `ENTREGADA` — las seis fases (0 a 5) en `main` el 08/09/2026; fase 0 verificada en producción (30 citas corregidas); fases 1 a 5 pendientes de recorrido con cuenta de asesor de prueba y lectura de producción; decisiones de §5 adoptadas como recomendación, José puede corregirlas
 
 > Propuesta «Agenda personal de campañas» (08/09/2026), ampliación del plan
 > «Bandeja de campañas orientada a oportunidades recientes» (CAM-F01 a
