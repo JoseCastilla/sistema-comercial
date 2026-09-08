@@ -73,9 +73,17 @@ ORDER BY a.created_at;
 
 BEGIN;
 
--- Instante UTC en que la web corregida quedó arriba. AJUSTAR antes de correr.
+-- Guarda: si la migración no corrió, esta conversión falla aquí y la
+-- transacción se anula antes de tocar una sola fila. La primera ejecución
+-- del 08/09/2026 falló en el INSERT del paso 4 por este motivo y DbGate no
+-- lo hizo evidente: los conteos salieron, pero el COMMIT fue un ROLLBACK.
+SELECT 'NEXT_ACTION_CORRECTED'::"RecoveryCaseEventType" AS la_migracion_ya_corrio;
+
+-- Instante UTC en que la web corregida quedó arriba. La última cita con el
+-- código viejo se registró a las 16:40:59Z (acordada a las 04:00 de Lima:
+-- nadie acuerda esa hora), así que el corte va después de ella.
 CREATE TEMP TABLE corte ON COMMIT DROP AS
-SELECT '2026-09-08T16:40:00Z'::timestamptz AS momento;
+SELECT '2026-09-08T16:42:00Z'::timestamptz AS momento;
 
 -- 1. Población a corregir.
 CREATE TEMP TABLE citas_a_corregir ON COMMIT DROP AS
