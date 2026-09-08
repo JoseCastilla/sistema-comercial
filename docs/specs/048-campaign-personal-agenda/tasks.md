@@ -52,15 +52,25 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 2 — Mi agenda: semana, día y lista (CAM-F08, P1)
 
-- [ ] `get-agenda.ts` acotado al asesor autenticado, con contexto de vuelta.
-- [ ] Página `/recovery/agenda`: barra de filtros en vivo (`vista`, `fecha`,
-      `tipo`, `estado`, `recencia`, `q`), cabecera «N citas · M tareas»,
-      bloques de vencidos / tareas sin hora / pendientes sin fecha, vistas
-      Semana, Día y Lista.
-- [ ] Navegación: «Mi agenda» junto a «Mi cola de campaña»;
-      `sectionForPath("/recovery/agenda")` → Campañas, con prueba.
-- [ ] Bandeja: bloque «Compromisos por atender» fuera de los filtros
-      (BR-012).
+- [x] `recovery-agenda-period.ts`: vista, fecha de Lima, semana lunes a
+      domingo, día, lista de siete días, hora de Lima y jornada de la
+      cuadrícula; 7 pruebas (345 en el paquete).
+- [x] `get-agenda.ts` acotado al asesor autenticado: un elemento por caso
+      con el selector de la fase 1, citas cerradas del período, filtros de
+      tipo y estado en memoria, recencia y búsqueda en la base, contexto de
+      vuelta a la ficha (`from=agenda`).
+- [x] Página `/recovery/agenda`: vistas Semana, Día y Lista; navegación
+      Anterior / Hoy / Siguiente / Elegir fecha; `QueueFilters` con `q`,
+      `age`, `tipo`, `estado` (la fecha viaja sin ser filtro); cabecera con
+      llamadas y tareas por separado; bloques de vencidos, tareas sin hora,
+      sin gestión y verificación. Sin biblioteca de calendario.
+- [x] Navegación: `AdvisorCampaignNav` («Mi cola» · «Mi agenda») en la
+      bandeja y en la agenda; `sectionForPath("/recovery/agenda")` →
+      Campañas, con prueba.
+- [x] Bandeja: bloque «Compromisos por atender» (citas vencidas o a menos de
+      dos horas) encima de la lista y fuera de los filtros (BR-012).
+- [ ] Recorrido local con cuenta de asesor de prueba (exige aplicar la
+      migración de la fase 1 en local) y lectura de producción.
 
 ## Fase 3 — Gestionar desde la agenda (CAM-F09, P1)
 

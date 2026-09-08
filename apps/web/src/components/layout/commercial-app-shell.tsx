@@ -247,7 +247,7 @@ export function CommercialAppShell({
       : "/recovery/campaigns";
   const campaignsDescription = canTriageRecovery
     ? "Clientes nuevos por contactar"
-    : "Mi cola y los casos libres del equipo";
+    : "Mi cola, mi agenda y los casos libres";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(role === "AGENT");
 
   useEffect(() => {

@@ -21,6 +21,15 @@ va a comprobar y cómo, para que cada casilla de `tasks.md` tenga su prueba.
 | Registrar `AGENDA` crea la cita y fija la próxima acción; cualquier resultado atiende la pendiente; resolver la cancela (AC-003 parcial, AC-004, AC-006) | recorrido local con cuenta de asesor de prueba tras aplicar la migración | pendiente: la migración no pudo aplicarse en local desde esta sesión (permiso denegado). |
 | Relleno BR-007 en producción crea exactamente las citas vigentes (AC-010) | consulta tras el despliegue: `SELECT status, COUNT(*) FROM recovery_case_commitments GROUP BY 1` debe dar `PENDING` = citas vigentes del momento (30 el 08/09 más las nuevas) | pendiente |
 
+## Fase 2 — Mi agenda: semana, día y lista (08/09/2026)
+
+| Comprobación | Cómo | Resultado |
+|---|---|---|
+| Vista desconocida cae en semana; fecha inválida cae en hoy; semana lunes a domingo; día y lista de siete; hora de Lima sin depender de la zona; la cuadrícula cubre 08–20 y se extiende a una cita fuera | `packages/validation/test/recovery-agenda-period.test.mjs` | **En verde**: 7 pruebas nuevas, 345 en el paquete. |
+| `/recovery/agenda` pertenece a Campañas en el shell | `apps/web/src/__tests__/navegacion.test.ts` | **En verde** (6 pruebas). |
+| Tipos y lint de la página, el cargador, el carril del asesor, la bandeja y la ficha | `check-types` y `eslint` | limpios. |
+| La cita aparece el día y la hora correctos en Semana y Día; la lista la ordena; los vencidos siguen visibles con un filtro puesto; «Compromisos por atender» ignora los filtros de la bandeja (AC-002, AC-007) | recorrido con cuenta de asesor de prueba | pendiente: exige aplicar en local la migración de la fase 1 (permiso denegado en esta sesión). |
+
 ## Lista de validación de la propuesta
 
 Con una cuenta de asesor de prueba ficticia; nunca con una persona real.

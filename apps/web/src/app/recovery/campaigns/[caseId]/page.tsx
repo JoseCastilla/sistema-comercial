@@ -80,11 +80,28 @@ export default async function CampaignCasePage({
     if (fromFollowUp && value) queue.set(key, value.slice(0, 40));
   }
   queue.set("visto", caseId);
-  const backBase = fromFollowUp ? "/recovery/follow-up" : "/recovery/campaigns";
-  const backLabel = fromFollowUp
-    ? "← Volver a Seguimiento"
-    : "← Volver a mi cola";
-  const backHref = `${backBase}?${queue.toString()}#caso-${caseId}`;
+  // SPEC-048 BR-013: desde Mi agenda se vuelve a la misma vista y fecha.
+  const fromAgenda = context.from === "agenda";
+  const agendaContext = new URLSearchParams();
+  if (fromAgenda) {
+    for (const key of ["view", "fecha", "q", "age", "tipo", "estado"]) {
+      const value = (context as Record<string, string | undefined>)[key];
+      if (value) agendaContext.set(key, value.slice(0, 40));
+    }
+  }
+  const backBase = fromAgenda
+    ? "/recovery/agenda"
+    : fromFollowUp
+      ? "/recovery/follow-up"
+      : "/recovery/campaigns";
+  const backLabel = fromAgenda
+    ? "← Volver a mi agenda"
+    : fromFollowUp
+      ? "← Volver a Seguimiento"
+      : "← Volver a mi cola";
+  const backHref = fromAgenda
+    ? `${backBase}?${agendaContext.toString()}`
+    : `${backBase}?${queue.toString()}#caso-${caseId}`;
 
   const detail = await getCampaignCase(
     membership.organization.id,

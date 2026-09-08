@@ -1,6 +1,6 @@
 # SPEC-048 — Mi agenda: compromisos y próximas acciones del asesor de campaña
 
-**Estado:** `BORRADOR` — fase 0 (hora de Lima) entregada y datos corregidos en producción el 08/09/2026 (787d26b, 30 citas); fase 1 (compromisos) entregada el 08/09/2026, pendiente de recorrido local y lectura de producción; agenda (fases 2 a 5) sin construir y decisiones de §5 pendientes de confirmación
+**Estado:** `BORRADOR` — fase 0 (hora de Lima) entregada y datos corregidos en producción el 08/09/2026 (787d26b, 30 citas); fases 1 (compromisos) y 2 (Mi agenda: semana, día, lista) entregadas el 08/09/2026, pendientes de recorrido local y lectura de producción; fases 3 a 5 sin construir y decisiones de §5 pendientes de confirmación
 
 > Propuesta «Agenda personal de campañas» (08/09/2026), ampliación del plan
 > «Bandeja de campañas orientada a oportunidades recientes» (CAM-F01 a
@@ -210,8 +210,10 @@ validación. Los criterios CAM-F07 a CAM-F11 se conservan con su prioridad.
 - **BR-013 — Vistas.** Semana (predeterminada, lunes a domingo), Día, Lista
   y Mes. La cuadrícula presenta la jornada de **08:00 a 20:00 de Lima**; una
   cita fuera de ese tramo extiende la cuadrícula, no desaparece. Estado en la
-  URL: `vista=semana|dia|lista|mes`, `fecha=AAAA-MM-DD`, `tipo=`, `estado=`,
-  `recencia=`, `q=`. Filtros en vivo sin botón «Filtrar» (SPEC-030 BR-089).
+  URL: `view=semana|dia|lista|mes` (semana se omite), `fecha=AAAA-MM-DD`,
+  `tipo=`, `estado=`, `age=` (el mismo parámetro de recencia que las demás
+  colas, BR-092) y `q=`. Filtros en vivo sin botón «Filtrar» (SPEC-030
+  BR-089); la fecha y la vista sobreviven a «Limpiar filtros».
 - **BR-014 — Bloques complementarios siempre visibles.** «Compromisos
   vencidos» (citas `PENDING` con hora pasada, aunque su fecha esté fuera del
   período visible), «Tareas del día sin hora acordada» (reintentos,
