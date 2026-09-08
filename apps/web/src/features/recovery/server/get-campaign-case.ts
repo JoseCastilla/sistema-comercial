@@ -102,7 +102,11 @@ export interface CampaignCaseDetail {
   }>;
   lossReasonGates: Record<RecoveryLossReasonOption, LossReasonGate>;
   /** SPEC-048 BR-005: la cita acordada vigente, si la hay. */
-  pendingCommitment: { scheduledAtLabel: string; overdue: boolean } | null;
+  pendingCommitment: {
+    id: string;
+    scheduledAtLabel: string;
+    overdue: boolean;
+  } | null;
   /** Historial de citas, la más reciente primero. */
   commitments: Array<{
     id: string;
@@ -393,6 +397,7 @@ export async function getCampaignCase(
       );
       return pending
         ? {
+            id: pending.id,
             scheduledAtLabel: formatLimaDateTime(pending.scheduledAt),
             overdue: pending.scheduledAt.getTime() < now.getTime(),
           }

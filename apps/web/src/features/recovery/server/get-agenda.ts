@@ -14,6 +14,7 @@ import {
   recoveryAgendaPeriod,
   recoveryCommitmentStateLabels,
   selectRecoveryAgendaItem,
+  shareRecoveryAgendaSlot,
 } from "@repo/validation";
 
 import { database } from "@/server/database";
@@ -110,6 +111,10 @@ export interface AgendaEntry {
   lastObservation: string | null;
   recencyLabel: string;
   href: string;
+  /** La cita a la que abre el panel, si el elemento es una cita. */
+  commitmentId: string | null;
+  /** BR-016: otra cita del período en el mismo tramo de 15 minutos. */
+  clash: boolean;
 }
 
 export interface AgendaData {
@@ -150,15 +155,39 @@ function timeLabel(at: Date): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-function caseHref(caseId: string, query: AgendaQuery): string {
-  const context = new URLSearchParams({ from: "agenda", view: query.view });
+function queryContext(query: AgendaQuery): URLSearchParams {
+  const context = new URLSearchParams();
+  if (query.view !== "semana") context.set("view", query.view);
   context.set("fecha", getLimaIsoDate(query.date));
   if (query.q) context.set("q", query.q);
   if (query.age) context.set("age", query.age);
   if (query.kind) context.set("tipo", query.kind);
   if (query.state) context.set("estado", query.state);
 
+  return context;
+}
+
+function caseHref(caseId: string, query: AgendaQuery): string {
+  const context = queryContext(query);
+  context.set("from", "agenda");
+
   return `/recovery/campaigns/${caseId}?${context.toString()}`;
+}
+
+/** El panel de la cita se abre en la misma agenda (`cita=<id>`). */
+export function commitmentPanelHref(
+  commitmentId: string,
+  query: AgendaQuery,
+): string {
+  const context = queryContext(query);
+  context.set("cita", commitmentId);
+
+  return `/recovery/agenda?${context.toString()}`;
+}
+
+/** La agenda sin panel abierto, con el resto del contexto intacto. */
+export function agendaBaseHref(query: AgendaQuery): string {
+  return `/recovery/agenda?${queryContext(query).toString()}`;
 }
 
 /**
@@ -271,6 +300,12 @@ export async function getAgenda(
       entries.push({
         ...common,
         key: item.id,
+        commitmentId: pending?.id ?? null,
+        clash: false,
+        href:
+          agendaItem.kind === "CITA_ACORDADA" && pending
+            ? commitmentPanelHref(pending.id, query)
+            : common.href,
         kind: agendaItem.kind,
         kindLabel: recoveryAgendaKindLabels[agendaItem.kind],
         originLabel: recoveryAgendaOriginLabels[agendaItem.origin],
@@ -299,6 +334,9 @@ export async function getAgenda(
       entries.push({
         ...common,
         key: `cita-${commitment.id}`,
+        commitmentId: commitment.id,
+        clash: false,
+        href: commitmentPanelHref(commitment.id, query),
         kind: "CITA_ACORDADA",
         kindLabel: recoveryAgendaKindLabels.CITA_ACORDADA,
         originLabel: recoveryAgendaOriginLabels.acuerdo,
@@ -336,6 +374,20 @@ export async function getAgenda(
   const periodEntries = filtered
     .filter(inPeriod)
     .sort((left, right) => left.at!.getTime() - right.at!.getTime());
+
+  // BR-016: dos citas vivas del período en el mismo tramo se señalan.
+  const liveTimed = periodEntries.filter(
+    (entry) =>
+      entry.timed &&
+      entry.at !== null &&
+      (entry.state === "pendiente" || entry.state === "vencida"),
+  );
+  for (const entry of liveTimed) {
+    entry.clash = liveTimed.some(
+      (other) =>
+        other !== entry && shareRecoveryAgendaSlot(entry.at!, other.at!),
+    );
+  }
 
   const endOfToday = new Date(
     new Date(`${todayIso}T00:00:00-05:00`).getTime() + 24 * 60 * 60 * 1000,

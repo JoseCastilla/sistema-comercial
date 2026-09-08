@@ -7,6 +7,8 @@ import { evaluateInternalLossReasonGates } from "@repo/validation";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
+import { recoveryCaseAccessWhere } from "./recovery-case-access";
+
 import type { SendOrderToRecoveryActionState } from "./recovery-action.types";
 import type { RecoveryLossReasonOption } from "@repo/validation";
 
@@ -85,41 +87,18 @@ export async function resolveRecoveryCaseAction(
   }
 
   const outcome = await database.$transaction(async (transaction) => {
-    const supervisedTeamIds =
-      membership.role === "SUPERVISOR"
-        ? (
-            await transaction.commercialTeamMember.findMany({
-              where: {
-                userId: session.user.id,
-                memberRole: "SUPERVISOR",
-                isActive: true,
-                team: {
-                  organizationId: membership.organization.id,
-                  status: "ACTIVE",
-                },
-              },
-              select: { teamId: true },
-            })
-          ).map((item) => item.teamId)
-        : null;
+    // Mismo predicado de acceso que tipificar, reprogramar y cancelar.
+    const access = await recoveryCaseAccessWhere(transaction, {
+      userId: session.user.id,
+      role: membership.role,
+      organizationId: membership.organization.id,
+    });
 
     const recoveryCase = await transaction.recoveryCase.findFirst({
       where: {
+        ...access,
         id: caseId,
-        organizationId: membership.organization.id,
         status: { in: [...openStatuses] },
-        ...(membership.role === "AGENT"
-          ? { assignedUserId: session.user.id }
-          : {}),
-        ...(supervisedTeamIds
-          ? {
-              OR: [
-                { assignedTeamId: { in: supervisedTeamIds } },
-                { originalTeamId: { in: supervisedTeamIds } },
-                { assignedUserId: session.user.id },
-              ],
-            }
-          : {}),
       },
       select: {
         id: true,

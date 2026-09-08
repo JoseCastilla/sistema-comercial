@@ -17,6 +17,11 @@ import { database } from "@/server/database";
 import { readUuid } from "@/server/forms/read-form";
 import { formatLimaDateTime } from "@repo/ui/format";
 
+import {
+  commitmentSlotRange,
+  recoveryCaseAccessWhere,
+} from "./recovery-case-access";
+
 import type {
   CampaignAttemptInlineState,
   SendOrderToRecoveryActionState,
@@ -50,6 +55,8 @@ type AttemptOutcome =
       nextActionAt: Date | null;
       mustResolve: boolean;
       isBaseCase: boolean;
+      /** BR-016: otra cita del mismo asesor en el mismo tramo de 15 minutos. */
+      slotClash: string | null;
     };
 
 function readAttemptInput(formData: FormData): AttemptInput {
@@ -151,43 +158,19 @@ async function registerRecoveryAttempt(
   const pauseDays = pauseDaysRaw === "2" ? 2 : 1;
 
   const outcome = await database.$transaction(async (transaction) => {
-    const supervisedTeamIds =
-      membership.role === "SUPERVISOR"
-        ? (
-            await transaction.commercialTeamMember.findMany({
-              where: {
-                userId: session.user.id,
-                memberRole: "SUPERVISOR",
-                isActive: true,
-                team: {
-                  organizationId: membership.organization.id,
-                  status: "ACTIVE",
-                },
-              },
-              select: { teamId: true },
-            })
-          ).map((item) => item.teamId)
-        : null;
+    // El asesor solo gestiona sus casos asignados (BR-029b); la supervisión,
+    // dentro de sus equipos. Una sola definición para todas las acciones.
+    const access = await recoveryCaseAccessWhere(transaction, {
+      userId: session.user.id,
+      role: membership.role,
+      organizationId: membership.organization.id,
+    });
 
     const recoveryCase = await transaction.recoveryCase.findFirst({
       where: {
+        ...access,
         id: caseId,
-        organizationId: membership.organization.id,
         status: { in: [...openStatuses] },
-        // El asesor solo gestiona sus casos asignados (BR-029b); la
-        // supervisión, dentro de sus equipos.
-        ...(membership.role === "AGENT"
-          ? { assignedUserId: session.user.id }
-          : {}),
-        ...(supervisedTeamIds
-          ? {
-              OR: [
-                { assignedTeamId: { in: supervisedTeamIds } },
-                { originalTeamId: { in: supervisedTeamIds } },
-                { assignedUserId: session.user.id },
-              ],
-            }
-          : {}),
       },
       select: {
         id: true,
@@ -197,6 +180,7 @@ async function registerRecoveryAttempt(
         createdAt: true,
         firstContactAt: true,
         holderName: true,
+        assignedUserId: true,
         attempts: {
           orderBy: { createdAt: "desc" },
           take: 30,
@@ -251,6 +235,7 @@ async function registerRecoveryAttempt(
           nextActionAt: current.nextActionAt,
           mustResolve: false,
           isBaseCase,
+          slotClash: null,
         };
       }
     }
@@ -286,8 +271,10 @@ async function registerRecoveryAttempt(
       },
     });
 
+    let slotClash: string | null = null;
+
     if (result === "AGENDA" && scheduledAt) {
-      await transaction.recoveryCaseCommitment.create({
+      const created = await transaction.recoveryCaseCommitment.create({
         data: {
           organizationId: membership.organization.id,
           caseId: recoveryCase.id,
@@ -296,7 +283,24 @@ async function registerRecoveryAttempt(
           createdByUserId: session.user.id,
           clientRequestId,
         },
+        select: { id: true },
       });
+
+      // BR-016: otra llamada acordada del mismo asesor en el mismo tramo se
+      // advierte; nunca se rechaza ni se mueve sola.
+      if (recoveryCase.assignedUserId) {
+        const clash = await transaction.recoveryCaseCommitment.findFirst({
+          where: {
+            organizationId: membership.organization.id,
+            status: "PENDING",
+            id: { not: created.id },
+            scheduledAt: commitmentSlotRange(scheduledAt),
+            case: { assignedUserId: recoveryCase.assignedUserId },
+          },
+          select: { case: { select: { holderName: true } } },
+        });
+        slotClash = clash?.case.holderName ?? null;
+      }
     }
     const managedSince = recoveryCase.claimedAt ?? recoveryCase.createdAt;
     // Incluye el intento recién creado en el conteo del día (BR-032).
@@ -346,6 +350,7 @@ async function registerRecoveryAttempt(
         nextActionAt: verificationNextAction,
         mustResolve: false,
         isBaseCase,
+        slotClash,
       };
     }
 
@@ -382,6 +387,7 @@ async function registerRecoveryAttempt(
       attemptsToday: isBaseCase ? attemptsToday : null,
       nextActionAt,
       isBaseCase,
+      slotClash,
       mustResolve:
         result !== "AGENDA" &&
         result !== "RECHAZA" &&
@@ -408,6 +414,9 @@ function describeAttemptOutcome(
   }
   if (outcome.result === "YA_ACTIVO") {
     return "Pasa a verificación: el caso no se cierra hasta que el reporte o tu supervisor lo confirmen.";
+  }
+  if (outcome.result === "AGENDA" && outcome.slotClash) {
+    return `Ojo: a esa misma hora ya tienes una llamada acordada con ${outcome.slotClash}.`;
   }
   if (outcome.result === "INTERESADO_CON_PEDIDO") {
     return "Agendado para mañana: vuelve a llamarlo para ver si el pedido anterior cayó; el cruce lo vigila en paralelo.";
