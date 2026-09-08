@@ -8,6 +8,7 @@ import {
   countOnSameLimaDay,
   describeRecoveryLineOrigin,
   describeRecoveryWait,
+  effectiveAttemptResult,
   isBaseRecoveryResolutionDue,
   parseRecoveryAgeBucket,
   parseRecoveryWorkView,
@@ -206,6 +207,7 @@ export default async function RecoveryCampaignsPage({
               result: true,
               observation: true,
               followUpAt: true,
+              correction: { select: { effectiveResult: true, effectiveReason: true } },
             },
           },
           commitments: {
@@ -300,7 +302,8 @@ export default async function RecoveryCampaignsPage({
       now,
     );
     const last = item.attempts[0] ?? null;
-    const lastResult = last ? String(last.result) : null;
+    // SPEC-049 BR-017: lo que vale es el resultado efectivo (rectificado si lo hay).
+    const lastResult = last ? effectiveAttemptResult(last) : null;
     const validPhones = item.phones.filter(
       (phone) => phone.invalidMarkedAt === null,
     );
@@ -350,7 +353,8 @@ export default async function RecoveryCampaignsPage({
       lastAttemptAtLabel: last ? formatLimaDateTime(last.createdAt) : null,
       recentAttempts: item.attempts.slice(0, 3).map((attempt) => ({
         resultLabel:
-          attemptResultLabels[String(attempt.result)] ?? String(attempt.result),
+          attemptResultLabels[effectiveAttemptResult(attempt)] ??
+          effectiveAttemptResult(attempt),
         observation: attempt.observation,
         createdAtLabel: formatLimaDateTime(attempt.createdAt),
       })),

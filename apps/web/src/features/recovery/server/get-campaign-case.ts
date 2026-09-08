@@ -10,15 +10,19 @@ import {
 
 import {
   baseRecoveryMinimumDailyAttempts,
+  canCorrectAttempt,
   classifyRecoveryWorkItem,
   countOnSameLimaDay,
   describeRecoveryCommitmentState,
   describeRecoveryLineOrigin,
   describeRecoveryWait,
+  effectiveAttemptResult,
+  effectiveAttempts,
   evaluateInternalLossReasonGates,
   isBaseRecoveryResolutionDue,
   recoveryAgendaKindLabels,
   recoveryAgendaOriginLabels,
+  recoveryAttemptReasonLabels,
   recoveryCommitmentStateLabels,
   selectRecoveryAgendaItem,
 } from "@repo/validation";
@@ -98,11 +102,22 @@ export interface CampaignCaseDetail {
   attempts: Array<{
     id: string;
     channel: string;
+    /** Resultado efectivo (SPEC-049 BR-017). */
     result: string;
+    /** Lo registrado originalmente; distinto de `result` si se rectificó. */
+    originalResult: string;
+    reasonLabel: string | null;
     phoneUsed: string | null;
     observation: string | null;
     actorName: string;
     createdAtLabel: string;
+    correction: {
+      observation: string | null;
+      correctionReason: string;
+      actorName: string;
+      createdAtLabel: string;
+    } | null;
+    canCorrect: { allowed: boolean; reason: string | null };
   }>;
   recoveredOrderSuggestions: Array<{
     id: string;
@@ -230,7 +245,19 @@ export async function getCampaignCase(
           observation: true,
           createdAt: true,
           followUpAt: true,
+          reason: true,
+          actorUserId: true,
           actor: { select: { name: true } },
+          correction: {
+            select: {
+              effectiveResult: true,
+              effectiveReason: true,
+              observation: true,
+              correctionReason: true,
+              createdAt: true,
+              actor: { select: { name: true } },
+            },
+          },
         },
       },
       commitments: {
@@ -276,9 +303,30 @@ export async function getCampaignCase(
   const summary = readContactSummary(recoveryCase.contactSummary);
   const coordinates = readCoordinates(summary);
 
+  // SPEC-049 BR-017: lo que vale es el resultado efectivo (rectificado si lo hay).
   const lastAttemptResult = recoveryCase.attempts[0]
-    ? String(recoveryCase.attempts[0].result)
+    ? effectiveAttemptResult(recoveryCase.attempts[0])
     : null;
+  const canCorrect = (attempt: {
+    actorUserId: string;
+    createdAt: Date;
+    correction: unknown;
+  }) =>
+    canCorrectAttempt(
+      {
+        role: access.role,
+        userId: access.userId,
+        // El acceso ya acotó al supervisor a sus equipos o al caso a su cargo.
+        supervisesCase: access.role === "SUPERVISOR",
+      },
+      {
+        actorUserId: attempt.actorUserId,
+        createdAt: attempt.createdAt,
+        alreadyCorrected: attempt.correction !== null,
+        caseResolved: isResolved,
+      },
+      now,
+    );
   const reportedActive =
     String(recoveryCase.status) === "WAITING" &&
     lastAttemptResult === "YA_ACTIVO";
@@ -408,15 +456,35 @@ export async function getCampaignCase(
         ? formatLimaDateTime(recoveryCase.sensitiveRevealedAt)
         : null,
     },
-    attempts: recoveryCase.attempts.map((attempt) => ({
-      id: attempt.id,
-      channel: String(attempt.channel),
-      result: String(attempt.result),
-      phoneUsed: attempt.phoneUsed,
-      observation: attempt.observation,
-      actorName: attempt.actor.name,
-      createdAtLabel: formatLimaDateTime(attempt.createdAt),
-    })),
+    attempts: recoveryCase.attempts.map((attempt) => {
+      const reason = attempt.correction
+        ? attempt.correction.effectiveReason
+        : attempt.reason;
+      return {
+        id: attempt.id,
+        channel: String(attempt.channel),
+        result: effectiveAttemptResult(attempt),
+        originalResult: String(attempt.result),
+        reasonLabel: reason
+          ? (recoveryAttemptReasonLabels[
+              String(reason) as keyof typeof recoveryAttemptReasonLabels
+            ] ?? String(reason))
+          : null,
+        phoneUsed: attempt.phoneUsed,
+        observation: attempt.correction?.observation ?? attempt.observation,
+        actorName: attempt.actor.name,
+        createdAtLabel: formatLimaDateTime(attempt.createdAt),
+        correction: attempt.correction
+          ? {
+              observation: attempt.correction.observation,
+              correctionReason: attempt.correction.correctionReason,
+              actorName: attempt.correction.actor.name,
+              createdAtLabel: formatLimaDateTime(attempt.correction.createdAt),
+            }
+          : null,
+        canCorrect: canCorrect(attempt),
+      };
+    }),
     recoveredOrderSuggestions: suggestions.map((order) => ({
       id: order.id,
       orderCode: order.orderCodeRaw,
@@ -439,7 +507,7 @@ export async function getCampaignCase(
             .filter((service) => service.discardedAt === null && service.portabilityEligibleAt)
             .map((service) => service.portabilityEligibleAt as Date)
             .sort((left, right) => left.getTime() - right.getTime())[0] ?? null,
-          lastResult: last ? String(last.result) : null,
+          lastResult: last ? effectiveAttemptResult(last) : null,
           lastAttemptAt: last?.createdAt ?? null,
           pendingCommitmentAt: pending?.scheduledAt ?? null,
           returnedFromVerificationAt: returned?.createdAt ?? null,
@@ -464,7 +532,7 @@ export async function getCampaignCase(
       };
     })(),
     // SPEC-049 BR-002: datos inválidos exige todos los teléfonos errados.
-    lossReasonGates: evaluateInternalLossReasonGates(recoveryCase.attempts, {
+    lossReasonGates: evaluateInternalLossReasonGates(effectiveAttempts(recoveryCase.attempts), {
       total: recoveryCase.phones.length,
       invalid: recoveryCase.phones.filter(
         (phone) => phone.invalidMarkedAt !== null,

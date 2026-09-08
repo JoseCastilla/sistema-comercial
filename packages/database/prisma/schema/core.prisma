@@ -98,6 +98,7 @@ model Organization {
   recoveryCaseEvents         RecoveryCaseEvent[]
   recoveryCaseAttempts       RecoveryCaseAttempt[]
   recoveryCaseCommitments    RecoveryCaseCommitment[]
+  recoveryCaseAttemptCorrections RecoveryCaseAttemptCorrection[]
   recoveryPortabilityBatches RecoveryPortabilityBatch[]
   recoveryPortabilityResults RecoveryPortabilityResult[]
 
@@ -179,6 +180,7 @@ model User {
   recoveryCaseAttemptsPerformed  RecoveryCaseAttempt[]       @relation("RecoveryCaseAttemptActor")
   recoveryCommitmentsCreated     RecoveryCaseCommitment[]    @relation("RecoveryCommitmentCreatedBy")
   recoveryCommitmentsClosed      RecoveryCaseCommitment[]    @relation("RecoveryCommitmentClosedBy")
+  recoveryAttemptCorrections     RecoveryCaseAttemptCorrection[] @relation("RecoveryAttemptCorrectionActor")
   recoveryPortabilityUploaded    RecoveryPortabilityBatch[]  @relation("RecoveryPortabilityUploadedBy")
 
   dniLookupEventsPerformed DniLookupEvent[] @relation("DniLookupActor")
