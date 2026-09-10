@@ -77,3 +77,9 @@
       cobertura automatizada.
 - [ ] Incorporar el cargo fijo a los campos esenciales de SPEC-006, para que una
       captura sin monto se marque `PARTIAL` en lugar de pasar como completa.
+
+## Cambio de fuente — 10/09/2026
+
+- [x] La consulta de pedidos pasa de `agr-delivery.afreddyp.workers.dev` a
+      `proveedores.cgc.alka.net.pe`, misma ruta `/api/records`, mismos
+      parámetros y misma cookie de sesión.
