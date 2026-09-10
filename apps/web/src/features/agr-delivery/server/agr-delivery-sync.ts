@@ -18,7 +18,7 @@ import type { AgrSyncWindow } from "../agr-delivery.types";
 
 import type { Prisma } from "@repo/database";
 
-const endpoint = "https://agr-delivery.afreddyp.workers.dev/api/records";
+const endpoint = "https://proveedores.cgc.alka.net.pe/api/records";
 const eligibleSince = new Date("2026-08-10T05:00:00.000Z");
 const terminalExternalStatuses = ["ENTREGADO", "CERRADO"];
 

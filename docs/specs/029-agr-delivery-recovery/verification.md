@@ -282,3 +282,18 @@ permanece en `READY_FOR_VALIDATION`:
 El incremento está listo para validación funcional con sesión iniciada y, tras
 ella, para despliegue. La integración es aditiva, no altera el estado comercial y
 degrada de forma segura ante el vencimiento de la credencial externa.
+
+## 11. Cambio de fuente — 10/09/2026
+
+El proveedor publicó la consulta de pedidos en un dominio propio:
+`https://proveedores.cgc.alka.net.pe/api/records`. Solo cambia el host;
+la ruta, los parámetros (`channel`, `page`, `pageSize`, `entity`, `q`), la
+cookie `__Host-cgagr_delivery_session` y la forma de la respuesta se mantienen.
+
+- Verificado: `pnpm test`, `lint` y `check-types` en verde por
+  `scripts/entregar.sh`.
+- No verificado aquí: una llamada real al nuevo dominio. Se confirma en
+  producción guardando la credencial en `/admin/logistics`, que valida contra
+  un pedido de prueba, y con la siguiente corrida de sincronización terminando
+  en `Completada`. Si el nuevo dominio exige otro nombre de cookie, la
+  validación fallará con "La sesión logística venció." y habrá que revisarlo.
