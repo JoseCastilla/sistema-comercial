@@ -45,4 +45,10 @@
     antigua desde el 02/09. Es trabajo real que antes no estaba a la vista
     de la asesora en su entrada.
 
+- **24/09/2026** — Fase 1.1 en local con la asesora de prueba: sus 2 pedidos
+  de ventas del 10/08 salieron de «Ahora» y quedaron en «Ventas antiguas por
+  recuperar» (plegado, sin rojo, «Venta del 10/08 · pedido …»); la tarjeta
+  dice «Cuota de setiembre — 0 entregadas · sin cuota asignada». Regla: 16
+  de 16 pruebas; web: tipos, lint y 219 pruebas en verde.
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes.

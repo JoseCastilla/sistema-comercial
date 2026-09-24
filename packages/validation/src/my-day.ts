@@ -37,8 +37,31 @@ export const myDayTierLabels: Record<MyDayTier, string> = {
   campana: "Campaña",
 };
 
-/** «Ahora» es lo que toca ya; «hoy», lo que vence más tarde en el día. */
-export type MyDayBucket = "ahora" | "hoy";
+/**
+ * «Ahora» es lo que toca ya; «hoy», lo que vence más tarde en el día; «frío»,
+ * la venta antigua que sigue siendo oportunidad pero no debe hacer ruido
+ * (decisión de José del 24/09/2026, BR-018).
+ */
+export type MyDayBucket = "ahora" | "hoy" | "frio";
+
+/**
+ * BR-018: una venta de los últimos 7 días es un cliente caliente: sigue
+ * esperando su chip. Más antigua, es un cliente frío.
+ */
+export const myDayHotDays = 7;
+
+const dayMs = 24 * 60 * 60 * 1000;
+
+/**
+ * La venta se hizo hoy o en los 6 días anteriores, contados por fecha de
+ * Lima (Perú no tiene horario de verano, así que restar días es exacto).
+ */
+export function isMyDayHotSale(saleAt: Date, now: Date): boolean {
+  const firstHotDay = getLimaIsoDate(
+    new Date(now.getTime() - (myDayHotDays - 1) * dayMs),
+  );
+  return getLimaIsoDate(saleAt) >= firstHotDay;
+}
 
 /** BR-005: una cita cuenta como «pronto» dentro de las próximas 2 horas. */
 export const myDaySoonMs = 2 * 60 * 60 * 1000;
@@ -81,6 +104,8 @@ export function placeMyDayCommitment(
 
 export interface MyDaySalesRecoveryInput {
   status: string;
+  /** Cuándo se hizo la venta: decide si es caliente o fría (BR-018). */
+  saleAt: Date;
   firstContactAt: Date | null;
   nextActionAt: Date | null;
   /** Límite del primer contacto: 2 horas desde la caída (SPEC-026). */
@@ -97,6 +122,35 @@ export interface MyDaySalesRecoveryInput {
  * plegado. En verificación no hay nada que hacer.
  */
 export function placeMyDaySalesRecovery(
+  input: MyDaySalesRecoveryInput,
+  now: Date,
+): MyDayPlacement | null {
+  const placement = placeSalesRecoveryByDue(input, now);
+  if (!placement) return null;
+
+  // BR-018: la venta antigua no compite con la caliente.
+  return isMyDayHotSale(input.saleAt, now)
+    ? placement
+    : { ...placement, bucket: "frio" };
+}
+
+/**
+ * Un pedido del asesor con entrega fallida o incidencia (BR-004): caliente
+ * si la venta es de los últimos 7 días, frío si no.
+ */
+export function placeMyDayOrder(
+  saleAt: Date,
+  dueAt: Date | null,
+  now: Date,
+): MyDayPlacement {
+  return {
+    tier: "pedido",
+    bucket: isMyDayHotSale(saleAt, now) ? "ahora" : "frio",
+    dueAt,
+  };
+}
+
+function placeSalesRecoveryByDue(
   input: MyDaySalesRecoveryInput,
   now: Date,
 ): MyDayPlacement | null {
@@ -132,7 +186,8 @@ export interface MyDaySortable {
 
 /**
  * BR-005: por tramo; dentro del tramo, lo que vence antes; sin fecha, al final
- * del tramo y en el orden de su módulo.
+ * del tramo y en el orden de su módulo. Las ventas caídas van al revés: la
+ * más reciente primero, porque es la que más fácil se salva (BR-018).
  */
 export function compareMyDayItems(
   left: MyDaySortable,
@@ -143,7 +198,10 @@ export function compareMyDayItems(
   if (tier !== 0) return tier;
 
   if (left.dueAt && right.dueAt) {
-    const due = left.dueAt.getTime() - right.dueAt.getTime();
+    const due =
+      left.tier === "venta_en_riesgo"
+        ? right.dueAt.getTime() - left.dueAt.getTime()
+        : left.dueAt.getTime() - right.dueAt.getTime();
     if (due !== 0) return due;
   } else if (left.dueAt) {
     return -1;
@@ -168,6 +226,11 @@ const limaDayFormatter = {
     return `${day}/${month}`;
   },
 };
+
+/** «Venta del 12/08»: la fecha de la venta en Lima, día y mes. */
+export function formatMyDaySaleDay(saleAt: Date): string {
+  return limaDayFormatter.format(saleAt);
+}
 
 /**
  * BR-007: el plazo en palabras del asesor. Lo vencido dice hace cuánto; lo

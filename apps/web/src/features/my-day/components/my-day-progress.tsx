@@ -49,13 +49,15 @@ export function MyDayProgressPanel({ progress }: { progress: MyDayProgress }) {
             note={describeWindowNote(window)}
           />
         ) : null}
-        {window ? (
-          <Figure
-            label="Cuota de la ventana"
-            value={`${formatCount(window.delivered)} de ${formatCount(window.quotaTarget)}`}
-            note={`Entregadas · cuota ${window.quotaAssigned ? "asignada" : "por defecto"}`}
-          />
-        ) : null}
+        <Figure
+          label={`Cuota de ${progress.monthLabel.split(" ")[0]}`}
+          value={
+            progress.quota.target === null
+              ? plural(progress.quota.delivered, "entregada", "entregadas")
+              : `${formatCount(progress.quota.delivered)} de ${formatCount(progress.quota.target)}`
+          }
+          note={describeQuotaNote(progress.quota)}
+        />
       </dl>
       {progress.deliveredPendingActivation > 0 ? (
         <p className="border-t border-ui-border px-4 py-2 text-sm text-ui-muted">
@@ -75,6 +77,17 @@ export function MyDayProgressPanel({ progress }: { progress: MyDayProgress }) {
       </details>
     </section>
   );
+}
+
+/** BR-019: la cuota es del mes y se mide en portabilidades entregadas. */
+function describeQuotaNote(quota: MyDayProgress["quota"]): string {
+  if (quota.target === null) {
+    return "Portabilidades entregadas del mes · sin cuota asignada";
+  }
+  const missing = quota.target - quota.delivered;
+  return missing > 0
+    ? `Portabilidades entregadas del mes · te ${missing === 1 ? "falta" : "faltan"} ${formatCount(missing)}`
+    : "Portabilidades entregadas del mes · cuota cumplida";
 }
 
 function describeWindowNote(

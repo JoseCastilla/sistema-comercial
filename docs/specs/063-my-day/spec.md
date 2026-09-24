@@ -147,6 +147,24 @@ llamadas.
   pestaña y cada 60 segundos (el mismo ritmo del aviso actual), sin perder el
   bloque plegado ni la posición.
 
+### Clientes calientes y cuota del mes (decisiones de José del 24/09/2026)
+
+- **BR-018 — Lo caliente primero; lo frío sin ruido.** Una venta de los
+  últimos 7 días (hoy y los 6 días anteriores, en fecha de Lima) es un
+  cliente caliente: sus ventas caídas y sus pedidos con incidencia van en
+  «Ahora», y entre las ventas caídas la más reciente primero. Una venta más
+  antigua es un cliente frío: sigue siendo oportunidad, pero va en un bloque
+  plegado al final, «Ventas antiguas por recuperar», sin rojo ni plazos, de
+  la más reciente a la más antigua. Las citas acordadas no se enfrían: el
+  asesor se comprometió. La fecha de la venta es la de registro del pedido
+  de origen.
+- **BR-019 — La cuota es del mes.** La cuota del asesor es el objetivo del
+  mes completo y se mide en portabilidades entregadas de las ventas del mes.
+  Los bonos siguen por ventana (SPEC-038 BR-001 a BR-006). Hasta que Cuotas
+  la guarde como mensual (SPEC-064), «Mi día» lee la cuota asignada al
+  asesor en el mes: la de la primera ventana si existe, si no la de la
+  segunda; sin cuota asignada, muestra solo las entregadas.
+
 ### Construcción (MD-F05)
 
 - **BR-016 — Consultas con techo.** Cada fuente se lee con un límite

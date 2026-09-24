@@ -65,7 +65,9 @@ que falta.
 
 ### Cuotas
 
-- **BR-007:** la cuota se mide en **portabilidades entregadas de la cohorte de
+- **BR-007** (sustituida en parte el 24/09/2026 por decisión de José: la
+  cuota es del **mes completo**, no de cada ventana; ver SPEC-064 y SPEC-063
+  BR-019)**:** la cuota se mide en **portabilidades entregadas de la cohorte de
   la ventana**: portabilidades ingresadas dentro de la ventana que llegaron a
   entregarse, aunque la entrega ocurra después de que la ventana cierre. Las
   altas nuevas quedan fuera, igual que en el acelerador. Cuota y acelerador
@@ -93,7 +95,7 @@ que falta.
   admite meses futuros hasta un horizonte de doce meses. El parser del
   dashboard no sirve para esto: recorta al mes actual, porque un mes futuro no
   tiene resultados que mostrar.
-- **BR-010:** una cuota se asigna por período y ventana, y **queda congelada
+- **BR-010** (la ventana deja de aplicar a la cuota: SPEC-064)**:** una cuota se asigna por período y ventana, y **queda congelada
   una vez que el período termina**. Cambiar la cuota de un mes cerrado
   reescribiría la historia de cumplimiento.
 - **BR-011:** toda asignación de cuota registra actor, momento y valor previo.

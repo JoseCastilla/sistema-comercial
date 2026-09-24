@@ -9,7 +9,7 @@ import {
   describeInternalRecoveryStage,
   describeMyDayDue,
   effectiveAttemptResult,
-  getDefaultQuotaTarget,
+  formatMyDaySaleDay,
   getInternalRecoveryFirstActionAt,
   getLimaDayOfMonth,
   getLimaIsoDate,
@@ -18,6 +18,7 @@ import {
   getPerformanceMonthRange,
   parsePerformanceMonth,
   placeMyDayCommitment,
+  placeMyDayOrder,
   placeMyDaySalesRecovery,
   recoveryAgendaKindLabels,
   recoveryAgendaOriginLabels,
@@ -74,6 +75,8 @@ export interface MyDayEntry {
   tier: MyDayTier;
   bucket: MyDayBucket;
   dueAt: Date | null;
+  /** Cuándo se hizo la venta, si el elemento viene de una (BR-018). */
+  saleAt: Date | null;
   /** «venció hace 25 min», «en 40 min», «a las 15:00». */
   dueLabel: string | null;
   overdue: boolean;
@@ -106,8 +109,6 @@ export interface MyDayProgress {
     nextTarget: number | null;
     missingForNextTarget: number;
     nextTargetAmountCents: number;
-    quotaTarget: number;
-    quotaAssigned: boolean;
     /**
      * Del 16 al 24 no hay ventana abierta y se habla de la última que cerró
      * (SPEC-038 BR-015): ya no suma ventas nuevas, solo confirmaciones de
@@ -117,6 +118,12 @@ export interface MyDayProgress {
     /** La siguiente ventana del mes, si falta abrir alguna. */
     upcoming: { label: string; startDay: number } | null;
   } | null;
+  /**
+   * La cuota es del mes completo (decisión de José del 24/09/2026, BR-019) y
+   * se mide en portabilidades entregadas del mes. `target` es `null` si no
+   * tiene cuota asignada.
+   */
+  quota: { target: number | null; delivered: number };
   policy: PerformanceCommissionPolicy;
 }
 
@@ -124,6 +131,8 @@ export interface MyDayData {
   generatedAt: Date;
   now: MyDayEntry[];
   later: MyDayEntry[];
+  /** BR-018: ventas de hace más de 7 días; oportunidad sin urgencia. */
+  cold: MyDayEntry[];
   campaign: { total: number; shown: number };
   progress: MyDayProgress;
 }
@@ -170,6 +179,7 @@ async function readCommitments(
         key: `cita:${row.id}`,
         kind: "cita" as const,
         ...placement,
+        saleAt: null,
         dueLabel: describeMyDayDue(row.scheduledAt, now),
         overdue: placement.tier === "cita_vencida",
         rank: index,
@@ -198,12 +208,15 @@ async function readSalesRecovery(
       // BR-001: con cita, el caso aparece como cita.
       commitments: { none: { status: "PENDING" } },
     },
-    orderBy: [{ nextActionAt: { sort: "asc", nulls: "first" } }],
+    // Lo más reciente primero: con muchos casos antiguos, el techo no puede
+    // dejar fuera a los clientes calientes (BR-018).
+    orderBy: { lastSightingAt: "desc" },
     take: salesRecoveryLimit,
     select: {
       id: true,
       holderName: true,
       status: true,
+      sourceDitoOrder: { select: { registeredAt: true } },
       firstContactAt: true,
       nextActionAt: true,
       lastSightingAt: true,
@@ -228,9 +241,11 @@ async function readSalesRecovery(
       noveltyAt: row.lastSightingAt,
     };
     const due = classifyInternalRecoveryDue(input, now);
+    const saleAt = row.sourceDitoOrder?.registeredAt ?? row.lastSightingAt;
     const placement = placeMyDaySalesRecovery(
       {
         status,
+        saleAt,
         firstContactAt: row.firstContactAt,
         nextActionAt: row.nextActionAt,
         firstActionAt: getInternalRecoveryFirstActionAt(row.lastSightingAt),
@@ -255,12 +270,17 @@ async function readSalesRecovery(
         key: `venta:${row.id}`,
         kind: "venta_caida" as const,
         ...placement,
-        dueLabel: placement.dueAt ? describeMyDayDue(placement.dueAt, now) : null,
-        overdue: due !== null,
+        saleAt,
+        // Lo frío no se pinta en rojo ni cuenta minutos: no debe hacer ruido.
+        dueLabel:
+          placement.bucket !== "frio" && placement.dueAt
+            ? describeMyDayDue(placement.dueAt, now)
+            : null,
+        overdue: placement.bucket !== "frio" && due !== null,
         rank: index,
         title: row.holderName,
         action: stage.label,
-        detail: stage.detail,
+        detail: `Venta del ${formatMyDaySaleDay(saleAt)} · ${stage.detail}`,
         href: `/recovery/sales/${row.id}`,
         actionLabel: "Abrir caso",
       },
@@ -349,6 +369,7 @@ async function readCampaign(
     tier: "campana" as const,
     bucket: "ahora" as const,
     dueAt: null,
+    saleAt: null,
     dueLabel: item.at && item.overdue ? describeMyDayDue(item.at, now) : null,
     overdue: item.overdue,
     rank: index,
@@ -433,18 +454,20 @@ async function readOrders(
       dueAt = row.deliveryDueAt;
     }
 
+    const placement = placeMyDayOrder(row.registeredAt, dueAt, now);
+    const hot = placement.bucket !== "frio";
+
     return {
       key: `pedido:${row.id}`,
       kind: "pedido" as const,
-      tier: "pedido" as const,
-      bucket: "ahora" as const,
-      dueAt,
-      dueLabel: dueAt ? describeMyDayDue(dueAt, now) : null,
-      overdue: true,
+      ...placement,
+      saleAt: row.registeredAt,
+      dueLabel: hot && dueAt ? describeMyDayDue(dueAt, now) : null,
+      overdue: hot,
       rank: index,
       title: row.holderFullNameRaw,
       action,
-      detail: `Pedido ${row.orderCodeRaw}`,
+      detail: `Venta del ${formatMyDaySaleDay(row.registeredAt)} · pedido ${row.orderCodeRaw}`,
       href: buildOrderHref(row.orderCodeRaw, getLimaIsoDate(row.registeredAt)),
       actionLabel: "Ver pedido",
     };
@@ -493,18 +516,18 @@ async function readProgress(
         createdAt: { gte: today.start ?? month.start },
       },
     }),
-    relevantWindow
-      ? database.performanceQuota.findFirst({
-          where: {
-            organizationId,
-            periodKey: month.key,
-            window: relevantWindow.key,
-            userId,
-          },
-          select: { target: true },
-        })
-      : Promise.resolve(null),
+    // BR-019: la cuota del mes. Hasta que Cuotas la guarde como mensual
+    // (SPEC-064), vive en la fila de una ventana: la pantalla de Cuotas abre
+    // en la ventana vigente, así que a inicios de mes se carga en la primera.
+    database.performanceQuota.findMany({
+      where: { organizationId, periodKey: month.key, userId },
+      select: { window: true, target: true },
+    }),
   ]);
+  const monthlyQuota =
+    quota.find((row) => row.window === "ONE") ??
+    quota.find((row) => row.window === "TWO") ??
+    null;
 
   const metrics = calculatePerformanceMetrics(orders.map(toMetricInput));
   const window = relevantWindow
@@ -534,8 +557,6 @@ async function readProgress(
             nextTarget: window.nextTarget,
             missingForNextTarget: window.missingForNextTarget,
             nextTargetAmountCents: window.nextTargetAmountCents,
-            quotaTarget: quota?.target ?? getDefaultQuotaTarget(relevantWindow.key),
-            quotaAssigned: quota !== null,
             closed: windowClosed,
             upcoming:
               getPerformanceCommissionPolicy(month.key)
@@ -548,6 +569,10 @@ async function readProgress(
                 }))[0] ?? null,
           }
         : null,
+    quota: {
+      target: monthlyQuota?.target ?? null,
+      delivered: metrics.deliveredPortability,
+    },
     policy: getPerformanceCommissionPolicy(month.key),
   };
 }
@@ -577,6 +602,12 @@ export async function getMyDay(
       .sort(
         (left, right) =>
           (left.dueAt?.getTime() ?? 0) - (right.dueAt?.getTime() ?? 0),
+      ),
+    cold: sorted
+      .filter((entry) => entry.bucket === "frio")
+      .sort(
+        (left, right) =>
+          (right.saleAt?.getTime() ?? 0) - (left.saleAt?.getTime() ?? 0),
       ),
     campaign: { total: campaign.total, shown: campaign.entries.length },
     progress,

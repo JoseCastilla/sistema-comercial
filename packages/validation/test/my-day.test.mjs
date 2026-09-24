@@ -4,7 +4,10 @@ import test from "node:test";
 import {
   compareMyDayItems,
   describeMyDayDue,
+  formatMyDaySaleDay,
+  isMyDayHotSale,
   placeMyDayCommitment,
+  placeMyDayOrder,
   placeMyDaySalesRecovery,
 } from "../dist/my-day.js";
 
@@ -49,6 +52,7 @@ test("el día se corta en Lima: las 23:30 de Lima son hoy aunque en UTC sea mañ
 
 const recupero = (overrides = {}) => ({
   status: "ASSIGNED",
+  saleAt: lima("2026-09-23T15:00:00"),
   firstContactAt: null,
   nextActionAt: null,
   firstActionAt: lima("2026-09-24T12:00:00"),
@@ -151,4 +155,43 @@ test("el plazo en palabras del asesor", () => {
     describeMyDayDue(lima("2026-09-25T09:30:00"), ahora),
     "el 25/09 a las 09:30",
   );
+});
+
+test("BR-018: caliente es la venta de hoy o de los 6 días anteriores, en fecha de Lima", () => {
+  assert.equal(isMyDayHotSale(lima("2026-09-24T09:00:00"), ahora), true);
+  assert.equal(isMyDayHotSale(lima("2026-09-18T00:05:00"), ahora), true);
+  assert.equal(isMyDayHotSale(lima("2026-09-17T23:55:00"), ahora), false);
+  assert.equal(isMyDayHotSale(lima("2026-08-20T10:00:00"), ahora), false);
+});
+
+test("BR-018: la venta caída fría no compite con la caliente", () => {
+  assert.deepEqual(
+    placeMyDaySalesRecovery(recupero({ saleAt: lima("2026-08-20T10:00:00") }), ahora),
+    {
+      tier: "venta_en_riesgo",
+      bucket: "frio",
+      dueAt: lima("2026-09-24T12:00:00"),
+    },
+  );
+});
+
+test("BR-018: el pedido con incidencia de una venta antigua también es frío", () => {
+  assert.equal(placeMyDayOrder(lima("2026-09-22T10:00:00"), null, ahora).bucket, "ahora");
+  assert.equal(placeMyDayOrder(lima("2026-08-12T10:00:00"), null, ahora).bucket, "frio");
+});
+
+test("BR-018: entre ventas caídas, la más reciente primero", () => {
+  const items = [
+    { id: "hace-5-dias", tier: "venta_en_riesgo", dueAt: lima("2026-09-19T12:00:00"), rank: 0 },
+    { id: "hoy", tier: "venta_en_riesgo", dueAt: lima("2026-09-24T12:00:00"), rank: 1 },
+    { id: "ayer", tier: "venta_en_riesgo", dueAt: lima("2026-09-23T17:00:00"), rank: 2 },
+  ];
+  assert.deepEqual(
+    [...items].sort(compareMyDayItems).map((item) => item.id),
+    ["hoy", "ayer", "hace-5-dias"],
+  );
+});
+
+test("la fecha de la venta se escribe con día y mes de Lima", () => {
+  assert.equal(formatMyDaySaleDay(lima("2026-08-05T23:30:00")), "05/08");
 });

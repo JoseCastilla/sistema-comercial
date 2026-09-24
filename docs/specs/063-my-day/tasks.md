@@ -29,6 +29,15 @@ Una casilla se marca solo con evidencia en `verification.md`.
       para el mismo asesor (24/09/2026).
 - [x] Lectura en producción con la cuenta de asesor tras el despliegue.
 
+## Fase 1.1 — Clientes calientes y cuota del mes (24/09/2026)
+
+- [x] BR-018: ventas de los últimos 7 días en «Ahora», la más reciente
+      primero; las más antiguas plegadas en «Ventas antiguas por recuperar»,
+      sin rojo ni plazos. 16 pruebas de la regla.
+- [x] BR-019: tarjeta «Cuota de setiembre» con las portabilidades
+      entregadas del mes frente a la cuota asignada.
+- [ ] Lectura en producción con la cuenta de asesor.
+
 ## Fase 2 — Actuar sin salir
 
 - [ ] Tipificar recupero y campaña desde la fila de «Mi día».

@@ -83,6 +83,26 @@ export default async function MyDayPage() {
           </ol>
         </details>
       ) : null}
+
+      {data.cold.length > 0 ? (
+        <details className="rounded-lg border border-ui-border bg-ui-surface">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ui-text">
+            Ventas antiguas por recuperar{" "}
+            <span className="font-medium text-ui-soft">{data.cold.length}</span>
+            <span className="mt-0.5 block text-xs font-normal text-ui-muted">
+              Clientes de ventas de hace más de 7 días. Siguen siendo una
+              oportunidad, pero lo caliente va primero.
+            </span>
+          </summary>
+          <ol className="grid gap-2 px-4 pb-4">
+            {data.cold.map((entry) => (
+              <li key={entry.key}>
+                <MyDayRow entry={entry} />
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
     </div>
   );
 }
