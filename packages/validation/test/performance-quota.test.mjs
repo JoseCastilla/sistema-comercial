@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getDefaultMonthlyQuotaTarget,
+  monthlyQuotaWindow,
   getDefaultQuotaTarget,
   getQuotaPlanningLimit,
   isQuotaPeriodEditable,
@@ -87,4 +89,9 @@ test("el selector de cuotas admite meses futuros, a diferencia del dashboard", (
 
 test("el horizonte de planificacion son doce meses", () => {
   assert.equal(getQuotaPlanningLimit(new Date("2026-08-31T15:00:00.000Z")), "2027-08");
+});
+
+test("SPEC-064: la cuota mensual por defecto cobra los dos bonos (30 + 15)", () => {
+  assert.equal(getDefaultMonthlyQuotaTarget(), 45);
+  assert.equal(monthlyQuotaWindow, "MONTH");
 });

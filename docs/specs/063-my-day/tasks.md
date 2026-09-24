@@ -48,7 +48,7 @@ Una casilla se marca solo con evidencia en `verification.md`.
 - [x] Corregido el borrador compartido: tras guardar, «Guardar y siguiente»
       dejaba el cambio en espera en vez de abrir el siguiente caso (también
       en la cola de Campañas, SPEC-049 BR-016).
-- [ ] Recorrido en producción con la cuenta de asesor (sin guardar).
+- [x] Recorrido en producción con la cuenta de asesor (sin guardar), 24/09/2026.
 
 ## Fase 3 — Avisos
 

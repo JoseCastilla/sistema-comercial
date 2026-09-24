@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { isQuotaPeriodEditable, parseQuotaPeriod } from "@repo/validation";
+import {
+  isQuotaPeriodEditable,
+  monthlyQuotaWindow,
+  parseQuotaPeriod,
+} from "@repo/validation";
 
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
@@ -14,7 +18,8 @@ export interface QuotaActionState {
 }
 
 /**
- * Asignación de cuota — SPEC-038 BR-009 a BR-011.
+ * Asignación de cuota — SPEC-038 BR-009 a BR-011, mensual desde SPEC-064:
+ * la cuota es del mes completo y ya no se elige ventana.
  *
  * `ADMIN` y `BACKOFFICE` fijan la cuota del equipo; `SUPERVISOR` la reparte
  * entre los asesores de sus equipos. Un período terminado no se toca.
@@ -34,7 +39,6 @@ export async function assignPerformanceQuotaAction(
 
   const scope = String(formData.get("scope") ?? "").trim();
   const targetId = String(formData.get("targetId") ?? "").trim();
-  const windowRaw = String(formData.get("window") ?? "").trim();
   const periodKey = String(formData.get("period") ?? "").trim();
   const rawTarget = Number(formData.get("target"));
 
@@ -44,9 +48,6 @@ export async function assignPerformanceQuotaAction(
   if (scope !== "ORG" && !targetId) {
     return { type: "error", message: "Falta elegir al asesor o equipo." };
   }
-  if (windowRaw !== "ONE" && windowRaw !== "TWO") {
-    return { type: "error", message: "Elige el tramo de días." };
-  }
   // BR-009b: la cuota de la organización es el ancla de todo el reparto y la
   // fija administración.
   if (scope === "ORG" && membership.role !== "ADMIN") {
@@ -55,7 +56,7 @@ export async function assignPerformanceQuotaAction(
       message: "Solo administración fija la cuota de la organización.",
     };
   }
-  const windowKey: "ONE" | "TWO" = windowRaw;
+  const windowKey = monthlyQuotaWindow;
   if (!Number.isSafeInteger(rawTarget) || rawTarget < 0 || rawTarget > 9_999) {
     return {
       type: "error",

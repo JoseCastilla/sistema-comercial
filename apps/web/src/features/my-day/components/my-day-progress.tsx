@@ -51,11 +51,7 @@ export function MyDayProgressPanel({ progress }: { progress: MyDayProgress }) {
         ) : null}
         <Figure
           label={`Cuota de ${progress.monthLabel.split(" ")[0]}`}
-          value={
-            progress.quota.target === null
-              ? plural(progress.quota.delivered, "entregada", "entregadas")
-              : `${formatCount(progress.quota.delivered)} de ${formatCount(progress.quota.target)}`
-          }
+          value={`${formatCount(progress.quota.delivered)} de ${formatCount(progress.quota.target)}`}
           note={describeQuotaNote(progress.quota)}
         />
       </dl>
@@ -81,13 +77,15 @@ export function MyDayProgressPanel({ progress }: { progress: MyDayProgress }) {
 
 /** BR-019: la cuota es del mes y se mide en portabilidades entregadas. */
 function describeQuotaNote(quota: MyDayProgress["quota"]): string {
-  if (quota.target === null) {
-    return "Portabilidades entregadas del mes · sin cuota asignada";
-  }
   const missing = quota.target - quota.delivered;
-  return missing > 0
-    ? `Portabilidades entregadas del mes · te ${missing === 1 ? "falta" : "faltan"} ${formatCount(missing)}`
-    : "Portabilidades entregadas del mes · cuota cumplida";
+  const progress =
+    missing > 0
+      ? `te ${missing === 1 ? "falta" : "faltan"} ${formatCount(missing)}`
+      : "cuota cumplida";
+  // Sin cuota del líder, la del mes por defecto: la que cobra los dos bonos.
+  return quota.assigned
+    ? `Portabilidades entregadas del mes · ${progress}`
+    : `Cuota por defecto · ${progress}`;
 }
 
 function describeWindowNote(

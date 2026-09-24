@@ -69,6 +69,24 @@ export function getDefaultQuotaTarget(
 }
 
 /**
+ * SPEC-064: la cuota es del mes completo y se guarda con esta ventana. `ONE`
+ * y `TWO` quedan como historia de cuando se asignaba por ventana de bono.
+ */
+export const monthlyQuotaWindow = "MONTH" as const;
+
+/**
+ * SPEC-064 BR-005: sin cuota asignada, la del mes es el mínimo que cobra los
+ * dos bonos —la suma del primer tramo de cada ventana—, en el mismo espíritu
+ * de SPEC-038 BR-008: el objetivo por defecto ya significa dinero.
+ */
+export function getDefaultMonthlyQuotaTarget(): number {
+  return windows().reduce(
+    (total, window) => total + (window.tiers[0]?.target ?? 0),
+    0,
+  );
+}
+
+/**
  * BR-009: repartir de menos advierte pero no bloquea, porque ante ausencias
  * puede ser una decisión consciente del supervisor.
  */

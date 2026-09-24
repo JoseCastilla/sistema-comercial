@@ -25,7 +25,6 @@ export default async function PerformanceQuotasPage({
     { userId: session.user.id, role: membership.role },
     {
       period: firstValue(parameters.period),
-      window: firstValue(parameters.window),
     },
   );
 

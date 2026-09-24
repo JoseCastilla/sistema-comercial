@@ -161,14 +161,15 @@ export interface PerformanceDashboardData {
     metrics: PerformanceMetrics;
     enteredDelta: number | null;
   } | null;
-  quotaWindow: {
-    key: "ONE" | "TWO";
+  /**
+   * SPEC-064: la cuota es del mes completo. `isActive` si el mes que se mira
+   * es el actual; `endDay`, cuántos días tiene, para decir la cohorte.
+   */
+  quotaPeriod: {
     label: string;
     isActive: boolean;
-    /** Días del mes que abarca la ventana, para decir la cohorte sin rodeos. */
-    startDay: number;
     endDay: number;
-  } | null;
+  };
   /** Orden del desglose (`orden=`), SPEC-044 REN-04. */
   sort: BreakdownSortKey;
   /** Filtro de gestión (`gestion=`), SPEC-044 REN-05. */

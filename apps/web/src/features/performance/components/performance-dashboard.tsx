@@ -748,17 +748,15 @@ function SalesOperationMix({ data }: { data: PerformanceDashboardData }) {
 }
 
 /**
- * Cohorte de la cuota dicha con fechas, no con el nombre del bono: «del 1 al
- * 15 de septiembre de 2026». Fuera de ventana activa se habla de la última
- * que cerró (SPEC-038 BR-015) y se dice.
+ * Cohorte de la cuota dicha con fechas: la cuota es del mes completo
+ * (SPEC-064 BR-001), así que cuentan las ventas del 1 al último día del mes.
  */
 function quotaCohortLabel(data: PerformanceDashboardData): string {
-  const window = data.quotaWindow;
-  if (!window) return "";
-  const range = `del ${window.startDay} al ${window.endDay} de ${data.monthLabel}`;
-  return window.isActive
-    ? `Portabilidades entregadas registradas ${range}. Tramo en curso.`
-    : `Portabilidades entregadas registradas ${range}. Tramo cerrado: es la última ventana con datos.`;
+  const period = data.quotaPeriod;
+  const range = `del 1 al ${period.endDay} de ${data.monthLabel}`;
+  return period.isActive
+    ? `Portabilidades entregadas de las ventas registradas ${range}. Mes en curso.`
+    : `Portabilidades entregadas de las ventas registradas ${range}. Mes cerrado.`;
 }
 
 function QuotaCell({
@@ -786,8 +784,8 @@ function QuotaCell({
       data-quota-reached={quota.reached ? "true" : undefined}
       title={
         nextTier
-          ? `${quota.confirmed} entregadas y cerradas (pagan el bono). Faltan ${nextTier}.`
-          : `${quota.confirmed} entregadas y cerradas (pagan el bono).`
+          ? `${quota.confirmed} entregadas y cerradas (ya pagan comisión). Faltan ${nextTier}.`
+          : `${quota.confirmed} entregadas y cerradas (ya pagan comisión).`
       }
     >
       <strong>
@@ -863,10 +861,10 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
             ) : null}
           </p>
         </div>
-        {data.role !== "AGENT" && data.quotaWindow ? (
+        {data.role !== "AGENT" ? (
           <Link
             className="performance-commission__review"
-            href={quotasHref(data, data.quotaWindow.key)}
+            href={quotasHref(data)}
           >
             Asignar cuotas
           </Link>
@@ -895,11 +893,9 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
               <th title="Casos abiertos en Recupero de ventas; abre la bandeja">
                 Casos
               </th>
-              {data.quotaWindow ? (
-                <th title={quotaCohortLabel(data)}>
-                  Cuota{data.quotaWindow.isActive ? "" : " (cerrada)"}
-                </th>
-              ) : null}
+              <th title={quotaCohortLabel(data)}>
+                Cuota del mes{data.quotaPeriod.isActive ? "" : " (cerrado)"}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -1008,9 +1004,7 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
                       value={team.openRecoveryCases}
                     />
                   </td>
-                  {data.quotaWindow ? (
-                    <QuotaCell individual={false} quota={team.quota} />
-                  ) : null}
+                  <QuotaCell individual={false} quota={team.quota} />
                 </tr>
               );
             })}
@@ -1031,7 +1025,7 @@ function TeamSummaryPanel({ data }: { data: PerformanceDashboardData }) {
               <td>{totals.pending}</td>
               <td>{totals.recovery}</td>
               <td>{totals.cases}</td>
-              {data.quotaWindow ? <td>—</td> : null}
+              <td>—</td>
             </tr>
           </tfoot>
         </table>
@@ -1070,9 +1064,7 @@ function ManagementBar({
         </Link>
         {managementFilterOptions
           .filter(
-            (option) =>
-              (!option.requiresQuota || data.quotaWindow) &&
-              (!option.requiresCurrentMonth || data.isCurrentMonth),
+            (option) => !option.requiresCurrentMonth || data.isCurrentMonth,
           )
           .map((option) => (
             <Link
@@ -1087,21 +1079,15 @@ function ManagementBar({
       </div>
       <div className="performance-management__row">
         <span>Ordenar por</span>
-        {breakdownSortOptions
-          .filter(
-            (option) =>
-              (option.key !== "CUOTA" && option.key !== "BONO") ||
-              data.quotaWindow,
-          )
-          .map((option) => (
-            <Link
-              aria-current={data.sort === option.key ? "true" : undefined}
-              href={sortHref(data, option.key)}
-              key={option.key}
-            >
-              {option.label}
-            </Link>
-          ))}
+        {breakdownSortOptions.map((option) => (
+          <Link
+            aria-current={data.sort === option.key ? "true" : undefined}
+            href={sortHref(data, option.key)}
+            key={option.key}
+          >
+            {option.label}
+          </Link>
+        ))}
       </div>
       <div className="performance-management__row">
         <span>Columnas</span>
@@ -1171,7 +1157,7 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
   const full = data.columns === "TODAS";
   const columns =
     (full ? 9 + (data.isCurrentMonth ? 1 : 0) : 4) +
-    (data.quotaWindow ? 1 : 0) +
+    1 +
     (showsEstimate ? 1 : 0);
   const elapsedDays = data.monthProgress.days.filter(
     (day) => !day.isFuture,
@@ -1186,7 +1172,7 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
           <p>
             Cuánto entrega, cuánto llega a comisión y cuánto tiene pendiente
             cada asesor. Cohorte por fecha de ingreso.
-            {data.quotaWindow ? ` Cuota: ${quotaCohortLabel(data)}` : ""}
+            {` Cuota: ${quotaCohortLabel(data)}`}
           </p>
         </div>
         <span>
@@ -1234,11 +1220,9 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                   <th>Tasa de entrega</th>
                 </>
               ) : null}
-              {data.quotaWindow ? (
-                <th title={quotaCohortLabel(data)}>
-                  Cuota{data.quotaWindow.isActive ? "" : " (cerrada)"}
-                </th>
-              ) : null}
+              <th title={quotaCohortLabel(data)}>
+                Cuota del mes{data.quotaPeriod.isActive ? "" : " (cerrado)"}
+              </th>
               <th>Pagables</th>
               {full ? (
                 <>
@@ -1314,9 +1298,7 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                     <td>{percentage(item.metrics.deliveryRate)}</td>
                   </>
                 ) : null}
-                {data.quotaWindow ? (
-                  <QuotaCell individual quota={item.quota} />
-                ) : null}
+                <QuotaCell individual quota={item.quota} />
                 <td>{item.metrics.payable}</td>
                 {full ? (
                   <>
@@ -1392,7 +1374,7 @@ function AdvisorBreakdown({ data }: { data: PerformanceDashboardData }) {
                     </td>
                   </>
                 ) : null}
-                {data.quotaWindow ? <td>—</td> : null}
+                <td>—</td>
                 <td>{data.unattributed.metrics.payable}</td>
                 {full ? (
                   <>
@@ -1481,7 +1463,6 @@ function PendingCell({
  */
 function PersonalQuotaPanel({ data }: { data: PerformanceDashboardData }) {
   const quota = data.personalQuota;
-  const window = data.quotaWindow;
 
   return (
     <section
@@ -1491,22 +1472,14 @@ function PersonalQuotaPanel({ data }: { data: PerformanceDashboardData }) {
       <header className="performance-panel__header">
         <div>
           <p className="performance-panel__eyebrow">Tu objetivo</p>
-          <h2 id="personal-quota-title">
-            {window
-              ? `Cuota del tramo · ${window.label.replace(/^Bono /, "")}`
-              : "Cuota del tramo"}
-          </h2>
-          <p>
-            {window
-              ? quotaCohortLabel(data)
-              : "Este mes no tiene un tramo de cuota sobre el que hablar."}
-          </p>
+          <h2 id="personal-quota-title">Cuota de {data.quotaPeriod.label}</h2>
+          <p>{quotaCohortLabel(data)}</p>
         </div>
         <span className="performance-panel__note">
-          La fija tu supervisor · solo lectura
+          La fija tu líder de equipo · solo lectura
         </span>
       </header>
-      {quota && window ? (
+      {quota ? (
         <div className="performance-commission__details">
           <div data-quota-reached={quota.reached ? "true" : undefined}>
             <span>Portabilidades entregadas</span>
@@ -1527,20 +1500,20 @@ function PersonalQuotaPanel({ data }: { data: PerformanceDashboardData }) {
             <span>Cuentan para la cuota</span>
             <strong>Portabilidades entregadas</strong>
             <small>
-              Registradas del {window.startDay} al {window.endDay}. Las altas
-              nuevas no cuentan.
+              De las ventas registradas del 1 al {data.quotaPeriod.endDay}. Las
+              altas nuevas no cuentan.
             </small>
           </div>
           <div>
-            <span>Bono del tramo (otra cosa)</span>
+            <span>Ya pagan comisión</span>
             <strong>
               {quota.confirmed}{" "}
               {quota.confirmed === 1 ? "confirmada" : "confirmadas"}
             </strong>
             <small>
-              El bono mide entregadas y cerradas
+              Entregadas y cerradas del mes
               {quota.nextTarget !== null && quota.missingForNextTarget > 0
-                ? `: faltan ${quota.missingForNextTarget} para el tramo de ${quota.nextTarget}`
+                ? `. Para el bono de la ventana faltan ${quota.missingForNextTarget}`
                 : ""}
               .
             </small>
@@ -1793,8 +1766,7 @@ function DeliveryTrendPanel({ data }: { data: PerformanceDashboardData }) {
  * vista personal, la barra es la suya.
  */
 function CompliancePanel({ data }: { data: PerformanceDashboardData }) {
-  const window = data.quotaWindow;
-  if (!window) return null;
+  const period = data.quotaPeriod;
 
   const teamRows = data.teams
     .filter(
@@ -1830,9 +1802,7 @@ function CompliancePanel({ data }: { data: PerformanceDashboardData }) {
       <header className="performance-panel__header">
         <div>
           <p className="performance-panel__eyebrow">Cumplimiento</p>
-          <h2 id="compliance-title">
-            Cuota {window.isActive ? "en curso" : "del último tramo"}
-          </h2>
+          <h2 id="compliance-title">Cuota de {period.label}</h2>
           <p>{quotaCohortLabel(data)}</p>
         </div>
       </header>
@@ -1927,8 +1897,8 @@ function ResultLinks({ data }: { data: PerformanceDashboardData }) {
   return (
     <nav aria-label="Accesos al detalle" className="performance-result-links">
       <Link href={ordersHref(data, "DELIVERED")}>Entregadas en Pedidos</Link>
-      {data.role !== "AGENT" && data.view !== "SELF" && data.quotaWindow ? (
-        <Link href={quotasHref(data, data.quotaWindow.key)}>Cuotas</Link>
+      {data.role !== "AGENT" && data.view !== "SELF" ? (
+        <Link href={quotasHref(data)}>Cuotas</Link>
       ) : null}
       {data.showCommission ? (
         <Link href={reconciliationHref(data, "ALL")}>Conciliación</Link>
@@ -2139,15 +2109,15 @@ export function PerformanceDashboard({
           label="Portabilidades pagables"
           value={data.metrics.payable}
         />
-        {data.scopeQuota && data.quotaWindow ? (
+        {data.scopeQuota ? (
           <Metric
             hint={scopeQuotaHint(data)}
             href={
               data.role !== "AGENT" && data.view !== "SELF"
-                ? quotasHref(data, data.quotaWindow.key)
+                ? quotasHref(data)
                 : undefined
             }
-            label={`Cuota del tramo${data.quotaWindow.isActive ? "" : " (cerrada)"}`}
+            label={`Cuota del mes${data.quotaPeriod.isActive ? "" : " (cerrado)"}`}
             tone={data.scopeQuota.reached ? "success" : "neutral"}
             value={`${data.scopeQuota.delivered}/${data.scopeQuota.target}`}
           />
@@ -2279,7 +2249,7 @@ export function PerformanceDashboard({
               {data.role !== "AGENT" && data.view !== "SELF" ? (
                 <Link
                   className="performance-commission__review"
-                  href={quotasHref(data, data.quotaWindow?.key)}
+                  href={quotasHref(data)}
                 >
                   Asignar cuotas
                 </Link>

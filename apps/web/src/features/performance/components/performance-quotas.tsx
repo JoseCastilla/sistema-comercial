@@ -13,18 +13,16 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
   return (
     <div className="ui-page-stack">
       <PageHeader
-        description="La cuota se mide en portabilidades entregadas en el tramo de días. No paga por sí misma: lo que paga son la comisión fija y los bonos."
+        description="La cuota es del mes completo y se mide en portabilidades entregadas de las ventas del mes. Administración la reparte entre los equipos y cada líder entre sus asesores. No paga por sí misma: lo que paga son la comisión fija y los bonos."
         eyebrow="Rendimiento"
         meta={<Link href="/performance">← Volver a rendimiento</Link>}
-        title="Cuotas por tramo de días"
+        title="Cuotas del mes"
       />
 
       <section className="performance-controls ui-surface">
         <div>
-          <p className="performance-controls__eyebrow">Mes y tramo de días</p>
-          <p className="performance-controls__month">
-            {data.periodLabel} · {data.windowLabel}
-          </p>
+          <p className="performance-controls__eyebrow">Mes</p>
+          <p className="performance-controls__month">{data.periodLabel}</p>
         </div>
         <Form action="/performance/quotas" className="performance-filter">
           <label>
@@ -36,16 +34,6 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
               name="period"
               type="month"
             />
-          </label>
-          <label>
-            <span>Tramo de días</span>
-            <select defaultValue={data.window} name="window">
-              {data.windowOptions.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
           </label>
           <button type="submit">Aplicar</button>
         </Form>
@@ -72,8 +60,8 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
               <h2>Objetivo de tus equipos</h2>
               <p>
                 {data.organization.teamCount === 1
-                  ? `La cuota de tu equipo para el tramo es ${data.organization.target}. La fija administración; tú la repartes entre tus asesores.`
-                  : `Tus ${data.organization.teamCount} equipos suman ${data.organization.target} para el tramo. Las cuotas de equipo las fija administración; tú las repartes entre tus asesores.`}
+                  ? `La cuota de tu equipo para el mes es ${data.organization.target}. La fija administración; tú la repartes entre tus asesores.`
+                  : `Tus ${data.organization.teamCount} equipos suman ${data.organization.target} para el mes. Las cuotas de equipo las fija administración; tú las repartes entre tus asesores.`}
                 {data.organization.explicitTarget !== null
                   ? ` La cuota de toda la organización es ${data.organization.explicitTarget}; no se compara con tu reparto porque tu alcance es parcial.`
                   : " No es la cuota de la organización."}
@@ -116,7 +104,6 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
                 period={data.periodKey}
                 scope="ORG"
                 target={data.organization.target}
-                window={data.window}
               />
             </div>
           </header>
@@ -137,7 +124,7 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
               <p data-tone={describeQuotaDistribution(team.distribution).tone}>
                 {describeQuotaDistribution(team.distribution).text}
                 {team.isDefault
-                  ? ` Cuota de equipo por defecto: ${team.advisors.length} ${team.advisors.length === 1 ? "vendedor" : "vendedores"} × tramo.`
+                  ? ` Cuota de equipo por defecto: ${team.advisors.length} ${team.advisors.length === 1 ? "vendedor" : "vendedores"} × cuota mensual por defecto.`
                   : ""}
               </p>
             </div>
@@ -150,7 +137,6 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
                 scope="TEAM"
                 target={team.target}
                 targetId={team.id}
-                window={data.window}
               />
             </div>
           </header>
@@ -160,7 +146,7 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
               <thead>
                 <tr>
                   <th>Asesor</th>
-                  <th>Cuota del tramo</th>
+                  <th>Cuota del mes</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,8 +168,7 @@ export function PerformanceQuotas({ data }: { data: PerformanceQuotasData }) {
                         scope="USER"
                         target={advisor.target}
                         targetId={advisor.id}
-                        window={data.window}
-                      />
+                              />
                       {data.canAssignAdvisors && !advisor.canAssign ? (
                         <small className="text-xs text-ui-muted">
                           Es tu propia cuota: la fija administración.

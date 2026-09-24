@@ -1,6 +1,9 @@
+/// SPEC-064: la cuota es del mes completo (`MONTH`). `ONE` y `TWO` quedan
+/// como historia de cuando se asignaba por ventana de bono (SPEC-038).
 enum PerformanceQuotaWindow {
   ONE
   TWO
+  MONTH
 }
 
 /// Cuota de portabilidades entregadas por período y ventana (SPEC-038).

@@ -1,6 +1,6 @@
 # SPEC-063 — Mi día: la bandeja de trabajo del asesor
 
-**Estado:** `EN_CURSO` — fases 0 y 1 en `main`; fases 2 a 5 pendientes; decisiones de §5 adoptadas como recomendación (24/09/2026)
+**Estado:** `EN_CURSO` — fases 0 a 2 en `main` y verificadas en producción; fases 3 a 5 pendientes; decisiones de §5 adoptadas como recomendación (24/09/2026)
 
 **Versión:** 1.0
 **Fecha:** 2026-09-24
@@ -123,7 +123,7 @@ llamadas.
   - el siguiente objetivo: cuántas confirmadas faltan para el siguiente
     bono y cuánto vale (`calculateAcceleratorWindow`: `missingForNextTarget`,
     `nextTargetAmountCents`);
-  - la cuota de la ventana vigente (`resolveRelevantAcceleratorWindow`).
+  - la cuota del mes (BR-019, SPEC-064).
 - **BR-010 — El cálculo se explica con las cifras de la política.** Un
   desplegable «Cómo se calcula» muestra la tarifa por tipo de venta, los
   bonos por ventana y qué hace pagable una venta, **leídos de la política
@@ -160,10 +160,9 @@ llamadas.
   de origen.
 - **BR-019 — La cuota es del mes.** La cuota del asesor es el objetivo del
   mes completo y se mide en portabilidades entregadas de las ventas del mes.
-  Los bonos siguen por ventana (SPEC-038 BR-001 a BR-006). Hasta que Cuotas
-  la guarde como mensual (SPEC-064), «Mi día» lee la cuota asignada al
-  asesor en el mes: la de la primera ventana si existe, si no la de la
-  segunda; sin cuota asignada, muestra solo las entregadas.
+  Los bonos siguen por ventana (SPEC-038 BR-001 a BR-006). Lee la cuota
+  mensual de SPEC-064, la misma que Cuotas y Rendimiento; sin cuota asignada,
+  la mensual por defecto, rotulada como tal.
 
 ### Construcción (MD-F05)
 

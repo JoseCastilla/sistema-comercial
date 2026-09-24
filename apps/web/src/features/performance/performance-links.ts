@@ -101,9 +101,9 @@ export function managementHref(
 }
 
 /** Página de cuotas del mismo mes y, si se conoce, del mismo tramo. */
-export function quotasHref(data: Scope, window?: "ONE" | "TWO"): string {
+/** SPEC-064: la cuota es del mes; basta el período. */
+export function quotasHref(data: Scope): string {
   const parameters = new URLSearchParams({ period: data.month });
-  if (window) parameters.set("window", window);
   return `/performance/quotas?${parameters.toString()}`;
 }
 

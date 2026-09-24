@@ -10,12 +10,14 @@ import {
   describeMyDayDue,
   effectiveAttemptResult,
   formatMyDaySaleDay,
+  getDefaultMonthlyQuotaTarget,
   getInternalRecoveryFirstActionAt,
   getLimaDayOfMonth,
   getLimaIsoDate,
   getOrderPeriodRange,
   getPerformanceCommissionPolicy,
   getPerformanceMonthRange,
+  monthlyQuotaWindow,
   parsePerformanceMonth,
   placeMyDayCommitment,
   placeMyDayOrder,
@@ -141,11 +143,11 @@ export interface MyDayProgress {
     upcoming: { label: string; startDay: number } | null;
   } | null;
   /**
-   * La cuota es del mes completo (decisión de José del 24/09/2026, BR-019) y
-   * se mide en portabilidades entregadas del mes. `target` es `null` si no
-   * tiene cuota asignada.
+   * La cuota es del mes completo (SPEC-064) y se mide en portabilidades
+   * entregadas de las ventas del mes. Sin cuota asignada, la mensual por
+   * defecto (`assigned: false`).
    */
-  quota: { target: number | null; delivered: number };
+  quota: { target: number; assigned: boolean; delivered: number };
   policy: PerformanceCommissionPolicy;
 }
 
@@ -590,18 +592,17 @@ async function readProgress(
         createdAt: { gte: today.start ?? month.start },
       },
     }),
-    // BR-019: la cuota del mes. Hasta que Cuotas la guarde como mensual
-    // (SPEC-064), vive en la fila de una ventana: la pantalla de Cuotas abre
-    // en la ventana vigente, así que a inicios de mes se carga en la primera.
-    database.performanceQuota.findMany({
-      where: { organizationId, periodKey: month.key, userId },
-      select: { window: true, target: true },
+    // BR-019: la cuota del mes, la misma que leen Cuotas y Rendimiento.
+    database.performanceQuota.findFirst({
+      where: {
+        organizationId,
+        periodKey: month.key,
+        window: monthlyQuotaWindow,
+        userId,
+      },
+      select: { target: true },
     }),
   ]);
-  const monthlyQuota =
-    quota.find((row) => row.window === "ONE") ??
-    quota.find((row) => row.window === "TWO") ??
-    null;
 
   const metrics = calculatePerformanceMetrics(orders.map(toMetricInput));
   const window = relevantWindow
@@ -644,7 +645,8 @@ async function readProgress(
           }
         : null,
     quota: {
-      target: monthlyQuota?.target ?? null,
+      target: quota?.target ?? getDefaultMonthlyQuotaTarget(),
+      assigned: quota !== null,
       delivered: metrics.deliveredPortability,
     },
     policy: getPerformanceCommissionPolicy(month.key),

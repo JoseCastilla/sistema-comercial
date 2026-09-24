@@ -7,15 +7,15 @@ import {
   evaluatePerformanceOrderPayment,
   filterOrdersRegisteredThroughLimaDay,
   formatAdvisorDisplayName,
-  getDefaultQuotaTarget,
+  getDefaultMonthlyQuotaTarget,
   getLimaDayOfMonth,
   getLimaIsoDate,
   getOrderPeriodRange,
   getPerformanceCommissionPolicy,
   getPotentialBaseCommissionCents,
   getPerformanceMonthRange,
+  monthlyQuotaWindow,
   parsePerformanceMonth,
-  resolveCurrentAcceleratorWindow,
   resolveRelevantAcceleratorWindow,
   shiftPerformanceMonth,
 } from "@repo/validation";
@@ -118,26 +118,28 @@ function pointsDelta(
 }
 
 /**
- * Avance de la ventana de cuota: entregadas frente al objetivo (la cuota,
- * SPEC-038 BR-007) y confirmadas (el acelerador, BR-003), con el siguiente
- * tramo cuando la lectura es individual. Un agregado no tiene «siguiente
- * tramo»: los bonos son por asesor.
+ * Avance de la cuota del mes (SPEC-064 BR-001): portabilidades entregadas de
+ * las ventas del mes frente al objetivo mensual, y las que además ya pagan
+ * (entregadas y cerradas). El siguiente tramo del bono sigue siendo de su
+ * ventana (SPEC-038) y solo se dice en la lectura individual: un agregado no
+ * tiene «siguiente tramo», los bonos son por asesor.
  */
 function buildQuotaProgress(
   metrics: PerformanceMetrics,
-  windowKey: "ONE" | "TWO" | null,
+  bonusWindowKey: "ONE" | "TWO" | null,
   target: number,
   individual: boolean,
   source: PerformanceQuotaProgress["source"],
-): PerformanceQuotaProgress | null {
-  if (!windowKey) return null;
-  const window = metrics.accelerators.find((item) => item.key === windowKey);
-  const delivered = window?.delivered ?? 0;
+): PerformanceQuotaProgress {
+  const window = bonusWindowKey
+    ? metrics.accelerators.find((item) => item.key === bonusWindowKey)
+    : undefined;
+  const delivered = metrics.deliveredPortability;
 
   return {
     target,
     delivered,
-    confirmed: window?.confirmed ?? 0,
+    confirmed: metrics.payable,
     missing: Math.max(0, target - delivered),
     reached: delivered >= target,
     nextTarget: individual ? (window?.nextTarget ?? null) : null,
@@ -211,7 +213,7 @@ interface TeamSummaryInput {
   membersByTeam: ReadonlyMap<string, number>;
   openRecoveryCasesByTeam: ReadonlyMap<string, number>;
   unassignedRecoveryCases: number;
-  quotaWindowKey: "ONE" | "TWO" | null;
+  bonusWindowKey: "ONE" | "TWO" | null;
   teamQuotaTargets: ReadonlyMap<string, number>;
   redact: boolean;
 }
@@ -259,13 +261,11 @@ function buildTeamSummaries(input: TeamSummaryInput): PerformanceTeamSummary[] {
       agentsWithOrders.has(id),
     ).length;
     const metrics = metricsOf(byTeam.get(team.id) ?? []);
-    // Sin cuota de equipo, el objetivo es el tramo por cada vendedor activo
-    // (SPEC-038 BR-008), la misma lectura que la página de cuotas.
+    // Sin cuota de equipo, el objetivo es la cuota mensual por defecto por
+    // cada vendedor activo (SPEC-064 BR-005), la misma lectura que Cuotas.
     const target =
       input.teamQuotaTargets.get(team.id) ??
-      (input.quotaWindowKey
-        ? getDefaultQuotaTarget(input.quotaWindowKey) * sellers.size
-        : 0);
+      getDefaultMonthlyQuotaTarget() * sellers.size;
 
     return {
       id: team.id,
@@ -280,7 +280,7 @@ function buildTeamSummaries(input: TeamSummaryInput): PerformanceTeamSummary[] {
       openRecoveryCases: input.openRecoveryCasesByTeam.get(team.id) ?? 0,
       quota: buildQuotaProgress(
         metrics,
-        input.quotaWindowKey,
+        input.bonusWindowKey,
         target,
         false,
         input.teamQuotaTargets.has(team.id) ? "ASSIGNED" : "DEFAULT",
@@ -340,7 +340,7 @@ function groupByAgent(
     { name: string; email: string; teamName: string }
   >,
   monthDayKeys: readonly string[],
-  quotaWindowKey: "ONE" | "TWO" | null,
+  bonusWindowKey: "ONE" | "TWO" | null,
   quotaTargets: ReadonlyMap<string, number>,
   openRecoveryCases: ReadonlyMap<string, number>,
 ) {
@@ -425,15 +425,13 @@ function groupByAgent(
         openRecoveryCases: openRecoveryCases.get(id) ?? 0,
         showCommission: showsIndividualCommission,
         dailyEntered: monthDayKeys.map((key) => dailyCounts.get(key) ?? 0),
-        // Avance de cuota de la ventana relevante: entregadas frente al
-        // objetivo, para detectar de un vistazo a quien está cerca sin
-        // llegar (SPEC-038 BR-014).
+        // Avance de la cuota del mes: entregadas frente al objetivo, para
+        // detectar de un vistazo a quien está cerca sin llegar (SPEC-038
+        // BR-014, mensual desde SPEC-064).
         quota: buildQuotaProgress(
           currentMetrics,
-          quotaWindowKey,
-          quotaWindowKey
-            ? (quotaTargets.get(id) ?? getDefaultQuotaTarget(quotaWindowKey))
-            : 0,
+          bonusWindowKey,
+          quotaTargets.get(id) ?? getDefaultMonthlyQuotaTarget(),
           true,
           quotaTargets.has(id) ? "ASSIGNED" : "DEFAULT",
         ),
@@ -1040,20 +1038,17 @@ export async function getPerformanceDashboard(
     (order) => order.agentUserId === null,
   ).length;
 
-  // Ventana sobre la que hablar hoy y las cuotas vigentes de sus asesores.
-  const currentWindow = resolveCurrentAcceleratorWindow(now);
+  // Ventana de bono sobre la que hablar hoy; la cuota es del mes (SPEC-064).
   const relevantWindow = resolveRelevantAcceleratorWindow(now);
-  const quotaRows = relevantWindow
-    ? await database.performanceQuota.findMany({
-        where: {
-          organizationId,
-          periodKey: currentRange.key,
-          window: relevantWindow.key,
-          OR: [{ userId: { not: null } }, { teamId: { not: null } }],
-        },
-        select: { userId: true, teamId: true, target: true },
-      })
-    : [];
+  const quotaRows = await database.performanceQuota.findMany({
+    where: {
+      organizationId,
+      periodKey: currentRange.key,
+      window: monthlyQuotaWindow,
+      OR: [{ userId: { not: null } }, { teamId: { not: null } }],
+    },
+    select: { userId: true, teamId: true, target: true },
+  });
   const quotaTargets = new Map(
     quotaRows
       .filter((row) => row.userId !== null)
@@ -1220,7 +1215,7 @@ export async function getPerformanceDashboard(
     membersByTeam,
     openRecoveryCasesByTeam,
     unassignedRecoveryCases,
-    quotaWindowKey: relevantWindow?.key ?? null,
+    bonusWindowKey: relevantWindow?.key ?? null,
     teamQuotaTargets,
     redact: access.role === "BACKOFFICE",
   });
@@ -1237,14 +1232,12 @@ export async function getPerformanceDashboard(
         quotaTargets,
         openRecoveryCasesByAgent,
       );
-  // ASE-01: la misma cuota que ve supervisión para esta persona y ventana.
-  const personalQuota =
-    isIndividualScope && relevantWindow
+  // ASE-01: la misma cuota que ve supervisión para esta persona y mes.
+  const personalQuota = isIndividualScope
       ? buildQuotaProgress(
           scopedMetrics,
-          relevantWindow.key,
-          quotaTargets.get(access.userId) ??
-            getDefaultQuotaTarget(relevantWindow.key),
+          relevantWindow?.key ?? null,
+          quotaTargets.get(access.userId) ?? getDefaultMonthlyQuotaTarget(),
           true,
           quotaTargets.has(access.userId) ? "ASSIGNED" : "DEFAULT",
         )
@@ -1345,16 +1338,12 @@ export async function getPerformanceDashboard(
                   ).length / activeSellers.size
                 : null,
           },
-    quotaWindow: relevantWindow
-      ? {
-          key: relevantWindow.key,
-          label: relevantWindow.label,
-          // Un mes cerrado no tiene tramo en curso, aunque hoy sí lo haya.
-          isActive: currentWindow !== null && currentRange.key === currentMonth,
-          startDay: relevantWindow.windowStartDay,
-          endDay: relevantWindow.windowEndDay ?? monthProgress.days.length,
-        }
-      : null,
+    // SPEC-064: la cuota es del mes que se mira; en curso si es el actual.
+    quotaPeriod: {
+      label: formatLimaMonth(currentRange.start),
+      isActive: currentRange.key === currentMonth,
+      endDay: monthProgress.days.length,
+    },
     sort: parseBreakdownSort(query.sort),
     management: parseManagementFilter(query.management),
     search: isIndividualScope ? "" : normalizeSearchTerm(query.search),

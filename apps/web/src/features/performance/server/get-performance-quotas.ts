@@ -2,12 +2,12 @@ import "server-only";
 
 import {
   formatAdvisorDisplayName,
-  getDefaultQuotaTarget,
+  getDefaultMonthlyQuotaTarget,
   getQuotaPlanningLimit,
   isQuotaPeriodEditable,
   parseQuotaPeriod,
+  monthlyQuotaWindow,
   parsePerformanceMonth,
-  resolveRelevantAcceleratorWindow,
   summarizeQuotaDistribution,
 } from "@repo/validation";
 
@@ -18,8 +18,6 @@ import { resolvePerformanceScope } from "./performance-access";
 
 import type { PerformanceAccess } from "./performance-access";
 import type { QuotaDistributionSummary } from "@repo/validation";
-
-export type QuotaWindowKey = "ONE" | "TWO";
 
 export interface QuotaAdvisorRow {
   id: string;
@@ -69,9 +67,6 @@ export interface PerformanceQuotasData {
     /** Cuántos equipos suma el objetivo mostrado. */
     teamCount: number;
   };
-  window: QuotaWindowKey;
-  windowLabel: string;
-  windowOptions: Array<{ key: QuotaWindowKey; label: string }>;
   canAssignTeams: boolean;
   canAssignAdvisors: boolean;
   teams: QuotaTeamRow[];
@@ -80,17 +75,14 @@ export interface PerformanceQuotasData {
 export async function getPerformanceQuotas(
   organizationId: string,
   access: PerformanceAccess,
-  query: { period?: string; window?: string },
+  query: { period?: string },
 ): Promise<PerformanceQuotasData> {
   const now = new Date();
   const currentPeriodKey = parsePerformanceMonth(undefined, now);
   // Una cuota se fija antes del período, así que el selector admite el futuro.
   const periodKey = parseQuotaPeriod(query.period, now);
-  const relevantWindow = resolveRelevantAcceleratorWindow(now);
-  const window: QuotaWindowKey =
-    query.window === "ONE" || query.window === "TWO"
-      ? query.window
-      : ((relevantWindow?.key as QuotaWindowKey | undefined) ?? "ONE");
+  // SPEC-064: la cuota es del mes completo; no hay ventana que elegir.
+  const window = monthlyQuotaWindow;
 
   const { teamOptions, supervisedTeamIds } = await resolvePerformanceScope(
     organizationId,
@@ -148,7 +140,7 @@ export async function getPerformanceQuotas(
       .filter((quota) => quota.userId !== null)
       .map((quota) => [quota.userId as string, quota.target]),
   );
-  const defaultTarget = getDefaultQuotaTarget(window);
+  const defaultTarget = getDefaultMonthlyQuotaTarget();
 
   const teams: QuotaTeamRow[] = teamOptions
     .filter((team) => scopedTeamIds.includes(team.id))
@@ -178,8 +170,8 @@ export async function getPerformanceQuotas(
         .sort((left, right) => left.name.localeCompare(right.name, "es"));
 
       const storedTeamTarget = teamTargets.get(team.id);
-      // Sin cuota de equipo, el objetivo por defecto es el tramo por cada
-      // vendedor: es la lectura natural de "que todos lleguen" (BR-008).
+      // Sin cuota de equipo, el objetivo por defecto es la cuota mensual por
+      // defecto por cada vendedor: «que todos lleguen» (SPEC-064 BR-005).
       const teamTarget = storedTeamTarget ?? defaultTarget * advisors.length;
 
       return {
@@ -224,12 +216,6 @@ export async function getPerformanceQuotas(
         advisorTargets: teams.map((team) => team.target),
       }),
     },
-    window,
-    windowLabel: window === "ONE" ? "Días 1 al 15" : "Día 25 al fin de mes",
-    windowOptions: [
-      { key: "ONE", label: "Días 1 al 15" },
-      { key: "TWO", label: "Día 25 al fin de mes" },
-    ],
     canAssignTeams: access.role === "ADMIN" || access.role === "BACKOFFICE",
     canAssignAdvisors: access.role !== "AGENT",
     teams,

@@ -11,7 +11,6 @@ const initialState: QuotaActionState = { type: "idle", message: "" };
 export function QuotaTargetForm({
   scope,
   targetId = "",
-  window,
   period,
   target,
   isDefault,
@@ -19,7 +18,6 @@ export function QuotaTargetForm({
 }: {
   scope: "ORG" | "TEAM" | "USER";
   targetId?: string;
-  window: string;
   period: string;
   target: number;
   isDefault: boolean;
@@ -34,7 +32,6 @@ export function QuotaTargetForm({
     <form action={action} className="flex flex-wrap items-center gap-1.5">
       <input name="scope" type="hidden" value={scope} />
       <input name="targetId" type="hidden" value={targetId} />
-      <input name="window" type="hidden" value={window} />
       <input name="period" type="hidden" value={period} />
       <input
         aria-label="Cuota de portabilidades entregadas"

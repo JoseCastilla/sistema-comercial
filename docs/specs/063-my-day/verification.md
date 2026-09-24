@@ -75,4 +75,11 @@
     teléfono sugerido y «Guardar y siguiente»; Esc lo cierra.
   - Web: tipos, lint y 221 pruebas en verde.
 
+- **24/09/2026** — Fase 2 en producción (`aec7032`), cuenta de asesor, sin
+  guardar: 20 casos con «Registrar gestión»; el editor abre en la fila con
+  atajos N/I/R/A, la lista completa de resultados y «Guardar gestión»,
+  «Guardar y siguiente» y «Cancelar»; Esc lo cierra.
+- **24/09/2026** — BR-019 pasa a la cuota mensual definitiva de SPEC-064
+  (`MONTH`, 45 por defecto rotulada «Cuota por defecto»).
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes.

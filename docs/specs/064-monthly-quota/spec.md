@@ -1,6 +1,6 @@
 # SPEC-064 — Cuota mensual
 
-**Estado:** `APROBADA` — decisiones de José del 24/09/2026: cuota mensual, cuotas cargadas tratadas como mensuales, reparto por el líder (24/09/2026)
+**Estado:** `EN_CURSO` — decisiones de José del 24/09/2026: cuota mensual, cuotas cargadas tratadas como mensuales, reparto por el líder (24/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-24
@@ -43,6 +43,16 @@ solo contra las ventas de esos días. Por eso decía 38 y no 52.
   por cubrir la cuota del equipo con el apoyo de sus asesores. Es la cadena
   de SPEC-038 BR-009, ahora mensual; la modalidad no se modela: el líder la
   refleja en la cifra que asigna.
+
+- **BR-005 — Cuota por defecto** (adoptada como recomendación; José puede
+  corregirla): sin cuota asignada, la del mes es **45**, la suma del primer
+  tramo de cada bono (30 + 15): el mínimo que cobra los dos bonos, en el
+  espíritu de SPEC-038 BR-008. Se rotula «cuota por defecto». Un equipo sin
+  cuota propia usa 45 por cada vendedor activo.
+- **BR-006 — Qué es «confirmada» en la cuota.** Junto a las entregadas, la
+  cuota muestra las que ya pagan comisión (entregadas y cerradas del mes).
+  Cuánto falta para el siguiente tramo de bono se sigue diciendo por su
+  ventana.
 
 ## 4. Fuera de alcance
 
