@@ -52,3 +52,10 @@ Tanda 2 — pendientes, en orden de retorno:
       existentes migran al tocarlas, borrando su CSS propio.
 - [ ] Llevar `Button` a los 11 botones con `text-white` sobre acento o
       peligro (contraste en oscuro, auditoría §6).
+- [x] Apariencia en dos botones, «Día» y «Noche» (propuesta de José del
+      24/09/2026): antes, etiqueta y lista con Sistema, Claro y Oscuro.
+      Sigue al sistema hasta que se elige; con el menú contraído y en la
+      cabecera móvil es un solo botón que cambia al otro tema (antes, con el
+      menú contraído, no había control de tema). La barra del navegador usa
+      el fondo real de cada tema (#f3f5f8 / #0d1117), no el verde de una
+      paleta anterior.

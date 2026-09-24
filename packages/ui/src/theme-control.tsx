@@ -3,25 +3,37 @@
 import { useEffect, useState } from "react";
 
 type ThemePreference = "system" | "light" | "dark";
+type Theme = "light" | "dark";
 
 const storageKey = "sistema-comercial-theme";
 const themeEvent = "sistema-comercial-theme-change";
+
+/** El color de la barra del navegador: el fondo de la app en cada tema. */
+const themeColors: Record<Theme, string> = {
+  light: "#f3f5f8",
+  dark: "#0d1117",
+};
 
 function isThemePreference(value: string | null): value is ThemePreference {
   return value === "system" || value === "light" || value === "dark";
 }
 
+function resolveTheme(preference: ThemePreference): Theme {
+  if (preference !== "system") return preference;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
 function applyTheme(preference: ThemePreference) {
-  const darkSystem = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const theme =
-    preference === "system" ? (darkSystem ? "dark" : "light") : preference;
+  const theme = resolveTheme(preference);
   const root = document.documentElement;
   root.dataset.theme = theme;
   root.dataset.themePreference = preference;
   root.style.colorScheme = theme;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", theme === "dark" ? "#0f1411" : "#eef1ed");
+    ?.setAttribute("content", themeColors[theme]);
 }
 
 function readStoredPreference(): ThemePreference {
@@ -41,21 +53,48 @@ function storePreference(preference: ThemePreference) {
   }
 }
 
+function SunIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="3.5" />
+      <path d="M10 1.8v2M10 16.2v2M1.8 10h2M16.2 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path d="M15.8 12.5A6.4 6.4 0 0 1 7.5 4.2 6.4 6.4 0 1 0 15.8 12.5Z" />
+    </svg>
+  );
+}
+
+/**
+ * Día o noche, con un clic (propuesta de José del 24/09/2026). Antes eran una
+ * etiqueta «Apariencia» y una lista con Sistema, Claro y Oscuro.
+ *
+ * Mientras nadie elija, sigue al sistema y marca el tema que se está viendo.
+ * Con el menú contraído y en la cabecera móvil es un solo botón que cambia al
+ * otro tema.
+ */
 export function ThemeControl({ compact = false }: { compact?: boolean }) {
-  const [preference, setPreference] = useState<ThemePreference>("system");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     const initialPreference = readStoredPreference();
-    setPreference(initialPreference);
+    setTheme(resolveTheme(initialPreference));
     applyTheme(initialPreference);
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const handleSystemChange = () => {
-      if (readStoredPreference() === "system") applyTheme("system");
+      if (readStoredPreference() !== "system") return;
+      applyTheme("system");
+      setTheme(resolveTheme("system"));
     };
+    // Los controles del menú lateral y de la cabecera móvil se enteran entre sí.
     const handleThemeChange = (event: Event) => {
-      const nextPreference = (event as CustomEvent<ThemePreference>).detail;
-      setPreference(nextPreference);
+      setTheme((event as CustomEvent<Theme>).detail);
     };
 
     media.addEventListener("change", handleSystemChange);
@@ -66,34 +105,48 @@ export function ThemeControl({ compact = false }: { compact?: boolean }) {
     };
   }, []);
 
-  return (
-    <label
-      className="ui-theme-control"
-      data-compact={compact ? "true" : "false"}
-    >
-      <svg aria-hidden="true" viewBox="0 0 20 20">
-        <path d="M15.8 12.5A6.4 6.4 0 0 1 7.5 4.2 6.4 6.4 0 1 0 15.8 12.5Z" />
-      </svg>
-      <span>Apariencia</span>
-      <select
-        aria-label="Apariencia"
-        onChange={(event) => {
-          const nextPreference = event.target.value as ThemePreference;
-          setPreference(nextPreference);
-          storePreference(nextPreference);
-          applyTheme(nextPreference);
-          window.dispatchEvent(
-            new CustomEvent<ThemePreference>(themeEvent, {
-              detail: nextPreference,
-            }),
-          );
-        }}
-        value={preference}
+  function choose(next: Theme) {
+    setTheme(next);
+    storePreference(next);
+    applyTheme(next);
+    window.dispatchEvent(new CustomEvent<Theme>(themeEvent, { detail: next }));
+  }
+
+  if (compact) {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    const label = next === "dark" ? "Cambiar a modo noche" : "Cambiar a modo día";
+
+    return (
+      <button
+        aria-label={label}
+        className="ui-theme-toggle"
+        onClick={() => choose(next)}
+        title={label}
+        type="button"
       >
-        <option value="system">Sistema</option>
-        <option value="light">Claro</option>
-        <option value="dark">Oscuro</option>
-      </select>
-    </label>
+        {next === "dark" ? <MoonIcon /> : <SunIcon />}
+      </button>
+    );
+  }
+
+  return (
+    <div aria-label="Apariencia" className="ui-theme-control" role="group">
+      <button
+        aria-pressed={theme === "light"}
+        onClick={() => choose("light")}
+        type="button"
+      >
+        <SunIcon />
+        Día
+      </button>
+      <button
+        aria-pressed={theme === "dark"}
+        onClick={() => choose("dark")}
+        type="button"
+      >
+        <MoonIcon />
+        Noche
+      </button>
+    </div>
   );
 }

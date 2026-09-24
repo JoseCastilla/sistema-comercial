@@ -39,7 +39,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <meta content="#eef1ed" name="theme-color" />
+        <meta content="#f3f5f8" name="theme-color" />
         <ThemeScript />
       </head>
       <body

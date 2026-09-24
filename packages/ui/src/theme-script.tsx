@@ -14,7 +14,7 @@ const themeBootstrap = `(() => {
   root.dataset.themePreference = preference;
   root.style.colorScheme = theme;
   const themeColor = document.querySelector('meta[name="theme-color"]');
-  if (themeColor) themeColor.setAttribute("content", theme === "dark" ? "#0f1411" : "#eef1ed");
+  if (themeColor) themeColor.setAttribute("content", theme === "dark" ? "#0d1117" : "#f3f5f8");
 })();`;
 
 export function ThemeScript() {
