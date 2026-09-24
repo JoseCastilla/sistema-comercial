@@ -1,6 +1,6 @@
 # SPEC-063 — Mi día: la bandeja de trabajo del asesor
 
-**Estado:** `EN_CURSO` — fases 0 a 2 en `main` y verificadas en producción; fases 3 a 5 pendientes; decisiones de §5 adoptadas como recomendación (24/09/2026)
+**Estado:** `EN_CURSO` — fases 0 a 2 y 4 en `main`; fases 3 y 5 pendientes; decisiones de §5 adoptadas como recomendación (24/09/2026)
 
 **Versión:** 1.0
 **Fecha:** 2026-09-24
@@ -163,6 +163,21 @@ llamadas.
   Los bonos siguen por ventana (SPEC-038 BR-001 a BR-006). Lee la cuota
   mensual de SPEC-064, la misma que Cuotas y Rendimiento; sin cuota asignada,
   la mensual por defecto, rotulada como tal.
+
+### Tus ventas del mes (fase 4)
+
+- **BR-020 — Dónde está tu comisión.** Debajo de la franja de progreso, un
+  bloque plegado reúne las ventas del mes del asesor (la misma población de
+  la franja y de Rendimiento) en cinco grupos, según lo que significan para
+  su comisión: «Ya pagan», «Entregadas, esperan activación», «En camino al
+  cliente», «Caídas: recupéralas» (entrega fallida o cancelada) y «No pagan
+  comisión» (altas nuevas, operación sin identificar). El resumen, visible
+  sin abrir, dice cuántas ventas y cuánto dinero hay en cada grupo: real en
+  «Ya pagan» y potencial en los demás. Cada venta dice lo que vale y qué
+  falta para cobrarla («S/ 12,50 al activarse», «S/ 25,00 si la
+  recuperas») y abre su pedido. La regla de pago es
+  `evaluatePerformanceOrderPayment` (SPEC-033); lo que «Ya pagan» suma es
+  exactamente la comisión base de Rendimiento.
 
 ### Construcción (MD-F05)
 

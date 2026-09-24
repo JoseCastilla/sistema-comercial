@@ -9,6 +9,7 @@ import {
 } from "@/features/my-day/components/my-day-list";
 import { MyDayProgressPanel } from "@/features/my-day/components/my-day-progress";
 import { MyDayRefresh } from "@/features/my-day/components/my-day-refresh";
+import { MyDaySalesPanel } from "@/features/my-day/components/my-day-sales";
 import { getMyDay } from "@/features/my-day/server/get-my-day";
 import { CampaignDraftProvider } from "@/features/recovery/components/campaign-draft-context";
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -49,6 +50,11 @@ export default async function MyDayPage() {
         />
 
         <MyDayProgressPanel progress={data.progress} />
+
+        <MyDaySalesPanel
+          monthLabel={data.progress.monthLabel}
+          sales={data.sales}
+        />
 
         <section aria-labelledby="mi-dia-ahora" className="grid gap-4">
           <h2 className="text-lg font-bold text-ui-text" id="mi-dia-ahora">

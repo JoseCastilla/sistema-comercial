@@ -3,6 +3,7 @@ import "server-only";
 import {
   calculatePerformanceMetrics,
   classifyInternalRecoveryDue,
+  classifyMyDaySale,
   classifyRecoveryWorkItem,
   compareMyDayItems,
   compareRecoveryWorkNow,
@@ -10,6 +11,7 @@ import {
   describeMyDayDue,
   effectiveAttemptResult,
   formatMyDaySaleDay,
+  myDayNoCommissionReasons,
   getDefaultMonthlyQuotaTarget,
   getInternalRecoveryFirstActionAt,
   getLimaDayOfMonth,
@@ -28,6 +30,9 @@ import {
   resolveRelevantAcceleratorWindow,
   salesRecoveryOpenStatuses,
   selectRecoveryAgendaItem,
+  summarizeMyDaySales,
+  type MyDaySaleBucket,
+  type MyDaySaleBucketSummary,
   type PerformanceCommissionPolicy,
   type RecoveryWorkNowCandidate,
 } from "@repo/validation";
@@ -151,6 +156,26 @@ export interface MyDayProgress {
   policy: PerformanceCommissionPolicy;
 }
 
+/** Una venta del mes con lo que vale para la comisión (fase 4, BR-020). */
+export interface MyDaySale {
+  id: string;
+  holderName: string;
+  orderCode: string;
+  saleDayLabel: string;
+  amountCents: number;
+  /** El monto todavía no está ganado. */
+  potential: boolean;
+  /** Solo en «No pagan comisión»: por qué. */
+  reasonText: string | null;
+  href: string;
+}
+
+export interface MyDaySales {
+  total: number;
+  summary: MyDaySaleBucketSummary[];
+  byBucket: Partial<Record<MyDaySaleBucket, MyDaySale[]>>;
+}
+
 export interface MyDayData {
   generatedAt: Date;
   now: MyDayEntry[];
@@ -159,6 +184,7 @@ export interface MyDayData {
   cold: MyDayEntry[];
   campaign: { total: number; shown: number };
   progress: MyDayProgress;
+  sales: MyDaySales;
 }
 
 function limaTodayEnd(now: Date): Date {
@@ -559,7 +585,7 @@ async function readProgress(
   organizationId: string,
   userId: string,
   now: Date,
-): Promise<MyDayProgress> {
+): Promise<{ progress: MyDayProgress; sales: MyDaySales }> {
   const month = getPerformanceMonthRange(parsePerformanceMonth(undefined, now));
   const today = getOrderPeriodRange("TODAY", now);
   const relevantWindow = resolveRelevantAcceleratorWindow(now);
@@ -573,7 +599,11 @@ async function readProgress(
         agentUserId: userId,
         registeredAt: { gte: month.start, lt: month.end },
       },
+      orderBy: { registeredAt: "desc" },
       select: {
+        id: true,
+        orderCodeRaw: true,
+        holderFullNameRaw: true,
         commercialOperation: true,
         status: true,
         deliveryStatus: true,
@@ -610,7 +640,39 @@ async function readProgress(
     : undefined;
   const todayStart = today.start?.getTime() ?? Number.POSITIVE_INFINITY;
 
-  return {
+  // Fase 4 (BR-020): las mismas ventas, cada una con lo que vale. La regla de
+  // pago es la de Rendimiento; lo que «ya paga» suma su comisión base.
+  const classified = orders.map((order) => ({
+    order,
+    classification: classifyMyDaySale(toMetricInput(order)),
+  }));
+  const byBucket: Partial<Record<MyDaySaleBucket, MyDaySale[]>> = {};
+  for (const { order, classification } of classified) {
+    const list = byBucket[classification.bucket] ?? [];
+    list.push({
+      id: order.id,
+      holderName: order.holderFullNameRaw,
+      orderCode: order.orderCodeRaw,
+      saleDayLabel: formatMyDaySaleDay(order.registeredAt),
+      amountCents: classification.amountCents,
+      potential: classification.potential,
+      reasonText:
+        classification.bucket === "sin_comision"
+          ? (myDayNoCommissionReasons[classification.reason] ?? null)
+          : null,
+      href: buildOrderHref(order.orderCodeRaw, getLimaIsoDate(order.registeredAt)),
+    });
+    byBucket[classification.bucket] = list;
+  }
+  const sales: MyDaySales = {
+    total: orders.length,
+    summary: summarizeMyDaySales(
+      classified.map((item) => item.classification),
+    ),
+    byBucket,
+  };
+
+  const progress: MyDayProgress = {
     monthLabel: formatLimaMonth(month.start),
     enteredToday: orders.filter(
       (order) => order.registeredAt.getTime() >= todayStart,
@@ -651,6 +713,8 @@ async function readProgress(
     },
     policy: getPerformanceCommissionPolicy(month.key),
   };
+
+  return { progress, sales };
 }
 
 export async function getMyDay(
@@ -658,7 +722,7 @@ export async function getMyDay(
   userId: string,
   now = new Date(),
 ): Promise<MyDayData> {
-  const [commitments, salesRecovery, campaign, orders, progress] =
+  const [commitments, salesRecovery, campaign, orders, { progress, sales }] =
     await Promise.all([
       readCommitments(organizationId, userId, now),
       readSalesRecovery(organizationId, userId, now),
@@ -687,5 +751,6 @@ export async function getMyDay(
       ),
     campaign: { total: campaign.total, shown: campaign.entries.length },
     progress,
+    sales,
   };
 }

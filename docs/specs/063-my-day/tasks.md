@@ -57,7 +57,12 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 4 — Mis ventas del mes
 
-- [ ] Lista de ventas del mes con estado, monto y motivo de no pago.
+- [x] Regla `classifyMyDaySale` / `summarizeMyDaySales` en
+      `@repo/validation` (6 pruebas, incluida la igualdad con la comisión base
+      de Rendimiento).
+- [x] Bloque «Tus ventas del mes» con resumen por grupo, detalle por venta y
+      enlace al pedido (3 pruebas de componente).
+- [ ] Lectura en producción con la cuenta de asesor.
 
 ## Fase 5 — Supervisor vendedor y shadcn/ui
 

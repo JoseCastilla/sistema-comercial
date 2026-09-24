@@ -82,4 +82,12 @@
 - **24/09/2026** — BR-019 pasa a la cuota mensual definitiva de SPEC-064
   (`MONTH`, 45 por defecto rotulada «Cuota por defecto»).
 
+- **24/09/2026** — Fase 4 construida: `my-day-sales.test.mjs` 6 de 6 (cada
+  grupo, alta nueva sin comisión aunque esté activada, y «Ya pagan» igual a
+  `calculatePerformanceMetrics(...).baseCommissionCents`);
+  `mi-dia-ventas-del-mes.test.tsx` 3 de 3 (resumen por grupo, «S/ 12.50 al
+  activarse», «S/ 25.00 si la recuperas», sin ventas no se muestra). Web:
+  tipos, lint y 224 pruebas en verde. La asesora de prueba local no tiene
+  ventas este mes: la lectura visual queda para producción.
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes.
