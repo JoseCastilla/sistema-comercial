@@ -1,6 +1,6 @@
 # SPEC-051 — Retiro de «Checa tus líneas»
 
-**Estado:** `ENTREGADA` — retirada del código y de la navegación; falta confirmar el 404 en producción (12/09/2026)
+**Estado:** `VERIFICADA` — `/tools/lines` responde 404 en producción y el menú ya no la muestra (24/09/2026)
 
 **Versión:** 1.0
 **Fecha:** 2026-09-12

@@ -26,7 +26,8 @@ Tanda 1 — defectos visibles de una línea:
 - [x] «Mi equipo» con menú, carga y error propios (`app/team/layout.tsx`).
 - [x] Esc en la gestión en fila pregunta antes de descartar lo escrito.
 - [x] «Cerrar sesión» visible como icono con el menú contraído.
-- [ ] Verificación en producción tras el despliegue.
+- [x] Verificación en producción tras el despliegue (24/09/2026): menú
+      sin ítems montados y «Setiembre de 2026» en Rendimiento.
 
 Tanda 2 — pendientes, en orden de retorno:
 

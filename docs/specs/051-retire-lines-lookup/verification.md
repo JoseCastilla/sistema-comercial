@@ -30,4 +30,6 @@ Referencias encontradas antes de borrar:
 
 ## Producción
 
-- [ ] **AC-001 / AC-002 / AC-004:** pendiente tras la entrega.
+- [x] **AC-001 / AC-002 / AC-004:** 24/09/2026, tras desplegar `d8d8437`:
+      `/tools/lines` responde 404 y el menú del asesor (lateral y móvil)
+      ya no muestra la entrada.

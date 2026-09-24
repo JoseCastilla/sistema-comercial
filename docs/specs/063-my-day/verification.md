@@ -33,5 +33,16 @@
     «Ahora» quede en la primera pantalla, y «Cerrar sesión» de la cabecera
     móvil quedó solo con icono (36 × 36).
 
-Pendiente: AC-005 (comparar con `/performance` en producción, donde el mes
-tiene ventas), AC-010 (lista vacía) y lectura en producción.
+- **24/09/2026** — Producción, tras desplegar `91657b3`, con la cuenta de
+  asesor (solo lectura):
+  - AC-007: `/` lleva a `/my-day`; «Mi día» es el primer ítem del menú.
+  - AC-005: la franja dice S/ 1 387,50 estimados (S/ 1 187,50 por 51
+    pagables + S/ 200,00 de bonos), 38 confirmadas en la ventana cerrada, 38
+    de 100 de cuota y 1 entregada por activar. `/performance` para la misma
+    asesora muestra S/ 1 387,50, S/ 1 187,50 de base, 51 pagables, 38/100 y
+    1 por activar: coinciden.
+  - «Ahora» abre con 16 ventas caídas con el primer contacto vencido, la más
+    antigua desde el 02/09. Es trabajo real que antes no estaba a la vista
+    de la asesora en su entrada.
+
+Pendiente: AC-010 (lista vacía) con un asesor sin pendientes.

@@ -25,9 +25,9 @@ Una casilla se marca solo con evidencia en `verification.md`.
 - [x] Recorrido local con sesión de asesor de prueba: AC-001, AC-003,
       AC-007, AC-011 y la ventana de bono cerrada (24/09/2026).
 - [ ] AC-010 (lista vacía) con un asesor sin pendientes.
-- [ ] AC-005: la comisión y las confirmadas coinciden con `/performance`
-      para el mismo asesor.
-- [ ] Lectura en producción con la cuenta de asesor tras el despliegue.
+- [x] AC-005: la comisión y las confirmadas coinciden con `/performance`
+      para el mismo asesor (24/09/2026).
+- [x] Lectura en producción con la cuenta de asesor tras el despliegue.
 
 ## Fase 2 — Actuar sin salir
 

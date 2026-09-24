@@ -9,5 +9,5 @@
 - [x] Borrar `apps/web/.next` con los tipos generados de las rutas retiradas.
 - [x] Marcar SPEC-036 `SUSTITUIDA` y anotar SPEC-045 BR-011 y AC-013.
 - [x] Tipos, lint y pruebas de `apps/web`.
-- [ ] Confirmar en producción que `/tools/lines` responde 404 y que el menú
+- [x] Confirmar en producción que `/tools/lines` responde 404 y que el menú
       no muestra la entrada.
