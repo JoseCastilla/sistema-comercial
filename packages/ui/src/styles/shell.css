@@ -105,6 +105,10 @@
   .app-shell__nav {
     display: grid;
     flex: 1;
+    /* Con la altura limitada, las filas «auto» se quedan en el min-height del
+       ítem (48 px) aunque la descripción ocupe dos líneas, y los ítems se
+       montan. max-content las deja medir lo que mide su contenido. */
+    grid-auto-rows: max-content;
     align-content: start;
     gap: 0.2rem;
     padding: 0.65rem;
@@ -209,6 +213,11 @@
   }
   .app-shell__sign-out {
     margin-top: 0.15rem;
+  }
+  .app-sign-out__icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: none;
   }
   .app-shell__mobile-actions {
     display: flex;
@@ -388,7 +397,7 @@
     .app-shell[data-sidebar-collapsed="true"] .app-nav-item > span:last-child,
     .app-shell[data-sidebar-collapsed="true"] .app-shell__account-copy,
     .app-shell[data-sidebar-collapsed="true"] .app-shell__theme,
-    .app-shell[data-sidebar-collapsed="true"] .app-shell__sign-out {
+    .app-shell[data-sidebar-collapsed="true"] .app-sign-out__label {
       display: none;
     }
     .app-shell[data-sidebar-collapsed="true"] .app-shell__nav {
@@ -401,8 +410,16 @@
     }
     .app-shell[data-sidebar-collapsed="true"] .app-shell__account-card {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
       padding: 0.5rem;
+    }
+    /* Contraído, cerrar sesión queda como icono bajo el avatar. */
+    .app-shell[data-sidebar-collapsed="true"] .app-sign-out {
+      width: 2.25rem;
+      height: 2.25rem;
+      padding: 0;
     }
   }
 }

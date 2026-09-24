@@ -267,10 +267,12 @@ export function CampaignAttemptEditor({
    * desplegable. No actúan mientras se escribe en un campo de texto.
    */
   function hotkeys(event: React.KeyboardEvent<HTMLFormElement>) {
-    // Esc cierra la gestión, como el botón Cancelar (BR-016).
+    // Esc cierra la gestión, como el botón Cancelar (BR-016). Esc se pulsa
+    // sin querer mientras se escribe la observación: con algo escrito,
+    // pregunta antes de descartarlo.
     if (event.key === "Escape") {
       event.preventDefault();
-      onCancel();
+      if (draft.confirmLeave()) onCancel();
       return;
     }
     const target = event.target as HTMLElement;

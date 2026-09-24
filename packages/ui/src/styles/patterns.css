@@ -53,7 +53,13 @@
     margin-top: 0.15rem;
     font-size: var(--ui-text-md);
     font-weight: 720;
-    text-transform: capitalize;
+  }
+
+  /* Solo la primera letra: `capitalize` escribía «Setiembre De 2026». */
+  .performance-controls__month::first-letter,
+  .agent-daily__header h2::first-letter,
+  .agent-daily__day > span::first-letter {
+    text-transform: uppercase;
   }
 
   .performance-filter {
@@ -111,7 +117,6 @@
     margin-top: 0.2rem;
     font-size: var(--ui-text-2xl);
     font-weight: 750;
-    text-transform: capitalize;
   }
 
   .agent-daily__header p:not(.performance-panel__eyebrow) {
@@ -404,7 +409,6 @@
     font-size: var(--ui-text-3xs);
     font-weight: 700;
     text-overflow: ellipsis;
-    text-transform: capitalize;
     white-space: nowrap;
   }
 
