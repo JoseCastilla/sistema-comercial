@@ -121,5 +121,11 @@
   `pnpm install --frozen-lockfile` lo reenlazó. EasyPanel instala desde
   cero, así que no afecta a producción.
 
-Pendiente: AC-010 (lista vacía) con un asesor sin pendientes; fase 3 con
-sesión de asesor.
+- **24/09/2026** — Tras desplegar el CRM versionado (`2083aa1`) y la base
+  shadcn/ui (`ee127c9`), sesión de administrador: /my-day, /orders,
+  /performance, /performance/quotas, /recovery/sales, /recovery/agenda,
+  /admin/users y /dni responden 200, con su menú y sin pantalla de error.
+  Que `ee127c9` esté en línea solo se ve con sesión de asesor («Mi día»).
+
+Pendiente: AC-010 (lista vacía) con un asesor sin pendientes; fase 3 y
+componentes shadcn/ui con sesión de asesor en producción.
