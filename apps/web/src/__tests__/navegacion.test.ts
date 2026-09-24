@@ -13,6 +13,7 @@ describe("sectionForPath", () => {
     expect(sectionForPath("/orders")).toBe("orders");
     expect(sectionForPath("/performance")).toBe("performance");
     expect(sectionForPath("/dni")).toBe("dni");
+    expect(sectionForPath("/my-day")).toBe("my-day");
   });
 
   it("mantiene la sección en las rutas hijas", () => {

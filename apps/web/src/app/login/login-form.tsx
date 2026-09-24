@@ -40,7 +40,7 @@ export function LoginForm() {
       return;
     }
 
-    router.replace("/orders");
+    router.replace("/");
     router.refresh();
   }
 

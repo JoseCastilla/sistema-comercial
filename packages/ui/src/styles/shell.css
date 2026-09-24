@@ -219,6 +219,15 @@
     height: 1.1rem;
     flex: none;
   }
+  /* En la cabecera móvil no hay sitio para el texto: basta el icono. */
+  .app-shell__mobile-actions .app-sign-out {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+  }
+  .app-shell__mobile-actions .app-sign-out__label {
+    display: none;
+  }
   .app-shell__mobile-actions {
     display: flex;
     align-items: center;

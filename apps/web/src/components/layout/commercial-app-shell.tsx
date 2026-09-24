@@ -9,6 +9,7 @@ import { ThemeControl } from "@repo/ui/theme-control";
 import { EscalationNotification } from "./escalation-notification";
 
 export type ActiveSection =
+  | "my-day"
   | "performance"
   | "orders"
   | "dni"
@@ -27,6 +28,7 @@ export type ActiveSection =
  * orden importa: el prefijo más específico gana.
  */
 const SECTION_BY_PATH_PREFIX: readonly (readonly [string, ActiveSection])[] = [
+  ["/my-day", "my-day"],
   ["/recovery/sales", "sales-recovery"],
   ["/admin/dito-imports", "imports"],
   ["/admin/logistics", "logistics"],
@@ -48,6 +50,7 @@ export function sectionForPath(pathname: string): ActiveSection {
   return match ? match[1] : "orders";
 }
 type IconName =
+  | "today"
   | "home"
   | "orders"
   | "identity"
@@ -67,6 +70,12 @@ const roleLabels: Record<string, string> = {
 
 function NavigationIcon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
+    today: (
+      <>
+        <rect x="3.5" y="4.5" width="13" height="12" rx="2" />
+        <path d="M3.5 8.5h13M7 3v3M13 3v3M7.5 12.5l1.8 1.8 3.4-3.6" />
+      </>
+    ),
     home: (
       <>
         <path d="m3 10 7-6 7 6" />
@@ -294,6 +303,15 @@ export function CommercialAppShell({
           <p className="app-shell__organization-name">{organizationName}</p>
         </div>
         <nav className="app-shell__nav" aria-label="Navegación principal">
+          {role === "AGENT" ? (
+            <NavigationItem
+              active={currentSection === "my-day"}
+              description="Lo que te toca hoy"
+              href="/my-day"
+              icon="today"
+              label="Mi día"
+            />
+          ) : null}
           <NavigationItem
             active={currentSection === "performance"}
             description="Resultados y oportunidades"
@@ -407,8 +425,16 @@ export function CommercialAppShell({
       <nav
         aria-label="Navegación móvil"
         className="app-shell__mobile-nav"
-        data-items={isAdmin ? "8" : role === "SUPERVISOR" ? "6" : "5"}
+        data-items={isAdmin ? "8" : "6"}
       >
+        {role === "AGENT" ? (
+          <MobileNavigationItem
+            active={currentSection === "my-day"}
+            href="/my-day"
+            icon="today"
+            label="Mi día"
+          />
+        ) : null}
         <MobileNavigationItem
           active={currentSection === "performance"}
           href="/performance"

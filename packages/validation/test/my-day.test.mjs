@@ -1,0 +1,154 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  compareMyDayItems,
+  describeMyDayDue,
+  placeMyDayCommitment,
+  placeMyDaySalesRecovery,
+} from "../dist/my-day.js";
+
+// Jueves 24/09/2026 a las 11:00 en Lima (16:00 UTC).
+const ahora = new Date("2026-09-24T16:00:00.000Z");
+const lima = (texto) => new Date(`${texto}-05:00`);
+
+test("una cita pasada es el tramo más urgente", () => {
+  assert.deepEqual(placeMyDayCommitment(lima("2026-09-24T10:30:00"), ahora), {
+    tier: "cita_vencida",
+    bucket: "ahora",
+    dueAt: lima("2026-09-24T10:30:00"),
+  });
+});
+
+test("una cita dentro de 2 horas va en «ahora»; más tarde hoy, plegada", () => {
+  assert.equal(
+    placeMyDayCommitment(lima("2026-09-24T12:30:00"), ahora).bucket,
+    "ahora",
+  );
+  assert.equal(
+    placeMyDayCommitment(lima("2026-09-24T13:00:00"), ahora).bucket,
+    "ahora",
+  );
+  assert.deepEqual(placeMyDayCommitment(lima("2026-09-24T16:00:00"), ahora), {
+    tier: "cita_pronto",
+    bucket: "hoy",
+    dueAt: lima("2026-09-24T16:00:00"),
+  });
+});
+
+test("una cita de mañana no es de hoy, aunque falten menos de 24 horas", () => {
+  assert.equal(placeMyDayCommitment(lima("2026-09-25T09:00:00"), ahora), null);
+});
+
+test("el día se corta en Lima: las 23:30 de Lima son hoy aunque en UTC sea mañana", () => {
+  assert.equal(
+    placeMyDayCommitment(lima("2026-09-24T23:30:00"), ahora).bucket,
+    "hoy",
+  );
+});
+
+const recupero = (overrides = {}) => ({
+  status: "ASSIGNED",
+  firstContactAt: null,
+  nextActionAt: null,
+  firstActionAt: lima("2026-09-24T12:00:00"),
+  due: null,
+  ...overrides,
+});
+
+test("sin primer contacto es venta en riesgo aunque el plazo no haya vencido", () => {
+  assert.deepEqual(placeMyDaySalesRecovery(recupero(), ahora), {
+    tier: "venta_en_riesgo",
+    bucket: "ahora",
+    dueAt: lima("2026-09-24T12:00:00"),
+  });
+});
+
+test("con contacto, solo sube a «ahora» si su seguimiento venció", () => {
+  const contactado = {
+    firstContactAt: lima("2026-09-23T10:00:00"),
+    nextActionAt: lima("2026-09-24T09:00:00"),
+    status: "IN_PROGRESS",
+  };
+  assert.deepEqual(
+    placeMyDaySalesRecovery(recupero({ ...contactado, due: "seguimiento" }), ahora),
+    {
+      tier: "seguimiento_vencido",
+      bucket: "ahora",
+      dueAt: lima("2026-09-24T09:00:00"),
+    },
+  );
+});
+
+test("un seguimiento de más tarde hoy va plegado; el de mañana no aparece", () => {
+  const base = {
+    firstContactAt: lima("2026-09-23T10:00:00"),
+    status: "IN_PROGRESS",
+  };
+  assert.equal(
+    placeMyDaySalesRecovery(
+      recupero({ ...base, nextActionAt: lima("2026-09-24T17:00:00") }),
+      ahora,
+    ).bucket,
+    "hoy",
+  );
+  assert.equal(
+    placeMyDaySalesRecovery(
+      recupero({ ...base, nextActionAt: lima("2026-09-25T10:00:00") }),
+      ahora,
+    ),
+    null,
+  );
+});
+
+test("en verificación no hay nada que hacer", () => {
+  assert.equal(placeMyDaySalesRecovery(recupero({ status: "WAITING" }), ahora), null);
+});
+
+test("AC-001: el orden es por tramo, luego por plazo, luego por el orden del módulo", () => {
+  const items = [
+    { id: "campana-2", tier: "campana", dueAt: null, rank: 2 },
+    { id: "pedido", tier: "pedido", dueAt: lima("2026-09-24T08:00:00"), rank: 0 },
+    { id: "cita-pronto", tier: "cita_pronto", dueAt: lima("2026-09-24T12:30:00"), rank: 0 },
+    { id: "campana-1", tier: "campana", dueAt: null, rank: 1 },
+    { id: "riesgo", tier: "venta_en_riesgo", dueAt: lima("2026-09-24T11:40:00"), rank: 0 },
+    { id: "cita-vencida-2", tier: "cita_vencida", dueAt: lima("2026-09-24T10:45:00"), rank: 0 },
+    { id: "cita-vencida-1", tier: "cita_vencida", dueAt: lima("2026-09-24T09:00:00"), rank: 0 },
+    { id: "seguimiento", tier: "seguimiento_vencido", dueAt: null, rank: 0 },
+  ];
+
+  assert.deepEqual(
+    [...items].sort(compareMyDayItems).map((item) => item.id),
+    [
+      "cita-vencida-1",
+      "cita-vencida-2",
+      "riesgo",
+      "cita-pronto",
+      "pedido",
+      "seguimiento",
+      "campana-1",
+      "campana-2",
+    ],
+  );
+});
+
+test("dentro de un tramo, lo que tiene plazo va antes que lo que no", () => {
+  const conPlazo = { tier: "pedido", dueAt: lima("2026-09-24T08:00:00"), rank: 5 };
+  const sinPlazo = { tier: "pedido", dueAt: null, rank: 0 };
+  assert.ok(compareMyDayItems(conPlazo, sinPlazo) < 0);
+});
+
+test("el plazo en palabras del asesor", () => {
+  assert.equal(describeMyDayDue(lima("2026-09-24T10:35:00"), ahora), "venció hace 25 min");
+  assert.equal(describeMyDayDue(lima("2026-09-24T08:00:00"), ahora), "venció hace 3 h");
+  assert.equal(
+    describeMyDayDue(lima("2026-09-22T08:00:00"), ahora),
+    "vencida desde el 22/09",
+  );
+  assert.equal(describeMyDayDue(lima("2026-09-24T11:40:00"), ahora), "en 40 min");
+  assert.equal(describeMyDayDue(lima("2026-09-24T15:00:00"), ahora), "a las 15:00");
+  assert.equal(
+    describeMyDayDue(lima("2026-09-25T09:30:00"), ahora),
+    "el 25/09 a las 09:30",
+  );
+});

@@ -698,7 +698,7 @@ type AgrActionKind = NonNullable<OrderInboxItem["agrDelivery"]>["actionKind"];
  */
 const TERMINAL_EXTERNAL_STATES = ["RECHAZADO", "CANCELADO"];
 
-function getAgrAction(input: {
+export function getAgrAction(input: {
   estadoPedido: string;
   motivoRechazo: string | null;
   submotivoRechazo: string | null;

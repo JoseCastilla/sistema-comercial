@@ -30,6 +30,7 @@ export * from "./recovery-agenda.js";
 export * from "./recovery-agenda-period.js";
 export * from "./recovery-attempt-consequences.js";
 export * from "./recovery-work-views.js";
+export * from "./my-day.js";
 export * from "./recovery-attempt-corrections.js";
 export * from "./recovery-attempt-quality.js";
 export * from "./recovery-board-period.js";

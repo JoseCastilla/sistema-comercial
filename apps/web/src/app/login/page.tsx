@@ -8,7 +8,7 @@ export default async function LoginPage() {
   const session = await getCurrentSession();
 
   if (session) {
-    redirect("/orders");
+    redirect("/");
   }
 
   return (
