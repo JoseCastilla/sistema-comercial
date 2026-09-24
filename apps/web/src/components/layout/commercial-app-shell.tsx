@@ -12,7 +12,6 @@ export type ActiveSection =
   | "performance"
   | "orders"
   | "dni"
-  | "tools"
   | "sales-recovery"
   | "recovery"
   | "imports"
@@ -39,7 +38,6 @@ const SECTION_BY_PATH_PREFIX: readonly (readonly [string, ActiveSection])[] = [
   ["/recovery", "recovery"],
   ["/orders", "orders"],
   ["/dni", "dni"],
-  ["/tools", "tools"],
 ];
 
 export function sectionForPath(pathname: string): ActiveSection {
@@ -53,7 +51,6 @@ type IconName =
   | "home"
   | "orders"
   | "identity"
-  | "tools"
   | "recovery"
   | "campaigns"
   | "sales"
@@ -87,13 +84,6 @@ function NavigationIcon({ name }: { name: IconName }) {
         <rect height="13" rx="1.5" width="16" x="2" y="3.5" />
         <circle cx="7" cy="9" r="2" />
         <path d="M4.5 14c.4-1.8 1.2-2.7 2.5-2.7s2.1.9 2.5 2.7M12 8h3M12 11h3" />
-      </>
-    ),
-    tools: (
-      <>
-        <circle cx="6" cy="7" r="2.5" />
-        <circle cx="14" cy="13" r="2.5" />
-        <path d="M8.5 7h6M5.5 9.5V14h6" />
       </>
     ),
     sales: (
@@ -326,13 +316,6 @@ export function CommercialAppShell({
             label="Consulta DNI"
           />
           <NavigationItem
-            active={currentSection === "tools"}
-            description="Líneas asociadas a un documento"
-            href="/tools/lines"
-            icon="tools"
-            label="Checa tus líneas"
-          />
-          <NavigationItem
             active={currentSection === "sales-recovery"}
             description="Ventas caídas por salvar"
             href="/recovery/sales"
@@ -424,7 +407,7 @@ export function CommercialAppShell({
       <nav
         aria-label="Navegación móvil"
         className="app-shell__mobile-nav"
-        data-items={isAdmin ? "9" : role === "SUPERVISOR" ? "7" : "6"}
+        data-items={isAdmin ? "8" : role === "SUPERVISOR" ? "6" : "5"}
       >
         <MobileNavigationItem
           active={currentSection === "performance"}
@@ -443,12 +426,6 @@ export function CommercialAppShell({
           href="/dni"
           icon="identity"
           label="DNI"
-        />
-        <MobileNavigationItem
-          active={currentSection === "tools"}
-          href="/tools/lines"
-          icon="tools"
-          label="Líneas"
         />
         <MobileNavigationItem
           active={currentSection === "sales-recovery"}

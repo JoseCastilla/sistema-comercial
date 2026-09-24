@@ -1,6 +1,6 @@
 # SPEC-036 — Superficie de consultas externas
 
-**Estado:** `ENTREGADA` — queda la decisión de unificar con /dni (06/09/2026)
+**Estado:** `SUSTITUIDA` — la única herramienta que quedaba se retiró en SPEC-051 (12/09/2026)
 
 > Antes: `IMPLEMENTED_LOCAL`
 
@@ -47,7 +47,7 @@ estar aquí.
 
 | Herramienta | Ruta | Naturaleza |
 |---|---|---|
-| Checa tus líneas | `/tools/lines` | Portal oficial embebido; muestra las líneas asociadas a un documento |
+| Checa tus líneas | `/tools/lines` | Portal oficial embebido; muestra las líneas asociadas a un documento — **retirada por SPEC-051** |
 
 ## Criterios de aceptación
 

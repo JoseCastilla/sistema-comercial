@@ -126,7 +126,7 @@ tratar en una spec propia de operación; no bloquean esta.
 - **BR-010** DNI distingue actividad personal y organizacional, API y caché;
   saldo con fecha del último reporte. DITO: ocho cargas recientes más
   historial paginado sin borrar confirmadas.
-- **BR-011** «Checa tus líneas» explica que no queda auditado como consulta
+- **BR-011** (la parte de «Checa tus líneas» queda sustituida por SPEC-051 BR-001: el módulo se retiró) «Checa tus líneas» explica que no queda auditado como consulta
   DNI; acceso externo alternativo; selectores de destino con etiqueta
   accesible y reparto operable con teclado.
 
@@ -192,5 +192,5 @@ tratar en una spec propia de operación; no bloquean esta.
   fecha del reporte y que no es en tiempo real.
 - **AC-012:** Importar ventas DITO conserva ocho recientes y abre un
   historial paginado sin acción de borrado.
-- **AC-013:** «Checa tus líneas» explica que no queda auditado y ofrece la
+- **AC-013:** (la parte de «Checa tus líneas» queda sustituida por SPEC-051) «Checa tus líneas» explica que no queda auditado y ofrece la
   salida externa; el selector de equipo del triage tiene nombre accesible.

@@ -13,13 +13,11 @@ describe("sectionForPath", () => {
     expect(sectionForPath("/orders")).toBe("orders");
     expect(sectionForPath("/performance")).toBe("performance");
     expect(sectionForPath("/dni")).toBe("dni");
-    expect(sectionForPath("/tools")).toBe("tools");
   });
 
   it("mantiene la sección en las rutas hijas", () => {
     expect(sectionForPath("/performance/quotas")).toBe("performance");
     expect(sectionForPath("/performance/reconciliation")).toBe("performance");
-    expect(sectionForPath("/tools/lines")).toBe("tools");
   });
 
   it("el prefijo más específico gana sobre el general", () => {
