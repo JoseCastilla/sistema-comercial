@@ -159,4 +159,25 @@ describe("Gestión en fila · Guardar y siguiente", () => {
     fireEvent.keyDown(form(), { key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  it("Esc con la observación escrita pregunta antes de descartarla", () => {
+    const { onCancel, observacion } = renderEditor();
+    const confirm = vi.spyOn(window, "confirm");
+
+    fireEvent.change(observacion(), { target: { value: "llamar a las 5" } });
+
+    // Se arrepiente: la gestión sigue abierta con lo escrito.
+    confirm.mockReturnValueOnce(false);
+    fireEvent.keyDown(observacion(), { key: "Escape" });
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(observacion().value).toBe("llamar a las 5");
+
+    // Confirma: ahora sí se cierra.
+    confirm.mockReturnValueOnce(true);
+    fireEvent.keyDown(observacion(), { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+
+    confirm.mockRestore();
+  });
 });
