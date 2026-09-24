@@ -36,7 +36,7 @@ Una casilla se marca solo con evidencia en `verification.md`.
       sin rojo ni plazos. 16 pruebas de la regla.
 - [x] BR-019: tarjeta «Cuota de setiembre» con las portabilidades
       entregadas del mes frente a la cuota asignada.
-- [ ] Lectura en producción con la cuenta de asesor.
+- [x] Lectura en producción con la cuenta de asesor (24/09/2026).
 
 ## Fase 2 — Actuar sin salir
 

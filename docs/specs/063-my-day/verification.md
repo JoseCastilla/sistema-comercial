@@ -51,4 +51,10 @@
   dice «Cuota de setiembre — 0 entregadas · sin cuota asignada». Regla: 16
   de 16 pruebas; web: tipos, lint y 219 pruebas en verde.
 
+- **24/09/2026** — Fase 1.1 en producción (`39d42c7`), cuenta de asesor, solo
+  lectura: «Cuota de setiembre — 52 de 100, te faltan 48»; «Ahora» con 2
+  ventas caídas calientes (la del 23/09 primero, «venció hace 10 min»), 7
+  pedidos y la campaña; «Ventas antiguas por recuperar» con 20, plegado,
+  ninguna en rojo, de la venta del 16/09 a la del 10/08.
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes.
