@@ -57,4 +57,22 @@
   pedidos y la campaña; «Ventas antiguas por recuperar» con 20, plegado,
   ninguna en rojo, de la venta del 16/09 a la del 10/08.
 
+- **24/09/2026** — Fase 2:
+  - `mi-dia-gestion-en-fila.test.tsx` (2 pruebas): un pedido no ofrece
+    editor y lleva a Pedidos; guardar desde la fila marca «Gestionado: No
+    contesta · Próxima acción: 25/09, 10:00» y «Guardar y siguiente» abre el
+    editor del caso siguiente saltando el pedido, sin el aviso de «gestión
+    sin guardar».
+  - **Defecto encontrado y corregido:** esa misma prueba falló primero. El
+    borrador compartido (`campaign-draft-context.tsx`) leía `dirty` del
+    estado: el editor lo marca limpio y en el mismo efecto pide el siguiente
+    caso, y `startEditing` todavía lo veía sucio, así que dejaba el cambio en
+    espera. Afecta igual a la cola de Campañas (SPEC-049 BR-016), cuya
+    prueba simulaba `onNext` y no lo detectaba. Ahora se lee de una
+    referencia al día.
+  - Local, asesora de prueba, sin guardar (copia con datos reales): el
+    editor se abre dentro de la fila con la última gestión, atajos N/I/R/A,
+    teléfono sugerido y «Guardar y siguiente»; Esc lo cierra.
+  - Web: tipos, lint y 221 pruebas en verde.
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes.

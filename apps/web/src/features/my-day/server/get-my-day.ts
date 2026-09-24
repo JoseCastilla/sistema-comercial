@@ -26,8 +26,6 @@ import {
   resolveRelevantAcceleratorWindow,
   salesRecoveryOpenStatuses,
   selectRecoveryAgendaItem,
-  type MyDayBucket,
-  type MyDayTier,
   type PerformanceCommissionPolicy,
   type RecoveryWorkNowCandidate,
 } from "@repo/validation";
@@ -37,6 +35,8 @@ import { getAgrAction } from "@/features/orders/server/get-order-inbox";
 import { buildOrderHref } from "@/features/recovery/order-link";
 import { database } from "@/server/database";
 import { toMetricInput } from "@/features/performance/server/order-metric-input";
+
+import type { MyDayEntry, MyDayManage } from "../my-day-types";
 
 /**
  * «Mi día» — SPEC-063. Reúne el trabajo propio del usuario desde las fuentes
@@ -60,35 +60,57 @@ const noStatusGraceMs = 10 * 60 * 1000;
 const caseOpenStatuses = ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"] as const;
 const internalSources = ["INTERNAL_ORDER_STATE", "MANUAL"] as const;
 
-export type MyDayEntryKind = "cita" | "venta_caida" | "pedido" | "campana";
+export type { MyDayEntry } from "../my-day-types";
 
-export const myDayKindLabels: Record<MyDayEntryKind, string> = {
-  cita: "Cita acordada",
-  venta_caida: "Venta caída",
-  pedido: "Pedido",
-  campana: "Campaña",
-};
-
-export interface MyDayEntry {
-  key: string;
-  kind: MyDayEntryKind;
-  tier: MyDayTier;
-  bucket: MyDayBucket;
-  dueAt: Date | null;
-  /** Cuándo se hizo la venta, si el elemento viene de una (BR-018). */
-  saleAt: Date | null;
-  /** «venció hace 25 min», «en 40 min», «a las 15:00». */
-  dueLabel: string | null;
-  overdue: boolean;
-  rank: number;
-  /** El cliente. */
-  title: string;
-  /** Qué hacer, en una frase (BR-007). */
-  action: string;
-  detail: string | null;
-  href: string;
-  actionLabel: string;
+interface LastAttemptRow {
+  result: string;
+  observation: string | null;
+  correction: { effectiveResult: string } | null;
 }
+
+/**
+ * Fase 2: lo que el editor de gestión necesita para registrar el intento
+ * desde la fila. Los mismos teléfonos que ofrecen la cola de Campañas y la
+ * bandeja de Recupero: contacto primero, luego las líneas, sin repetir.
+ */
+function buildManage(input: {
+  caseId: string;
+  contactPhones: string[];
+  serviceNumbers: string[];
+  orderPhone?: string | null;
+  orderLine?: string | null;
+  last: LastAttemptRow | null;
+}): MyDayManage {
+  const phoneOptions = [
+    ...new Set(
+      [
+        ...input.contactPhones,
+        input.orderPhone ?? null,
+        ...input.serviceNumbers,
+        input.orderLine ?? null,
+      ].filter((phone): phone is string => Boolean(phone)),
+    ),
+  ];
+
+  return {
+    caseId: input.caseId,
+    phoneOptions,
+    defaultPhone: phoneOptions[0] ?? null,
+    serviceNumbers: input.serviceNumbers,
+    lastResult: input.last ? effectiveAttemptResult(input.last) : null,
+    lastObservation: input.last?.observation ?? null,
+  };
+}
+
+const lastAttemptSelect = {
+  orderBy: { createdAt: "desc" as const },
+  take: 1,
+  select: {
+    result: true,
+    observation: true,
+    correction: { select: { effectiveResult: true } },
+  },
+};
 
 export interface MyDayProgress {
   monthLabel: string;
@@ -166,7 +188,25 @@ async function readCommitments(
     select: {
       id: true,
       scheduledAt: true,
-      case: { select: { id: true, source: true, holderName: true } },
+      case: {
+        select: {
+          id: true,
+          source: true,
+          holderName: true,
+          phones: {
+            where: { kind: "CONTACT", invalidMarkedAt: null },
+            select: { phoneNumber: true },
+          },
+          services: {
+            where: { discardedAt: null },
+            select: { serviceNumber: true },
+          },
+          sourceDitoOrder: {
+            select: { deliveryContactPhone: true, serviceNumber: true },
+          },
+          attempts: lastAttemptSelect,
+        },
+      },
     },
   });
 
@@ -189,6 +229,16 @@ async function readCommitments(
           row.case.source === "NATIONAL_BASE" ? "Campaña" : "Recupero de ventas",
         href: caseHref(row.case.id, String(row.case.source)),
         actionLabel: "Abrir caso",
+        manage: buildManage({
+          caseId: row.case.id,
+          contactPhones: row.case.phones.map((phone) => phone.phoneNumber),
+          serviceNumbers: row.case.services.map((item) => item.serviceNumber),
+          orderPhone: row.case.sourceDitoOrder?.deliveryContactPhone,
+          orderLine: row.case.sourceDitoOrder?.serviceNumber,
+          last: row.case.attempts[0]
+            ? { ...row.case.attempts[0], result: String(row.case.attempts[0].result) }
+            : null,
+        }),
       },
     ];
   });
@@ -216,19 +266,22 @@ async function readSalesRecovery(
       id: true,
       holderName: true,
       status: true,
-      sourceDitoOrder: { select: { registeredAt: true } },
+      sourceDitoOrder: {
+        select: {
+          registeredAt: true,
+          deliveryContactPhone: true,
+          serviceNumber: true,
+        },
+      },
+      phones: {
+        where: { kind: "CONTACT", invalidMarkedAt: null },
+        select: { phoneNumber: true },
+      },
       firstContactAt: true,
       nextActionAt: true,
       lastSightingAt: true,
       claimedAt: true,
-      attempts: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: {
-          result: true,
-          correction: { select: { effectiveResult: true } },
-        },
-      },
+      attempts: lastAttemptSelect,
     },
   });
 
@@ -283,6 +336,14 @@ async function readSalesRecovery(
         detail: `Venta del ${formatMyDaySaleDay(saleAt)} · ${stage.detail}`,
         href: `/recovery/sales/${row.id}`,
         actionLabel: "Abrir caso",
+        manage: buildManage({
+          caseId: row.id,
+          contactPhones: row.phones.map((phone) => phone.phoneNumber),
+          serviceNumbers: [],
+          orderPhone: row.sourceDitoOrder?.deliveryContactPhone,
+          orderLine: row.sourceDitoOrder?.serviceNumber,
+          last: last ? { ...last, result: String(last.result) } : null,
+        }),
       },
     ];
   });
@@ -312,15 +373,19 @@ async function readCampaign(
       lastSightingAt: true,
       phones: {
         where: { kind: "CONTACT", invalidMarkedAt: null },
-        select: { id: true },
+        select: { phoneNumber: true },
       },
-      services: { where: { discardedAt: null }, select: { id: true } },
+      services: {
+        where: { discardedAt: null },
+        select: { serviceNumber: true },
+      },
       attempts: {
         orderBy: { createdAt: "desc" },
         take: 1,
         select: {
           createdAt: true,
           result: true,
+          observation: true,
           followUpAt: true,
           correction: { select: { effectiveResult: true } },
         },
@@ -378,6 +443,14 @@ async function readCampaign(
     detail: recoveryAgendaOriginLabels[item.origin],
     href: `/recovery/campaigns/${row.id}`,
     actionLabel: "Abrir caso",
+    manage: buildManage({
+      caseId: row.id,
+      contactPhones: row.phones.map((phone) => phone.phoneNumber),
+      serviceNumbers: row.services.map((item) => item.serviceNumber),
+      last: row.attempts[0]
+        ? { ...row.attempts[0], result: String(row.attempts[0].result) }
+        : null,
+    }),
   }));
 
   return { entries, total: ahora.length };
@@ -470,6 +543,7 @@ async function readOrders(
       detail: `Venta del ${formatMyDaySaleDay(row.registeredAt)} · pedido ${row.orderCodeRaw}`,
       href: buildOrderHref(row.orderCodeRaw, getLimaIsoDate(row.registeredAt)),
       actionLabel: "Ver pedido",
+      manage: null,
     };
   });
 }

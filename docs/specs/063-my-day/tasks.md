@@ -40,8 +40,15 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 2 — Actuar sin salir
 
-- [ ] Tipificar recupero y campaña desde la fila de «Mi día».
-- [ ] «Guardar y siguiente» a lo largo de toda la lista.
+- [x] Tipificar citas, ventas caídas y campaña desde la fila de «Mi día»
+      con el editor de Campañas (misma acción, mismo borrador, misma clave
+      de idempotencia). Los pedidos siguen llevando a Pedidos.
+- [x] «Guardar y siguiente» a lo largo de cada lista, saltando pedidos.
+- [x] La lectura cada minuto se pausa mientras hay una gestión abierta.
+- [x] Corregido el borrador compartido: tras guardar, «Guardar y siguiente»
+      dejaba el cambio en espera en vez de abrir el siguiente caso (también
+      en la cola de Campañas, SPEC-049 BR-016).
+- [ ] Recorrido en producción con la cuenta de asesor (sin guardar).
 
 ## Fase 3 — Avisos
 

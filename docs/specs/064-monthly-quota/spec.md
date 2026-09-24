@@ -1,6 +1,6 @@
 # SPEC-064 — Cuota mensual
 
-**Estado:** `BORRADOR` — decisión de José del 24/09/2026; una pregunta abierta sobre las cuotas ya cargadas (24/09/2026)
+**Estado:** `APROBADA` — decisiones de José del 24/09/2026: cuota mensual, cuotas cargadas tratadas como mensuales, reparto por el líder (24/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-24
@@ -32,13 +32,17 @@ solo contra las ventas de esos días. Por eso decía 38 y no 52.
   Rendimiento (tarjeta, resumen por equipo, avance por asesor) y Cuotas
   muestran la misma cifra mensual.
 
-## 3. Pregunta abierta
+## 3. Decisiones de José (24/09/2026)
 
-- **P-01 — Las cuotas ya cargadas.** ¿Las cuotas de setiembre (y las de
-  meses anteriores) se cargaron pensando en el mes completo? Recomendación:
-  sí, porque la pantalla abría en la primera ventana. Se toma como mensual la
-  de la primera ventana y, si no existe, la de la segunda; si un asesor tiene
-  las dos, José decide cuál vale.
+- **P-01 — Las cuotas ya cargadas son todas mensuales.** Se toma como
+  mensual la de la primera ventana y, si no existe, la de la segunda.
+- **Cómo baja la cuota.** José recibe la cuota de la organización (por
+  ejemplo 1 000), la reparte entre los equipos, y **cada líder de equipo la
+  reparte entre sus asesores según su modalidad de trabajo** (part time, full
+  time, externo…). La cifra de cada asesor la decide su líder, que responde
+  por cubrir la cuota del equipo con el apoyo de sus asesores. Es la cadena
+  de SPEC-038 BR-009, ahora mensual; la modalidad no se modela: el líder la
+  refleja en la cifra que asigna.
 
 ## 4. Fuera de alcance
 
