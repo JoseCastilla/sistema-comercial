@@ -3,22 +3,40 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "!.next/dev/**",
+        "dist/**"
+      ]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": [
+        "^check-types"
+      ]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "dev": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "cache": false,
       "persistent": true
     }
@@ -43,6 +61,17 @@
     "MAINTENANCE_INTERNAL_SECRET",
     "WEB_INTERNAL_URL",
     "API_INTERNAL_URL",
-    "MAINTENANCE_INTERVAL_MINUTES"
+    "MAINTENANCE_INTERVAL_MINUTES",
+    "CRM_ENCRYPTION_KEY",
+    "CRM_STORAGE_DIR",
+    "META_APP_ID",
+    "META_APP_SECRET",
+    "META_CONFIG_ID",
+    "META_GRAPH_API_VERSION",
+    "META_WEBHOOK_VERIFY_TOKEN",
+    "ANTHROPIC_API_KEY",
+    "AI_USD_TO_PEN",
+    "BROADCAST_USD_TO_PEN",
+    "NEXT_RUNTIME"
   ]
 }

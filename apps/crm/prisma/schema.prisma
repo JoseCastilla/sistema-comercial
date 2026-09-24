@@ -1,0 +1,1032 @@
+// CRM MVP aislado (SPEC-062). Base de datos propia: crm_local.
+// Toda tabla de negocio lleva organizationId y se consulta filtrando por él.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────── Organización y acceso ─────────────────────────
+
+enum OrganizationRole {
+  OWNER
+  SUPERVISOR
+  AGENT
+  BACKOFFICE
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(160)
+  slug      String   @unique @db.VarChar(80)
+  timezone  String   @default("America/Lima") @db.VarChar(64)
+  /// Horario de atención: { "days": [1..6], "start": "09:00", "end": "19:00" }
+  businessHours Json  @default("{\"days\":[1,2,3,4,5,6],\"start\":\"09:00\",\"end\":\"19:00\"}") @map("business_hours")
+  /// Minutos sin respuesta del asesor para marcar «sin atender».
+  unattendedAfterMinutes Int @default(15) @map("unattended_after_minutes")
+  /// Minutos sin respuesta para devolver la conversación a la cola.
+  returnToQueueAfterMinutes Int @default(30) @map("return_to_queue_after_minutes")
+  /// Al cerrar una conversación, el próximo mensaje lo atiende el asistente.
+  handBackToAgentOnClose Boolean @default(true) @map("hand_back_to_agent_on_close")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  members         OrganizationMember[]
+  whatsappNumbers WhatsappNumber[]
+  contacts        Contact[]
+  conversations   Conversation[]
+  messages        Message[]
+  templates       MessageTemplate[]
+  opportunities   Opportunity[]
+  orders          Order[]
+  appointments    Appointment[]
+  bookingRules    BookingRule[]
+  aiAgents        AiAgent[]
+  knowledge       KnowledgeArticle[]
+  workflows       Workflow[]
+  workflowRuns    WorkflowRun[]
+  broadcasts      Broadcast[]
+  auditLogs       AuditLog[]
+  quickReplies    QuickReply[]
+  webhookEvents   WebhookEvent[]
+  planCatalog     PlanCatalogItem[]
+
+  @@map("organizations")
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String     @db.VarChar(160)
+  email         String     @unique @db.VarChar(255)
+  emailVerified Boolean    @default(false) @map("email_verified")
+  image         String?    @db.Text
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions    Session[]
+  accounts    Account[]
+  memberships OrganizationMember[]
+
+  @@map("users")
+}
+
+model OrganizationMember {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           OrganizationRole
+  /// Presencia del asesor para el reparto (SPEC-054 BR-005).
+  available      Boolean          @default(false)
+  lastSeenAt     DateTime?        @map("last_seen_at") @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+// Tablas de Better Auth.
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  token     String   @unique @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  ipAddress String?  @map("ip_address") @db.VarChar(64)
+  userAgent String?  @map("user_agent") @db.Text
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  accountId             String    @map("account_id") @db.VarChar(255)
+  providerId            String    @map("provider_id") @db.VarChar(64)
+  userId                String    @map("user_id") @db.Uuid
+  accessToken           String?   @map("access_token") @db.Text
+  refreshToken          String?   @map("refresh_token") @db.Text
+  idToken               String?   @map("id_token") @db.Text
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(3)
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String    @id @default(uuid()) @db.Uuid
+  identifier String    @db.VarChar(255)
+  value      String    @db.Text
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime? @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  action         String   @db.VarChar(80)
+  targetKind     String   @map("target_kind") @db.VarChar(40)
+  targetId       String?  @map("target_id") @db.VarChar(80)
+  detail         Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
+}
+
+// ───────────────────────── WhatsApp (Meta Cloud API) ─────────────────────────
+
+enum WhatsappNumberStatus {
+  PENDING
+  CONNECTED
+  RESTRICTED
+  DISCONNECTED
+}
+
+enum ConnectionMethod {
+  MANUAL
+  EMBEDDED_SIGNUP
+}
+
+model WhatsappNumber {
+  id                    String               @id @default(uuid()) @db.Uuid
+  organizationId        String               @map("organization_id") @db.Uuid
+  wabaId                String               @map("waba_id") @db.VarChar(40)
+  phoneNumberId         String               @unique @map("phone_number_id") @db.VarChar(40)
+  displayPhoneNumber    String?              @map("display_phone_number") @db.VarChar(40)
+  verifiedName          String?              @map("verified_name") @db.VarChar(160)
+  status                WhatsappNumberStatus @default(PENDING)
+  qualityRating         String?              @map("quality_rating") @db.VarChar(20)
+  messagingLimitTier    String?              @map("messaging_limit_tier") @db.VarChar(40)
+  connectionMethod      ConnectionMethod     @map("connection_method")
+  /// Token de usuario de sistema, cifrado AES-256-GCM. Nunca sale al navegador.
+  accessTokenCiphertext String               @map("access_token_ciphertext") @db.Text
+  /// Agente de IA que atiende por defecto en este número.
+  defaultAiAgentId      String?              @map("default_ai_agent_id") @db.Uuid
+  lastError             String?              @map("last_error") @db.Text
+  connectedAt           DateTime?            @map("connected_at") @db.Timestamptz(3)
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  templates     MessageTemplate[]
+  broadcasts    Broadcast[]
+
+  @@index([organizationId])
+  @@map("whatsapp_numbers")
+}
+
+enum WebhookProcessingStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+model WebhookEvent {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String?                 @map("organization_id") @db.Uuid
+  source         String                  @default("META_WHATSAPP") @db.VarChar(40)
+  /// Clave de idempotencia (wamid, wamid+estado, id de plantilla+estado…).
+  externalId     String                  @map("external_id") @db.VarChar(200)
+  status         WebhookProcessingStatus @default(RECEIVED)
+  payload        Json
+  attempts       Int                     @default(0)
+  lastError      String?                 @map("last_error") @db.Text
+  receivedAt     DateTime                @default(now()) @map("received_at") @db.Timestamptz(3)
+  processedAt    DateTime?               @map("processed_at") @db.Timestamptz(3)
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@unique([source, externalId])
+  @@index([status, receivedAt])
+  @@map("webhook_events")
+}
+
+enum TemplateStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  PAUSED
+  DISABLED
+  RETIRED
+}
+
+enum TemplateCategory {
+  MARKETING
+  UTILITY
+  AUTHENTICATION
+}
+
+model MessageTemplate {
+  id               String           @id @default(uuid()) @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  whatsappNumberId String           @map("whatsapp_number_id") @db.Uuid
+  externalId       String?          @map("external_id") @db.VarChar(40)
+  name             String           @db.VarChar(512)
+  language         String           @default("es") @db.VarChar(16)
+  category         TemplateCategory
+  status           TemplateStatus   @default(DRAFT)
+  /// Componentes tal como los define Meta (header, body, footer, buttons).
+  components       Json
+  /// Variables del cuerpo: [{ "index": 1, "source": "contact.name" | "manual", "label": "Nombre" }]
+  variables        Json             @default("[]")
+  rejectedReason   String?          @map("rejected_reason") @db.Text
+  qualityScore     String?          @map("quality_score") @db.VarChar(20)
+  pausedUntil      DateTime?        @map("paused_until") @db.Timestamptz(3)
+  lastSyncedAt     DateTime?        @map("last_synced_at") @db.Timestamptz(3)
+  createdByUserId  String?          @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  whatsappNumber WhatsappNumber @relation(fields: [whatsappNumberId], references: [id], onDelete: Cascade)
+  messages       Message[]
+  broadcasts     Broadcast[]
+
+  @@unique([whatsappNumberId, name, language])
+  @@index([organizationId, status])
+  @@map("message_templates")
+}
+
+// ───────────────────────── Contactos ─────────────────────────
+
+enum ContactOrigin {
+  AD
+  BROADCAST
+  REFERRAL
+  ADVISOR
+  ORGANIC
+  UNKNOWN
+}
+
+model Contact {
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String        @map("organization_id") @db.Uuid
+  displayName     String?       @map("display_name") @db.VarChar(200)
+  /// Teléfono en formato E.164 sin «+» (así lo entrega Meta).
+  phone           String?       @db.VarChar(20)
+  /// Business-scoped user id de WhatsApp (puede llegar sin teléfono).
+  waUserId        String?       @map("wa_user_id") @db.VarChar(80)
+  documentNumber  String?       @map("document_number") @db.VarChar(20)
+  email           String?       @db.VarChar(255)
+  district        String?       @db.VarChar(120)
+  currentCarrier  String?       @map("current_carrier") @db.VarChar(60)
+  tags            String[]      @default([])
+  /// Origen inicial: se fija una vez y no cambia (SPEC-061 BR-005).
+  initialOrigin   ContactOrigin @default(UNKNOWN) @map("initial_origin")
+  initialOriginRef String?      @map("initial_origin_ref") @db.VarChar(120)
+  marketingOptIn  Boolean       @default(false) @map("marketing_opt_in")
+  marketingOptOutAt DateTime?   @map("marketing_opt_out_at") @db.Timestamptz(3)
+  lastInboundAt   DateTime?     @map("last_inbound_at") @db.Timestamptz(3)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization  Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  opportunities Opportunity[]
+  orders        Order[]
+  appointments  Appointment[]
+  consents      ContactConsent[]
+  recipients    BroadcastRecipient[]
+  workflowRuns  WorkflowRun[]
+
+  @@unique([organizationId, phone])
+  @@unique([organizationId, waUserId])
+  @@index([organizationId, documentNumber])
+  @@map("contacts")
+}
+
+enum ConsentCategory {
+  SERVICE
+  MARKETING
+}
+
+model ContactConsent {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  contactId       String          @map("contact_id") @db.Uuid
+  category        ConsentCategory
+  granted         Boolean
+  /// «escribió primero», «formulario», «botón», «palabra de baja», «webhook user_preferences»…
+  source          String          @db.VarChar(80)
+  evidenceText    String?         @map("evidence_text") @db.Text
+  recordedByUserId String?        @map("recorded_by_user_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, category, createdAt])
+  @@map("contact_consents")
+}
+
+// ───────────────────────── Conversaciones y mensajes ─────────────────────────
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+}
+
+enum ResponderState {
+  IA_ACTIVA
+  REQUIERE_ASESOR
+  CONTROL_HUMANO
+}
+
+model Conversation {
+  id                 String             @id @default(uuid()) @db.Uuid
+  organizationId     String             @map("organization_id") @db.Uuid
+  contactId          String             @map("contact_id") @db.Uuid
+  whatsappNumberId   String             @map("whatsapp_number_id") @db.Uuid
+  status             ConversationStatus @default(OPEN)
+  responderState     ResponderState     @default(REQUIERE_ASESOR) @map("responder_state")
+  responderChangedAt DateTime?          @map("responder_changed_at") @db.Timestamptz(3)
+  assignedUserId     String?            @map("assigned_user_id") @db.Uuid
+  assignedAt         DateTime?          @map("assigned_at") @db.Timestamptz(3)
+  aiAgentId          String?            @map("ai_agent_id") @db.Uuid
+  /// Objeto `referral` del primer mensaje si vino de un anuncio (inmutable).
+  originReferral     Json?              @map("origin_referral")
+  originAdId         String?            @map("origin_ad_id") @db.VarChar(80)
+  /// Conversación sobre un pedido en curso: no abre oportunidad (SPEC-061 BR-002).
+  isOrderInquiry     Boolean            @default(false) @map("is_order_inquiry")
+  lastInboundAt      DateTime?          @map("last_inbound_at") @db.Timestamptz(3)
+  lastOutboundAt     DateTime?          @map("last_outbound_at") @db.Timestamptz(3)
+  lastMessageAt      DateTime?          @map("last_message_at") @db.Timestamptz(3)
+  lastMessagePreview String?            @map("last_message_preview") @db.VarChar(200)
+  /// Hasta cuándo la conversación es gratuita por anuncio (72 h).
+  freeUntil          DateTime?          @map("free_until") @db.Timestamptz(3)
+  unreadCount        Int                @default(0) @map("unread_count")
+  firstResponseAt    DateTime?          @map("first_response_at") @db.Timestamptz(3)
+  unattendedSince    DateTime?          @map("unattended_since") @db.Timestamptz(3)
+  closedAt           DateTime?          @map("closed_at") @db.Timestamptz(3)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact        Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  whatsappNumber WhatsappNumber      @relation(fields: [whatsappNumberId], references: [id], onDelete: Cascade)
+  messages       Message[]
+  notes          ConversationNote[]
+  events         ConversationEvent[]
+  opportunities  Opportunity[]
+  aiTurns        AiTurn[]
+  workflowRuns   WorkflowRun[]
+  appointments   Appointment[]
+
+  @@index([organizationId, status, lastMessageAt])
+  @@index([organizationId, assignedUserId, status])
+  @@index([contactId])
+  @@map("conversations")
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
+  RECEIVED
+}
+
+enum MessageOriginKind {
+  USER
+  AGENT_AI
+  WORKFLOW
+  BROADCAST
+  SYSTEM
+  CONTACT
+}
+
+model Message {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  conversationId  String            @map("conversation_id") @db.Uuid
+  direction       MessageDirection
+  /// wamid de Meta. Único por organización cuando existe.
+  externalId      String?           @map("external_id") @db.VarChar(200)
+  /// text, image, audio, video, document, sticker, location, interactive, button, template, reaction, unsupported
+  type            String            @db.VarChar(40)
+  body            String?           @db.Text
+  /// Carga normalizada para mostrar (botones, listas, plantilla usada, etc.).
+  payload         Json?
+  /// Original de Meta, inmutable (solo entrantes).
+  rawPayload      Json?             @map("raw_payload")
+  mediaPath       String?           @map("media_path") @db.VarChar(300)
+  mediaMimeType   String?           @map("media_mime_type") @db.VarChar(120)
+  mediaSizeBytes  Int?              @map("media_size_bytes")
+  status          MessageStatus
+  errorCode       String?           @map("error_code") @db.VarChar(40)
+  errorTitle      String?           @map("error_title") @db.Text
+  originKind      MessageOriginKind @map("origin_kind")
+  originRef       String?           @map("origin_ref") @db.VarChar(120)
+  senderUserId    String?           @map("sender_user_id") @db.Uuid
+  templateId      String?           @map("template_id") @db.Uuid
+  /// Idempotencia de envíos (doble clic, reintento).
+  clientRequestId String?           @map("client_request_id") @db.VarChar(80)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  sentAt          DateTime?         @map("sent_at") @db.Timestamptz(3)
+  deliveredAt     DateTime?         @map("delivered_at") @db.Timestamptz(3)
+  readAt          DateTime?         @map("read_at") @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  template     MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  outboundJob  OutboundJob?
+  recipient    BroadcastRecipient?
+
+  @@unique([organizationId, externalId])
+  @@unique([organizationId, clientRequestId])
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+enum OutboundJobStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+model OutboundJob {
+  id            String            @id @default(uuid()) @db.Uuid
+  messageId     String            @unique @map("message_id") @db.Uuid
+  status        OutboundJobStatus @default(PENDING)
+  attempts      Int               @default(0)
+  nextAttemptAt DateTime          @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  lockedAt      DateTime?         @map("locked_at") @db.Timestamptz(3)
+  lastError     String?           @map("last_error") @db.Text
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@map("outbound_jobs")
+}
+
+model ConversationNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  authorUserId   String   @map("author_user_id") @db.Uuid
+  body           String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("conversation_notes")
+}
+
+model ConversationEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  /// ASSIGNED, TRANSFERRED, RETURNED, TOOK_CONTROL, HANDED_BACK, REQUIRES_ADVISOR, CLOSED, REOPENED, UNATTENDED, WORKFLOW, AI…
+  type           String   @db.VarChar(40)
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  detail         Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("conversation_events")
+}
+
+model QuickReply {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  shortcut       String   @db.VarChar(40)
+  body           String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, shortcut])
+  @@map("quick_replies")
+}
+
+// ───────────────────────── Oportunidades y pedidos ─────────────────────────
+
+enum OpportunityStage {
+  NUEVO
+  EN_CONTACTO
+  CALIFICADO
+  PROPUESTA
+  EN_CIERRE
+  GANADA
+  PERDIDA
+}
+
+enum CustomerRelation {
+  NEW
+  EXISTING
+}
+
+enum NextActionKind {
+  LLAMAR
+  CITA
+  ESPERAR_RESPUESTA
+  COMPLETAR_DATOS
+}
+
+model Opportunity {
+  id               String           @id @default(uuid()) @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  contactId        String           @map("contact_id") @db.Uuid
+  conversationId   String?          @map("conversation_id") @db.Uuid
+  stage            OpportunityStage @default(NUEVO)
+  stageChangedAt   DateTime         @default(now()) @map("stage_changed_at") @db.Timestamptz(3)
+  origin           ContactOrigin    @default(UNKNOWN)
+  originRef        String?          @map("origin_ref") @db.VarChar(120)
+  customerRelation CustomerRelation @default(NEW) @map("customer_relation")
+  assignedUserId   String?          @map("assigned_user_id") @db.Uuid
+  nextActionKind   NextActionKind?  @map("next_action_kind")
+  nextActionAt     DateTime?        @map("next_action_at") @db.Timestamptz(3)
+  /// Propuesta: plan del catálogo, líneas y cargo fijo total esperado.
+  proposalPlanId   String?          @map("proposal_plan_id") @db.Uuid
+  proposalLines    Int?             @map("proposal_lines")
+  proposalFixedCharge Decimal?      @map("proposal_fixed_charge") @db.Decimal(10, 2)
+  lostReason       String?          @map("lost_reason") @db.VarChar(60)
+  lostDetail       String?          @map("lost_detail") @db.Text
+  /// Un pedido vinculado se canceló después de GANADA (SPEC-061 BR-010).
+  orderDropped     Boolean          @default(false) @map("order_dropped")
+  wonAt            DateTime?        @map("won_at") @db.Timestamptz(3)
+  closedAt         DateTime?        @map("closed_at") @db.Timestamptz(3)
+  lastActivityAt   DateTime         @default(now()) @map("last_activity_at") @db.Timestamptz(3)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  conversation Conversation?      @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  proposalPlan PlanCatalogItem?   @relation(fields: [proposalPlanId], references: [id], onDelete: SetNull)
+  orders       Order[]
+  events       OpportunityEvent[]
+  appointments Appointment[]
+  workflowRuns WorkflowRun[]
+
+  @@index([organizationId, stage, lastActivityAt])
+  @@index([contactId, stage])
+  @@map("opportunities")
+}
+
+model OpportunityEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  opportunityId String   @map("opportunity_id") @db.Uuid
+  /// OPENED, STAGE_CHANGED, ASSIGNED, PROPOSAL, ORDER_LINKED, ORDER_UNLINKED, ORDER_DROPPED, LOST, TOUCH
+  type          String   @db.VarChar(40)
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  /// USER, AGENT_AI, WORKFLOW, SYSTEM
+  actorKind     String   @default("USER") @map("actor_kind") @db.VarChar(20)
+  detail        Json?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, createdAt])
+  @@map("opportunity_events")
+}
+
+enum OrderStatus {
+  INGRESADO
+  ENTREGADO
+  ACTIVADO
+  CANCELADO
+}
+
+/// Pedido mínimo del MVP. En el acople lo reemplaza DitoOrder (SPEC-062 M-06).
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  organizationId  String      @map("organization_id") @db.Uuid
+  contactId       String?     @map("contact_id") @db.Uuid
+  opportunityId   String?     @map("opportunity_id") @db.Uuid
+  externalRef     String      @map("external_ref") @db.VarChar(80)
+  documentNumber  String?     @map("document_number") @db.VarChar(20)
+  holderName      String?     @map("holder_name") @db.VarChar(200)
+  phone           String?     @db.VarChar(20)
+  planName        String?     @map("plan_name") @db.VarChar(120)
+  fixedCharge     Decimal?    @map("fixed_charge") @db.Decimal(10, 2)
+  status          OrderStatus @default(INGRESADO)
+  /// CONFIRMED (por DNI o a mano) / SUGGESTED (solo por teléfono).
+  linkConfidence  String?     @map("link_confidence") @db.VarChar(20)
+  registeredAt    DateTime    @default(now()) @map("registered_at") @db.Timestamptz(3)
+  deliveredAt     DateTime?   @map("delivered_at") @db.Timestamptz(3)
+  activatedAt     DateTime?   @map("activated_at") @db.Timestamptz(3)
+  cancelledAt     DateTime?   @map("cancelled_at") @db.Timestamptz(3)
+  createdByUserId String?     @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  opportunity  Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, externalRef])
+  @@index([organizationId, documentNumber])
+  @@index([organizationId, status, registeredAt])
+  @@map("orders")
+}
+
+model PlanCatalogItem {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String    @db.VarChar(120)
+  /// PORTABILIDAD, LINEA_NUEVA, MIGRACION…
+  kind           String    @db.VarChar(40)
+  fixedCharge    Decimal   @map("fixed_charge") @db.Decimal(10, 2)
+  requirements   String?   @db.Text
+  promotion      String?   @db.Text
+  validFrom      DateTime  @default(now()) @map("valid_from") @db.Timestamptz(3)
+  validUntil     DateTime? @map("valid_until") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunities Opportunity[]
+
+  @@index([organizationId, validUntil])
+  @@map("plan_catalog_items")
+}
+
+// ───────────────────────── Calendario ─────────────────────────
+
+enum AppointmentStatus {
+  PENDING
+  DONE
+  NO_SHOW
+  RESCHEDULED
+  CANCELLED
+}
+
+model Appointment {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  contactId       String            @map("contact_id") @db.Uuid
+  opportunityId   String?           @map("opportunity_id") @db.Uuid
+  conversationId  String?           @map("conversation_id") @db.Uuid
+  /// Asesor dueño de la cita; nulo si aún no se asignó (la toma el reparto).
+  userId          String?           @map("user_id") @db.Uuid
+  scheduledAt     DateTime          @map("scheduled_at") @db.Timestamptz(3)
+  durationMinutes Int               @default(30) @map("duration_minutes")
+  status          AppointmentStatus @default(PENDING)
+  notes           String?           @db.Text
+  /// USER, AGENT_AI, WORKFLOW
+  createdByKind   String            @default("USER") @map("created_by_kind") @db.VarChar(20)
+  createdByUserId String?           @map("created_by_user_id") @db.Uuid
+  supersededById  String?           @map("superseded_by_id") @db.Uuid
+  clientRequestId String?           @map("client_request_id") @db.VarChar(80)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  opportunity  Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, clientRequestId])
+  @@index([organizationId, scheduledAt])
+  @@index([userId, scheduledAt])
+  @@map("appointments")
+}
+
+/// Franja de atención con cupo (SPEC-058 BR-022). weekday: 0 domingo … 6 sábado.
+model BookingRule {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  weekday        Int
+  startTime      String   @map("start_time") @db.VarChar(5)
+  endTime        String   @map("end_time") @db.VarChar(5)
+  slotMinutes    Int      @default(30) @map("slot_minutes")
+  capacity       Int      @default(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, weekday])
+  @@map("booking_rules")
+}
+
+// ───────────────────────── Agente de IA ─────────────────────────
+
+enum AiAgentStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+}
+
+model AiAgent {
+  id                 String        @id @default(uuid()) @db.Uuid
+  organizationId     String        @map("organization_id") @db.Uuid
+  name               String        @db.VarChar(120)
+  status             AiAgentStatus @default(DRAFT)
+  /// Proveedor: ANTHROPIC (único implementado en el MVP).
+  provider           String        @default("ANTHROPIC") @db.VarChar(40)
+  modelId            String        @default("claude-opus-5") @map("model_id") @db.VarChar(80)
+  effort             String        @default("low") @db.VarChar(16)
+  /// Borrador editable. Al publicar se copia a una versión inmutable.
+  draftConfig        Json          @map("draft_config")
+  draftTools         String[]      @default([]) @map("draft_tools")
+  publishedVersionId String?       @map("published_version_id") @db.Uuid
+  /// Horario en que actúa: { "mode": "OUTSIDE_BUSINESS_HOURS" | "ALWAYS" | "WHEN_NO_ADVISOR" }
+  schedule           Json          @default("{\"mode\":\"WHEN_NO_ADVISOR\"}")
+  monthlyBudgetPen   Decimal?      @map("monthly_budget_pen") @db.Decimal(10, 2)
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions     AiAgentVersion[]
+  knowledge    KnowledgeArticle[]
+  examples     AiAgentExample[]
+  testCases    AiTestCase[]
+  turns        AiTurn[]
+
+  @@index([organizationId, status])
+  @@map("ai_agents")
+}
+
+model AiAgentVersion {
+  id                String    @id @default(uuid()) @db.Uuid
+  agentId           String    @map("agent_id") @db.Uuid
+  versionNumber     Int       @map("version_number")
+  provider          String    @db.VarChar(40)
+  modelId           String    @map("model_id") @db.VarChar(80)
+  effort            String    @db.VarChar(16)
+  config            Json
+  tools             String[]
+  /// Artículos y ejemplos congelados al publicar.
+  knowledgeSnapshot Json      @map("knowledge_snapshot")
+  testSummary       Json?     @map("test_summary")
+  publishedAt       DateTime  @default(now()) @map("published_at") @db.Timestamptz(3)
+  publishedByUserId String?   @map("published_by_user_id") @db.Uuid
+  publishReason     String?   @map("publish_reason") @db.Text
+
+  agent AiAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  turns AiTurn[]
+
+  @@unique([agentId, versionNumber])
+  @@map("ai_agent_versions")
+}
+
+model KnowledgeArticle {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  agentId        String    @map("agent_id") @db.Uuid
+  title          String    @db.VarChar(200)
+  content        String    @db.Text
+  validFrom      DateTime  @default(now()) @map("valid_from") @db.Timestamptz(3)
+  validUntil     DateTime? @map("valid_until") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agent        AiAgent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, validUntil])
+  @@map("knowledge_articles")
+}
+
+model AiAgentExample {
+  id        String   @id @default(uuid()) @db.Uuid
+  agentId   String   @map("agent_id") @db.Uuid
+  /// GOOD | BAD
+  kind      String   @db.VarChar(10)
+  /// [{ "role": "user" | "assistant", "text": "…" }] con datos personales reemplazados.
+  turns     Json
+  note      String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agent AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("ai_agent_examples")
+}
+
+model AiTestCase {
+  id           String   @id @default(uuid()) @db.Uuid
+  agentId      String   @map("agent_id") @db.Uuid
+  name         String   @db.VarChar(160)
+  /// Mensajes del cliente que se envían en orden.
+  inputTurns   Json     @map("input_turns")
+  /// { "mustCallTool": "handoff", "mustNotContain": ["S/"], "mustContain": [] }
+  expectations Json
+  critical     Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agent   AiAgent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  results AiTestResult[]
+
+  @@map("ai_test_cases")
+}
+
+model AiTestResult {
+  id         String   @id @default(uuid()) @db.Uuid
+  testCaseId String   @map("test_case_id") @db.Uuid
+  runId      String   @map("run_id") @db.Uuid
+  passed     Boolean
+  transcript Json
+  detail     String?  @db.Text
+  costUsd    Decimal? @map("cost_usd") @db.Decimal(10, 6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  testCase AiTestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@map("ai_test_results")
+}
+
+model AiTurn {
+  id              String   @id @default(uuid()) @db.Uuid
+  agentId         String   @map("agent_id") @db.Uuid
+  versionId       String?  @map("version_id") @db.Uuid
+  conversationId  String?  @map("conversation_id") @db.Uuid
+  /// SIMULATOR | LIVE | TEST
+  mode            String   @db.VarChar(16)
+  modelId         String   @map("model_id") @db.VarChar(80)
+  inputTokens     Int      @map("input_tokens")
+  outputTokens    Int      @map("output_tokens")
+  cacheReadTokens Int      @default(0) @map("cache_read_tokens")
+  costUsd         Decimal  @map("cost_usd") @db.Decimal(10, 6)
+  toolCalls       Json     @map("tool_calls")
+  articlesUsed    Json?    @map("articles_used")
+  stopReason      String?  @map("stop_reason") @db.VarChar(40)
+  responseText    String?  @map("response_text") @db.Text
+  flaggedReason   String?  @map("flagged_reason") @db.VarChar(80)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agent        AiAgent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  version      AiAgentVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  conversation Conversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([agentId, createdAt])
+  @@map("ai_turns")
+}
+
+// ───────────────────────── Flujos de trabajo ─────────────────────────
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+}
+
+enum WorkflowRunStatus {
+  RUNNING
+  WAITING
+  DONE
+  STOPPED
+  FAILED
+}
+
+model Workflow {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  name           String         @db.VarChar(160)
+  description    String?        @db.Text
+  status         WorkflowStatus @default(DRAFT)
+  /// { "kind": "INBOUND_MESSAGE" | "CONVERSATION_UNANSWERED" | "OPPORTUNITY_STAGE" | "APPOINTMENT_DUE" | "ORDER_STATUS" | "TAG_ADDED", "filters": {...} }
+  trigger        Json
+  /// Lista ordenada de pasos: [{ "id", "type", "params", "onReply"?, "onTimeout"? }]
+  steps          Json
+  priority       Int            @default(100)
+  version        Int            @default(1)
+  createdByUserId String?       @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  runs         WorkflowRun[]
+
+  @@index([organizationId, status])
+  @@map("workflows")
+}
+
+model WorkflowRun {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  workflowId      String            @map("workflow_id") @db.Uuid
+  workflowVersion Int               @map("workflow_version")
+  conversationId  String?           @map("conversation_id") @db.Uuid
+  contactId       String?           @map("contact_id") @db.Uuid
+  opportunityId   String?           @map("opportunity_id") @db.Uuid
+  status          WorkflowRunStatus @default(RUNNING)
+  currentStepId   String?           @map("current_step_id") @db.VarChar(40)
+  resumeAt        DateTime?         @map("resume_at") @db.Timestamptz(3)
+  waitingForReply Boolean           @default(false) @map("waiting_for_reply")
+  stepCount       Int               @default(0) @map("step_count")
+  /// Flujo + objeto + evento: el mismo disparador no crea dos ejecuciones.
+  idempotencyKey  String            @map("idempotency_key") @db.VarChar(200)
+  triggerPayload  Json?             @map("trigger_payload")
+  /// [{ "at", "stepId", "type", "result", "branch"? }]
+  log             Json              @default("[]")
+  endReason       String?           @map("end_reason") @db.VarChar(120)
+  startedAt       DateTime          @default(now()) @map("started_at") @db.Timestamptz(3)
+  endedAt         DateTime?         @map("ended_at") @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workflow     Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  contact      Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  opportunity  Opportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@unique([workflowId, idempotencyKey])
+  @@index([status, resumeAt])
+  @@index([conversationId, status])
+  @@map("workflow_runs")
+}
+
+// ───────────────────────── Difusiones ─────────────────────────
+
+enum BroadcastStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  PAUSED
+  DONE
+  CANCELLED
+}
+
+model Broadcast {
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  whatsappNumberId String          @map("whatsapp_number_id") @db.Uuid
+  templateId       String          @map("template_id") @db.Uuid
+  name             String          @db.VarChar(160)
+  /// { "tags": [], "stages": [], "origins": [], "lastInboundAfter": null, "district": null }
+  segment          Json
+  /// Valores manuales de variables de la plantilla.
+  variableValues   Json            @default("{}") @map("variable_values")
+  status           BroadcastStatus @default(DRAFT)
+  scheduledAt      DateTime?       @map("scheduled_at") @db.Timestamptz(3)
+  startedAt        DateTime?       @map("started_at") @db.Timestamptz(3)
+  finishedAt       DateTime?       @map("finished_at") @db.Timestamptz(3)
+  pauseReason      String?         @map("pause_reason") @db.Text
+  createdByUserId  String?         @map("created_by_user_id") @db.Uuid
+  approvedByUserId String?         @map("approved_by_user_id") @db.Uuid
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  whatsappNumber WhatsappNumber       @relation(fields: [whatsappNumberId], references: [id], onDelete: Cascade)
+  template       MessageTemplate      @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  recipients     BroadcastRecipient[]
+
+  @@index([organizationId, status])
+  @@map("broadcasts")
+}
+
+model BroadcastRecipient {
+  id              String   @id @default(uuid()) @db.Uuid
+  broadcastId     String   @map("broadcast_id") @db.Uuid
+  contactId       String   @map("contact_id") @db.Uuid
+  /// PENDING, EXCLUDED, QUEUED, SENT, DELIVERED, READ, FAILED, REPLIED
+  status          String   @default("PENDING") @db.VarChar(20)
+  exclusionReason String?  @map("exclusion_reason") @db.VarChar(120)
+  messageId       String?  @unique @map("message_id") @db.Uuid
+  repliedAt       DateTime? @map("replied_at") @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  broadcast Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  contact   Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  message   Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@unique([broadcastId, contactId])
+  @@index([broadcastId, status])
+  @@map("broadcast_recipients")
+}

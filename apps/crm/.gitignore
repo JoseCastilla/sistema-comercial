@@ -1,0 +1,6 @@
+.env
+.next
+storage/*
+!storage/.gitkeep
+src/generated
+next-env.d.ts
