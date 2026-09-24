@@ -7,6 +7,8 @@ import {
   type MyDaySaleBucket,
 } from "@repo/validation";
 
+import { Button } from "@/components/ui/button";
+
 import type { MyDaySales } from "../server/get-my-day";
 
 /** El color dice qué tan cerca está el dinero; ninguno grita. */
@@ -109,13 +111,19 @@ export function MyDaySalesPanel({
                         ? `${formatMoneyFromCents(sale.amountCents)} ${pendingAmountSuffix[group.bucket] ?? ""}`.trim()
                         : formatMoneyFromCents(sale.amountCents))}
                   </span>
-                  <Link
-                    aria-label={`Ver pedido de ${sale.holderName}`}
-                    className="text-xs font-semibold text-ui-accent underline-offset-4 hover:underline"
-                    href={sale.href}
+                  <Button
+                    asChild
+                    className="text-xs"
+                    size="inline"
+                    variant="link"
                   >
-                    Ver pedido
-                  </Link>
+                    <Link
+                      aria-label={`Ver pedido de ${sale.holderName}`}
+                      href={sale.href}
+                    >
+                      Ver pedido
+                    </Link>
+                  </Button>
                 </li>
               ))}
             </ul>

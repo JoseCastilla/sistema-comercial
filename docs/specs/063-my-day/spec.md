@@ -1,6 +1,6 @@
 # SPEC-063 — Mi día: la bandeja de trabajo del asesor
 
-**Estado:** `EN_CURSO` — fases 0 a 4 y el supervisor vendedor de la 5 en `main`; piezas shadcn/ui pendientes del lockfile; decisiones de §5 adoptadas como recomendación (24/09/2026)
+**Estado:** `EN_CURSO` — fases 0 a 5 en `main`; decisiones de §5 adoptadas como recomendación (24/09/2026)
 
 **Versión:** 1.0
 **Fecha:** 2026-09-24
@@ -189,9 +189,10 @@ llamadas.
 - **BR-017 — Primera pantalla del nuevo enfoque visual.** «Mi día» no añade
   CSS a `patterns.css`: usa utilidades de Tailwind sobre los tokens `--ui-*`
   y elementos nativos accesibles (`<details>`, listas, `<time>`). Las piezas
-  shadcn/ui recomendadas en la revisión (§3) entran en una fase posterior:
-  hoy `pnpm-lock.yaml` tiene cambios del CRM sin commitear, y añadir
-  dependencias los mezclaría en la entrega.
+  shadcn/ui recomendadas en la revisión (§3) entraron en la fase 5, una vez
+  versionado el CRM (el lockfile dejó de tener cambios ajenos): `Button` y
+  `Badge` sobre los tokens, con `cn` y `components.json` para añadir más con
+  la CLI.
 
 ## 5. Decisiones adoptadas como recomendación
 

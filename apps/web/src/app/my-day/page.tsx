@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@repo/ui/page-header";
 
+import { Button } from "@/components/ui/button";
+
 import {
   MyDayFlatList,
   MyDayList,
@@ -71,12 +73,9 @@ export default async function MyDayPage() {
                 No tienes citas, ventas caídas ni pedidos que te esperen. Puedes
                 tomar clientes nuevos de tu equipo en tu cola de campaña.
               </p>
-              <Link
-                className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-ui-strong px-4 text-sm font-semibold text-ui-on-strong hover:opacity-90"
-                href="/recovery/campaigns"
-              >
-                Ir a mi cola de campaña
-              </Link>
+              <Button asChild className="mt-3">
+                <Link href="/recovery/campaigns">Ir a mi cola de campaña</Link>
+              </Button>
             </div>
           )}
         </section>

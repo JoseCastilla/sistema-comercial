@@ -112,5 +112,14 @@
   /recovery/triage, /admin/users, /admin/teams, /dni y /my-day responden 200
   con su menú y sin pantalla de error; /tools/lines, 404.
 
+- **24/09/2026** — Base shadcn/ui: `ui-cn.test.ts` 3 de 3 (tamaño y color
+  propios no se pisan; el último gana en el mismo aspecto). Web: tipos,
+  lint y 231 pruebas en verde. «Mi día» en local se ve igual con los
+  componentes nuevos. Al instalar con `--filter web`, pnpm dejó a
+  `packages/database` y `apps/crm` apuntando a una copia vieja de
+  `@prisma/client` y los tipos de Prisma llegaron como `unknown`; un
+  `pnpm install --frozen-lockfile` lo reenlazó. EasyPanel instala desde
+  cero, así que no afecta a producción.
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes; fase 3 con
-sesión de asesor; piezas shadcn/ui.
+sesión de asesor.

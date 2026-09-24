@@ -79,4 +79,9 @@ Una casilla se marca solo con evidencia en `verification.md`.
       compartido (antes siete copias idénticas) sabe si el usuario vende
       (membresía de venta activa, la misma de Rendimiento) y el menú lo
       ofrece a quien vende. 4 pruebas del menú.
-- [ ] Piezas shadcn/ui sobre los tokens, con el lockfile limpio.
+- [x] CRM versionado para dejar coherente el lockfile (SPEC-062).
+- [x] Base shadcn/ui en `apps/web`: `cn` (`lib/utils.ts`), `Button` con
+      `asChild` y variantes sobre tokens (los fondos de color usan su token
+      «sobre», no blanco fijo), `Badge` por tono, `components.json`.
+- [x] «Mi día» usa `Button` y `Badge` en lugar de clases escritas a mano.
+- [ ] Lectura en producción.

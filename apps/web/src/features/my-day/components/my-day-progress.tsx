@@ -5,11 +5,12 @@ import type { PerformanceCommercialOperation } from "@repo/validation";
 
 import type { MyDayProgress } from "../server/get-my-day";
 
-const operationLabels: Partial<Record<PerformanceCommercialOperation, string>> = {
-  PORT_POSTPAID: "Portabilidad postpago",
-  PORT_PREPAID: "Portabilidad prepago",
-  NEW_LINE: "Alta nueva",
-};
+const operationLabels: Partial<Record<PerformanceCommercialOperation, string>> =
+  {
+    PORT_POSTPAID: "Portabilidad postpago",
+    PORT_PREPAID: "Portabilidad prepago",
+    NEW_LINE: "Alta nueva",
+  };
 
 function plural(count: number, singular: string, pluralForm: string): string {
   return `${formatCount(count)} ${count === 1 ? singular : pluralForm}`;
@@ -129,7 +130,8 @@ function CommissionExplanation({ progress }: { progress: MyDayProgress }) {
   const { policy } = progress;
   const rates = Object.entries(policy.baseRateCents).flatMap(
     ([operation, cents]) => {
-      const label = operationLabels[operation as PerformanceCommercialOperation];
+      const label =
+        operationLabels[operation as PerformanceCommercialOperation];
       return label ? [{ label, cents }] : [];
     },
   );

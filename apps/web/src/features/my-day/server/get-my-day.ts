@@ -64,7 +64,12 @@ const orderLookbackMs = 60 * 24 * 60 * 60 * 1000;
 /** La misma espera que Pedidos antes de llamar incidencia a «sin estado». */
 const noStatusGraceMs = 10 * 60 * 1000;
 
-const caseOpenStatuses = ["ASSIGNED", "IN_PROGRESS", "SCHEDULED", "WAITING"] as const;
+const caseOpenStatuses = [
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "SCHEDULED",
+  "WAITING",
+] as const;
 const internalSources = ["INTERNAL_ORDER_STATE", "MANUAL"] as const;
 
 export type { MyDayEntry } from "../my-day-types";
@@ -254,7 +259,9 @@ async function readCommitments(
         title: row.case.holderName,
         action: "Llamar: es la hora que acordaste con el cliente",
         detail:
-          row.case.source === "NATIONAL_BASE" ? "Campaña" : "Recupero de ventas",
+          row.case.source === "NATIONAL_BASE"
+            ? "Campaña"
+            : "Recupero de ventas",
         href: caseHref(row.case.id, String(row.case.source)),
         actionLabel: "Abrir caso",
         manage: buildManage({
@@ -264,7 +271,10 @@ async function readCommitments(
           orderPhone: row.case.sourceDitoOrder?.deliveryContactPhone,
           orderLine: row.case.sourceDitoOrder?.serviceNumber,
           last: row.case.attempts[0]
-            ? { ...row.case.attempts[0], result: String(row.case.attempts[0].result) }
+            ? {
+                ...row.case.attempts[0],
+                result: String(row.case.attempts[0].result),
+              }
             : null,
         }),
       },
@@ -660,15 +670,16 @@ async function readProgress(
         classification.bucket === "sin_comision"
           ? (myDayNoCommissionReasons[classification.reason] ?? null)
           : null,
-      href: buildOrderHref(order.orderCodeRaw, getLimaIsoDate(order.registeredAt)),
+      href: buildOrderHref(
+        order.orderCodeRaw,
+        getLimaIsoDate(order.registeredAt),
+      ),
     });
     byBucket[classification.bucket] = list;
   }
   const sales: MyDaySales = {
     total: orders.length,
-    summary: summarizeMyDaySales(
-      classified.map((item) => item.classification),
-    ),
+    summary: summarizeMyDaySales(classified.map((item) => item.classification)),
     byBucket,
   };
 
@@ -731,7 +742,12 @@ export async function getMyDay(
       readProgress(organizationId, userId, now),
     ]);
 
-  const all = [...commitments, ...salesRecovery, ...orders, ...campaign.entries];
+  const all = [
+    ...commitments,
+    ...salesRecovery,
+    ...orders,
+    ...campaign.entries,
+  ];
   const sorted = [...all].sort(compareMyDayItems);
 
   return {

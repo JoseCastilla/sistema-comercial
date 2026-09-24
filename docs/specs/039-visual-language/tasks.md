@@ -43,3 +43,12 @@ Tanda 2 — pendientes, en orden de retorno:
       `not-found.tsx` y salida en `access-denied`.
 - [ ] Glosario de interfaz y pasada de texto (asesor, pedido, operador de
       origen / courier, sin «pool» ni «el cruce»).
+
+## Base de componentes (24/09/2026)
+
+- [x] shadcn/ui adoptado sobre los tokens `--ui-*` (SPEC-063 fase 5):
+      `apps/web/src/components/ui` (`Button`, `Badge`), `cn` y
+      `components.json`. Las pantallas nuevas usan estos componentes; las
+      existentes migran al tocarlas, borrando su CSS propio.
+- [ ] Llevar `Button` a los 11 botones con `text-white` sobre acento o
+      peligro (contraste en oscuro, auditoría §6).

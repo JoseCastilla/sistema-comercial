@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useCallback, useId, useState } from "react";
 
-import { myDayTierLabels, myDayTierOrder, type MyDayTier } from "@repo/validation";
+import {
+  myDayTierLabels,
+  myDayTierOrder,
+  type MyDayTier,
+} from "@repo/validation";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 import { attemptResultLabels } from "@/features/recovery/attempt-result-labels";
 import {
@@ -76,7 +83,11 @@ export function MyDayList({
               <li key={entry.key}>
                 <MyDayRow
                   entry={entry}
-                  next={entry.manage ? (next.get(entry.manage.caseId) ?? null) : null}
+                  next={
+                    entry.manage
+                      ? (next.get(entry.manage.caseId) ?? null)
+                      : null
+                  }
                 />
               </li>
             ))}
@@ -84,12 +95,9 @@ export function MyDayList({
           {group.tier === "campana" && campaignTotal > group.entries.length ? (
             <p className="mt-2 text-sm text-ui-muted">
               Hay {campaignTotal} casos de campaña para trabajar ahora.{" "}
-              <Link
-                className="font-semibold text-ui-accent underline-offset-4 hover:underline"
-                href="/recovery/campaigns"
-              >
-                Ir a mi cola de campaña
-              </Link>
+              <Button asChild size="inline" variant="link">
+                <Link href="/recovery/campaigns">Ir a mi cola de campaña</Link>
+              </Button>
             </p>
           ) : null}
         </section>
@@ -138,9 +146,6 @@ function TierHeading({
   );
 }
 
-const primaryButton =
-  "inline-flex min-h-10 items-center justify-center rounded-lg bg-ui-strong px-4 text-sm font-semibold text-ui-on-strong transition hover:opacity-90";
-
 function MyDayRow({
   entry,
   next,
@@ -186,19 +191,13 @@ function MyDayRow({
               {myDayKindLabels[entry.kind]}
             </span>
             {saved ? (
-              <span className="rounded-full bg-ui-success-soft px-2 py-0.5 font-semibold text-ui-success">
+              <Badge tone="success">
                 Gestionado: {attemptResultLabels[saved.result] ?? saved.result}
-              </span>
+              </Badge>
             ) : entry.dueLabel ? (
-              <span
-                className={
-                  entry.overdue
-                    ? "rounded-full bg-ui-danger-soft px-2 py-0.5 font-semibold text-ui-danger"
-                    : "rounded-full bg-ui-subtle px-2 py-0.5 font-semibold text-ui-muted"
-                }
-              >
+              <Badge tone={entry.overdue ? "danger" : "neutral"}>
                 {entry.dueLabel}
-              </span>
+              </Badge>
             ) : null}
           </p>
           <h3 className="mt-1 truncate text-base font-semibold text-ui-text">
@@ -220,31 +219,28 @@ function MyDayRow({
         <div className="flex flex-wrap items-center gap-3 sm:justify-end">
           {canManage && !editing ? (
             <>
-              <Link
-                className="text-sm font-semibold text-ui-accent underline-offset-4 hover:underline"
-                href={entry.href}
-              >
-                {entry.actionLabel}
-              </Link>
-              <button
+              <Button asChild size="inline" variant="link">
+                <Link href={entry.href}>{entry.actionLabel}</Link>
+              </Button>
+              <Button
                 aria-controls={editorId}
                 aria-expanded={false}
                 aria-label={`Registrar gestión: ${entry.title}`}
-                className={primaryButton}
                 onClick={() => draft.startEditing(manage.caseId)}
                 type="button"
               >
                 {saved ? "Otra gestión" : "Registrar gestión"}
-              </button>
+              </Button>
             </>
           ) : !editing ? (
-            <Link
-              aria-label={`${entry.actionLabel}: ${entry.title}`}
-              className={primaryButton}
-              href={entry.href}
-            >
-              {entry.actionLabel}
-            </Link>
+            <Button asChild>
+              <Link
+                aria-label={`${entry.actionLabel}: ${entry.title}`}
+                href={entry.href}
+              >
+                {entry.actionLabel}
+              </Link>
+            </Button>
           ) : null}
         </div>
       </div>
