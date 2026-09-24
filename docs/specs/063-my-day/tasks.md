@@ -62,7 +62,7 @@ Una casilla se marca solo con evidencia en `verification.md`.
       de Rendimiento).
 - [x] Bloque «Tus ventas del mes» con resumen por grupo, detalle por venta y
       enlace al pedido (3 pruebas de componente).
-- [ ] Lectura en producción con la cuenta de asesor.
+- [x] Lectura en producción con la cuenta de asesor (24/09/2026).
 
 ## Fase 5 — Supervisor vendedor y shadcn/ui
 

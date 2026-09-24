@@ -90,4 +90,11 @@
   tipos, lint y 224 pruebas en verde. La asesora de prueba local no tiene
   ventas este mes: la lectura visual queda para producción.
 
+- **24/09/2026** — Fase 4 en producción (`f5dc745`), cuenta de asesor, solo
+  lectura: «Tus 81 ventas de setiembre de 2026» con Ya pagan 52 · S/ 1 212,50;
+  Esperan activación 3 · S/ 75,00; En camino 4 · S/ 87,50; Caídas 19 ·
+  S/ 400,00; No pagan comisión 3 (altas nuevas). Suman 81. «Ya pagan» es
+  igual a la franja: «S/ 1 212,50 por 52 ventas pagables». Cada venta dice
+  su monto y qué falta («S/ 25,00 al activarse», «si la recuperas»).
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes.
