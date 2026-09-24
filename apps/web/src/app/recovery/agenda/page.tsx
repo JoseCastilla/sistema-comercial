@@ -172,7 +172,7 @@ export default async function RecoveryAgendaPage({
               <p className="flex flex-wrap gap-3">
                 <Link
                   className="text-ui-accent underline-offset-2 hover:underline"
-                  href={`/recovery/campaigns/${openCommitment.caseId}?from=agenda&cita=${openCommitment.id}&fecha=${getLimaIsoDate(query.date)}${query.view !== "semana" ? `&view=${query.view}` : ""}`}
+                  href={`${openCommitment.caseHref}?from=agenda&cita=${openCommitment.id}&fecha=${getLimaIsoDate(query.date)}${query.view !== "semana" ? `&view=${query.view}` : ""}`}
                 >
                   Abrir ficha del cliente
                 </Link>

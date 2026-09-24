@@ -52,8 +52,14 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 3 — Avisos
 
-- [ ] BR-013: citas del recupero de ventas en Mi agenda y en el aviso.
-- [ ] BR-014: el asesor recibe el aviso de sus recuperos vencidos.
+- [x] BR-013: citas de ventas caídas en Mi agenda (rotuladas «venta
+      caída», con teléfono de entrega y fecha de la venta), en el panel de
+      la cita (reprogramar y cancelar, enlace a la ficha de recupero) y en
+      el aviso de citas.
+- [x] BR-014: el asesor recibe el aviso de sus ventas caídas calientes
+      vencidas; para el asesor ambos avisos abren «Mi día». Plurales sin
+      paréntesis.
+- [ ] Lectura en producción con la cuenta de asesor.
 
 ## Fase 4 — Mis ventas del mes
 

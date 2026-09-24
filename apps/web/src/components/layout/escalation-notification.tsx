@@ -36,6 +36,8 @@ export function EscalationNotification({ role }: { role: string }) {
   const streamBrokenRef = useRef(false);
   const pathname = usePathname();
   const supervises = role === "ADMIN" || role === "SUPERVISOR";
+  // SPEC-063: el asesor resuelve sus avisos en «Mi día».
+  const isAgent = role === "AGENT";
 
   const refresh = useCallback(async () => {
     try {
@@ -143,26 +145,42 @@ export function EscalationNotification({ role }: { role: string }) {
       ) : null}
       {recoveryOverdue > 0 ? (
         <Link
-          aria-label={`${recoveryOverdue} recuperos con la próxima acción vencida`}
+          aria-label={
+            isAgent
+              ? `${recoveryOverdue} ventas caídas recientes por llamar`
+              : `${recoveryOverdue} recuperos con la próxima acción vencida`
+          }
           className="flex items-center gap-2 rounded-full border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning shadow-lg"
-          href="/recovery/sales?vence=vencido"
+          href={isAgent ? "/my-day" : "/recovery/sales?vence=vencido"}
           role="status"
         >
           <span aria-hidden="true">⏰</span>
           <span>{recoveryOverdue}</span>
-          <span className="hidden sm:inline">recupero(s) vencido(s)</span>
+          <span className="hidden sm:inline">
+            {isAgent
+              ? recoveryOverdue === 1
+                ? "venta caída por llamar"
+                : "ventas caídas por llamar"
+              : recoveryOverdue === 1
+                ? "recupero vencido"
+                : "recuperos vencidos"}
+          </span>
         </Link>
       ) : null}
       {agendaDue > 0 ? (
         <Link
           aria-label={`${agendaDue} llamadas acordadas vencidas o en los próximos quince minutos`}
           className="flex items-center gap-2 rounded-full border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning shadow-lg"
-          href="/recovery/agenda"
+          href={isAgent ? "/my-day" : "/recovery/agenda"}
           role="status"
         >
           <span aria-hidden="true">📞</span>
           <span>{agendaDue}</span>
-          <span className="hidden sm:inline">llamada(s) acordada(s) por atender</span>
+          <span className="hidden sm:inline">
+            {agendaDue === 1
+              ? "llamada acordada por atender"
+              : "llamadas acordadas por atender"}
+          </span>
         </Link>
       ) : null}
     </div>

@@ -23,6 +23,8 @@ const caseStatusLabels: Record<string, string> = {
 export interface AgendaCommitmentDetail {
   id: string;
   caseId: string;
+  /** La ficha del cliente: la de Campañas o la de Recupero de ventas. */
+  caseHref: string;
   holderName: string;
   phone: string | null;
   caseStatusLabel: string;
@@ -67,7 +69,9 @@ export async function getAgendaCommitment(
     where: {
       id: commitmentId,
       organizationId,
-      case: { source: "NATIONAL_BASE", assignedUserId: userId },
+      // SPEC-063 BR-013: citas de Campañas y de ventas caídas, siempre del
+      // propio asesor. Reprogramar y cancelar ya aceptan cualquier origen.
+      case: { assignedUserId: userId },
     },
     select: {
       id: true,
@@ -80,6 +84,8 @@ export async function getAgendaCommitment(
         select: {
           holderName: true,
           status: true,
+          source: true,
+          sourceDitoOrder: { select: { deliveryContactPhone: true } },
           phones: {
             where: { kind: "CONTACT", invalidMarkedAt: null },
             take: 1,
@@ -130,10 +136,15 @@ export async function getAgendaCommitment(
   return {
     id: commitment.id,
     caseId: commitment.caseId,
+    caseHref:
+      String(commitment.case.source) === "NATIONAL_BASE"
+        ? `/recovery/campaigns/${commitment.caseId}`
+        : `/recovery/sales/${commitment.caseId}`,
     holderName: commitment.case.holderName,
     phone:
       commitment.case.phones[0]?.phoneNumber ??
       commitment.case.services[0]?.serviceNumber ??
+      commitment.case.sourceDitoOrder?.deliveryContactPhone ??
       null,
     caseStatusLabel:
       caseStatusLabels[String(commitment.case.status)] ??

@@ -97,4 +97,9 @@
   igual a la franja: «S/ 1 212,50 por 52 ventas pagables». Cada venta dice
   su monto y qué falta («S/ 25,00 al activarse», «si la recuperas»).
 
+- **24/09/2026** — Fase 3 construida: tipos, lint y 224 pruebas de web en
+  verde. Local, asesora de prueba: `/api/order-escalations/notifications`
+  devuelve ahora `recoveryOverdue` también al asesor (0 en la copia local) y
+  Mi agenda carga sin error. Los datos reales se leen en producción.
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes.

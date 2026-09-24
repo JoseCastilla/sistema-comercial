@@ -1,6 +1,6 @@
 # SPEC-063 — Mi día: la bandeja de trabajo del asesor
 
-**Estado:** `EN_CURSO` — fases 0 a 2 y 4 en `main`; fases 3 y 5 pendientes; decisiones de §5 adoptadas como recomendación (24/09/2026)
+**Estado:** `EN_CURSO` — fases 0 a 4 en `main`; fase 5 pendiente; decisiones de §5 adoptadas como recomendación (24/09/2026)
 
 **Versión:** 1.0
 **Fecha:** 2026-09-24
@@ -142,7 +142,10 @@ llamadas.
   el aviso de citas incluyen las citas de casos de recupero de ventas del
   usuario (hueco 1).
 - **BR-014 — El asesor ve sus propios recuperos vencidos** en el aviso,
-  contados con su alcance (hueco 2).
+  contados con su alcance (hueco 2), **solo los de ventas calientes**
+  (BR-018): las antiguas siguen en «Mi día», plegadas, sin hacer ruido. Para
+  el asesor, el aviso dice «ventas caídas por llamar» y abre «Mi día»; el de
+  citas también.
 - **BR-015 — Frescura.** La pantalla se vuelve a leer al volver a la
   pestaña y cada 60 segundos (el mismo ritmo del aviso actual), sin perder el
   bloque plegado ni la posición.

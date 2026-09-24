@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { countOverdueInternalCases } from "@/features/recovery/server/count-overdue-internal-cases";
+import {
+  countOverdueInternalCases,
+  countOwnHotOverdueInternalCases,
+} from "@/features/recovery/server/count-overdue-internal-cases";
 import { requireCommercialAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -13,14 +16,14 @@ export async function GET() {
     // SPEC-048 BR-017: llamadas acordadas del propio usuario vencidas o a
     // menos de quince minutos. Vale para cualquier rol con casos propios
     // (asesor, supervisor vendedor); el aviso desaparece al registrar el
-    // resultado porque la cita deja de estar pendiente.
+    // resultado porque la cita deja de estar pendiente. SPEC-063 BR-013:
+    // también las citas de ventas caídas, no solo las de Campañas.
     const agendaDue = await database.recoveryCaseCommitment.count({
       where: {
         organizationId: membership.organization.id,
         status: "PENDING",
         scheduledAt: { lt: new Date(Date.now() + 15 * 60 * 1000) },
         case: {
-          source: "NATIONAL_BASE",
           assignedUserId: session.user.id,
           status: { in: ["ASSIGNED", "IN_PROGRESS", "SCHEDULED"] },
         },
@@ -28,7 +31,16 @@ export async function GET() {
     });
 
     if (membership.role !== "ADMIN" && membership.role !== "SUPERVISOR") {
-      return NextResponse.json({ count: 0, agendaDue });
+      // SPEC-063 BR-014: el asesor ve sus propias ventas caídas vencidas,
+      // solo las calientes (BR-018): las antiguas no hacen ruido.
+      const recoveryOverdue =
+        membership.role === "AGENT"
+          ? await countOwnHotOverdueInternalCases(
+              membership.organization.id,
+              session.user.id,
+            )
+          : 0;
+      return NextResponse.json({ count: 0, recoveryOverdue, agendaDue });
     }
 
     const supervisedTeamIds =

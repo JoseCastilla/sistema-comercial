@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   classifyInternalRecoveryDue,
+  isMyDayHotSale,
   salesRecoveryOpenStatuses,
 } from "@repo/validation";
 
@@ -71,6 +72,51 @@ export async function countOverdueInternalCases(
 
   return rows.filter(
     (row) =>
+      classifyInternalRecoveryDue(
+        {
+          status: String(row.status),
+          firstContactAt: row.firstContactAt,
+          nextActionAt: row.nextActionAt,
+          noveltyAt: row.lastSightingAt,
+        },
+        now,
+      ) !== null,
+  ).length;
+}
+
+/**
+ * SPEC-063 BR-014: las ventas caídas vencidas del propio asesor, con la
+ * misma regla de vencimiento, pero solo las calientes —ventas de los
+ * últimos 7 días (BR-018)—: las antiguas siguen en «Mi día», plegadas, sin
+ * hacer ruido en el aviso.
+ */
+export async function countOwnHotOverdueInternalCases(
+  organizationId: string,
+  userId: string,
+  now = new Date(),
+): Promise<number> {
+  const rows = await database.recoveryCase.findMany({
+    where: {
+      organizationId,
+      source: { in: ["INTERNAL_ORDER_STATE", "MANUAL"] },
+      status: { in: [...salesRecoveryOpenStatuses] },
+      assignedUserId: userId,
+    },
+    select: {
+      status: true,
+      firstContactAt: true,
+      nextActionAt: true,
+      lastSightingAt: true,
+      sourceDitoOrder: { select: { registeredAt: true } },
+    },
+  });
+
+  return rows.filter(
+    (row) =>
+      isMyDayHotSale(
+        row.sourceDitoOrder?.registeredAt ?? row.lastSightingAt,
+        now,
+      ) &&
       classifyInternalRecoveryDue(
         {
           status: String(row.status),
