@@ -1,6 +1,6 @@
 # SPEC-060 — Creador de flujos de la operación
 
-**Estado:** `BORRADOR` — octava pieza del programa SPEC-052; v0.2: primero automatizaciones predefinidas sobre el mismo motor, el lienzo después (12/09/2026)
+**Estado:** `BORRADOR` — en pausa desde el 24/09/2026: el CRM y WhatsApp se replantearán desde cero, según el negocio, cuando José los aborde; esta spec queda como referencia
 
 **Versión:** 0.2
 **Fecha:** 2026-09-12

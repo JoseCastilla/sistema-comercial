@@ -1,6 +1,6 @@
 # SPEC-055 — Plantillas de WhatsApp
 
-**Estado:** `BORRADOR` — tercera pieza del programa SPEC-052; tres decisiones con recomendación pendientes de José (12/09/2026)
+**Estado:** `BORRADOR` — en pausa desde el 24/09/2026: el CRM y WhatsApp se replantearán desde cero, según el negocio, cuando José los aborde; esta spec queda como referencia
 
 **Versión:** 0.1
 **Fecha:** 2026-09-12

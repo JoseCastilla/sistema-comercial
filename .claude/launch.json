@@ -20,16 +20,6 @@
         "start:dev"
       ],
       "port": 3001
-    },
-    {
-      "name": "crm",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "--filter",
-        "crm",
-        "dev"
-      ],
-      "port": 3200
     }
   ]
 }

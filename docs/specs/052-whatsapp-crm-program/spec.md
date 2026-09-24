@@ -1,6 +1,6 @@
 # SPEC-052 — CRM de WhatsApp: visión, arquitectura común y hoja de ruta
 
-**Estado:** `BORRADOR` — pedido de José del 12/09/2026; v0.2 tras revisar la propuesta de producto: oportunidades separadas (SPEC-061), quién responde, cuatro etapas de producto; dieciséis decisiones con recomendación pendientes de su confirmación (12/09/2026)
+**Estado:** `BORRADOR` — en pausa desde el 24/09/2026: el CRM y WhatsApp se replantearán desde cero, según el negocio, cuando José los aborde; esta spec queda como referencia
 
 **Versión:** 0.2
 **Fecha:** 2026-09-12

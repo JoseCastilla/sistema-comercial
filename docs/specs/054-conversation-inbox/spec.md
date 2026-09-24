@@ -1,6 +1,6 @@
 # SPEC-054 — Bandeja de conversaciones
 
-**Estado:** `BORRADOR` — segunda pieza del programa SPEC-052; v0.2 tras revisar la propuesta de producto: la etapa pasa a la oportunidad (SPEC-061) y se fijan tres estados de quién responde (12/09/2026)
+**Estado:** `BORRADOR` — en pausa desde el 24/09/2026: el CRM y WhatsApp se replantearán desde cero, según el negocio, cuando José los aborde; esta spec queda como referencia
 
 **Versión:** 0.2
 **Fecha:** 2026-09-12

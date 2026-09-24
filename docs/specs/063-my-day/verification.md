@@ -127,5 +127,11 @@
   /admin/users y /dni responden 200, con su menú y sin pantalla de error.
   Que `ee127c9` esté en línea solo se ve con sesión de asesor («Mi día»).
 
-Pendiente: AC-010 (lista vacía) con un asesor sin pendientes; fase 3 y
-componentes shadcn/ui con sesión de asesor en producción.
+- **24/09/2026** — Con sesión de asesor en producción: «Mi día» ya usa los
+  componentes shadcn/ui (138 `Button`, 11 `Badge`); el aviso dice «3 ventas
+  caídas por llamar» y abre `/my-day` (solo calientes, BR-014); Mi agenda
+  carga sin error. La asesora no tiene hoy citas de ventas caídas, así que
+  esa parte de BR-013 queda sin observar con datos reales.
+
+Pendiente: AC-010 (lista vacía) con un asesor sin pendientes; una cita de
+venta caída en Mi agenda con datos reales.

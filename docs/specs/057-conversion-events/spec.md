@@ -1,6 +1,6 @@
 # SPEC-057 — Eventos de conversión hacia Meta
 
-**Estado:** `BORRADOR` — quinta pieza del programa SPEC-052; v0.2: los eventos salen de la oportunidad (SPEC-061) (12/09/2026)
+**Estado:** `BORRADOR` — en pausa desde el 24/09/2026: el CRM y WhatsApp se replantearán desde cero, según el negocio, cuando José los aborde; esta spec queda como referencia
 
 **Versión:** 0.2
 **Fecha:** 2026-09-12

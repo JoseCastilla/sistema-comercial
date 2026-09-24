@@ -1,6 +1,6 @@
 # SPEC-053 — Conexión de WhatsApp, ficha única del contacto y consentimiento
 
-**Estado:** `BORRADOR` — primera pieza del programa SPEC-052; cuatro decisiones con recomendación pendientes de José (12/09/2026)
+**Estado:** `BORRADOR` — en pausa desde el 24/09/2026: el CRM y WhatsApp se replantearán desde cero, según el negocio, cuando José los aborde; esta spec queda como referencia
 
 **Versión:** 0.1
 **Fecha:** 2026-09-12

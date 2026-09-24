@@ -1,6 +1,6 @@
 # SPEC-062 — CRM MVP aislado (`apps/crm`)
 
-**Estado:** `EN_CURSO` — MVP versionado en git como laboratorio el 24/09/2026, no desplegado (EasyPanel solo construye api y web); pendiente el setup real de José con número y clave de Meta (24/09/2026)
+**Estado:** `SUSTITUIDA` — MVP retirado del repositorio el 24/09/2026 por decisión de José: el CRM y WhatsApp se construirán desde cero, según el negocio, cuando se aborden; el código queda en el historial de git (commit `2083aa1`)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-12
