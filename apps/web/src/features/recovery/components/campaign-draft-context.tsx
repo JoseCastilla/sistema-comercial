@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -55,6 +56,17 @@ const leaveMessage =
 export function CampaignDraftProvider({ children }: { children: ReactNode }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dirty, setDirtyState] = useState(false);
+  /**
+   * El mismo valor que `dirty`, pero al día dentro del mismo evento. «Guardar
+   * y siguiente» marca el borrador limpio y abre el siguiente caso en el mismo
+   * efecto: leyendo el estado, `startEditing` todavía veía el borrador sucio
+   * y dejaba el cambio en espera en vez de hacerlo.
+   */
+  const dirtyRef = useRef(false);
+  const setDirty = useCallback((next: boolean) => {
+    dirtyRef.current = next;
+    setDirtyState(next);
+  }, []);
   const [pendingSwitchId, setPendingSwitchId] = useState<string | null>(null);
 
   // Cerrar la pestaña o recargar con un borrador sucio pide confirmación al
@@ -76,38 +88,38 @@ export function CampaignDraftProvider({ children }: { children: ReactNode }) {
     (caseId: string) => {
       if (editingId === caseId) return;
 
-      if (editingId !== null && dirty) {
+      if (editingId !== null && dirtyRef.current) {
         setPendingSwitchId(caseId);
         return;
       }
 
       setEditingId(caseId);
-      setDirtyState(false);
+      setDirty(false);
       setPendingSwitchId(null);
     },
-    [dirty, editingId],
+    [editingId, setDirty],
   );
 
   const stopEditing = useCallback(() => {
     setEditingId(null);
-    setDirtyState(false);
+    setDirty(false);
     setPendingSwitchId(null);
-  }, []);
+  }, [setDirty]);
 
   const discardAndSwitch = useCallback(() => {
     setEditingId(pendingSwitchId);
-    setDirtyState(false);
+    setDirty(false);
     setPendingSwitchId(null);
-  }, [pendingSwitchId]);
+  }, [pendingSwitchId, setDirty]);
 
   const finishAfterSave = useCallback(() => {
-    setDirtyState(false);
+    setDirty(false);
 
     if (pendingSwitchId !== null) {
       setEditingId(pendingSwitchId);
       setPendingSwitchId(null);
     }
-  }, [pendingSwitchId]);
+  }, [pendingSwitchId, setDirty]);
 
   const staySwitching = useCallback(() => setPendingSwitchId(null), []);
 
@@ -128,7 +140,7 @@ export function CampaignDraftProvider({ children }: { children: ReactNode }) {
       pendingSwitchId,
       startEditing,
       stopEditing,
-      setDirty: setDirtyState,
+      setDirty,
       discardAndSwitch,
       finishAfterSave,
       staySwitching,
@@ -140,6 +152,7 @@ export function CampaignDraftProvider({ children }: { children: ReactNode }) {
       pendingSwitchId,
       startEditing,
       stopEditing,
+      setDirty,
       discardAndSwitch,
       finishAfterSave,
       staySwitching,
