@@ -24,4 +24,9 @@
   curso»; «Mi día» dice «55 de 100 · te faltan 45». La cuota de 100, cargada
   en la ventana del 1 al 15, quedó como mensual.
 
-Pendiente: pantalla de Cuotas con sesión de administrador o líder.
+- **24/09/2026** — Cuotas en producción con sesión de administrador, solo
+  lectura: título «Cuotas del mes», sin selector de tramo ni la palabra
+  «tramo»; la organización suma 1 250 entre sus equipos; AYACUCHO -
+  MAGISTERIAL 01 muestra 700 «asignada» (la cuota cargada por ventana quedó
+  mensual); un equipo sin vendedores dice «0 vendedores × cuota mensual por
+  defecto».

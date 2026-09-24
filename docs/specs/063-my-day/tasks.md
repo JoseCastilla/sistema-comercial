@@ -59,7 +59,10 @@ Una casilla se marca solo con evidencia en `verification.md`.
 - [x] BR-014: el asesor recibe el aviso de sus ventas caídas calientes
       vencidas; para el asesor ambos avisos abren «Mi día». Plurales sin
       paréntesis.
-- [ ] Lectura en producción con la cuenta de asesor.
+- [x] Desplegada (24/09/2026): el aviso de administración ya dice
+      «320 recuperos vencidos», sin paréntesis.
+- [ ] Lectura en producción con la cuenta de asesor (la pestaña de
+      producción pasó a sesión de administrador).
 
 ## Fase 4 — Mis ventas del mes
 
@@ -72,5 +75,8 @@ Una casilla se marca solo con evidencia en `verification.md`.
 
 ## Fase 5 — Supervisor vendedor y shadcn/ui
 
-- [ ] «Mi día» en el menú del supervisor vendedor.
+- [x] «Mi día» en el menú del supervisor vendedor: un solo layout
+      compartido (antes siete copias idénticas) sabe si el usuario vende
+      (membresía de venta activa, la misma de Rendimiento) y el menú lo
+      ofrece a quien vende. 4 pruebas del menú.
 - [ ] Piezas shadcn/ui sobre los tokens, con el lockfile limpio.

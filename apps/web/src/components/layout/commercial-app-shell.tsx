@@ -219,6 +219,7 @@ export function CommercialAppShell({
   organizationName,
   userName,
   role,
+  sells = false,
   signOut,
   children,
   activeSection,
@@ -226,6 +227,11 @@ export function CommercialAppShell({
   organizationName: string;
   userName: string;
   role: string;
+  /**
+   * Vende: el asesor, o el supervisor con membresía de venta. Solo quien vende
+   * tiene «Mi día» (SPEC-063 fase 5).
+   */
+  sells?: boolean;
   signOut: ReactNode;
   children: ReactNode;
   /** Solo para forzar una sección que la ruta no represente. */
@@ -303,7 +309,7 @@ export function CommercialAppShell({
           <p className="app-shell__organization-name">{organizationName}</p>
         </div>
         <nav className="app-shell__nav" aria-label="Navegación principal">
-          {role === "AGENT" ? (
+          {sells ? (
             <NavigationItem
               active={currentSection === "my-day"}
               description="Lo que te toca hoy"
@@ -425,9 +431,9 @@ export function CommercialAppShell({
       <nav
         aria-label="Navegación móvil"
         className="app-shell__mobile-nav"
-        data-items={isAdmin ? "8" : "6"}
+        data-items={isAdmin ? "8" : role === "SUPERVISOR" && sells ? "7" : "6"}
       >
-        {role === "AGENT" ? (
+        {sells ? (
           <MobileNavigationItem
             active={currentSection === "my-day"}
             href="/my-day"

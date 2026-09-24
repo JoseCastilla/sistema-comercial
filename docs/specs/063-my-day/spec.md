@@ -1,6 +1,6 @@
 # SPEC-063 — Mi día: la bandeja de trabajo del asesor
 
-**Estado:** `EN_CURSO` — fases 0 a 4 en `main`; fase 5 pendiente; decisiones de §5 adoptadas como recomendación (24/09/2026)
+**Estado:** `EN_CURSO` — fases 0 a 4 y el supervisor vendedor de la 5 en `main`; piezas shadcn/ui pendientes del lockfile; decisiones de §5 adoptadas como recomendación (24/09/2026)
 
 **Versión:** 1.0
 **Fecha:** 2026-09-24

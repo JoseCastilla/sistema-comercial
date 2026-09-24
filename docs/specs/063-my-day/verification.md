@@ -102,4 +102,10 @@
   devuelve ahora `recoveryOverdue` también al asesor (0 en la copia local) y
   Mi agenda carga sin error. Los datos reales se leen en producción.
 
-Pendiente: AC-010 (lista vacía) con un asesor sin pendientes.
+- **24/09/2026** — Fase 5, supervisor vendedor: `menu-mi-dia.test.tsx` 4 de
+  4 (asesor y supervisor vendedor ven «Mi día» en el menú lateral y en el
+  móvil; supervisor que no vende y administrador, no). En producción, con
+  sesión de administrador, el menú no ofrece «Mi día».
+
+Pendiente: AC-010 (lista vacía) con un asesor sin pendientes; fase 3 con
+sesión de asesor; piezas shadcn/ui.

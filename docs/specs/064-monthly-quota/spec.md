@@ -1,6 +1,6 @@
 # SPEC-064 — Cuota mensual
 
-**Estado:** `EN_CURSO` — decisiones de José del 24/09/2026: cuota mensual, cuotas cargadas tratadas como mensuales, reparto por el líder (24/09/2026)
+**Estado:** `VERIFICADA` — cuota mensual en Cuotas, Rendimiento y «Mi día», verificada en producción (24/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-24
