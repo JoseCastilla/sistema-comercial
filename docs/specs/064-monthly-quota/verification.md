@@ -18,5 +18,10 @@
   - El servidor de desarrollo tuvo que reiniciarse tras regenerar el
     cliente de Prisma: con el cliente viejo en memoria rechazaba `MONTH`.
 
-Pendiente: pantalla de Cuotas con sesión de administrador o líder, y lectura
-en producción (la misma cifra en «Mi día», Rendimiento y Cuotas).
+- **24/09/2026** — Producción (`70dfd25`, con sus dos migraciones), cuenta de
+  asesor, solo lectura: Rendimiento dice «Cuota del mes 55/100 · faltan 45 ·
+  cuota asignada» y «Cuota de setiembre de 2026 — ventas del 1 al 30, mes en
+  curso»; «Mi día» dice «55 de 100 · te faltan 45». La cuota de 100, cargada
+  en la ventana del 1 al 15, quedó como mensual.
+
+Pendiente: pantalla de Cuotas con sesión de administrador o líder.

@@ -12,4 +12,5 @@
       por asesor, panel personal y de cumplimiento.
 - [x] «Mi día» sobre la regla definitiva.
 - [ ] Pantalla de Cuotas recorrida con sesión de administrador o líder.
-- [ ] Verificación en producción: la misma cifra en las tres pantallas.
+- [x] Verificación en producción: la misma cifra en «Mi día» y Rendimiento
+      (55/100, 24/09/2026).
