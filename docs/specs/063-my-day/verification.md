@@ -107,5 +107,10 @@
   móvil; supervisor que no vende y administrador, no). En producción, con
   sesión de administrador, el menú no ofrece «Mi día».
 
+- **24/09/2026** — Layout compartido en producción (`a932ed8`), sesión de
+  administrador: /orders, /performance, /performance/quotas, /recovery/sales,
+  /recovery/triage, /admin/users, /admin/teams, /dni y /my-day responden 200
+  con su menú y sin pantalla de error; /tools/lines, 404.
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes; fase 3 con
 sesión de asesor; piezas shadcn/ui.
