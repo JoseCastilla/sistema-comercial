@@ -10,4 +10,14 @@
   su venta). En local la página compila; la sesión de la asesora de prueba
   expiró y no se pudo recorrer.
 
-Pendiente: lectura en producción.
+- **25/09/2026** — Producción (`0f8a0c3`), sesión de asesora, solo lectura:
+  sin citas en setiembre, la agenda mide 845 px de alto (antes 3839) y dice
+  «0 llamadas acordadas en estos 14 días» y, en una línea, cómo agendar; no
+  repite la cola (AC-001). «Mes» dibuja setiembre sin cifras. Un enlace viejo
+  (`view=semana&tipo=reintentos`) abre «Próximas». En el celular la página
+  mide 375 px de ancho y 818 de alto (antes 4456), y la rejilla del mes
+  cabe (341 en 341) (AC-002).
+
+Pendiente: ver una tarjeta con una cita real (AC-003 y AC-004 están
+cubiertos por `agenda-citas.test.tsx`; la asesora no tiene citas y la sesión
+local expiró).

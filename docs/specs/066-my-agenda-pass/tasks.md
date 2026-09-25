@@ -14,4 +14,4 @@
       20 de 20; `agenda-citas.test.tsx` 5 de 5; web 244 en verde.
 - [ ] Ver la tarjeta con una cita real (la asesora de producción no tiene
       citas en setiembre; la sesión local expiró).
-- [ ] Lectura en producción.
+- [x] Lectura en producción (25/09/2026).
