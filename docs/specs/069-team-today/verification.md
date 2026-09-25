@@ -26,7 +26,8 @@
   «Registrar gestión»; los casos abren su ficha sin `from=mi-dia`. Un
   identificador fuera del equipo responde 404.
 
-Observaciones para después: los títulos compartidos con «Mi día» siguen en
-segunda persona («Tu comisión», «Pedidos que te necesitan») aunque aquí se
-refieren al asesor; y el 404 es la página genérica de Next, en inglés.
+Observaciones corregidas el mismo día: en «Ver su día» la franja y los
+títulos hablan del asesor («Su comisión», «le faltan», «Pedidos que lo
+necesitan»; `voice="su"`), y «no encontrado» es una página propia en
+español con «Ir al inicio» (`app/not-found.tsx`).
 

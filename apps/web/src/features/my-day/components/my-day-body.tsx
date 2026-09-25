@@ -26,7 +26,11 @@ export function MyDayBody({
   return (
     <>
       {/* El progreso en una franja: el trabajo («Ahora») queda a la vista. */}
-      <MyDayProgressPanel progress={data.progress} sales={data.sales} />
+      <MyDayProgressPanel
+        progress={data.progress}
+        sales={data.sales}
+        voice={readOnly ? "su" : "tu"}
+      />
 
       <section aria-labelledby="mi-dia-ahora" className="grid gap-4">
         <h2 className="text-lg font-bold text-ui-text" id="mi-dia-ahora">

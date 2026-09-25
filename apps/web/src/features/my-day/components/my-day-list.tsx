@@ -83,6 +83,7 @@ export function MyDayList({
           <TierHeading
             campaignTotal={campaignTotal}
             count={group.entries.length}
+            readOnly={readOnly}
             tier={group.tier}
           />
           <ol className="mt-2 grid gap-2">
@@ -144,10 +145,13 @@ function TierHeading({
   tier,
   count,
   campaignTotal,
+  readOnly = false,
 }: {
   tier: MyDayTier;
   count: number;
   campaignTotal: number;
+  /** En «Ver su día» el título habla del asesor, no de quien mira. */
+  readOnly?: boolean;
 }) {
   const total = tier === "campana" ? campaignTotal : count;
 
@@ -156,7 +160,9 @@ function TierHeading({
       className="flex items-baseline gap-2 text-sm font-semibold text-ui-text"
       id={`tramo-${tier}`}
     >
-      {myDayTierLabels[tier]}
+      {readOnly && tier === "pedido"
+        ? "Pedidos que lo necesitan"
+        : myDayTierLabels[tier]}
       <span className="text-xs font-medium text-ui-soft">{total}</span>
     </h2>
   );

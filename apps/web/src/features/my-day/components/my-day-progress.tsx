@@ -38,6 +38,31 @@ const pendingAmountSuffix: Partial<Record<MyDaySaleBucket, string>> = {
   caidas: "si la recuperas",
 };
 
+/**
+ * Quién lee (SPEC-069): el asesor en su «Mi día» («tu comisión») o su
+ * supervisor en «Ver su día» («su comisión»). Las cifras son las mismas.
+ */
+export type MyDayVoice = "tu" | "su";
+
+const voiceText = {
+  tu: {
+    lacks: (count: number) => (count === 1 ? "te falta" : "te faltan"),
+    commission: "Tu comisión",
+    howTo: "Cómo se calcula tu comisión",
+    sales: "tus ventas",
+    owner: "a tu nombre",
+    enters: "que ingresas",
+  },
+  su: {
+    lacks: (count: number) => (count === 1 ? "le falta" : "le faltan"),
+    commission: "Su comisión",
+    howTo: "Cómo se calcula su comisión",
+    sales: "sus ventas",
+    owner: "a su nombre",
+    enters: "que ingresa",
+  },
+} as const;
+
 function plural(count: number, singular: string, pluralForm: string): string {
   return `${formatCount(count)} ${count === 1 ? singular : pluralForm}`;
 }
@@ -46,7 +71,10 @@ function plural(count: number, singular: string, pluralForm: string): string {
  * Lo que dice del bono, en una línea (fase 6): la ventana abierta dice cuánto
  * falta; del 16 al 24, el bono que viene, no el que ya cerró.
  */
-function bonusLine(window: MyDayProgress["window"]): string | null {
+function bonusLine(
+  window: MyDayProgress["window"],
+  voice: MyDayVoice,
+): string | null {
   if (!window) return null;
   if (window.closed) {
     return window.upcoming
@@ -55,7 +83,7 @@ function bonusLine(window: MyDayProgress["window"]): string | null {
   }
   return window.nextTarget === null
     ? `${window.label}: sin tramo pendiente`
-    : `${window.label}: te ${window.missingForNextTarget === 1 ? "falta" : "faltan"} ${formatCount(window.missingForNextTarget)} para ${formatMoneyFromCents(window.nextTargetAmountCents)} más`;
+    : `${window.label}: ${voiceText[voice].lacks(window.missingForNextTarget)} ${formatCount(window.missingForNextTarget)} para ${formatMoneyFromCents(window.nextTargetAmountCents)} más`;
 }
 
 /**
@@ -68,11 +96,15 @@ function bonusLine(window: MyDayProgress["window"]): string | null {
 export function MyDayProgressPanel({
   progress,
   sales,
+  voice = "tu",
 }: {
   progress: MyDayProgress;
   sales: MyDaySales;
+  /** «su» cuando lo mira su supervisor (SPEC-069 fase 2). */
+  voice?: MyDayVoice;
 }) {
-  const bonus = bonusLine(progress.window);
+  const bonus = bonusLine(progress.window, voice);
+  const text = voiceText[voice];
   const pendingCents = sales.summary
     .filter((group) => group.bucket !== "pagan")
     .reduce((total, group) => total + group.amountCents, 0);
@@ -112,13 +144,14 @@ export function MyDayProgressPanel({
           pendingCents={pendingCents}
           progress={progress}
           sales={sales}
+          voice={voice}
         />
         <p className="text-ui-muted">
           <strong className="text-ui-text">Cuota del mes:</strong>{" "}
           {formatCount(progress.quota.delivered)} de{" "}
           {formatCount(progress.quota.target)} portabilidades entregadas
           {progress.quota.target > progress.quota.delivered
-            ? ` · te faltan ${formatCount(progress.quota.target - progress.quota.delivered)}`
+            ? ` · ${text.lacks(progress.quota.target - progress.quota.delivered)} ${formatCount(progress.quota.target - progress.quota.delivered)}`
             : " · cumplida"}
           {progress.quota.assigned ? "" : " · cuota por defecto"}
         </p>
@@ -132,9 +165,9 @@ export function MyDayProgressPanel({
         ) : null}
         <details className="rounded-lg border border-ui-border">
           <summary className="cursor-pointer px-3 py-2 font-semibold text-ui-accent">
-            Cómo se calcula tu comisión
+            {text.howTo}
           </summary>
-          <CommissionExplanation progress={progress} />
+          <CommissionExplanation progress={progress} voice={voice} />
         </details>
       </div>
     </details>
@@ -149,7 +182,9 @@ function CommissionSummary({
   progress,
   sales,
   pendingCents,
+  voice,
 }: {
+  voice: MyDayVoice;
   progress: MyDayProgress;
   sales: MyDaySales;
   pendingCents: number;
@@ -160,7 +195,7 @@ function CommissionSummary({
   return (
     <section aria-labelledby="mi-dia-comision" className="grid gap-2">
       <h2 className="font-semibold text-ui-text" id="mi-dia-comision">
-        Tu comisión de {progress.monthLabel} (estimada)
+        {voiceText[voice].commission} de {progress.monthLabel} (estimada)
       </h2>
       <p className="text-ui-muted">
         {formatMoneyFromCents(progress.baseCommissionCents)} por{" "}
@@ -170,7 +205,7 @@ function CommissionSummary({
           {formatMoneyFromCents(progress.estimatedCommissionCents)}
         </strong>
         {pendingCents > 0
-          ? ` · por cobrar ${formatMoneyFromCents(pendingCents)} en tus ventas que todavía no pagan`
+          ? ` · por cobrar ${formatMoneyFromCents(pendingCents)} en ${voiceText[voice].sales} que todavía no pagan`
           : ""}
       </p>
       {sales.total > 0 ? (
@@ -248,7 +283,13 @@ function CommissionSummary({
   );
 }
 
-function CommissionExplanation({ progress }: { progress: MyDayProgress }) {
+function CommissionExplanation({
+  progress,
+  voice,
+}: {
+  progress: MyDayProgress;
+  voice: MyDayVoice;
+}) {
   const { policy } = progress;
   const rates = Object.entries(policy.baseRateCents).flatMap(
     ([operation, cents]) => {
@@ -275,7 +316,8 @@ function CommissionExplanation({ progress }: { progress: MyDayProgress }) {
           ))}
         </ul>
         <p className="mt-1 text-ui-muted">
-          Una venta es pagable cuando está entregada, activada y a tu nombre.
+          Una venta es pagable cuando está entregada, activada y{" "}
+          {voiceText[voice].owner}.
         </p>
       </div>
       {policy.acceleratorWindows.map((window) => {
@@ -284,7 +326,7 @@ function CommissionExplanation({ progress }: { progress: MyDayProgress }) {
           <div key={window.key}>
             <h3 className="font-semibold">{window.label}</h3>
             <p className="mt-1 text-ui-muted">
-              Cuentan las portabilidades que ingresas del día{" "}
+              Cuentan las portabilidades {voiceText[voice].enters} del día{" "}
               {window.windowStartDay} al{" "}
               {window.windowEndDay === null
                 ? "último día del mes"

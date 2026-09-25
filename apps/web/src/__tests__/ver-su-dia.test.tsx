@@ -122,4 +122,21 @@ describe("Ver su día · solo lectura", () => {
       screen.getByRole("link", { name: "Ver su cartera en Seguimiento" }),
     ).toHaveAttribute("href", "/recovery/follow-up?advisor=u-1");
   });
+
+  it("los títulos hablan del asesor, no de quien mira", () => {
+    renderList(true, 0, [
+      entry({
+        key: "pedido:p1",
+        kind: "pedido",
+        tier: "pedido",
+        title: "CLIENTE CON PEDIDO",
+        manage: null,
+        href: "/orders?q=1",
+        actionLabel: "Ver pedido",
+      }),
+    ]);
+
+    expect(screen.getByText("Pedidos que lo necesitan")).toBeInTheDocument();
+    expect(screen.queryByText("Pedidos que te necesitan")).toBeNull();
+  });
 });
