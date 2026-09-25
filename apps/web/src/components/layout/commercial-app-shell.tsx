@@ -19,7 +19,8 @@ export type ActiveSection =
   | "logistics"
   | "people"
   | "teams"
-  | "my-team";
+  | "my-team"
+  | "team-today";
 
 /**
  * La sección activa se deduce de la ruta en vez de viajar como prop.
@@ -35,6 +36,7 @@ const SECTION_BY_PATH_PREFIX: readonly (readonly [string, ActiveSection])[] = [
   ["/admin/recovery-base", "recovery"],
   ["/admin/users", "people"],
   ["/admin/teams", "teams"],
+  ["/team/today", "team-today"],
   ["/team", "my-team"],
   ["/performance", "performance"],
   ["/recovery", "recovery"],
@@ -308,6 +310,16 @@ export function CommercialAppShell({
           <p className="app-shell__organization-name">{organizationName}</p>
         </div>
         <nav className="app-shell__nav" aria-label="Navegación principal">
+          {role === "SUPERVISOR" ? (
+            // SPEC-069: la entrada del supervisor, antes que su propio día.
+            <NavigationItem
+              active={currentSection === "team-today"}
+              description="Quién necesita tu ayuda hoy"
+              href="/team/today"
+              icon="teams"
+              label="Hoy en mi equipo"
+            />
+          ) : null}
           {sells ? (
             <NavigationItem
               active={currentSection === "my-day"}
@@ -358,7 +370,7 @@ export function CommercialAppShell({
               active={currentSection === "my-team"}
               description="Tus equipos y alta de asesores"
               href="/team"
-              icon="teams"
+              icon="people"
               label="Mi equipo"
             />
           ) : null}
@@ -475,11 +487,15 @@ export function CommercialAppShell({
           label="Campañas"
         />
         {role === "SUPERVISOR" ? (
+          // En el celular no caben dos ítems de equipo: «Equipo» abre «Hoy en
+          // mi equipo», y desde ahí se llega al alta de asesores.
           <MobileNavigationItem
-            active={currentSection === "my-team"}
-            href="/team"
+            active={
+              currentSection === "team-today" || currentSection === "my-team"
+            }
+            href="/team/today"
             icon="teams"
-            label="Mi equipo"
+            label="Equipo"
           />
         ) : null}
         {isAdmin ? (

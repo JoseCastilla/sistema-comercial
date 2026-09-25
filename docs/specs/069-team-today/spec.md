@@ -1,6 +1,6 @@
 # SPEC-069 — Hoy en mi equipo
 
-**Estado:** `BORRADOR` — propuesta para que José la revise (25/09/2026)
+**Estado:** `ENTREGADA` — fase 1; José aprobó las recomendaciones de P-01 a P-04 (25/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25
@@ -82,6 +82,12 @@ necesita que yo haga algo hoy, y qué?**
   cuando falta. Solo si José la pide después de usar la fase 1. *Ver P-03.*
 
 ## 5. Preguntas para José
+
+José aprobó las cuatro recomendaciones y pidió construir la fase 1
+(25/09/2026). En el celular, «Mi equipo» cede su lugar a «Equipo», que abre
+esta pantalla; el alta de asesores queda enlazada desde aquí. «Cuántos
+tienen sus 3 intentos» (BR-004, campaña) queda para después: «Mi día» no lo
+calcula y BR-002 pide no inventar reglas aquí.
 
 - **P-01 — ¿Reemplaza a Pedidos como entrada del supervisor?**
   Recomendación: sí. Pedidos sigue en el menú, un clic abajo.
