@@ -107,6 +107,11 @@ describe("Hoy en mi equipo", () => {
     ).toHaveAttribute("href", "/recovery/follow-up?advisor=u-1");
     expect(screen.getByText("17 antiguas")).toBeInTheDocument();
     expect(screen.getByText("Cuota 10 de 45")).toBeInTheDocument();
+    // Fase 2: su «Mi día», en solo lectura.
+    expect(screen.getByRole("link", { name: "Ver su día" })).toHaveAttribute(
+      "href",
+      "/team/today/u-1",
+    );
   });
 
   it("sin gestiones: gris temprano, ámbar tarde, y nunca «ausente»", () => {

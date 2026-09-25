@@ -193,9 +193,18 @@ function MemberCard({ member }: { member: TeamMemberDaySummary }) {
         >
           {member.name}
         </Link>
-        <span className="text-xs font-medium tabular-nums text-ui-muted">
-          Cuota {formatCount(member.quotaDelivered)} de{" "}
-          {formatCount(member.quotaTarget)}
+        <span className="flex flex-wrap items-baseline gap-x-3 text-xs font-medium">
+          <span className="tabular-nums text-ui-muted">
+            Cuota {formatCount(member.quotaDelivered)} de{" "}
+            {formatCount(member.quotaTarget)}
+          </span>
+          {/* BR-006: su «Mi día», tal como lo ve él, en solo lectura. */}
+          <Link
+            className="text-ui-accent underline-offset-2 hover:underline"
+            href={`/team/today/${member.userId}`}
+          >
+            Ver su día
+          </Link>
         </span>
       </h2>
 

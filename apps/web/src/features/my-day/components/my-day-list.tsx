@@ -58,9 +58,15 @@ function nextCases(entries: MyDayEntry[]): Map<string, NextCase> {
 export function MyDayList({
   entries,
   campaignTotal,
+  readOnly = false,
+  campaignLink = { href: "/recovery/campaigns", label: "Ir a mi cola de campaña" },
 }: {
   entries: MyDayEntry[];
   campaignTotal: number;
+  /** SPEC-069 fase 2: el supervisor mira el día del asesor, sin editor. */
+  readOnly?: boolean;
+  /** A dónde lleva «hay N casos de campaña»: la cola, o su Seguimiento. */
+  campaignLink?: { href: string; label: string };
 }) {
   const next = nextCases(entries);
   const groups = myDayTierOrder
@@ -89,6 +95,7 @@ export function MyDayList({
                       ? (next.get(entry.manage.caseId) ?? null)
                       : null
                   }
+                  readOnly={readOnly}
                   showKind={false}
                 />
               </li>
@@ -98,7 +105,7 @@ export function MyDayList({
             <p className="mt-2 text-sm text-ui-muted">
               Hay {campaignTotal} casos de campaña para trabajar ahora.{" "}
               <Button asChild size="inline" variant="link">
-                <Link href="/recovery/campaigns">Ir a mi cola de campaña</Link>
+                <Link href={campaignLink.href}>{campaignLink.label}</Link>
               </Button>
             </p>
           ) : null}
@@ -109,7 +116,13 @@ export function MyDayList({
 }
 
 /** Una lista sin tramos: «Más tarde hoy» y las ventas antiguas. */
-export function MyDayFlatList({ entries }: { entries: MyDayEntry[] }) {
+export function MyDayFlatList({
+  entries,
+  readOnly = false,
+}: {
+  entries: MyDayEntry[];
+  readOnly?: boolean;
+}) {
   const next = nextCases(entries);
 
   return (
@@ -119,6 +132,7 @@ export function MyDayFlatList({ entries }: { entries: MyDayEntry[] }) {
           <MyDayRow
             entry={entry}
             next={entry.manage ? (next.get(entry.manage.caseId) ?? null) : null}
+            readOnly={readOnly}
           />
         </li>
       ))}
@@ -152,11 +166,14 @@ function MyDayRow({
   entry,
   next,
   showKind = true,
+  readOnly = false,
 }: {
   entry: MyDayEntry;
   next: NextCase | null;
   /** Dentro de un grupo, el título ya dice qué es la fila. */
   showKind?: boolean;
+  /** Solo lectura: se abre el caso, no se registra desde aquí. */
+  readOnly?: boolean;
 }) {
   const draft = useCampaignDraft();
   const editorId = useId();
@@ -179,7 +196,7 @@ function MyDayRow({
     });
   }, [draft, next]);
 
-  const canManage = manage !== null && unmanageable === null;
+  const canManage = !readOnly && manage !== null && unmanageable === null;
   const phone = entry.phone ?? manage?.defaultPhone ?? null;
 
   return (

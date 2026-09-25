@@ -7,4 +7,9 @@
       «Equipo» en el celular) y entrada del supervisor. Web 259 pruebas
       (`hoy-en-mi-equipo.test.tsx` 5 de 5); validation 410.
 - [x] Fase 1: verificación en producción con la sesión de supervisora (25/09/2026).
-- [ ] Fase 2: «Ver su día» en solo lectura.
+- [x] Fase 2: «Ver su día» en `/team/today/[userId]`: el cuerpo de «Mi
+      día» pasa a `MyDayBody` (lo usan las dos páginas), la lista gana
+      `readOnly`, el alcance es `getSupervisedAdvisors` (otro asesor da 404)
+      y los enlaces no vuelven a «Mi día». Web 263 pruebas
+      (`ver-su-dia.test.tsx` 4 de 4).
+- [ ] Fase 2: verificación en producción con la sesión de supervisora.

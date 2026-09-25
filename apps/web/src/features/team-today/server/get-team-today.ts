@@ -20,16 +20,17 @@ export interface TeamTodayData {
 }
 
 /**
- * Hoy en mi equipo — SPEC-069 fase 1. Los asesores activos con venta
- * habilitada de los equipos que el supervisor supervisa, sin él mismo
- * (BR-010). Cada uno se resume desde su propio «Mi día» (BR-002): no hay
- * reglas nuevas, así que la cifra de un asesor aquí es la que él ve.
+ * Los asesores que un supervisor acompaña (SPEC-069 BR-010): activos, con
+ * venta habilitada, de los equipos que supervisa, sin él mismo. «Ver su
+ * día» usa lo mismo para no abrir el día de alguien fuera de su equipo.
  */
-export async function getTeamToday(
+export async function getSupervisedAdvisors(
   organizationId: string,
   supervisorUserId: string,
-  now = new Date(),
-): Promise<TeamTodayData> {
+): Promise<{
+  teamNames: string[];
+  advisors: Array<{ userId: string; name: string }>;
+}> {
   const supervised = await database.commercialTeamMember.findMany({
     where: {
       userId: supervisorUserId,
@@ -52,12 +53,33 @@ export async function getTeamToday(
     },
     select: { userId: true, user: { select: { name: true } } },
   });
+
   // Un asesor en dos equipos del mismo supervisor aparece una vez.
-  const advisors = [
-    ...new Map(
-      memberships.map((item) => [item.userId, item.user.name]),
-    ).entries(),
-  ].map(([userId, name]) => ({ userId, name }));
+  return {
+    teamNames: supervised.map((item) => item.team.name),
+    advisors: [
+      ...new Map(
+        memberships.map((item) => [item.userId, item.user.name]),
+      ).entries(),
+    ].map(([userId, name]) => ({ userId, name })),
+  };
+}
+
+/**
+ * Hoy en mi equipo — SPEC-069 fase 1. Los asesores activos con venta
+ * habilitada de los equipos que el supervisor supervisa, sin él mismo
+ * (BR-010). Cada uno se resume desde su propio «Mi día» (BR-002): no hay
+ * reglas nuevas, así que la cifra de un asesor aquí es la que él ve.
+ */
+export async function getTeamToday(
+  organizationId: string,
+  supervisorUserId: string,
+  now = new Date(),
+): Promise<TeamTodayData> {
+  const { teamNames, advisors } = await getSupervisedAdvisors(
+    organizationId,
+    supervisorUserId,
+  );
 
   const todayStart = getOrderPeriodRange("TODAY", now).start;
   const [days, lastAttempts] = await Promise.all([
@@ -107,7 +129,7 @@ export async function getTeamToday(
 
   return {
     generatedAt: now,
-    teamNames: supervised.map((item) => item.team.name),
+    teamNames,
     totals: sumTeamDay(members),
     members,
   };
