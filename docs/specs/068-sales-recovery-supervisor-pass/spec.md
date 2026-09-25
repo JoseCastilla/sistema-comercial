@@ -1,6 +1,6 @@
 # SPEC-068 — Recupero de ventas del supervisor, control por control
 
-**Estado:** `ENTREGADA` — dieciséis mejoras aprobadas por José (25/09/2026)
+**Estado:** `VERIFICADA` — dieciséis mejoras aprobadas por José, verificadas en producción (25/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25
@@ -13,9 +13,11 @@ Tambo (solo lectura). José respondió «avanza con todo en ese orden».
 
 Lo que se vio: 97 ventas caídas abiertas en una tabla de ocho columnas
 que no cabía (916 px en 741) y medía 19 070 px. 83 decían «Primer contacto
-vencido», todas en ámbar, mezclando 42 ventas de los últimos 7 días con 55
-antiguas. **Las 42 calientes no tenían ni una llamada**, en los cinco
-asesores, y la pantalla no dejaba verlo. El aviso decía «96 recuperos
+vencido», todas en ámbar, mezclando lo caliente con lo antiguo. El
+recorrido estimó 42 calientes contando por el día en que la venta se cayó;
+con la regla del sistema (el día de la venta, SPEC-063 BR-018) son 21, y
+**ninguna tenía una llamada**, en los cinco asesores. La pantalla no dejaba
+verlo. El aviso decía «96 recuperos
 vencidos», contando también lo antiguo, mientras para el asesor lo antiguo
 ya no hace ruido (SPEC-063 BR-014, BR-018).
 

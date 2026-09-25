@@ -9,4 +9,4 @@
 - [x] Grupo 3, la tarjeta (BR-009 a BR-013).
 - [x] Grupo 4, encabezado y filtros (BR-014 a BR-016).
 - [x] Pruebas: web 254 en verde (`bandeja-recupero.test.tsx` 15 de 15).
-- [ ] Lectura en producción con la sesión de supervisora.
+- [x] Lectura en producción con la sesión de supervisora (25/09/2026).
