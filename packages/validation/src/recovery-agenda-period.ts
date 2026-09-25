@@ -1,30 +1,33 @@
 /**
- * Períodos de «Mi agenda» — SPEC-048 BR-013.
+ * Períodos de «Mi agenda» — SPEC-048 BR-013, SPEC-066 BR-012.
  *
- * Semana (lunes a domingo de Lima), día y lista (siete días desde la fecha
- * elegida). Todo se corta a medianoche de Lima (-05:00, sin horario de
+ * «Próximas» (catorce días desde la fecha elegida, en lista por día) y el
+ * mes (rejilla de semanas completas). Las cuadrículas de semana y día se
+ * retiraron: con pocas citas dibujaban trece horas vacías y en el celular no
+ * cabían. Todo se corta a medianoche de Lima (-05:00, sin horario de
  * verano) para que un martes sea el mismo martes en cualquier servidor.
  */
 import { getLimaIsoDate } from "./order-period.js";
 
-export const recoveryAgendaViews = ["semana", "dia", "lista", "mes"] as const;
+export const recoveryAgendaViews = ["proximas", "mes"] as const;
 export type RecoveryAgendaView = (typeof recoveryAgendaViews)[number];
 
 export const recoveryAgendaViewLabels: Record<RecoveryAgendaView, string> = {
-  semana: "Semana",
-  dia: "Día",
-  lista: "Lista",
+  proximas: "Próximas",
   mes: "Mes",
 };
 
+/** Días que cubre «Próximas» desde la fecha elegida. */
+export const recoveryAgendaUpcomingDays = 14;
+
+/**
+ * Cualquier otra vista —también las retiradas «semana», «dia» y «lista» de
+ * un enlace guardado— abre «Próximas».
+ */
 export function parseRecoveryAgendaView(
   value: string | null | undefined,
 ): RecoveryAgendaView {
-  const text = String(value ?? "").trim();
-
-  return recoveryAgendaViews.includes(text as RecoveryAgendaView)
-    ? (text as RecoveryAgendaView)
-    : "semana";
+  return String(value ?? "").trim() === "mes" ? "mes" : "proximas";
 }
 
 const isoDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -125,20 +128,16 @@ export function recoveryAgendaPeriod(
     };
   }
 
-  const length = view === "dia" ? 1 : 7;
-  const start =
-    view === "semana"
-      ? new Date(date.getTime() - limaWeekdayIndex(date) * dayMs)
-      : date;
+  const length = recoveryAgendaUpcomingDays;
   const days = Array.from(
     { length },
-    (_, index) => new Date(start.getTime() + index * dayMs),
+    (_, index) => new Date(date.getTime() + index * dayMs),
   );
 
   return {
     view,
-    start,
-    end: new Date(start.getTime() + length * dayMs),
+    start: date,
+    end: new Date(date.getTime() + length * dayMs),
     days,
     previous: new Date(date.getTime() - length * dayMs),
     next: new Date(date.getTime() + length * dayMs),
@@ -150,16 +149,4 @@ export function limaHourMinute(value: Date): { hour: number; minute: number } {
   const shifted = new Date(value.getTime() - 5 * 60 * 60 * 1000);
 
   return { hour: shifted.getUTCHours(), minute: shifted.getUTCMinutes() };
-}
-
-/** Jornada que dibuja la cuadrícula (spec §5); una cita fuera la extiende. */
-export const recoveryAgendaWorkdayHours = { from: 8, to: 20 } as const;
-
-export function recoveryAgendaGridHours(
-  timedHours: ReadonlyArray<number>,
-): number[] {
-  const from = Math.min(recoveryAgendaWorkdayHours.from, ...timedHours);
-  const to = Math.max(recoveryAgendaWorkdayHours.to, ...timedHours);
-
-  return Array.from({ length: to - from + 1 }, (_, index) => from + index);
 }

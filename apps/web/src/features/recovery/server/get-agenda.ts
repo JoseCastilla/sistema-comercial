@@ -2,136 +2,104 @@ import "server-only";
 
 import {
   allOf,
+  describeCampaignWorkDue,
   describeRecoveryCommitmentState,
   effectiveAttemptResult,
+  formatCampaignMoment,
   formatMyDaySaleDay,
+  formatMyDayTime,
   getLimaIsoDate,
-  limaHourMinute,
-  parseRecoveryAgeBucket,
+  limaDayStartFromIso,
   parseRecoveryAgendaDate,
   parseRecoveryAgendaView,
-  recoveryAgeBucketRange,
-  recoveryAgendaKindLabels,
-  recoveryAgendaOriginLabels,
   recoveryAgendaPeriod,
   recoveryCommitmentStateLabels,
-  selectRecoveryAgendaItem,
   shareRecoveryAgendaSlot,
 } from "@repo/validation";
 
 import { database } from "@/server/database";
-import { formatLimaDateTime } from "@repo/ui/format";
 
 import { attemptResultLabels } from "../attempt-result-labels";
 import { buildRecoverySearchWhere } from "./recovery-search-where";
 
 import type { Prisma } from "@repo/database";
 import type {
-  RecoveryAgeBucket,
-  RecoveryAgendaItemKind,
   RecoveryAgendaPeriod,
   RecoveryAgendaView,
   RecoveryCommitmentState,
 } from "@repo/validation";
 
-/** Filtro «tipo» de la agenda (spec §4, filtros): valor de URL → tipos. */
-export const agendaKindFilters: ReadonlyArray<{
-  value: string;
-  label: string;
-  kinds: ReadonlyArray<RecoveryAgendaItemKind>;
-}> = [
-  { value: "citas", label: "Llamadas acordadas", kinds: ["CITA_ACORDADA"] },
-  { value: "reintentos", label: "Reintentos", kinds: ["REINTENTO"] },
-  { value: "seguimientos", label: "Seguimientos", kinds: ["SEGUIMIENTO"] },
-  { value: "habilitaciones", label: "Habilitaciones", kinds: ["HABILITACION"] },
-  { value: "venta", label: "Completar venta", kinds: ["COMPLETAR_VENTA"] },
-];
-
+/** Filtro de estado de la cita (SPEC-066 BR-014). */
 export const agendaStateFilters: ReadonlyArray<{
   value: string;
   label: string;
   states: ReadonlyArray<RecoveryCommitmentState>;
 }> = [
   { value: "pendientes", label: "Pendientes", states: ["pendiente"] },
-  { value: "vencidos", label: "Vencidos", states: ["vencida"] },
-  { value: "completados", label: "Completados", states: ["atendida"] },
-  { value: "reprogramados", label: "Reprogramados", states: ["reprogramada"] },
-  { value: "cancelados", label: "Cancelados", states: ["cancelada"] },
+  { value: "vencidos", label: "Vencidas", states: ["vencida"] },
+  { value: "completados", label: "Atendidas", states: ["atendida"] },
+  { value: "reprogramados", label: "Reprogramadas", states: ["reprogramada"] },
+  { value: "cancelados", label: "Canceladas", states: ["cancelada"] },
 ];
 
 export interface AgendaQuery {
   view: RecoveryAgendaView;
   date: Date;
   q: string;
-  age: RecoveryAgeBucket | null;
-  kind: string;
   state: string;
-}
-
-export function readAgendaQuery(
-  parameters: Record<string, string | undefined>,
-  now: Date,
-): AgendaQuery {
-  const kind = (parameters.tipo ?? "").trim();
-  const state = (parameters.estado ?? "").trim();
-
-  return {
-    view: parseRecoveryAgendaView(parameters.view),
-    date: parseRecoveryAgendaDate(parameters.fecha, now),
-    q: (parameters.q ?? "").trim().slice(0, 80),
-    age: parseRecoveryAgeBucket(parameters.age),
-    kind: agendaKindFilters.some((filter) => filter.value === kind) ? kind : "",
-    state: agendaStateFilters.some((filter) => filter.value === state)
-      ? state
-      : "",
-  };
+  /** La cita que se pidió ver (`cita=<id>`), para abrirla y llevar a su día. */
+  commitmentId: string;
 }
 
 export interface AgendaEntry {
-  /** Único por elemento: el caso, o la cita histórica. */
   key: string;
+  commitmentId: string;
   caseId: string;
+  /** La ficha del cliente: la de Campañas o la de Recupero de ventas. */
+  caseHref: string;
+  /** De dónde viene la cita: la base de campaña o una venta caída propia. */
+  source: "campana" | "venta_caida";
   holderName: string;
   phone: string | null;
-  kind: RecoveryAgendaItemKind;
-  kindLabel: string;
-  originLabel: string;
-  at: Date | null;
-  atLabel: string | null;
-  /** Día de Lima (`AAAA-MM-DD`) y hora, para colocarlo. */
-  dayIso: string | null;
-  hour: number | null;
-  minute: number | null;
-  timeLabel: string | null;
-  /** Solo la cita acordada ocupa una hora (BR-004). */
-  timed: boolean;
+  phoneOptions: string[];
+  serviceNumbers: string[];
+  at: Date;
+  dayIso: string;
+  timeLabel: string;
   state: RecoveryCommitmentState;
   stateLabel: string;
+  /** El plazo y su tono, con la misma regla que «Mi día» y la cola. */
+  due: { label: string; tone: "danger" | "warning" | "neutral" } | null;
+  isPending: boolean;
+  reason: string | null;
+  lastResult: string | null;
   lastResultLabel: string | null;
   lastObservation: string | null;
-  recencyLabel: string;
-  href: string;
-  /** La cita a la que abre el panel, si el elemento es una cita. */
-  commitmentId: string | null;
-  /** BR-016: otra cita del período en el mismo tramo de 15 minutos. */
+  lastAttemptAtLabel: string | null;
+  /** «venta del 18/09» en las ventas caídas. */
+  saleLabel: string | null;
+  /** BR-016 de SPEC-048: otra cita viva en el mismo tramo de 15 minutos. */
   clash: boolean;
+  /** Historia de la cita: la cadena de reprogramaciones del caso. */
+  history: Array<{
+    id: string;
+    atLabel: string;
+    stateLabel: string;
+    reason: string | null;
+    createdByName: string;
+  }>;
 }
 
 export interface AgendaData {
   query: AgendaQuery;
   period: RecoveryAgendaPeriod;
   todayIso: string;
-  /** Lo que cae en el período, ya filtrado. */
+  /** Las citas del período, ya filtradas y en orden. */
   periodEntries: AgendaEntry[];
   /** Citas pendientes cuya hora pasó, de cualquier fecha; ignoran filtros. */
-  overdueCommitments: AgendaEntry[];
-  /** Tareas sin hora que vencen hoy o antes; ignoran filtros. */
-  untimedDue: AgendaEntry[];
-  /** Asignados sin gestión ni fecha. */
-  noDateCount: number;
-  /** En verificación: listado informativo, sin fecha. */
-  verification: AgendaEntry[];
-  counts: { commitments: number; tasks: number; overdue: number };
+  overdue: AgendaEntry[];
+  /** Si la cita pedida existe y es del asesor. */
+  commitmentFound: boolean;
 }
 
 const openStatuses = [
@@ -140,68 +108,50 @@ const openStatuses = [
   "SCHEDULED",
   "WAITING",
 ] as const;
-const internalSources = ["INTERNAL_ORDER_STATE", "MANUAL"] as const;
 
-function recencyLabel(lastSightingAt: Date, now: Date): string {
-  const days = Math.round(
-    (new Date(`${getLimaIsoDate(now)}T00:00:00-05:00`).getTime() -
-      new Date(`${getLimaIsoDate(lastSightingAt)}T00:00:00-05:00`).getTime()) /
-      (24 * 60 * 60 * 1000),
-  );
+export function readAgendaQuery(
+  parameters: Record<string, string | undefined>,
+  now: Date,
+): AgendaQuery {
+  const state = (parameters.estado ?? "").trim();
 
-  if (days <= 0) return "oportunidad de hoy";
-  if (days === 1) return "oportunidad de ayer";
-
-  return `oportunidad de hace ${days} días`;
-}
-
-function timeLabel(at: Date): string {
-  const { hour, minute } = limaHourMinute(at);
-
-  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  return {
+    view: parseRecoveryAgendaView(parameters.view),
+    date: parseRecoveryAgendaDate(parameters.fecha, now),
+    q: (parameters.q ?? "").trim().slice(0, 80),
+    state: agendaStateFilters.some((filter) => filter.value === state)
+      ? state
+      : "",
+    commitmentId: (parameters.cita ?? "").trim().slice(0, 40),
+  };
 }
 
 function queryContext(query: AgendaQuery): URLSearchParams {
   const context = new URLSearchParams();
-  if (query.view !== "semana") context.set("view", query.view);
+  if (query.view !== "proximas") context.set("view", query.view);
   context.set("fecha", getLimaIsoDate(query.date));
   if (query.q) context.set("q", query.q);
-  if (query.age) context.set("age", query.age);
-  if (query.kind) context.set("tipo", query.kind);
   if (query.state) context.set("estado", query.state);
 
   return context;
 }
 
-function caseHref(caseId: string, query: AgendaQuery): string {
-  const context = queryContext(query);
-  context.set("from", "agenda");
-
-  return `/recovery/campaigns/${caseId}?${context.toString()}`;
-}
-
-/** El panel de la cita se abre en la misma agenda (`cita=<id>`). */
-export function commitmentPanelHref(
-  commitmentId: string,
+/** La agenda con el contexto actual y lo que se cambie. */
+export function agendaHref(
   query: AgendaQuery,
+  overrides: Partial<{ view: RecoveryAgendaView; date: Date }> = {},
 ): string {
-  const context = queryContext(query);
-  context.set("cita", commitmentId);
+  const context = queryContext({ ...query, ...overrides });
 
   return `/recovery/agenda?${context.toString()}`;
 }
 
-/** La agenda sin panel abierto, con el resto del contexto intacto. */
-export function agendaBaseHref(query: AgendaQuery): string {
-  return `/recovery/agenda?${queryContext(query).toString()}`;
-}
-
 /**
- * Mi agenda — SPEC-048 BR-004, BR-013, BR-014, BR-018. La población es la
- * del asesor autenticado (BR-029b): sus casos de base abiertos, pasados por
- * el mismo selector que usan la bandeja y la ficha, más las citas del
- * período en cualquier estado para consultar lo atendido, reprogramado o
- * cancelado.
+ * Mi agenda — SPEC-048, SPEC-066. Solo llamadas acordadas: las de la base
+ * de campaña y las de las ventas caídas del asesor (SPEC-063 BR-013). Las
+ * tareas automáticas —reintentos, habilitaciones, seguimientos— viven en la
+ * cola y en «Mi día»; repetirlas aquí llenaba la agenda de filas rojas que
+ * no eran citas (SPEC-066 BR-006).
  */
 export async function getAgenda(
   organizationId: string,
@@ -210,334 +160,203 @@ export async function getAgenda(
   now = new Date(),
 ): Promise<AgendaData> {
   const query = readAgendaQuery(parameters, now);
-  const period = recoveryAgendaPeriod(query.view, query.date);
   const todayIso = getLimaIsoDate(now);
 
-  const where = allOf<Prisma.RecoveryCaseWhereInput>(
-    {
-      organizationId,
-      source: "NATIONAL_BASE",
-      assignedUserId: userId,
-      status: { in: [...openStatuses] },
-    },
-    buildRecoverySearchWhere(query.q),
-    query.age
-      ? { lastSightingAt: recoveryAgeBucketRange(query.age, now) }
-      : null,
-  );
+  // `cita=<id>` sin fecha lleva al día de esa cita.
+  let commitmentFound = false;
+  if (query.commitmentId) {
+    const requested = await database.recoveryCaseCommitment.findFirst({
+      where: {
+        id: query.commitmentId,
+        organizationId,
+        case: { assignedUserId: userId },
+      },
+      select: { scheduledAt: true },
+    });
+    commitmentFound = requested !== null;
+    if (requested && !parameters.fecha) {
+      query.date =
+        limaDayStartFromIso(getLimaIsoDate(requested.scheduledAt)) ??
+        query.date;
+    }
+  }
 
-  const cases = await database.recoveryCase.findMany({
-    where,
-    orderBy: [{ nextActionAt: { sort: "asc", nulls: "last" } }],
+  const period = recoveryAgendaPeriod(query.view, query.date);
+
+  const rows = await database.recoveryCaseCommitment.findMany({
+    where: {
+      organizationId,
+      OR: [
+        { status: "PENDING" },
+        { scheduledAt: { gte: period.start, lt: period.end } },
+      ],
+      case: allOf<Prisma.RecoveryCaseWhereInput>(
+        { assignedUserId: userId, status: { in: [...openStatuses] } },
+        buildRecoverySearchWhere(query.q),
+      ),
+    },
+    orderBy: { scheduledAt: "asc" },
+    take: 300,
     select: {
       id: true,
-      holderName: true,
+      scheduledAt: true,
       status: true,
-      nextActionAt: true,
-      portabilityEligibleAt: true,
-      lastSightingAt: true,
-      phones: {
-        where: { kind: "CONTACT", invalidMarkedAt: null },
-        take: 1,
-        select: { phoneNumber: true },
-      },
-      services: {
-        where: { discardedAt: null },
-        take: 1,
-        select: { serviceNumber: true },
-      },
-      attempts: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: {
-          result: true,
-          observation: true,
-          createdAt: true,
-          followUpAt: true,
-          correction: {
-            select: { effectiveResult: true, effectiveReason: true },
-          },
-        },
-      },
-      commitments: {
-        where: {
-          OR: [
-            { status: "PENDING" },
-            { scheduledAt: { gte: period.start, lt: period.end } },
-          ],
-        },
-        orderBy: { scheduledAt: "asc" },
+      reason: true,
+      case: {
         select: {
           id: true,
-          scheduledAt: true,
-          status: true,
-          reason: true,
-        },
-      },
-    },
-  });
-
-  /**
-   * SPEC-063 BR-013: las citas acordadas en casos de ventas caídas del
-   * asesor. Solo sus citas: las tareas automáticas del recupero de ventas
-   * viven en Recupero de ventas y en «Mi día». La antigüedad de la base no
-   * aplica a una venta propia.
-   */
-  const commitmentInPeriod = {
-    OR: [
-      { status: "PENDING" as const },
-      { scheduledAt: { gte: period.start, lt: period.end } },
-    ],
-  };
-  const internalCases = await database.recoveryCase.findMany({
-    where: allOf<Prisma.RecoveryCaseWhereInput>(
-      {
-        organizationId,
-        source: { in: [...internalSources] },
-        assignedUserId: userId,
-        status: { in: [...openStatuses] },
-        commitments: { some: commitmentInPeriod },
-      },
-      buildRecoverySearchWhere(query.q),
-    ),
-    take: 200,
-    select: {
-      id: true,
-      holderName: true,
-      lastSightingAt: true,
-      phones: {
-        where: { kind: "CONTACT", invalidMarkedAt: null },
-        take: 1,
-        select: { phoneNumber: true },
-      },
-      sourceDitoOrder: {
-        select: { registeredAt: true, deliveryContactPhone: true },
-      },
-      attempts: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: {
-          result: true,
-          observation: true,
-          correction: {
-            select: { effectiveResult: true, effectiveReason: true },
+          holderName: true,
+          source: true,
+          lastSightingAt: true,
+          sourceDitoOrder: {
+            select: { registeredAt: true, deliveryContactPhone: true },
+          },
+          phones: {
+            where: { kind: "CONTACT", invalidMarkedAt: null },
+            select: { phoneNumber: true },
+          },
+          services: {
+            where: { discardedAt: null },
+            select: { serviceNumber: true },
+          },
+          attempts: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              result: true,
+              observation: true,
+              createdAt: true,
+              correction: {
+                select: { effectiveResult: true, effectiveReason: true },
+              },
+            },
+          },
+          commitments: {
+            orderBy: { createdAt: "desc" },
+            take: 6,
+            select: {
+              id: true,
+              scheduledAt: true,
+              status: true,
+              reason: true,
+              createdBy: { select: { name: true } },
+            },
           },
         },
       },
-      commitments: {
-        where: commitmentInPeriod,
-        orderBy: { scheduledAt: "asc" },
-        select: { id: true, scheduledAt: true, status: true, reason: true },
-      },
     },
   });
 
-  const entries: AgendaEntry[] = [];
-
-  for (const item of internalCases) {
+  const entries: AgendaEntry[] = rows.map((row) => {
+    const item = row.case;
+    const campaign = String(item.source) === "NATIONAL_BASE";
     const last = item.attempts[0] ?? null;
-    const saleAt = item.sourceDitoOrder?.registeredAt ?? item.lastSightingAt;
-
-    for (const commitment of item.commitments) {
-      const state = describeRecoveryCommitmentState(
-        String(commitment.status),
-        commitment.scheduledAt,
-        now,
-      );
-      entries.push({
-        key: `cita-${commitment.id}`,
-        caseId: item.id,
-        holderName: item.holderName,
-        phone:
-          item.phones[0]?.phoneNumber ??
-          item.sourceDitoOrder?.deliveryContactPhone ??
-          null,
-        lastResultLabel: last
-          ? (attemptResultLabels[effectiveAttemptResult(last)] ??
-            effectiveAttemptResult(last))
-          : null,
-        lastObservation: commitment.reason ?? last?.observation ?? null,
-        recencyLabel: `venta caída · venta del ${formatMyDaySaleDay(saleAt)}`,
-        commitmentId: commitment.id,
-        clash: false,
-        href: commitmentPanelHref(commitment.id, query),
-        kind: "CITA_ACORDADA",
-        kindLabel: recoveryAgendaKindLabels.CITA_ACORDADA,
-        originLabel: `${recoveryAgendaOriginLabels.acuerdo} · venta caída`,
-        at: commitment.scheduledAt,
-        atLabel: formatLimaDateTime(commitment.scheduledAt),
-        dayIso: getLimaIsoDate(commitment.scheduledAt),
-        hour: limaHourMinute(commitment.scheduledAt).hour,
-        minute: limaHourMinute(commitment.scheduledAt).minute,
-        timeLabel: timeLabel(commitment.scheduledAt),
-        timed: true,
-        state,
-        stateLabel: recoveryCommitmentStateLabels[state],
-      });
-    }
-  }
-
-  for (const item of cases) {
-    const last = item.attempts[0] ?? null;
-    const pending = item.commitments.find(
-      (commitment) => String(commitment.status) === "PENDING",
-    );
-    const common = {
-      caseId: item.id,
-      holderName: item.holderName,
-      phone:
-        item.phones[0]?.phoneNumber ?? item.services[0]?.serviceNumber ?? null,
-      lastResultLabel: last
-        ? (attemptResultLabels[effectiveAttemptResult(last)] ??
-          effectiveAttemptResult(last))
-        : null,
-      lastObservation: last?.observation ?? null,
-      recencyLabel: recencyLabel(item.lastSightingAt, now),
-      href: caseHref(item.id, query),
-    };
-
-    const agendaItem = selectRecoveryAgendaItem(
-      {
-        status: String(item.status),
-        nextActionAt: item.nextActionAt,
-        portabilityEligibleAt: item.portabilityEligibleAt,
-        lastResult: last ? effectiveAttemptResult(last) : null,
-        lastAttemptAt: last?.createdAt ?? null,
-        pendingCommitmentAt: pending?.scheduledAt ?? null,
-        lastFollowUpAt: last?.followUpAt ?? null,
-      },
+    const lastResult = last ? effectiveAttemptResult(last) : null;
+    const state = describeRecoveryCommitmentState(
+      String(row.status),
+      row.scheduledAt,
       now,
     );
+    const isPending = String(row.status) === "PENDING";
+    const contactPhones = item.phones.map((phone) => phone.phoneNumber);
+    const serviceNumbers = item.services.map((service) => service.serviceNumber);
+    const fallbackPhone = item.sourceDitoOrder?.deliveryContactPhone ?? null;
+    const phoneOptions = [
+      ...new Set([
+        ...contactPhones,
+        ...serviceNumbers,
+        ...(fallbackPhone ? [fallbackPhone] : []),
+      ]),
+    ];
 
-    if (agendaItem) {
-      const state: RecoveryCommitmentState = agendaItem.overdue
-        ? "vencida"
-        : "pendiente";
-      entries.push({
-        ...common,
-        key: item.id,
-        commitmentId: pending?.id ?? null,
-        clash: false,
-        href:
-          agendaItem.kind === "CITA_ACORDADA" && pending
-            ? commitmentPanelHref(pending.id, query)
-            : common.href,
-        kind: agendaItem.kind,
-        kindLabel: recoveryAgendaKindLabels[agendaItem.kind],
-        originLabel: recoveryAgendaOriginLabels[agendaItem.origin],
-        at: agendaItem.at,
-        atLabel: agendaItem.at ? formatLimaDateTime(agendaItem.at) : null,
-        dayIso: agendaItem.at ? getLimaIsoDate(agendaItem.at) : null,
-        hour: agendaItem.at ? limaHourMinute(agendaItem.at).hour : null,
-        minute: agendaItem.at ? limaHourMinute(agendaItem.at).minute : null,
-        timeLabel:
-          agendaItem.at && agendaItem.timed ? timeLabel(agendaItem.at) : null,
-        timed: agendaItem.timed,
-        state,
-        stateLabel: recoveryCommitmentStateLabels[state],
-      });
-    }
+    return {
+      key: `cita-${row.id}`,
+      commitmentId: row.id,
+      caseId: item.id,
+      caseHref: campaign
+        ? `/recovery/campaigns/${item.id}`
+        : `/recovery/sales/${item.id}`,
+      source: campaign ? "campana" : "venta_caida",
+      holderName: item.holderName,
+      phone: phoneOptions[0] ?? null,
+      phoneOptions,
+      serviceNumbers,
+      at: row.scheduledAt,
+      dayIso: getLimaIsoDate(row.scheduledAt),
+      timeLabel: formatMyDayTime(row.scheduledAt),
+      state,
+      stateLabel: recoveryCommitmentStateLabels[state],
+      // BR-007: solo la cita viva lleva plazo; roja si el asesor la dejó
+      // vencer, ámbar si vence en menos de dos horas.
+      due: isPending
+        ? describeCampaignWorkDue(
+            {
+              kind: "CITA_ACORDADA",
+              origin: "acuerdo",
+              at: row.scheduledAt,
+              timed: true,
+              overdue: row.scheduledAt.getTime() < now.getTime(),
+            },
+            now,
+          )
+        : null,
+      isPending,
+      reason: row.reason,
+      lastResult,
+      lastResultLabel: lastResult
+        ? (attemptResultLabels[lastResult] ?? lastResult)
+        : null,
+      lastObservation: last?.observation ?? null,
+      lastAttemptAtLabel: last ? formatCampaignMoment(last.createdAt) : null,
+      saleLabel: campaign
+        ? null
+        : `venta del ${formatMyDaySaleDay(
+            item.sourceDitoOrder?.registeredAt ?? item.lastSightingAt,
+          )}`,
+      clash: false,
+      history: item.commitments
+        .filter((commitment) => commitment.id !== row.id)
+        .map((commitment) => ({
+          id: commitment.id,
+          atLabel: formatCampaignMoment(commitment.scheduledAt),
+          stateLabel:
+            recoveryCommitmentStateLabels[
+              describeRecoveryCommitmentState(
+                String(commitment.status),
+                commitment.scheduledAt,
+                now,
+              )
+            ],
+          reason: commitment.reason,
+          createdByName: commitment.createdBy.name,
+        })),
+    };
+  });
 
-    // Citas ya cerradas dentro del período: se consultan, no se trabajan.
-    for (const commitment of item.commitments) {
-      if (String(commitment.status) === "PENDING") continue;
-
-      const state = describeRecoveryCommitmentState(
-        String(commitment.status),
-        commitment.scheduledAt,
-        now,
-      );
-      entries.push({
-        ...common,
-        key: `cita-${commitment.id}`,
-        commitmentId: commitment.id,
-        clash: false,
-        href: commitmentPanelHref(commitment.id, query),
-        kind: "CITA_ACORDADA",
-        kindLabel: recoveryAgendaKindLabels.CITA_ACORDADA,
-        originLabel: recoveryAgendaOriginLabels.acuerdo,
-        at: commitment.scheduledAt,
-        atLabel: formatLimaDateTime(commitment.scheduledAt),
-        dayIso: getLimaIsoDate(commitment.scheduledAt),
-        hour: limaHourMinute(commitment.scheduledAt).hour,
-        minute: limaHourMinute(commitment.scheduledAt).minute,
-        timeLabel: timeLabel(commitment.scheduledAt),
-        timed: true,
-        state,
-        stateLabel: recoveryCommitmentStateLabels[state],
-        lastObservation: commitment.reason ?? common.lastObservation,
-      });
-    }
-  }
-
-  const kindFilter = agendaKindFilters.find(
-    (filter) => filter.value === query.kind,
-  );
   const stateFilter = agendaStateFilters.find(
     (filter) => filter.value === query.state,
   );
-  const filtered = entries.filter(
+  const periodEntries = entries.filter(
     (entry) =>
-      (!kindFilter || kindFilter.kinds.includes(entry.kind)) &&
+      entry.at.getTime() >= period.start.getTime() &&
+      entry.at.getTime() < period.end.getTime() &&
       (!stateFilter || stateFilter.states.includes(entry.state)),
   );
 
-  const inPeriod = (entry: AgendaEntry) =>
-    entry.at !== null &&
-    entry.at.getTime() >= period.start.getTime() &&
-    entry.at.getTime() < period.end.getTime();
-
-  const periodEntries = filtered
-    .filter(inPeriod)
-    .sort((left, right) => left.at!.getTime() - right.at!.getTime());
-
-  // BR-016: dos citas vivas del período en el mismo tramo se señalan.
-  const liveTimed = periodEntries.filter(
-    (entry) =>
-      entry.timed &&
-      entry.at !== null &&
-      (entry.state === "pendiente" || entry.state === "vencida"),
-  );
-  for (const entry of liveTimed) {
-    entry.clash = liveTimed.some(
-      (other) =>
-        other !== entry && shareRecoveryAgendaSlot(entry.at!, other.at!),
+  // Dos citas vivas en el mismo tramo de 15 minutos se señalan.
+  const live = entries.filter((entry) => entry.isPending);
+  for (const entry of live) {
+    entry.clash = live.some(
+      (other) => other !== entry && shareRecoveryAgendaSlot(entry.at, other.at),
     );
   }
-
-  const endOfToday = new Date(
-    new Date(`${todayIso}T00:00:00-05:00`).getTime() + 24 * 60 * 60 * 1000,
-  );
-
-  const overdueCommitments = entries
-    .filter(
-      (entry) => entry.kind === "CITA_ACORDADA" && entry.state === "vencida",
-    )
-    .sort((left, right) => left.at!.getTime() - right.at!.getTime());
-  const untimedDue = entries
-    .filter(
-      (entry) =>
-        !entry.timed &&
-        entry.at !== null &&
-        entry.at.getTime() < endOfToday.getTime() &&
-        entry.kind !== "VERIFICACION" &&
-        entry.kind !== "SIN_FECHA",
-    )
-    .sort((left, right) => left.at!.getTime() - right.at!.getTime());
 
   return {
     query,
     period,
     todayIso,
     periodEntries,
-    overdueCommitments,
-    untimedDue,
-    noDateCount: entries.filter((entry) => entry.kind === "SIN_FECHA").length,
-    verification: entries.filter((entry) => entry.kind === "VERIFICACION"),
-    counts: {
-      commitments: periodEntries.filter((entry) => entry.timed).length,
-      tasks: periodEntries.filter((entry) => !entry.timed).length,
-      overdue: overdueCommitments.length,
-    },
+    overdue: entries.filter((entry) => entry.state === "vencida"),
+    commitmentFound,
   };
 }

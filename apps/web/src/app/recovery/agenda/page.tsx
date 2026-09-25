@@ -1,79 +1,45 @@
 import Link from "next/link";
 import {
   getLimaIsoDate,
-  recoveryAgeBuckets,
-  recoveryAgendaGridHours,
   recoveryAgendaViewLabels,
   recoveryAgendaViews,
   summarizeRecoveryAgendaByDay,
 } from "@repo/validation";
 
+import { Button } from "@/components/ui/button";
 import { AdvisorCampaignNav } from "@/features/recovery/components/advisor-campaign-nav";
-import { CancelCommitmentForm } from "@/features/recovery/components/cancel-commitment-form";
+import { AgendaCommitmentList } from "@/features/recovery/components/agenda-commitment-list";
+import { AgendaDateJump } from "@/features/recovery/components/agenda-date-jump";
+import { CampaignDraftProvider } from "@/features/recovery/components/campaign-draft-context";
 import { QueueFilters } from "@/features/recovery/components/queue-filters";
-import { RegisterAttemptForm } from "@/features/recovery/components/register-attempt-form";
-import { RescheduleCommitmentForm } from "@/features/recovery/components/reschedule-commitment-form";
 import {
-  agendaBaseHref,
-  agendaKindFilters,
+  agendaHref,
   agendaStateFilters,
-  commitmentPanelHref,
   getAgenda,
 } from "@/features/recovery/server/get-agenda";
-import { getAgendaCommitment } from "@/features/recovery/server/get-agenda-commitment";
 import { requireCommercialAccess } from "@/server/auth/access";
 
 import { formatCount, formatLimaMonth } from "@repo/ui/format";
-import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
-import { SectionPanel } from "@repo/ui/section-panel";
 
-import type { AgendaEntry, AgendaQuery } from "@/features/recovery/server/get-agenda";
-import type { RecoveryAgendaView } from "@repo/validation";
-
-const weekdayFormatter = new Intl.DateTimeFormat("es-PE", {
+const dayHeadingFormatter = new Intl.DateTimeFormat("es-PE", {
   timeZone: "America/Lima",
-  weekday: "short",
+  weekday: "long",
   day: "2-digit",
   month: "2-digit",
 });
 
-const longDayFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
+const noon = (day: Date) => new Date(day.getTime() + 12 * 3600 * 1000);
 
-const stateTone: Record<AgendaEntry["state"], string> = {
-  pendiente: "border-ui-border",
-  vencida: "border-ui-danger bg-ui-danger-soft",
-  atendida: "border-ui-border opacity-70",
-  reprogramada: "border-ui-border opacity-70",
-  cancelada: "border-ui-border opacity-70",
-};
-
-function agendaHref(
-  query: AgendaQuery,
-  overrides: Partial<{ view: RecoveryAgendaView; date: Date }>,
-): string {
-  const params = new URLSearchParams();
-  const view = overrides.view ?? query.view;
-  const date = overrides.date ?? query.date;
-  if (view !== "semana") params.set("view", view);
-  params.set("fecha", getLimaIsoDate(date));
-  if (query.q) params.set("q", query.q);
-  if (query.age) params.set("age", query.age);
-  if (query.kind) params.set("tipo", query.kind);
-  if (query.state) params.set("estado", query.state);
-
-  return `/recovery/agenda?${params.toString()}`;
+function plural(count: number, singular: string, pluralForm: string): string {
+  return `${formatCount(count)} ${count === 1 ? singular : pluralForm}`;
 }
 
 /**
- * Mi agenda — SPEC-048 fase 2 (CAM-F08). Semana, día y lista sobre los
- * compromisos y tareas del asesor autenticado, con los vencidos siempre a
- * la vista aunque su fecha quede fuera del período (BR-014).
+ * Mi agenda — SPEC-048 y SPEC-066. Solo las llamadas que el asesor acordó con
+ * sus clientes, de campaña y de ventas caídas: las tareas automáticas viven
+ * en la cola y en «Mi día». «Próximas» es una lista por día que cabe en el
+ * celular; «Mes» sirve para planear. Las vencidas se ven siempre arriba.
  */
 export default async function RecoveryAgendaPage({
   searchParams,
@@ -90,32 +56,57 @@ export default async function RecoveryAgendaPage({
     parameters,
     now,
   );
-  const { query, period } = agenda;
+  const { query, period, todayIso } = agenda;
+  const tomorrowIso = getLimaIsoDate(
+    new Date(new Date(`${todayIso}T12:00:00-05:00`).getTime() + 24 * 3600 * 1000),
+  );
 
-  // CAM-F09: el panel de una cita se abre en la misma página (`cita=<id>`),
-  // con el caso, su contexto y las acciones; el resto de la agenda sigue
-  // debajo para no perder el sitio.
-  const openCommitmentId = (parameters.cita ?? "").trim().slice(0, 40);
-  const openCommitment = openCommitmentId
-    ? await getAgendaCommitment(
-        membership.organization.id,
-        session.user.id,
-        openCommitmentId,
-        now,
-      )
-    : null;
-  const closePanelHref = agendaBaseHref(query);
+  function dayHeading(iso: string, day: Date): string {
+    const label = dayHeadingFormatter.format(noon(day));
+    if (iso === todayIso) return `Hoy · ${label}`;
+    if (iso === tomorrowIso) return `Mañana · ${label}`;
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
 
   const periodLabel =
-    query.view === "dia"
-      ? longDayFormatter.format(new Date(period.start.getTime() + 12 * 3600 * 1000))
-      : query.view === "mes" && period.monthStart
-        ? formatLimaMonth(new Date(period.monthStart.getTime() + 12 * 3600 * 1000))
-        : `${weekdayFormatter.format(new Date(period.start.getTime() + 12 * 3600 * 1000))} → ${weekdayFormatter.format(new Date(period.end.getTime() - 12 * 3600 * 1000))}`;
+    query.view === "mes" && period.monthStart
+      ? formatLimaMonth(noon(period.monthStart))
+      : `${dayHeadingFormatter.format(noon(period.days[0] as Date))} al ${dayHeadingFormatter.format(noon(period.days.at(-1) as Date))}`;
 
-  // CAM-F11: el mes cuenta por día desde los mismos elementos que dibujan
-  // Día y Semana; por construcción no pueden discrepar.
-  const daySummary = summarizeRecoveryAgendaByDay(agenda.periodEntries);
+  // Las vencidas van en su grupo, arriba; los días muestran el resto.
+  const upcoming = agenda.periodEntries.filter(
+    (entry) => entry.state !== "vencida",
+  );
+  const days = period.days
+    .map((day) => {
+      const iso = getLimaIsoDate(day);
+      return {
+        iso,
+        day,
+        entries: upcoming.filter((entry) => entry.dayIso === iso),
+      };
+    })
+    .filter((group) => group.entries.length > 0);
+
+  const livePeriod = agenda.periodEntries.filter((entry) => entry.isPending);
+  const summaryLine = [
+    `${plural(livePeriod.length, "llamada acordada", "llamadas acordadas")} ${
+      query.view === "mes" ? "este mes" : "en estos 14 días"
+    }`,
+    agenda.overdue.length > 0
+      ? plural(agenda.overdue.length, "vencida", "vencidas")
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const monthSummary = summarizeRecoveryAgendaByDay(
+    agenda.periodEntries.map((entry) => ({
+      dayIso: entry.dayIso,
+      timed: true,
+      overdue: entry.state === "vencida",
+    })),
+  );
   const monthWeeks: Date[][] = [];
   if (query.view === "mes") {
     for (let index = 0; index < period.days.length; index += 7) {
@@ -123,188 +114,33 @@ export default async function RecoveryAgendaPage({
     }
   }
 
-  const entriesByDay = new Map<string, AgendaEntry[]>();
-  for (const entry of agenda.periodEntries) {
-    if (!entry.dayIso) continue;
-    const list = entriesByDay.get(entry.dayIso) ?? [];
-    list.push(entry);
-    entriesByDay.set(entry.dayIso, list);
-  }
-  const gridHours = recoveryAgendaGridHours(
-    agenda.periodEntries
-      .filter((entry) => entry.timed && entry.hour !== null)
-      .map((entry) => entry.hour as number),
-  );
+  const baseQuery = new URLSearchParams();
+  if (query.view !== "proximas") baseQuery.set("view", query.view);
+  if (query.q) baseQuery.set("q", query.q);
+  if (query.state) baseQuery.set("estado", query.state);
+
+  const openCommitmentId = agenda.commitmentFound ? query.commitmentId : "";
+  const hasFilters = Boolean(query.q || query.state);
 
   return (
     <div className="ui-page-stack">
-      <PageHeader
-        eyebrow="Campañas"
-        title="Mi agenda"
-        description="Tus llamadas acordadas ocupan su hora; lo demás son tareas del día. Todo en hora de Lima."
-      />
+      {/* Sin subtítulo (SPEC-066 BR-011): la línea de cifras dice lo que hay. */}
+      <PageHeader eyebrow="Campañas" title="Mi agenda" />
 
       <AdvisorCampaignNav current="agenda" />
 
-      {openCommitmentId && !openCommitment ? (
-        <SectionPanel
-          title="Esta cita no está en tu agenda"
-          description="No existe o el caso ya no está a tu cargo."
+      {query.commitmentId && !agenda.commitmentFound ? (
+        <p
+          className="rounded-lg border border-ui-border bg-ui-surface px-4 py-3 text-sm text-ui-muted"
+          role="status"
         >
-          <Link
-            className="text-ui-accent underline-offset-2 hover:underline"
-            href={closePanelHref}
-          >
-            Cerrar
-          </Link>
-        </SectionPanel>
+          Esa cita no está en tu agenda: no existe o el caso ya no está a tu
+          cargo.
+        </p>
       ) : null}
 
-      {openCommitment ? (
-        <SectionPanel
-          title={`Llamada acordada con ${openCommitment.holderName}`}
-          description={`${openCommitment.scheduledAtLabel} · ${openCommitment.stateLabel} · caso ${openCommitment.caseStatusLabel.toLowerCase()}${
-            openCommitment.phone ? ` · ${openCommitment.phone}` : ""
-          }`}
-        >
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="space-y-3 text-sm">
-              <p className="flex flex-wrap gap-3">
-                <Link
-                  className="text-ui-accent underline-offset-2 hover:underline"
-                  href={`${openCommitment.caseHref}?from=agenda&cita=${openCommitment.id}&fecha=${getLimaIsoDate(query.date)}${query.view !== "semana" ? `&view=${query.view}` : ""}`}
-                >
-                  Abrir ficha del cliente
-                </Link>
-                <Link
-                  className="text-ui-muted underline-offset-2 hover:underline"
-                  href={closePanelHref}
-                >
-                  Cerrar el panel
-                </Link>
-                {openCommitment.supersededById ? (
-                  <Link
-                    className="text-ui-accent underline-offset-2 hover:underline"
-                    href={commitmentPanelHref(openCommitment.supersededById, query)}
-                  >
-                    Ver la cita que la reemplazó
-                  </Link>
-                ) : null}
-              </p>
-              {openCommitment.reason ? (
-                <p className="text-ui-muted">Motivo: {openCommitment.reason}</p>
-              ) : null}
-
-              <div>
-                <p className="ui-label-eyebrow">Últimas gestiones</p>
-                {openCommitment.attempts.length === 0 ? (
-                  <p className="text-ui-muted">Sin gestión registrada.</p>
-                ) : (
-                  <ul className="mt-1 space-y-1">
-                    {openCommitment.attempts.map((attempt) => (
-                      <li key={attempt.id}>
-                        <span className="font-medium text-ui-text">
-                          {attempt.resultLabel}
-                        </span>
-                        <span className="ml-2 text-xs text-ui-muted">
-                          {attempt.createdAtLabel} · {attempt.actorName}
-                        </span>
-                        {attempt.observation ? (
-                          <span className="block text-xs text-ui-muted">
-                            {attempt.observation}
-                          </span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div>
-                <p className="ui-label-eyebrow">Historial de la cita</p>
-                <ul className="mt-1 space-y-1">
-                  {openCommitment.history.map((item) => (
-                    <li key={item.id}>
-                      <span className="font-medium text-ui-text">
-                        {item.scheduledAtLabel}
-                      </span>
-                      <span className="ml-2 text-xs text-ui-muted">
-                        {item.stateLabel} · acordada el {item.createdAtLabel} ·{" "}
-                        {item.createdByName}
-                        {item.closedAtLabel ? ` · cerrada el ${item.closedAtLabel}` : ""}
-                      </span>
-                      {item.reason ? (
-                        <span className="block text-xs text-ui-muted">
-                          {item.reason}
-                        </span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {openCommitment.isPending ? (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-ui-border p-3">
-                  <p className="ui-label-eyebrow">Registrar el resultado de la llamada</p>
-                  <p className="mb-2 text-xs text-ui-muted">
-                    Atender la cita es registrar qué pasó; no existe «marcar como
-                    hecha».
-                  </p>
-                  <RegisterAttemptForm
-                    caseId={openCommitment.caseId}
-                    returnTo={closePanelHref}
-                  />
-                </div>
-                <div className="rounded-xl border border-ui-border p-3">
-                  <p className="ui-label-eyebrow">Reprogramar</p>
-                  <RescheduleCommitmentForm commitmentId={openCommitment.id} />
-                </div>
-                <div className="rounded-xl border border-ui-border p-3">
-                  <p className="ui-label-eyebrow">Cancelar y definir qué sigue</p>
-                  <CancelCommitmentForm commitmentId={openCommitment.id} />
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-ui-muted">
-                Esta cita ya no está pendiente; se conserva como historial.
-              </p>
-            )}
-          </div>
-        </SectionPanel>
-      ) : null}
-
-      <MetricGroup>
-        <Metric
-          emphasis="hero"
-          label="Llamadas acordadas en el período"
-          value={agenda.counts.commitments}
-        />
-        <Metric label="Tareas en el período" value={agenda.counts.tasks} />
-        <Metric
-          hideWhenZero
-          label="Llamadas vencidas"
-          tone="danger"
-          value={agenda.counts.overdue}
-        />
-        <Metric
-          hideWhenZero
-          href="/recovery/campaigns"
-          label="Sin gestión aún"
-          tone="warning"
-          value={agenda.noDateCount}
-        />
-        <Metric
-          hideWhenZero
-          hint="Dos o más citas en el mismo tramo de 15 minutos; se avisa, no se mueve nada."
-          label="A la misma hora"
-          tone="warning"
-          value={agenda.periodEntries.filter((entry) => entry.clash).length}
-        />
-      </MetricGroup>
-
-      <div className="flex flex-wrap items-center gap-3">
+      {/* BR-012 y BR-013: dos vistas, flechas compactas y la fecha sin «Ir». */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <nav aria-label="Vista" className="ui-segmented-scroll">
           <div className="ui-segmented">
             {recoveryAgendaViews.map((view) => (
@@ -319,69 +155,44 @@ export default async function RecoveryAgendaPage({
             ))}
           </div>
         </nav>
-
-        <div className="flex items-center gap-2 text-sm">
-          <Link
-            className="ui-button ui-button--quiet"
-            href={agendaHref(query, { date: period.previous })}
-          >
-            ← Anterior
-          </Link>
-          <Link
-            className="ui-button ui-button--quiet"
-            href={agendaHref(query, {
-              date: new Date(`${agenda.todayIso}T00:00:00-05:00`),
-            })}
-          >
-            Hoy
-          </Link>
-          <Link
-            className="ui-button ui-button--quiet"
-            href={agendaHref(query, { date: period.next })}
-          >
-            Siguiente →
-          </Link>
-          <span className="font-medium text-ui-text">{periodLabel}</span>
+        <div className="flex items-center gap-1">
+          <Button asChild size="sm" variant="ghost">
+            <Link
+              aria-label="Período anterior"
+              href={agendaHref(query, { date: period.previous })}
+            >
+              ‹
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link
+              href={agendaHref(query, {
+                date: new Date(`${todayIso}T00:00:00-05:00`),
+              })}
+            >
+              Hoy
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="ghost">
+            <Link
+              aria-label="Período siguiente"
+              href={agendaHref(query, { date: period.next })}
+            >
+              ›
+            </Link>
+          </Button>
         </div>
-
-        <form action="/recovery/agenda" className="flex items-end gap-2" method="get">
-          {query.view !== "semana" ? (
-            <input name="view" type="hidden" value={query.view} />
-          ) : null}
-          {query.q ? <input name="q" type="hidden" value={query.q} /> : null}
-          {query.age ? <input name="age" type="hidden" value={query.age} /> : null}
-          {query.kind ? <input name="tipo" type="hidden" value={query.kind} /> : null}
-          {query.state ? (
-            <input name="estado" type="hidden" value={query.state} />
-          ) : null}
-          <label className="block text-sm">
-            <span className="ui-label-eyebrow">Elegir fecha</span>
-            <input
-              className="mt-1 block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-              defaultValue={getLimaIsoDate(query.date)}
-              name="fecha"
-              type="date"
-            />
-          </label>
-          <button className="ui-button ui-button--quiet" type="submit">
-            Ir
-          </button>
-        </form>
+        <span className="text-sm font-medium text-ui-text">{periodLabel}</span>
+        <AgendaDateJump
+          baseQuery={baseQuery.toString()}
+          value={getLimaIsoDate(query.date)}
+        />
       </div>
 
       <QueueFilters
         basePath="/recovery/agenda"
         options={{
-          ages: recoveryAgeBuckets,
           extras: [
-            {
-              key: "tipo",
-              label: "Tipo",
-              options: agendaKindFilters.map((filter) => ({
-                value: filter.value,
-                label: filter.label,
-              })),
-            },
             {
               key: "estado",
               label: "Estado",
@@ -392,66 +203,51 @@ export default async function RecoveryAgendaPage({
             },
           ],
         }}
-        resultLabel={`${formatCount(agenda.periodEntries.length)} elemento(s) en el período.`}
+        resultLabel={summaryLine}
         values={{
           q: query.q,
-          view: query.view === "semana" ? undefined : query.view,
+          view: query.view === "proximas" ? undefined : query.view,
           team: "",
           department: "",
           plan: "",
-          age: query.age ?? "",
           extra: {
-            tipo: query.kind,
             estado: query.state,
             fecha: getLimaIsoDate(query.date),
           },
         }}
       />
 
-      {agenda.overdueCommitments.length > 0 ? (
-        <SectionPanel
-          title="Compromisos vencidos"
-          description="Llamadas acordadas cuya hora ya pasó. Siguen pendientes, con su fecha original, hasta que registres el resultado."
-        >
-          <EntryList entries={agenda.overdueCommitments} showDate />
-        </SectionPanel>
-      ) : null}
+      <CampaignDraftProvider>
+        {/* SPEC-048 BR-014: las vencidas siempre a la vista, con su fecha. */}
+        {agenda.overdue.length > 0 ? (
+          <section aria-labelledby="agenda-vencidas" className="grid gap-2">
+            <h2
+              className="flex items-baseline gap-2 text-sm font-semibold text-ui-danger"
+              id="agenda-vencidas"
+            >
+              Vencidas
+              <span className="text-xs font-medium">
+                {formatCount(agenda.overdue.length)}
+              </span>
+            </h2>
+            <AgendaCommitmentList
+              entries={agenda.overdue}
+              openCommitmentId={openCommitmentId}
+              showDate
+            />
+          </section>
+        ) : null}
 
-      {agenda.untimedDue.length > 0 ? (
-        <SectionPanel
-          title="Tareas del día sin hora acordada"
-          description="Reintentos, seguimientos, habilitaciones y ventas por completar que tocan hoy o quedaron de días anteriores."
-        >
-          <EntryList entries={agenda.untimedDue} showDate />
-        </SectionPanel>
-      ) : null}
-
-      <SectionPanel
-        title={
-          query.view === "lista"
-            ? "Próximas acciones"
-            : query.view === "dia"
-              ? "El día"
-              : query.view === "mes"
-                ? "El mes"
-                : "La semana"
-        }
-        description={
-          query.view === "lista"
-            ? "Siete días desde la fecha elegida, en orden."
-            : query.view === "mes"
-              ? "Cuántas llamadas acordadas y cuántas tareas caen cada día. Pulsa un día para verlo."
-              : "Las llamadas acordadas en su hora; las tareas sin hora, arriba de cada día."
-        }
-      >
         {query.view === "mes" ? (
           <div className="overflow-x-auto rounded-xl border border-ui-border">
             <table className="ui-table">
               <thead>
                 <tr>
-                  {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((label) => (
-                    <th key={label}>{label}</th>
-                  ))}
+                  {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map(
+                    (label) => (
+                      <th key={label}>{label}</th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -464,35 +260,42 @@ export default async function RecoveryAgendaPage({
                         period.monthEnd !== undefined &&
                         day.getTime() >= period.monthStart.getTime() &&
                         day.getTime() < period.monthEnd.getTime();
-                      const summary = daySummary[iso];
+                      const summary = monthSummary[iso];
                       return (
                         <td
                           className={`align-top ${inMonth ? "" : "opacity-50"}`}
                           key={iso}
                         >
                           <Link
-                            className={`block rounded-lg px-2 py-1 text-xs hover:bg-ui-surface-muted ${
-                              iso === agenda.todayIso ? "font-semibold text-ui-accent" : "text-ui-text"
+                            className={`block rounded-lg px-1 py-1 text-xs hover:bg-ui-surface-muted ${
+                              iso === todayIso
+                                ? "font-semibold text-ui-accent"
+                                : "text-ui-text"
                             }`}
-                            href={agendaHref(query, { view: "dia", date: day })}
+                            href={agendaHref(query, {
+                              view: "proximas",
+                              date: day,
+                            })}
                           >
-                            <span className="block">{Number(iso.slice(8, 10))}</span>
-                            {summary ? (
-                              <>
-                                {summary.commitments > 0 ? (
-                                  <span
-                                    className={`block ${summary.overdue > 0 ? "text-ui-danger" : ""}`}
-                                  >
-                                    {summary.commitments} llamada(s)
-                                    {summary.overdue > 0 ? ` · ${summary.overdue} vencida(s)` : ""}
-                                  </span>
-                                ) : null}
-                                {summary.tasks > 0 ? (
-                                  <span className="block text-ui-muted">
-                                    {summary.tasks} tarea(s)
-                                  </span>
-                                ) : null}
-                              </>
+                            <span className="block">
+                              {Number(iso.slice(8, 10))}
+                            </span>
+                            {summary && summary.commitments > 0 ? (
+                              <span
+                                className={`block ${
+                                  summary.overdue > 0 ? "text-ui-danger" : ""
+                                }`}
+                              >
+                                <span className="sm:hidden">
+                                  {summary.commitments}
+                                </span>
+                                <span className="hidden sm:inline">
+                                  {plural(summary.commitments, "llamada", "llamadas")}
+                                  {summary.overdue > 0
+                                    ? ` · ${plural(summary.overdue, "vencida", "vencidas")}`
+                                    : ""}
+                                </span>
+                              </span>
                             ) : null}
                           </Link>
                         </td>
@@ -503,181 +306,38 @@ export default async function RecoveryAgendaPage({
               </tbody>
             </table>
           </div>
-        ) : agenda.periodEntries.length === 0 ? (
-          <p className="text-sm text-ui-muted">
-            Nada en este período.{" "}
-            {query.kind || query.state || query.q || query.age
-              ? "Prueba con menos filtros."
-              : "Puedes agendar desde tu cola registrando «Agenda una próxima llamada»."}
-          </p>
-        ) : query.view === "lista" ? (
-          <EntryList entries={agenda.periodEntries} showDate />
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-ui-border">
-            <table className="ui-table">
-              <thead>
-                <tr>
-                  <th className="w-16">Hora</th>
-                  {period.days.map((day) => {
-                    const iso = getLimaIsoDate(day);
-                    return (
-                      <th
-                        className={iso === agenda.todayIso ? "text-ui-accent" : undefined}
-                        key={iso}
-                      >
-                        <Link href={agendaHref(query, { view: "dia", date: day })}>
-                          {weekdayFormatter.format(
-                            new Date(day.getTime() + 12 * 3600 * 1000),
-                          )}
-                        </Link>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th className="align-top text-xs text-ui-muted">Sin hora</th>
-                  {period.days.map((day) => {
-                    const iso = getLimaIsoDate(day);
-                    const items = (entriesByDay.get(iso) ?? []).filter(
-                      (entry) => !entry.timed,
-                    );
-                    return (
-                      <td className="align-top" key={iso}>
-                        <EntryCards entries={items} />
-                      </td>
-                    );
-                  })}
-                </tr>
-                {gridHours.map((hour) => (
-                  <tr key={hour}>
-                    <th className="align-top text-xs text-ui-muted">
-                      {String(hour).padStart(2, "0")}:00
-                    </th>
-                    {period.days.map((day) => {
-                      const iso = getLimaIsoDate(day);
-                      const items = (entriesByDay.get(iso) ?? []).filter(
-                        (entry) => entry.timed && entry.hour === hour,
-                      );
-                      return (
-                        <td className="align-top" key={iso}>
-                          <EntryCards entries={items} />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </SectionPanel>
-
-      {agenda.verification.length > 0 ? (
-        <SectionPanel
-          title="Pendientes de verificación"
-          description="Reportados como ya activos en Movistar. No ocupan horario ni exigen llamada mientras se verifica."
-        >
-          <EntryList entries={agenda.verification} />
-        </SectionPanel>
-      ) : null}
-    </div>
-  );
-}
-
-function EntryCards({ entries }: { entries: AgendaEntry[] }) {
-  if (entries.length === 0) return null;
-
-  return (
-    <ul className="space-y-1">
-      {entries.map((entry) => (
-        <li key={entry.key}>
-          <Link
-            className={`block rounded-lg border px-2 py-1 text-xs hover:bg-ui-surface-muted ${stateTone[entry.state]}`}
-            href={entry.href}
-            title={`${entry.kindLabel} · ${entry.originLabel}`}
-          >
-            {entry.timeLabel ? (
-              <span className="font-medium">{entry.timeLabel} · </span>
-            ) : null}
-            <span className="font-medium text-ui-text">{entry.holderName}</span>
-            <span className="block text-ui-muted">{entry.kindLabel}</span>
-            {entry.clash ? (
-              <span className="block text-ui-warning">⚠ a la misma hora</span>
-            ) : null}
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function EntryList({
-  entries,
-  showDate = false,
-}: {
-  entries: AgendaEntry[];
-  showDate?: boolean;
-}) {
-  return (
-    <div className="overflow-x-auto rounded-xl border border-ui-border">
-      <table className="ui-table">
-        <thead>
-          <tr>
-            {showDate ? <th>Cuándo</th> : null}
-            <th>Cliente</th>
-            <th>Qué toca</th>
-            <th>Estado</th>
-            <th>Última tipificación</th>
-            <th>Oportunidad</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry) => (
-            <tr key={entry.key}>
-              {showDate ? (
-                <td className="whitespace-nowrap">
-                  {entry.atLabel ?? "—"}
-                </td>
-              ) : null}
-              <td>
-                <Link
-                  className="font-medium text-ui-accent underline-offset-2 hover:underline"
-                  href={entry.href}
-                >
-                  {entry.holderName}
-                </Link>
-                {entry.phone ? (
-                  <span className="block text-xs text-ui-muted">{entry.phone}</span>
-                ) : null}
-              </td>
-              <td>
-                {entry.kindLabel}
-                <span className="block text-xs text-ui-muted">
-                  {entry.originLabel}
-                </span>
-              </td>
-              <td
-                className={
-                  entry.state === "vencida" ? "text-ui-danger" : undefined
-                }
+        ) : days.length > 0 ? (
+          days.map((group) => (
+            <section
+              aria-labelledby={`agenda-${group.iso}`}
+              className="grid gap-2"
+              key={group.iso}
+            >
+              <h2
+                className="flex items-baseline gap-2 text-sm font-semibold text-ui-text"
+                id={`agenda-${group.iso}`}
               >
-                {entry.stateLabel}
-              </td>
-              <td>
-                {entry.lastResultLabel ?? "Sin gestión"}
-                {entry.lastObservation ? (
-                  <span className="block max-w-xs truncate text-xs text-ui-muted">
-                    {entry.lastObservation}
-                  </span>
-                ) : null}
-              </td>
-              <td className="text-xs text-ui-muted">{entry.recencyLabel}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                {dayHeading(group.iso, group.day)}
+                <span className="text-xs font-medium text-ui-soft">
+                  {formatCount(group.entries.length)}
+                </span>
+              </h2>
+              <AgendaCommitmentList
+                entries={group.entries}
+                openCommitmentId={openCommitmentId}
+              />
+            </section>
+          ))
+        ) : (
+          // BR-008: sin citas, una línea que dice cómo agendar; no una
+          // cuadrícula vacía.
+          <p className="rounded-lg border border-ui-border bg-ui-surface px-4 py-6 text-center text-sm text-ui-muted">
+            {hasFilters
+              ? "Ninguna llamada acordada coincide con lo que buscas."
+              : "No tienes llamadas acordadas en estos días. Para agendar una, registra «Agenda una próxima llamada» al gestionar un cliente en Mi día o en tu cola."}
+          </p>
+        )}
+      </CampaignDraftProvider>
     </div>
   );
 }
