@@ -189,6 +189,13 @@ export function CampaignInboxFilters({
         </select>
       </label>
 
+      {/* SPEC-065 BR-013: plan y antigüedad son de uso ocasional; quedan a
+          un clic y abiertos si alguno está en uso. */}
+      <details className="pb-2" open={Boolean(planTerm || age) || undefined}>
+        <summary className="cursor-pointer text-xs font-semibold text-ui-accent">
+          Más filtros
+        </summary>
+        <div className="mt-2 flex flex-wrap items-end gap-3">
       <label className="block">
         <span className="ui-label-eyebrow">Plan contiene</span>
         <input
@@ -224,6 +231,8 @@ export function CampaignInboxFilters({
           ))}
         </select>
       </label>
+        </div>
+      </details>
 
       <span aria-live="polite" className="pb-2 text-xs text-ui-muted">
         {pending

@@ -277,7 +277,6 @@ export function CommercialAppShell({
       className="app-shell"
       data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
     >
-      <EscalationNotification role={role} />
       <aside className="app-shell__sidebar">
         <div className="app-shell__brand">
           <div className="app-shell__mark">DO</div>
@@ -426,7 +425,11 @@ export function CommercialAppShell({
             {signOut}
           </div>
         </header>
-        <main className="app-shell__main">{children}</main>
+        <main className="app-shell__main">
+          {/* SPEC-065 BR-014: los avisos ocupan su línea, no flotan encima. */}
+          <EscalationNotification role={role} />
+          {children}
+        </main>
       </div>
       <nav
         aria-label="Navegación móvil"

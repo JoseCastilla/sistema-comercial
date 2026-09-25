@@ -18,7 +18,7 @@ import {
   type ConfirmedAttempt,
 } from "@/features/recovery/components/campaign-attempt-editor";
 import { useCampaignDraft } from "@/features/recovery/components/campaign-draft-context";
-import { CopyValue } from "@/features/recovery/components/copy-value";
+import { PhoneNumber } from "@/features/recovery/components/phone-number";
 
 import { myDayKindLabels, type MyDayEntry } from "../my-day-types";
 
@@ -145,27 +145,6 @@ function TierHeading({
       {myDayTierLabels[tier]}
       <span className="text-xs font-medium text-ui-soft">{total}</span>
     </h2>
-  );
-}
-
-/**
- * El número al que llamar, a la vista (fase 6): la acción es llamar. En el
- * celular un toque llama; en la computadora un clic lo copia para el
- * teléfono o el marcador.
- */
-function PhoneNumber({ phone }: { phone: string }) {
-  return (
-    <>
-      <a
-        className="font-mono text-sm font-semibold text-ui-accent sm:hidden"
-        href={`tel:${phone}`}
-      >
-        {phone}
-      </a>
-      <span className="hidden sm:inline">
-        <CopyValue label="Teléfono" value={phone} />
-      </span>
-    </>
   );
 }
 

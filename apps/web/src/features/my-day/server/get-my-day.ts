@@ -7,6 +7,9 @@ import {
   classifyRecoveryWorkItem,
   compareMyDayItems,
   compareRecoveryWorkNow,
+  campaignWorkActions,
+  campaignWorkNotes,
+  describeCampaignWorkDue,
   describeMyDayDue,
   describeMyDaySince,
   formatMyDayTime,
@@ -34,8 +37,6 @@ import {
   type MyDaySaleBucket,
   type MyDaySaleBucketSummary,
   type PerformanceCommissionPolicy,
-  type RecoveryAgendaItemKind,
-  type RecoveryAgendaOrigin,
   type RecoveryWorkNowCandidate,
 } from "@repo/validation";
 import { formatLimaMonth } from "@repo/ui/format";
@@ -317,27 +318,6 @@ function salesRecoveryAction(input: {
   return "Volver a llamar";
 }
 
-/** La tarea de campaña como acción del asesor, sin jerga del motor. */
-const campaignActions: Record<RecoveryAgendaItemKind, string> = {
-  VERIFICACION: "En verificación",
-  CITA_ACORDADA: "Llamar: cita acordada",
-  COMPLETAR_VENTA: "Completar la venta",
-  CERRAR: "Cerrar como rechazo definitivo",
-  RESOLVER_DATOS: "Corregir sus datos",
-  SEGUIMIENTO: "Llamar: seguimiento acordado",
-  HABILITACION: "Ya puede portar: llámalo",
-  REINTENTO: "Volver a llamar",
-  SIN_FECHA: "Llamar por primera vez",
-};
-
-/** Solo el origen que le dice algo al asesor; el resto es ruido del motor. */
-const campaignDetails: Partial<Record<RecoveryAgendaOrigin, string>> = {
-  devuelto: "Volvió de verificación: sigue pudiendo portar",
-  dato_pendiente: "Falta la fecha de portación",
-  impedimento: "Seguimiento del impedimento",
-  pausa: "Estaba en pausa por un rechazo",
-};
-
 const entryReasonLabels = new Map<string, string>(
   salesRecoveryReasonOptions.map((option) => [option.value, option.label]),
 );
@@ -578,7 +558,10 @@ async function readCampaign(
   });
   ahora.sort(compareRecoveryWorkNow);
 
-  const entries = ahora.slice(0, campaignShown).map(({ item, row }, index) => ({
+  const entries = ahora.slice(0, campaignShown).map(({ item, row }, index) => {
+    // La misma frase y el mismo plazo que la cola de Campañas (SPEC-065).
+    const due = describeCampaignWorkDue(item, now);
+    return {
     key: `campana:${row.id}`,
     kind: "campana" as const,
     tier: "campana" as const,
@@ -586,14 +569,14 @@ async function readCampaign(
     dueAt: null,
     saleAt: null,
     // Una oportunidad de campaña no es una falta: dice desde cuándo, sin rojo.
-    dueLabel: item.at && item.overdue ? describeMyDaySince(item.at, now) : null,
+    dueLabel: due?.label ?? null,
     overdue: false,
-    tone: "neutral" as const,
+    tone: due?.tone ?? ("neutral" as const),
     phone: null,
     rank: index,
     title: row.holderName,
-    action: campaignActions[item.kind],
-    detail: campaignDetails[item.origin] ?? null,
+    action: campaignWorkActions[item.kind],
+    detail: campaignWorkNotes[item.origin] ?? null,
     href: `/recovery/campaigns/${row.id}`,
     actionLabel: "Abrir caso",
     manage: buildManage({
@@ -604,7 +587,8 @@ async function readCampaign(
         ? { ...row.attempts[0], result: String(row.attempts[0].result) }
         : null,
     }),
-  }));
+    };
+  });
 
   return { entries, total: ahora.length };
 }

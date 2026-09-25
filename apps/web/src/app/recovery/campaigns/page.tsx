@@ -1,20 +1,22 @@
 import Link from "next/link";
-import { formatCount, formatLimaDateTime } from "@repo/ui/format";
+import { formatCount } from "@repo/ui/format";
 import {
   allOf,
   baseRecoveryMinimumDailyAttempts,
+  campaignWorkActions,
+  campaignWorkNotes,
   classifyRecoveryWorkItem,
   compareRecoveryWorkNow,
   countOnSameLimaDay,
+  describeCampaignWorkDue,
   describeRecoveryLineOrigin,
   describeRecoveryWait,
   effectiveAttemptResult,
+  formatCampaignMoment,
   isBaseRecoveryResolutionDue,
   parseRecoveryAgeBucket,
   parseRecoveryWorkView,
   recoveryAgeBucketRange,
-  recoveryAgendaKindLabels,
-  recoveryAgendaOriginLabels,
   recoveryWorkViewOptions,
   selectRecoveryAgendaItem,
 } from "@repo/validation";
@@ -44,7 +46,6 @@ import type { CampaignQueueRowData } from "@/features/recovery/components/campai
 import type { Prisma } from "@repo/database";
 import type { RecoveryWorkViewKey } from "@repo/validation";
 
-import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
 
@@ -160,7 +161,14 @@ export default async function RecoveryCampaignsPage({
       : null,
   );
 
-  const [myCases, myDepartments, sellingMembership, history] =
+  const historyWhere = allOf<Prisma.RecoveryCaseWhereInput>(mineWhere, {
+    status: { in: [...resolvedStatuses] },
+    resolvedAt: {
+      gte: new Date(now.getTime() - historyDays * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  const [myCases, myDepartments, sellingMembership, historyCount, history] =
     await Promise.all([
       database.recoveryCase.findMany({
         where: allOf<Prisma.RecoveryCaseWhereInput>(mineWhere, {
@@ -246,14 +254,12 @@ export default async function RecoveryCampaignsPage({
         },
         select: { teamId: true, team: { select: { name: true } } },
       }),
+      // SPEC-065 BR-001: la cifra del historial vale desde cualquier vista;
+      // las filas solo se leen al abrirlo.
+      database.recoveryCase.count({ where: historyWhere }),
       view === "historial"
         ? database.recoveryCase.findMany({
-            where: allOf<Prisma.RecoveryCaseWhereInput>(mineWhere, {
-              status: { in: [...resolvedStatuses] },
-              resolvedAt: {
-                gte: new Date(now.getTime() - historyDays * 24 * 60 * 60 * 1000),
-              },
-            }),
+            where: historyWhere,
             orderBy: { resolvedAt: "desc" },
             take: 300,
             select: {
@@ -350,13 +356,13 @@ export default async function RecoveryCampaignsPage({
       id: item.id,
       lastResult,
       lastObservation: last?.observation ?? null,
-      lastAttemptAtLabel: last ? formatLimaDateTime(last.createdAt) : null,
+      lastAttemptAtLabel: last ? formatCampaignMoment(last.createdAt) : null,
       recentAttempts: item.attempts.slice(0, 3).map((attempt) => ({
         resultLabel:
           attemptResultLabels[effectiveAttemptResult(attempt)] ??
           effectiveAttemptResult(attempt),
         observation: attempt.observation,
-        createdAtLabel: formatLimaDateTime(attempt.createdAt),
+        createdAtLabel: formatCampaignMoment(attempt.createdAt),
       })),
       holderName: item.holderName,
       documentNumber: item.documentNumber,
@@ -384,27 +390,20 @@ export default async function RecoveryCampaignsPage({
       planSummary: summarizePlan(item.services[0]?.planRaw ?? null),
       serviceCount: item.services.length,
       attemptsToday,
-      nextActionAtLabel: item.nextActionAt
-        ? formatLimaDateTime(item.nextActionAt)
-        : null,
-      overdue:
-        item.nextActionAt !== null &&
-        item.nextActionAt.getTime() < now.getTime(),
-      habilitationOverdue:
-        item.portabilityEligibleAt !== null &&
-        item.portabilityEligibleAt.getTime() <= now.getTime(),
       resolutionDue:
         item.claimedAt !== null &&
         isBaseRecoveryResolutionDue(item.claimedAt, now),
+      // SPEC-065 BR-002 y BR-004: la misma frase y el mismo plazo que «Mi
+      // día». Lo que espera dice por qué y cómo termina.
       work: workItem
         ? {
-            label: recoveryAgendaKindLabels[workItem.kind],
-            detail:
-              workItem.origin === "devuelto" && returned
-                ? `${recoveryAgendaOriginLabels[workItem.origin]} · ${returned.actor?.name ?? "el cruce"} · ${formatLimaDateTime(returned.createdAt)}`
-                : recoveryAgendaOriginLabels[workItem.origin],
-            overdue: workItem.overdue,
-            wait,
+            action: wait ? wait.reason : campaignWorkActions[workItem.kind],
+            note: wait
+              ? wait.ends || null
+              : workItem.origin === "devuelto" && returned
+                ? `${campaignWorkNotes.devuelto} · ${returned.actor?.name ?? "el cruce"} · ${formatCampaignMoment(returned.createdAt)}`
+                : (campaignWorkNotes[workItem.origin] ?? null),
+            due: describeCampaignWorkDue(workItem, now),
           }
         : null,
     };
@@ -428,7 +427,7 @@ export default async function RecoveryCampaignsPage({
     ahora: classified.filter((entry) => entry.workView === "ahora").length,
     completar: classified.filter((entry) => entry.workView === "completar").length,
     espera: classified.filter((entry) => entry.workView === "espera").length,
-    historial: history.length,
+    historial: historyCount,
   };
 
   const visible = classified.filter(
@@ -450,7 +449,7 @@ export default async function RecoveryCampaignsPage({
     );
   }
 
-  const listTotal = view === "historial" ? history.length : visible.length;
+  const listTotal = view === "historial" ? historyCount : visible.length;
   const totalPages = Math.max(1, Math.ceil(listTotal / pageSize));
   const page = Math.min(requestedPage, totalPages);
   const rows = visible
@@ -501,19 +500,25 @@ export default async function RecoveryCampaignsPage({
     return `/recovery/campaigns${suffix ? `?${suffix}` : ""}`;
   }
 
-  const currentView = recoveryWorkViewOptions.find(
-    (option) => option.value === view,
-  )!;
   const hasFilters = Boolean(searchInput || departmentFilter || planFilter || age);
+  const casesWord = (count: number) => (count === 1 ? "caso" : "casos");
+  // BR-010: la regla de los tres intentos, en la línea del resultado y no en
+  // una tarjeta aparte.
+  const resultLabel = [
+    `${formatCount(listTotal)} ${casesWord(listTotal)}`,
+    view === "ahora" && underMinimum.length > 0
+      ? `${formatCount(underMinimum.length)} sin sus ${baseRecoveryMinimumDailyAttempts} intentos de hoy`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <>
       <div className="ui-page-stack">
-        <PageHeader
-          eyebrow="Campañas"
-          title="Mi cola de campaña"
-          description="Tus casos de base asignados y los casos libres de tu equipo. Un caso sin respuesta exige tres intentos en el día."
-        />
+        {/* Sin subtítulo (SPEC-065 BR-011): la regla de los tres intentos va
+            junto a la cifra de la lista, donde se usa. */}
+        <PageHeader eyebrow="Campañas" title="Mi cola de campaña" />
 
         <AdvisorCampaignNav current="cola" />
 
@@ -526,70 +531,10 @@ export default async function RecoveryCampaignsPage({
           </p>
         ) : null}
 
-        <MetricGroup>
-          <Metric
-            emphasis="hero"
-            href={viewHref("ahora")}
-            label="Trabajar ahora"
-            value={counts.ahora}
-          />
-          <Metric
-            hideWhenZero
-            href={viewHref("completar")}
-            label="Por completar"
-            tone="warning"
-            value={counts.completar}
-          />
-          <Metric
-            href={viewHref("espera")}
-            label="En espera"
-            value={counts.espera}
-          />
-          <Metric
-            hideWhenZero
-            label="Sin los 3 intentos de hoy"
-            tone="warning"
-            value={underMinimum.length}
-          />
-          <Metric
-            label={
-              sellingMembership
-                ? `Casos libres de ${sellingMembership.team.name}`
-                : "Casos libres del equipo"
-            }
-            value={poolCount}
-          />
-        </MetricGroup>
-
-        {sellingMembership ? (
-          <SectionPanel
-            title="Tomar casos libres"
-            description="Bloques de hasta 10 casos, los más recientes primero. Primero los clientes que ya cumplieron los 30 días y pueden portar: hay que llamarlos antes."
-          >
-            <TakePoolBlockForm departments={departments} />
-          </SectionPanel>
-        ) : (
-          <SectionPanel
-            title="Sin equipo vendedor"
-            description="No tienes venta habilitada en un equipo activo, así que no puedes tomar casos libres."
-          >
-            <p className="text-sm text-ui-muted">
-              Si distribuyes trabajo, hazlo desde{" "}
-              <Link
-                className="text-ui-accent underline-offset-2 hover:underline"
-                href="/recovery/distribute"
-              >
-                Distribuir la base
-              </Link>
-              .
-            </p>
-          </SectionPanel>
-        )}
-
         {dueCommitments.length > 0 ? (
           <SectionPanel
-            title="Compromisos por atender"
-            description="Llamadas acordadas que ya vencieron o vencen en las próximas dos horas. No dependen de los filtros de abajo."
+            title="Llamadas acordadas por atender"
+            description="Las que ya vencieron o vencen en las próximas dos horas. No dependen de los filtros."
           >
             <ul className="space-y-1 text-sm">
               {dueCommitments.map((commitment) => (
@@ -604,7 +549,7 @@ export default async function RecoveryCampaignsPage({
                         : "font-medium text-ui-text"
                     }
                   >
-                    {formatLimaDateTime(commitment.scheduledAt)}
+                    {formatCampaignMoment(commitment.scheduledAt)}
                   </span>
                   <Link
                     className="text-ui-accent underline-offset-2 hover:underline"
@@ -631,9 +576,11 @@ export default async function RecoveryCampaignsPage({
           </SectionPanel>
         ) : null}
 
-        <SectionPanel title={currentView.label} description={currentView.hint}>
+        {/* BR-010 y BR-011: las vistas llevan su cifra; sin tarjetas ni un
+            título que repita la pestaña. */}
+        <section aria-label="Mi cola" className="grid gap-3">
           <CampaignDraftProvider>
-            <nav aria-label="Vistas de la cola" className="ui-segmented-scroll mb-3">
+            <nav aria-label="Vistas de la cola" className="ui-segmented-scroll">
               <div className="ui-segmented">
                 {recoveryWorkViewOptions.map((option) => (
                   <GuardedLink
@@ -656,7 +603,7 @@ export default async function RecoveryCampaignsPage({
               department={departmentFilter}
               departments={myDepartmentOptions}
               plan={planFilter}
-              resultLabel={`${formatCount(listTotal)} caso(s) en esta vista.`}
+              resultLabel={resultLabel}
               search={searchInput}
               vista={view}
             />
@@ -704,7 +651,7 @@ export default async function RecoveryCampaignsPage({
                           </td>
                           <td className="text-xs">{item.resolvedBy?.name ?? "—"}</td>
                           <td className="text-xs">
-                            {item.resolvedAt ? formatLimaDateTime(item.resolvedAt) : "—"}
+                            {item.resolvedAt ? formatCampaignMoment(item.resolvedAt) : "—"}
                           </td>
                           <td className="text-xs">
                             {item.recoveredDitoOrder?.orderCodeRaw ?? "—"}
@@ -721,56 +668,34 @@ export default async function RecoveryCampaignsPage({
                   </tbody>
                 </table>
               </div>
+            ) : rows.length > 0 ? (
+              // SPEC-065 BR-003: la misma fila de «Mi día», sin tabla ancha.
+              <ol className="grid gap-2" data-case-list>
+                {rows.map((row, index) => (
+                  <li key={row.id}>
+                    <CampaignQueueRow
+                      justVisited={row.id === justVisited}
+                      minimumDailyAttempts={baseRecoveryMinimumDailyAttempts}
+                      nextId={rows[index + 1]?.id ?? null}
+                      nextName={rows[index + 1]?.holderName ?? null}
+                      queueContext={queueContextQuery}
+                      row={row}
+                    />
+                  </li>
+                ))}
+              </ol>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-ui-border">
-                <table className="ui-table ui-table--campaign">
-                  <thead>
-                    <tr>
-                      <th>Último resultado</th>
-                      <th>Qué toca</th>
-                      <th>Observación</th>
-                      <th>Cliente</th>
-                      <th>Teléfono</th>
-                      <th>DNI</th>
-                      <th>Operador / Plan</th>
-                      <th data-numeric>Intentos hoy</th>
-                      <th>Próxima acción</th>
-                      <th data-actions />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, index) => (
-                      <CampaignQueueRow
-                        justVisited={row.id === justVisited}
-                        key={row.id}
-                        minimumDailyAttempts={baseRecoveryMinimumDailyAttempts}
-                        nextId={rows[index + 1]?.id ?? null}
-                        nextName={rows[index + 1]?.holderName ?? null}
-                        queueContext={queueContextQuery}
-                        row={row}
-                      />
-                    ))}
-                    {rows.length === 0 ? (
-                      <tr>
-                        <td
-                          className="px-3 py-6 text-center text-ui-muted"
-                          colSpan={10}
-                        >
-                          {/* Decirle que no tiene casos mientras filtra le hace
-                            creer que los perdió. */}
-                          {hasFilters
-                            ? "Ningún caso tuyo coincide con lo que buscas. Prueba con menos datos o limpia el filtro."
-                            : view === "ahora"
-                              ? counts.espera + counts.completar > 0
-                                ? "Nada exigible ahora mismo. Revisa Por completar o En espera, o toma casos libres."
-                                : "No tienes casos de campaña asignados. Toma casos libres para empezar."
-                              : "Nada en esta vista."}
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
+              <p className="rounded-lg border border-ui-border bg-ui-surface px-4 py-6 text-center text-sm text-ui-muted">
+                {/* Decirle que no tiene casos mientras filtra le hace creer
+                    que los perdió. */}
+                {hasFilters
+                  ? "Ningún caso tuyo coincide con lo que buscas. Prueba con menos datos o limpia el filtro."
+                  : view === "ahora"
+                    ? counts.espera + counts.completar > 0
+                      ? "Nada que llamar ahora mismo. Revisa Por completar o En espera, o toma casos libres abajo."
+                      : "No tienes casos de campaña asignados. Toma casos libres abajo para empezar."
+                    : "Nada en esta vista."}
+              </p>
             )}
 
             {totalPages > 1 ? (
@@ -797,7 +722,32 @@ export default async function RecoveryCampaignsPage({
               </div>
             ) : null}
           </CampaignDraftProvider>
-        </SectionPanel>
+        </section>
+
+        {/* BR-012: tomar casos va después del trabajo y en una línea. */}
+        {sellingMembership ? (
+          <TakePoolBlockForm
+            departments={departments}
+            poolCount={poolCount}
+            teamName={sellingMembership.team.name}
+          />
+        ) : (
+          <SectionPanel
+            title="Sin equipo vendedor"
+            description="No tienes venta habilitada en un equipo activo, así que no puedes tomar casos libres."
+          >
+            <p className="text-sm text-ui-muted">
+              Si distribuyes trabajo, hazlo desde{" "}
+              <Link
+                className="text-ui-accent underline-offset-2 hover:underline"
+                href="/recovery/distribute"
+              >
+                Distribuir la base
+              </Link>
+              .
+            </p>
+          </SectionPanel>
+        )}
       </div>
     </>
   );

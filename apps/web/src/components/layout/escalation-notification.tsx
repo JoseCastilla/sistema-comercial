@@ -133,13 +133,13 @@ export function EscalationNotification({ role }: { role: string }) {
   // el aviso repetiría la misma cifra encima de ella.
   if (isAgent && pathname === "/my-day") return null;
   return (
-    // En el celular va debajo de la cabecera: arriba tapaba los botones de
-    // tema y de cerrar sesión.
-    <div className="fixed right-4 top-20 z-50 flex flex-col items-end gap-2 lg:top-4">
+    // SPEC-065 BR-014: una línea propia al inicio del contenido. Flotando
+    // tapaba lo que quedaba debajo al desplazarse (en el celular, la lista).
+    <div className="mb-4 flex flex-wrap justify-end gap-2">
       {count > 0 ? (
         <Link
           aria-label={`${count} incidencias escaladas requieren atención`}
-          className="flex items-center gap-2 rounded-full border border-ui-danger-border bg-ui-danger-soft px-3 py-2 text-sm font-semibold text-ui-danger shadow-lg"
+          className="flex items-center gap-2 rounded-full border border-ui-danger-border bg-ui-danger-soft px-3 py-2 text-sm font-semibold text-ui-danger"
           href="/orders?period=MONTH&status=ESCALATIONS"
           role="status"
         >
@@ -155,7 +155,7 @@ export function EscalationNotification({ role }: { role: string }) {
               ? `${recoveryOverdue} ventas caídas recientes por llamar`
               : `${recoveryOverdue} recuperos con la próxima acción vencida`
           }
-          className="flex items-center gap-2 rounded-full border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning shadow-lg"
+          className="flex items-center gap-2 rounded-full border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning"
           href={isAgent ? "/my-day" : "/recovery/sales?vence=vencido"}
           role="status"
         >
@@ -175,7 +175,7 @@ export function EscalationNotification({ role }: { role: string }) {
       {agendaDue > 0 ? (
         <Link
           aria-label={`${agendaDue} llamadas acordadas vencidas o en los próximos quince minutos`}
-          className="flex items-center gap-2 rounded-full border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning shadow-lg"
+          className="flex items-center gap-2 rounded-full border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning"
           href={isAgent ? "/my-day" : "/recovery/agenda"}
           role="status"
         >
