@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   compareMyDayItems,
   describeMyDayDue,
+  describeMyDaySince,
+  formatMyDayTime,
   formatMyDaySaleDay,
   isMyDayHotSale,
   placeMyDayCommitment,
@@ -194,4 +196,15 @@ test("BR-018: entre ventas caídas, la más reciente primero", () => {
 
 test("la fecha de la venta se escribe con día y mes de Lima", () => {
   assert.equal(formatMyDaySaleDay(lima("2026-08-05T23:30:00")), "05/08");
+});
+
+test("desde cuándo, sin reproche: minutos, horas, fecha", () => {
+  assert.equal(describeMyDaySince(lima("2026-09-24T10:35:00"), ahora), "hace 25 min");
+  assert.equal(describeMyDaySince(lima("2026-09-24T06:00:00"), ahora), "hace 5 h");
+  assert.equal(describeMyDaySince(lima("2026-09-12T10:00:00"), ahora), "desde el 12/09");
+});
+
+test("la hora se escribe en Lima con dos dígitos", () => {
+  assert.equal(formatMyDayTime(lima("2026-09-24T09:05:00")), "09:05");
+  assert.equal(formatMyDayTime(lima("2026-09-24T19:41:00")), "19:41");
 });

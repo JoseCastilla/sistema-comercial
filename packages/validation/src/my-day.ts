@@ -227,6 +227,23 @@ const limaDayFormatter = {
   },
 };
 
+/** «19:41»: la hora de Lima, para «Llamar antes de las 19:41». */
+export function formatMyDayTime(at: Date): string {
+  return limaTimeFormatter.format(at);
+}
+
+/**
+ * Desde cuándo está pendiente algo que no es una falta del asesor —un
+ * atraso del courier, una oportunidad de campaña—: «hace 25 min», «hace 3
+ * h», «desde el 12/09». Sin «venció»: no hay plazo incumplido que reprochar.
+ */
+export function describeMyDaySince(at: Date, now: Date): string {
+  const minutes = Math.round((now.getTime() - at.getTime()) / 60_000);
+  if (minutes < 60) return `hace ${Math.max(minutes, 1)} min`;
+  if (minutes < 24 * 60) return `hace ${Math.floor(minutes / 60)} h`;
+  return `desde el ${limaDayFormatter.format(at)}`;
+}
+
 /** «Venta del 12/08»: la fecha de la venta en Lima, día y mes. */
 export function formatMyDaySaleDay(saleAt: Date): string {
   return limaDayFormatter.format(saleAt);

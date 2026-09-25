@@ -129,8 +129,13 @@ export function EscalationNotification({ role }: { role: string }) {
   }, [supervises, refresh]);
 
   if (count === 0 && recoveryOverdue === 0 && agendaDue === 0) return null;
+  // En «Mi día» el asesor ya ve sus ventas caídas y sus citas en la lista:
+  // el aviso repetiría la misma cifra encima de ella.
+  if (isAgent && pathname === "/my-day") return null;
   return (
-    <div className="fixed right-4 top-4 z-50 flex flex-col items-end gap-2">
+    // En el celular va debajo de la cabecera: arriba tapaba los botones de
+    // tema y de cerrar sesión.
+    <div className="fixed right-4 top-20 z-50 flex flex-col items-end gap-2 lg:top-4">
       {count > 0 ? (
         <Link
           aria-label={`${count} incidencias escaladas requieren atención`}

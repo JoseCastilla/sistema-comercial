@@ -41,6 +41,14 @@ export interface MyDayEntry {
   /** «venció hace 25 min», «en 40 min», «a las 15:00». */
   dueLabel: string | null;
   overdue: boolean;
+  /**
+   * Tono de la etiqueta del plazo: rojo solo para lo que el asesor dejó
+   * vencer; ámbar para lo que urge sin ser su falta (el plazo de 2 horas que
+   * corre, el atraso del courier); neutro para lo demás.
+   */
+  tone: "danger" | "warning" | "neutral";
+  /** El número al que llamar; en los casos, el primero del editor. */
+  phone: string | null;
   rank: number;
   /** El cliente. */
   title: string;

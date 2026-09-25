@@ -57,6 +57,8 @@ function entry(overrides: Partial<MyDayEntry> & Pick<MyDayEntry, "key" | "title"
     saleAt: null,
     dueLabel: "venció hace 10 min",
     overdue: true,
+    tone: "danger",
+    phone: null,
     rank: 0,
     action: "Primer contacto vencido",
     detail: null,
@@ -83,6 +85,17 @@ function renderList(entries: MyDayEntry[]) {
 }
 
 describe("Mi día · gestión en fila", () => {
+  it("la fila muestra el teléfono para llamar y no repite el tipo dentro del grupo", () => {
+    renderList([entry({ key: "c1", title: "PRIMER CLIENTE" })]);
+
+    expect(screen.getByRole("link", { name: "999111222" })).toHaveAttribute(
+      "href",
+      "tel:999111222",
+    );
+    // El título del grupo ya dice «Ventas caídas por salvar».
+    expect(screen.queryByText("Venta caída")).not.toBeInTheDocument();
+  });
+
   it("un pedido no se gestiona aquí: lleva a Pedidos", () => {
     renderList([
       entry({

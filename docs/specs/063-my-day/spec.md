@@ -182,6 +182,35 @@ llamadas.
   `evaluatePerformanceOrderPayment` (SPEC-033); lo que «Ya pagan» suma es
   exactamente la comisión base de Rendimiento.
 
+### Pulido control por control (fase 6, 24/09/2026)
+
+Revisión de «Mi día» con datos reales, control por control, pedida por José
+tras encontrar él que el tema podía ser dos botones. Diecisiete propuestas;
+José aprobó todas en este orden.
+
+- **BR-021 — Una sola fila por cliente.** Un pedido con un caso de recupero
+  abierto no aparece como «Pedido»: el trabajo es el caso, y su fila dice
+  además por qué se cayó (la acción que sugiere la logística o el motivo con
+  que se abrió).
+- **BR-022 — El teléfono a la vista.** Cada fila muestra el número al que
+  llamar junto al cliente: en el celular un toque llama; en la computadora
+  un clic lo copia.
+- **BR-023 — Frases sin repetición ni reproche.** La etiqueta dice el plazo
+  y la frase dice qué hacer, sin repetirlo («Llamar antes de las 19:41»,
+  «Llamar ya», «Volver a llamar»). Lo frío dice «Sin llamar». La campaña
+  habla en acciones («Ya puede portar: llámalo») y solo muestra su origen
+  cuando le dice algo al asesor. Rojo solo para lo que el asesor dejó
+  vencer; ámbar para lo que urge sin ser su falta (el plazo de 2 horas que
+  corre, el atraso del courier: «atrasado desde el 18/09»); neutro para las
+  oportunidades de campaña («desde el 12/09»). Dentro de un grupo, la fila
+  no repite su tipo.
+- **BR-024 — El aviso flotante no tapa ni repite.** En «Mi día» el asesor no
+  ve el aviso de ventas caídas y citas (la lista ya lo dice). En el celular
+  el aviso va debajo de la cabecera, no sobre sus botones.
+- **Resultados del editor:** se conservan todos también para las ventas
+  caídas. José: el cliente puede haber cambiado de plan y dejar de cumplir
+  los 30 días.
+
 ### Construcción (MD-F05)
 
 - **BR-016 — Consultas con techo.** Cada fuente se lee con un límite

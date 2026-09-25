@@ -38,6 +38,21 @@ Una casilla se marca solo con evidencia en `verification.md`.
       entregadas del mes frente a la cuota asignada.
 - [x] Lectura en producción con la cuenta de asesor (24/09/2026).
 
+## Fase 6 — Pulido control por control (24/09/2026)
+
+- [x] Grupo 1, errores: una sola fila por cliente con el motivo de la caída
+      (BR-021); aviso oculto en «Mi día» y debajo de la cabecera en el
+      celular (BR-024).
+- [x] Grupo 2, filas: teléfono a la vista (BR-022); frases, tonos y tipo
+      oculto dentro del grupo (BR-023). Pruebas: `my-day.test.mjs` 18 de
+      18, `mi-dia-gestion-en-fila.test.tsx` 3 de 3.
+- [ ] Grupo 3, editor: resultados en botones con «Otro resultado», canal en
+      botones, teléfono como texto cuando hay uno solo.
+- [ ] Grupo 4, progreso: «Ahora» primero, franja compacta, sin subtítulo,
+      el próximo bono en vez del cerrado, «Tu comisión» unida, grupos que se
+      abren por separado.
+- [ ] Lectura en producción de cada grupo.
+
 ## Fase 2 — Actuar sin salir
 
 - [x] Tipificar citas, ventas caídas y campaña desde la fila de «Mi día»

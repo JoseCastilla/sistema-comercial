@@ -18,6 +18,7 @@ import {
   type ConfirmedAttempt,
 } from "@/features/recovery/components/campaign-attempt-editor";
 import { useCampaignDraft } from "@/features/recovery/components/campaign-draft-context";
+import { CopyValue } from "@/features/recovery/components/copy-value";
 
 import { myDayKindLabels, type MyDayEntry } from "../my-day-types";
 
@@ -88,6 +89,7 @@ export function MyDayList({
                       ? (next.get(entry.manage.caseId) ?? null)
                       : null
                   }
+                  showKind={false}
                 />
               </li>
             ))}
@@ -146,12 +148,36 @@ function TierHeading({
   );
 }
 
+/**
+ * El número al que llamar, a la vista (fase 6): la acción es llamar. En el
+ * celular un toque llama; en la computadora un clic lo copia para el
+ * teléfono o el marcador.
+ */
+function PhoneNumber({ phone }: { phone: string }) {
+  return (
+    <>
+      <a
+        className="font-mono text-sm font-semibold text-ui-accent sm:hidden"
+        href={`tel:${phone}`}
+      >
+        {phone}
+      </a>
+      <span className="hidden sm:inline">
+        <CopyValue label="Teléfono" value={phone} />
+      </span>
+    </>
+  );
+}
+
 function MyDayRow({
   entry,
   next,
+  showKind = true,
 }: {
   entry: MyDayEntry;
   next: NextCase | null;
+  /** Dentro de un grupo, el título ya dice qué es la fila. */
+  showKind?: boolean;
 }) {
   const draft = useCampaignDraft();
   const editorId = useId();
@@ -175,6 +201,7 @@ function MyDayRow({
   }, [draft, next]);
 
   const canManage = manage !== null && unmanageable === null;
+  const phone = entry.phone ?? manage?.defaultPhone ?? null;
 
   return (
     <article
@@ -187,21 +214,22 @@ function MyDayRow({
       <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ui-soft">
-            <span className="font-semibold uppercase tracking-wide">
-              {myDayKindLabels[entry.kind]}
-            </span>
+            {showKind ? (
+              <span className="font-semibold uppercase tracking-wide">
+                {myDayKindLabels[entry.kind]}
+              </span>
+            ) : null}
             {saved ? (
               <Badge tone="success">
                 Gestionado: {attemptResultLabels[saved.result] ?? saved.result}
               </Badge>
             ) : entry.dueLabel ? (
-              <Badge tone={entry.overdue ? "danger" : "neutral"}>
-                {entry.dueLabel}
-              </Badge>
+              <Badge tone={entry.tone}>{entry.dueLabel}</Badge>
             ) : null}
           </p>
-          <h3 className="mt-1 truncate text-base font-semibold text-ui-text">
-            {entry.title}
+          <h3 className="mt-1 flex flex-wrap items-baseline gap-x-3 text-base font-semibold text-ui-text">
+            <span className="min-w-0 truncate">{entry.title}</span>
+            {phone ? <PhoneNumber phone={phone} /> : null}
           </h3>
           <p className="mt-0.5 text-sm text-ui-text">
             {saved
