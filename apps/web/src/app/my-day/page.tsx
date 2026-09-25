@@ -11,7 +11,6 @@ import {
 } from "@/features/my-day/components/my-day-list";
 import { MyDayProgressPanel } from "@/features/my-day/components/my-day-progress";
 import { MyDayRefresh } from "@/features/my-day/components/my-day-refresh";
-import { MyDaySalesPanel } from "@/features/my-day/components/my-day-sales";
 import { getMyDay } from "@/features/my-day/server/get-my-day";
 import { CampaignDraftProvider } from "@/features/recovery/components/campaign-draft-context";
 import { requireCommercialAccess } from "@/server/auth/access";
@@ -45,18 +44,14 @@ export default async function MyDayPage() {
     <CampaignDraftProvider>
       <div className="ui-page-stack">
         <MyDayRefresh />
+        {/* Sin subtítulo: el asesor abre esta pantalla decenas de veces al día. */}
         <PageHeader
-          description="Lo que te toca ahora, lo que viene más tarde y cuánto vas ganando."
           eyebrow={today.charAt(0).toUpperCase() + today.slice(1)}
           title={`Mi día, ${firstName}`}
         />
 
-        <MyDayProgressPanel progress={data.progress} />
-
-        <MyDaySalesPanel
-          monthLabel={data.progress.monthLabel}
-          sales={data.sales}
-        />
+        {/* El progreso en una franja: el trabajo («Ahora») queda a la vista. */}
+        <MyDayProgressPanel progress={data.progress} sales={data.sales} />
 
         <section aria-labelledby="mi-dia-ahora" className="grid gap-4">
           <h2 className="text-lg font-bold text-ui-text" id="mi-dia-ahora">

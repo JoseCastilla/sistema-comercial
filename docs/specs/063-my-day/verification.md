@@ -133,5 +133,11 @@
   carga sin error. La asesora no tiene hoy citas de ventas caídas, así que
   esa parte de BR-013 queda sin observar con datos reales.
 
+- **24/09/2026** — Fase 6, grupo 4, local con la asesora de prueba: la
+  franja ocupa una línea en la computadora y tres en el celular, donde
+  «Ahora» aparece en la primera pantalla; dice «Bono del día 25: 15
+  confirmadas = S/ 100.00» y, al abrir, «Bono días 1 al 15: cerrado con 0
+  confirmadas». Tipos, lint y 234 pruebas de web en verde.
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes; una cita de
 venta caída en Mi agenda con datos reales.

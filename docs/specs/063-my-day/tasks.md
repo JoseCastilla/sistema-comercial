@@ -52,9 +52,11 @@ Una casilla se marca solo con evidencia en `verification.md`.
       un solo teléfono se muestra como texto con «Usar otro número». La
       tecla de cada botón queda fuera del nombre accesible (antes se leía
       «NNo contesta»). 20 pruebas del editor de Campañas en verde.
-- [ ] Grupo 4, progreso: «Ahora» primero, franja compacta, sin subtítulo,
-      el próximo bono en vez del cerrado, «Tu comisión» unida, grupos que se
-      abren por separado.
+- [x] Grupo 4, progreso (BR-025): franja de una línea plegada con hoy,
+      comisión, cuota y el próximo bono; al abrirla, «Tu comisión» unida
+      (BR-020) con grupos que abren cada uno su lista; sin subtítulo;
+      motivo «Otro» con su observación. `my-day-sales.tsx` retirado.
+      `mi-dia-ventas-del-mes.test.tsx` 3 de 3; web 234 pruebas en verde.
 - [ ] Lectura en producción de cada grupo.
 
 ## Fase 2 — Actuar sin salir

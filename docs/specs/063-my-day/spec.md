@@ -181,6 +181,9 @@ llamadas.
   recuperas») y abre su pedido. La regla de pago es
   `evaluatePerformanceOrderPayment` (SPEC-033); lo que «Ya pagan» suma es
   exactamente la comisión base de Rendimiento.
+  Desde la fase 6 el bloque vive dentro de la franja: al abrirla, «Tu
+  comisión» dice base + bonos = total y lo que falta cobrar, y cada grupo
+  es un botón que abre solo su lista.
 
 ### Pulido control por control (fase 6, 24/09/2026)
 
@@ -207,6 +210,12 @@ José aprobó todas en este orden.
 - **BR-024 — El aviso flotante no tapa ni repite.** En «Mi día» el asesor no
   ve el aviso de ventas caídas y citas (la lista ya lo dice). En el celular
   el aviso va debajo de la cabecera, no sobre sus botones.
+- **BR-025 — El progreso no empuja el trabajo.** Hoy, comisión, cuota y
+  bono van en una franja de una línea, plegada; «Ahora» queda arriba en el
+  celular. Del 16 al 24, la franja anuncia el bono que viene («Bono del día
+  25: 15 confirmadas = S/ 100»), no el que ya cerró; el cerrado se lee al
+  abrir. La página no lleva subtítulo. Un caso abierto con motivo «Otro»
+  muestra la observación con que se abrió.
 - **Resultados del editor:** se conservan todos también para las ventas
   caídas. José: el cliente puede haber cambiado de plan y dejar de cumplir
   los 30 días.

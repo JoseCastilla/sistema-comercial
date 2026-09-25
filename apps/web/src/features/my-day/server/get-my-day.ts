@@ -152,7 +152,13 @@ export interface MyDayProgress {
      */
     closed: boolean;
     /** La siguiente ventana del mes, si falta abrir alguna. */
-    upcoming: { label: string; startDay: number } | null;
+    upcoming: {
+      label: string;
+      startDay: number;
+      /** Primer tramo del bono que viene: cuántas y cuánto vale. */
+      target: number;
+      amountCents: number;
+    } | null;
   } | null;
   /**
    * La cuota es del mes completo (SPEC-064) y se mide en portabilidades
@@ -343,6 +349,7 @@ const entryReasonLabels = new Map<string, string>(
  */
 function fallReason(row: {
   entryReason: string | null;
+  entryObservation: string | null;
   sourceDitoOrder: {
     agrDeliverySnapshot: {
       estadoPedido: string;
@@ -354,9 +361,13 @@ function fallReason(row: {
 }): string | null {
   const snapshot = row.sourceDitoOrder?.agrDeliverySnapshot;
   if (snapshot?.isRecoveryOpportunity) return getAgrAction(snapshot).label;
-  return row.entryReason
-    ? (entryReasonLabels.get(row.entryReason) ?? null)
-    : null;
+  // «Otro» no le dice nada al asesor: en su lugar, lo que se anotó al abrir.
+  if (row.entryReason === "OTRO" || !row.entryReason) {
+    const observation = row.entryObservation?.trim() ?? "";
+    if (!observation) return null;
+    return observation.length > 80 ? `${observation.slice(0, 80)}…` : observation;
+  }
+  return entryReasonLabels.get(row.entryReason) ?? null;
 }
 
 async function readSalesRecovery(
@@ -382,6 +393,7 @@ async function readSalesRecovery(
       holderName: true,
       status: true,
       entryReason: true,
+      entryObservation: true,
       sourceDitoOrder: {
         select: {
           orderCodeRaw: true,
@@ -832,6 +844,8 @@ async function readProgress(
                 .map((item) => ({
                   label: item.label,
                   startDay: item.windowStartDay,
+                  target: item.tiers[0]?.target ?? 0,
+                  amountCents: item.tiers[0]?.amountCents ?? 0,
                 }))[0] ?? null,
           }
         : null,
