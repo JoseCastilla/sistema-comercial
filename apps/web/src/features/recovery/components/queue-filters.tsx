@@ -73,6 +73,7 @@ export function QueueFilters({
   searchLabel = "Buscar cliente",
   searchPlaceholder = "Nombre, DNI o teléfono",
   hideSearch = false,
+  moreFilters = false,
 }: {
   basePath: string;
   values: QueueFilterValues;
@@ -83,6 +84,12 @@ export function QueueFilters({
   searchPlaceholder?: string;
   /** El tablero filtra por período y asesor; no tiene nada que buscar. */
   hideSearch?: boolean;
+  /**
+   * La vista y los selectores propios van plegados en «Más filtros»
+   * (SPEC-068): a la vista quedan la búsqueda, el equipo y el asesor. Se
+   * abre solo si alguno de los plegados está en uso.
+   */
+  moreFilters?: boolean;
 }) {
   const router = useRouter();
   const [term, setTerm] = useState(values.q);
@@ -194,10 +201,7 @@ export function QueueFilters({
     ...extraChips.map((filter) => ({ ...filter, extra: true })),
   ];
 
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-3">
-        {options.views ? (
+  const viewsControl = options.views ? (
           <label className="block">
             <span className="ui-label-eyebrow">Vista</span>
             <select
@@ -212,7 +216,36 @@ export function QueueFilters({
               ))}
             </select>
           </label>
-        ) : null}
+        ) : null;
+  const extrasControls = (options.extras ?? []).map((extra) => (
+          <label className="block" key={extra.key}>
+            <span className="ui-label-eyebrow">{extra.label}</span>
+            <select
+              className={selectClass}
+              onChange={(event) =>
+                navigate({ extra: { [extra.key]: event.target.value } })
+              }
+              value={values.extra?.[extra.key] ?? ""}
+            >
+              <option value="">{extra.emptyLabel ?? "Todos"}</option>
+              {extra.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ));
+  const foldedInUse =
+    (options.views !== undefined &&
+      Boolean(values.view) &&
+      values.view !== options.views[0]?.value) ||
+    (options.extras ?? []).some((extra) => Boolean(values.extra?.[extra.key]));
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-3">
+        {moreFilters ? null : viewsControl}
 
         {hideSearch ? null : (
           <label className="block">
@@ -300,25 +333,7 @@ export function QueueFilters({
           </label>
         ) : null}
 
-        {(options.extras ?? []).map((extra) => (
-          <label className="block" key={extra.key}>
-            <span className="ui-label-eyebrow">{extra.label}</span>
-            <select
-              className={selectClass}
-              onChange={(event) =>
-                navigate({ extra: { [extra.key]: event.target.value } })
-              }
-              value={values.extra?.[extra.key] ?? ""}
-            >
-              <option value="">{extra.emptyLabel ?? "Todos"}</option>
-              {extra.options.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
+        {moreFilters ? null : extrasControls}
 
         {options.departments ? (
           <label className="block">
@@ -372,6 +387,18 @@ export function QueueFilters({
               ))}
             </select>
           </label>
+        ) : null}
+
+        {moreFilters && (options.views || options.extras?.length) ? (
+          <details className="pb-2" open={foldedInUse || undefined}>
+            <summary className="cursor-pointer text-xs font-semibold text-ui-accent">
+              Más filtros
+            </summary>
+            <div className="mt-2 flex flex-wrap items-end gap-3">
+              {viewsControl}
+              {extrasControls}
+            </div>
+          </details>
         ) : null}
 
         <span aria-live="polite" className="pb-2 text-xs text-ui-muted">

@@ -6,7 +6,12 @@ import {
   matchesInternalRecoveryDueFilter,
   compareInternalRecoveryCases,
   describeInternalRecoveryStage,
+  describeMyDayDue,
+  describeSalesRecoveryWork,
+  formatCampaignMoment,
+  formatMyDaySaleDay,
   getLimaIsoDate,
+  isMyDayHotSale,
   parseRecoverySearchTerm,
   pickFilterOption,
   salesRecoveryOpenStatusOptions,
@@ -18,9 +23,12 @@ import {
 } from "@repo/validation";
 
 import { database } from "@/server/database";
-import { formatLimaDateTime } from "@repo/ui/format";
 
 import { lossReasonLabels } from "../loss-reason-labels";
+import {
+  describeSalesRecoveryFall,
+  salesRecoveryFallOrderSelect,
+} from "./sales-recovery-fall";
 
 import type { Prisma } from "@repo/database";
 import type {
@@ -102,6 +110,30 @@ export interface SalesRecoveryCaseItem {
   /** Solo en resueltos: cuándo y cómo terminó. */
   resolvedAtLabel: string | null;
   resolutionLabel: string | null;
+  /** SPEC-068: venta de los últimos 7 días; lo antiguo no hace ruido. */
+  hot: boolean;
+  /** El plazo y la frase con la regla de «Mi día»; nulo en resueltos. */
+  work: {
+    action: string;
+    due: { label: string; tone: "danger" | "warning" | "neutral" } | null;
+  } | null;
+  /** Por qué se cayó, como en «Mi día» y la ficha. */
+  fallReason: string | null;
+  /** «24/09»: el día de la venta. */
+  saleDayLabel: string;
+  /** Quien la vendió es quien la tiene: no se repite el nombre. */
+  sellerIsAssignee: boolean;
+}
+
+/** SPEC-068: lo que cada asesor tiene por salvar, para el supervisor. */
+export interface SalesRecoveryAdvisorSummary {
+  /** `null`: los casos sin responsable. */
+  userId: string | null;
+  name: string;
+  hotNotCalled: number;
+  hotTotal: number;
+  hotFollowUpOverdue: number;
+  coldTotal: number;
 }
 
 export interface SalesRecoveryInboxData {
@@ -121,12 +153,21 @@ export interface SalesRecoveryInboxData {
    */
   totals: {
     open: number;
-    firstContactOverdue: number;
-    followUpOverdue: number;
-    agendaOverdue: number;
+    /** Ventas de los últimos 7 días y las anteriores (SPEC-068). */
+    hot: number;
+    cold: number;
+    /** Calientes que nadie ha llamado todavía. */
+    hotNotCalled: number;
+    /** Calientes con el seguimiento o la cita vencidos. */
+    hotFollowUpOverdue: number;
     criticalUnassigned: number;
     recoveredThisMonth: number;
   };
+  /** Por asesor, solo para quien reparte; vacío para el asesor. */
+  byAdvisor: SalesRecoveryAdvisorSummary[];
+  /** En abiertos: las calientes, completas y primero. */
+  hotCases: SalesRecoveryCaseItem[];
+  /** Paginación de `cases`: en abiertos, las antiguas; si no, los resueltos. */
   pagination: { page: number; totalPages: number; total: number };
   cases: SalesRecoveryCaseItem[];
 }
@@ -162,7 +203,12 @@ const caseSelect = {
       registeredAt: true,
       deliveryContactPhone: true,
       serviceNumber: true,
+      ...salesRecoveryFallOrderSelect,
     },
+  },
+  phones: {
+    where: { kind: "CONTACT" as const, invalidMarkedAt: null },
+    select: { phoneNumber: true },
   },
   recoveredDitoOrder: { select: { orderCodeRaw: true } },
   attempts: {
@@ -252,11 +298,36 @@ function mapCase(
   priority: string | null,
   stage: InternalRecoveryStage | null,
   access: SalesRecoveryAccess,
+  now: Date,
 ): SalesRecoveryCaseItem {
   const status = String(row.status);
   const lastAttempt = row.attempts[0] ?? null;
   const isResolved = stage === null;
-  const contactPhone = row.sourceDitoOrder?.deliveryContactPhone ?? null;
+  const saleAt = row.sourceDitoOrder?.registeredAt ?? row.lastSightingAt;
+  const phoneOptions = [
+    ...new Set(
+      [
+        ...row.phones.map((phone) => phone.phoneNumber),
+        row.sourceDitoOrder?.deliveryContactPhone ?? null,
+        row.sourceDitoOrder?.serviceNumber ?? null,
+      ].filter((phone): phone is string => Boolean(phone)),
+    ),
+  ];
+  const contactPhone = phoneOptions[0] ?? null;
+  // SPEC-068: la misma regla que «Mi día» y la ficha; si hoy no toca, la
+  // etapa dice en qué está y cuándo vuelve.
+  const todayWork = isResolved
+    ? null
+    : describeSalesRecoveryWork(
+        {
+          status,
+          saleAt,
+          firstContactAt: row.firstContactAt,
+          nextActionAt: row.nextActionAt,
+          noveltyAt: row.lastSightingAt,
+        },
+        now,
+      );
 
   return {
     id: row.id,
@@ -268,13 +339,7 @@ function mapCase(
     holderName: row.holderName,
     documentNumber: row.documentNumber,
     contactPhone,
-    phoneOptions: [
-      ...new Set(
-        [contactPhone, row.sourceDitoOrder?.serviceNumber ?? null].filter(
-          (phone): phone is string => Boolean(phone),
-        ),
-      ),
-    ],
+    phoneOptions,
     status,
     priority,
     entryReason: row.entryReason ? String(row.entryReason) : null,
@@ -282,9 +347,9 @@ function mapCase(
     assignedToName: row.assignedUser?.name ?? null,
     originalAgentName: row.originalAgent?.name ?? null,
     originalTeamName: row.originalTeam?.name ?? null,
-    noveltyAtLabel: formatLimaDateTime(row.lastSightingAt),
+    noveltyAtLabel: formatCampaignMoment(row.lastSightingAt),
     nextActionAtLabel: row.nextActionAt
-      ? formatLimaDateTime(row.nextActionAt)
+      ? formatCampaignMoment(row.nextActionAt)
       : null,
     due: stage?.due ?? null,
     stage,
@@ -292,19 +357,38 @@ function mapCase(
     lastResult: lastAttempt ? String(lastAttempt.result) : null,
     lastObservation: lastAttempt?.observation ?? null,
     lastAttemptAtLabel: lastAttempt
-      ? formatLimaDateTime(lastAttempt.createdAt)
+      ? formatCampaignMoment(lastAttempt.createdAt)
       : null,
     // BR-029b: el asesor solo gestiona lo suyo; la supervisión, su alcance.
     canManage:
       !isResolved &&
       (access.role !== "AGENT" || row.assignedUserId === access.userId),
-    resolvedAtLabel: row.resolvedAt ? formatLimaDateTime(row.resolvedAt) : null,
+    resolvedAtLabel: row.resolvedAt ? formatCampaignMoment(row.resolvedAt) : null,
     resolutionLabel:
       status === "RECOVERED"
         ? `Recuperada${row.recoveredDitoOrder ? ` con ${row.recoveredDitoOrder.orderCodeRaw}` : ""}`
         : status === "LOST"
           ? `Perdida${row.lossReason ? ` · ${lossReasonLabels[String(row.lossReason)] ?? String(row.lossReason)}` : ""}`
           : null,
+    hot: isMyDayHotSale(saleAt, now),
+    work: isResolved
+      ? null
+      : todayWork
+        ? { action: todayWork.action, due: todayWork.due }
+        : {
+            action: stage?.label ?? "Sin acción pendiente",
+            due: row.nextActionAt
+              ? {
+                  label: describeMyDayDue(row.nextActionAt, now),
+                  tone: "neutral",
+                }
+              : null,
+          },
+    fallReason: describeSalesRecoveryFall(row),
+    saleDayLabel: formatMyDaySaleDay(saleAt),
+    sellerIsAssignee:
+      row.originalAgentUserId !== null &&
+      row.originalAgentUserId === row.assignedUserId,
   };
 }
 
@@ -468,6 +552,10 @@ export async function getSalesRecoveryInbox(
         ),
         nextActionAt: row.nextActionAt,
         noveltyAt: row.lastSightingAt,
+        hot: isMyDayHotSale(
+          row.sourceDitoOrder?.registeredAt ?? row.lastSightingAt,
+          now,
+        ),
       };
     })
     .sort(compareInternalRecoveryCases);
@@ -478,6 +566,7 @@ export async function getSalesRecoveryInbox(
 
   let pagination: SalesRecoveryInboxData["pagination"];
   let items: SalesRecoveryCaseItem[];
+  let hotItems: SalesRecoveryCaseItem[] = [];
 
   if (view === "abiertos") {
     const selected = ranked.filter(
@@ -487,17 +576,23 @@ export async function getSalesRecoveryInbox(
         (!filters.status || String(item.row.status) === filters.status) &&
         matchesInternalRecoveryDueFilter(item.due, filters.due),
     );
+    // SPEC-068: las calientes completas y primero; las antiguas, paginadas
+    // y plegadas, como en «Mi día».
+    hotItems = selected
+      .filter((item) => item.hot)
+      .map((item) => mapCase(item.row, item.priority, item.stage, access, now));
+    const cold = selected.filter((item) => !item.hot);
     const totalPages = Math.max(
       1,
-      Math.ceil(selected.length / salesRecoveryPageSize),
+      Math.ceil(cold.length / salesRecoveryPageSize),
     );
     const page = Math.min(requestedPage, totalPages);
     const start = (page - 1) * salesRecoveryPageSize;
 
-    pagination = { page, totalPages, total: selected.length };
-    items = selected
+    pagination = { page, totalPages, total: cold.length };
+    items = cold
       .slice(start, start + salesRecoveryPageSize)
-      .map((item) => mapCase(item.row, item.priority, item.stage, access));
+      .map((item) => mapCase(item.row, item.priority, item.stage, access, now));
   } else {
     // Resueltos: lo más reciente primero. Aquí sí pagina la base, porque el
     // histórico crece sin tope y no hay nada que ordenar en memoria.
@@ -526,15 +621,50 @@ export async function getSalesRecoveryInbox(
 
     pagination = { page, totalPages, total };
     items = rows.map((row) =>
-      mapCase(row, row.priority ? String(row.priority) : null, null, access),
+      mapCase(row, row.priority ? String(row.priority) : null, null, access, now),
     );
   }
 
-  const countDue = (due: InternalRecoveryDue) =>
-    ranked.filter((item) => item.due === due).length;
+  const neverCalled = (item: (typeof ranked)[number]) =>
+    item.row.firstContactAt === null &&
+    String(item.row.status) !== "WAITING" &&
+    String(item.row.status) !== "SCHEDULED";
+  const followUpOverdue = (item: (typeof ranked)[number]) =>
+    item.due === "seguimiento" || item.due === "agenda";
+
+  // SPEC-068: por asesor, para quien reparte. Primero quien más calientes
+  // tiene sin llamar.
+  const advisorGroups = new Map<string, SalesRecoveryAdvisorSummary>();
+  if (canAssign) {
+    for (const item of ranked) {
+      const key = item.row.assignedUserId ?? "";
+      const group = advisorGroups.get(key) ?? {
+        userId: item.row.assignedUserId,
+        name: item.row.assignedUser?.name ?? "Sin responsable",
+        hotNotCalled: 0,
+        hotTotal: 0,
+        hotFollowUpOverdue: 0,
+        coldTotal: 0,
+      };
+      if (item.hot) {
+        group.hotTotal += 1;
+        if (neverCalled(item)) group.hotNotCalled += 1;
+        if (followUpOverdue(item)) group.hotFollowUpOverdue += 1;
+      } else {
+        group.coldTotal += 1;
+      }
+      advisorGroups.set(key, group);
+    }
+  }
+  const byAdvisor = [...advisorGroups.values()].sort(
+    (left, right) =>
+      right.hotNotCalled - left.hotNotCalled ||
+      right.hotTotal - left.hotTotal ||
+      left.name.localeCompare(right.name, "es"),
+  );
 
   return {
-    generatedAt: formatLimaDateTime(now),
+    generatedAt: formatCampaignMoment(now),
     role: access.role,
     scopeLabel:
       access.role === "AGENT"
@@ -552,14 +682,20 @@ export async function getSalesRecoveryInbox(
     filters,
     totals: {
       open: ranked.length,
-      firstContactOverdue: countDue("primer_contacto"),
-      followUpOverdue: countDue("seguimiento"),
-      agendaOverdue: countDue("agenda"),
+      hot: ranked.filter((item) => item.hot).length,
+      cold: ranked.filter((item) => !item.hot).length,
+      hotNotCalled: ranked.filter((item) => item.hot && neverCalled(item))
+        .length,
+      hotFollowUpOverdue: ranked.filter(
+        (item) => item.hot && followUpOverdue(item),
+      ).length,
       criticalUnassigned: ranked.filter(
         (item) => item.priority === "CRITICA" && item.row.assignedUser === null,
       ).length,
       recoveredThisMonth,
     },
+    byAdvisor,
+    hotCases: hotItems,
     pagination,
     cases: items,
   };

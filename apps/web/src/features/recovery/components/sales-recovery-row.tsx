@@ -3,18 +3,10 @@
 import Link from "next/link";
 import { useCallback, useId, useState } from "react";
 
-import {
-  internalRecoveryDueOptions,
-  salesRecoveryOpenStatusOptions,
-  salesRecoveryPriorityOptions,
-  salesRecoveryReasonOptions,
-  salesRecoveryResolvedStatusOptions,
-} from "@repo/validation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-import {
-  attemptResultLabels,
-  attemptResultTones,
-} from "../attempt-result-labels";
+import { attemptResultLabels } from "../attempt-result-labels";
 import { buildOrderHref } from "../order-link";
 import { AssignSalesRecoveryForm } from "./assign-sales-recovery-form";
 import {
@@ -22,35 +14,17 @@ import {
   type ConfirmedAttempt,
 } from "./campaign-attempt-editor";
 import { useCampaignDraft } from "./campaign-draft-context";
-import { CopyValue } from "./copy-value";
+import { PhoneNumber } from "./phone-number";
 
 import type { SalesRecoveryCaseItem } from "../server/get-sales-recovery-inbox";
 
-const toLabels = (
-  options: ReadonlyArray<{ value: string; label: string }>,
-): Record<string, string> =>
-  Object.fromEntries(options.map((option) => [option.value, option.label]));
-
-const reasonLabels = toLabels(salesRecoveryReasonOptions);
-const statusLabels = {
-  ...toLabels(salesRecoveryOpenStatusOptions),
-  ...toLabels(salesRecoveryResolvedStatusOptions),
-};
-const priorityLabels = toLabels(salesRecoveryPriorityOptions);
-const dueLabels = toLabels(internalRecoveryDueOptions);
-
-export const salesRecoveryColumnCount = 8;
-
 /**
- * Fila de la bandeja de recupero — SPEC-041 fase 3 (REC-04, REC-05).
- *
- * Antes cada fila traía el formulario de reasignación abierto y para
- * registrar una llamada había que abrir la ficha. Ahora la fila enseña el
- * teléfono copiable, la última gestión y la etapa de la cadencia, y desde
- * aquí mismo se registra la siguiente con el editor de Campañas (BR-090):
- * una sola gestión abierta a la vez, clave de idempotencia, y la fila se
- * actualiza con lo que el servidor confirmó. Reasignar se abre solo al
- * pedirlo.
+ * Una venta caída en la bandeja — SPEC-041 y SPEC-068. La tarjeta de «Mi
+ * día»: el plazo con la misma regla, el cliente con su teléfono, qué hacer y
+ * por qué se cayó; debajo, la última gestión y quién la tiene. «Registrar
+ * gestión» abre el editor en la tarjeta (BR-090) y «Reasignar» su formulario,
+ * solo al pedirlo. Antes era una fila de ocho columnas que no cabía: la
+ * gestión y la próxima acción quedaban cortadas a la derecha.
  */
 export function SalesRecoveryRow({
   item,
@@ -65,6 +39,7 @@ export function SalesRecoveryRow({
 }) {
   const draft = useCampaignDraft();
   const editorId = useId();
+  const assignId = useId();
   const editing = draft.editingId === item.id;
   const [reassigning, setReassigning] = useState(false);
   const [confirmed, setConfirmed] = useState<ConfirmedAttempt | null>(null);
@@ -80,182 +55,151 @@ export function SalesRecoveryRow({
   const lastObservation = confirmed
     ? confirmed.observation
     : item.lastObservation;
-  const status = confirmed?.status ?? item.status;
-  const nextActionAtLabel = confirmed
-    ? confirmed.nextActionAtLabel
-    : item.nextActionAtLabel;
-  // Tras guardar, lo vencido dejó de estarlo: la próxima acción es nueva.
-  const due = confirmed ? null : item.due;
-  const stageLabel = confirmed
-    ? confirmed.mustResolve
-      ? "Cadencia agotada"
-      : confirmed.status === "SCHEDULED"
-        ? "Agenda acordada"
-        : confirmed.result === "RECHAZA" || confirmed.result === "CANCELADO"
-          ? "En pausa"
-          : "Seguimiento"
-    : item.stage?.label;
-  const stageDetail = confirmed ? undefined : item.stage?.detail;
-  const tone = lastResult ? attemptResultTones[lastResult] : undefined;
+  const lastLine = lastResult
+    ? [
+        `Última gestión: ${attemptResultLabels[lastResult] ?? lastResult}`,
+        confirmed ? null : item.lastAttemptAtLabel,
+        lastObservation ? `«${lastObservation}»` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "Sin gestión";
+  const ownerLine = [
+    item.assignedToName
+      ? `Responsable: ${item.assignedToName}`
+      : "Sin responsable",
+    // BR-012: el vendedor solo si no es quien la tiene.
+    item.originalAgentName && !item.sellerIsAssignee
+      ? `venta de ${item.originalAgentName}${item.originalTeamName ? ` · ${item.originalTeamName}` : ""}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const canReassign = canAssign && !resolvedView;
 
   return (
-    <>
-      <tr
-        aria-selected={editing || undefined}
-        className={editing ? "bg-ui-accent-soft" : undefined}
-        data-no-sales={due ? "true" : undefined}
-        data-result-tone={tone}
-        key={item.id}
-      >
-        <td>
-          <Link href={`/recovery/sales/${item.id}`}>
-            <strong>{item.holderName}</strong>
-          </Link>
-          <small>
-            DNI <CopyValue label="DNI" value={item.documentNumber} />
-          </small>
-          {item.contactPhone ? (
-            <small>
-              <CopyValue label="Teléfono" value={item.contactPhone} />
-            </small>
-          ) : null}
-        </td>
-        <td>
-          {item.orderCode ? (
+    <article
+      aria-current={editing || undefined}
+      className={`rounded-lg border bg-ui-surface ${
+        editing ? "border-ui-accent" : "border-ui-border"
+      } ${confirmed && !editing ? "opacity-70" : ""}`}
+      id={`venta-${item.id}`}
+    >
+      <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ui-soft">
+            {confirmed ? (
+              <Badge tone="success">
+                Gestionado:{" "}
+                {attemptResultLabels[confirmed.result] ?? confirmed.result}
+              </Badge>
+            ) : item.hot && item.work?.due ? (
+              <Badge tone={item.work.due.tone}>{item.work.due.label}</Badge>
+            ) : null}
+            {item.isCritical ? <Badge tone="danger">Crítica</Badge> : null}
+            <span>
+              Venta del {item.saleDayLabel}
+              {item.orderCode ? (
+                <>
+                  {" · pedido "}
+                  <Link
+                    className="text-ui-accent underline-offset-2 hover:underline"
+                    href={buildOrderHref(item.orderCode, item.orderRegisteredDay)}
+                  >
+                    {item.orderCode}
+                  </Link>
+                </>
+              ) : null}
+            </span>
+          </p>
+          <h3 className="mt-1 flex flex-wrap items-baseline gap-x-3 text-base font-semibold text-ui-text">
             <Link
-              href={buildOrderHref(item.orderCode, item.orderRegisteredDay)}
+              className="min-w-0 truncate underline-offset-2 hover:underline"
+              href={`/recovery/sales/${item.id}`}
             >
-              {item.orderCode}
+              {item.holderName}
             </Link>
-          ) : (
-            "—"
-          )}
-          <small>Se cayó el {item.noveltyAtLabel}</small>
-        </td>
-        <td>
-          {item.entryReason
-            ? (reasonLabels[item.entryReason] ?? item.entryReason)
-            : "—"}
-          {item.entryObservation ? (
-            <small title={item.entryObservation}>
-              {item.entryObservation.length > 60
-                ? `${item.entryObservation.slice(0, 60)}…`
-                : item.entryObservation}
-            </small>
-          ) : null}
-        </td>
-        <td>
-          {item.priority
-            ? (priorityLabels[item.priority] ?? item.priority)
-            : "—"}
-        </td>
-        <td>{statusLabels[status] ?? status}</td>
-        <td>
-          {item.assignedToName ?? <strong>Sin responsable</strong>}
-          {item.originalAgentName ? (
-            <small>
-              Venta de {item.originalAgentName}
-              {item.originalTeamName ? ` · ${item.originalTeamName}` : ""}
-            </small>
-          ) : null}
-          {canAssign && !resolvedView ? (
-            reassigning ? (
-              <AssignSalesRecoveryForm
-                advisors={advisors}
-                blockedAdvisorId={
-                  item.isCritical ? item.originalAgentUserId : null
-                }
-                caseId={item.id}
-                hasAssignee={item.assignedToName !== null}
-              />
-            ) : (
-              <button
-                className="ui-row-toggle mt-1"
-                onClick={() => setReassigning(true)}
-                type="button"
-              >
-                {item.assignedToName ? "Reasignar" : "Asignar"}
-              </button>
-            )
-          ) : null}
-        </td>
-        <td className="text-xs">
-          <span
-            className="ui-status-badge"
-            data-tone={lastResult ? (tone ?? "neutral") : "neutral"}
-          >
-            {lastResult
-              ? (attemptResultLabels[lastResult] ?? lastResult)
-              : "Sin gestión"}
-          </span>
-          {lastObservation ? (
-            <small className="ui-cell-clamp" title={lastObservation}>
-              {lastObservation}
-            </small>
-          ) : null}
-          {item.lastAttemptAtLabel && !confirmed ? (
-            <small>{item.lastAttemptAtLabel}</small>
+            {item.contactPhone ? <PhoneNumber phone={item.contactPhone} /> : null}
+          </h3>
+          <p className="mt-0.5 text-sm text-ui-text">
+            {resolvedView
+              ? [item.resolutionLabel, item.resolvedAtLabel ? `el ${item.resolvedAtLabel}` : null]
+                  .filter(Boolean)
+                  .join(" · ")
+              : confirmed
+                ? confirmed.nextActionAtLabel
+                  ? `Próxima acción: ${confirmed.nextActionAtLabel}`
+                  : "Gestión registrada"
+                : (item.work?.action ?? "Sin acción pendiente")}
+          </p>
+          {item.fallReason && !confirmed ? (
+            <p className="mt-0.5 text-xs text-ui-muted">{item.fallReason}</p>
           ) : null}
           {unmanageableReason ? (
-            <small className="text-ui-danger">{unmanageableReason}</small>
-          ) : item.canManage && !resolvedView && !editing ? (
-            <button
+            <p className="mt-0.5 text-xs text-ui-danger">{unmanageableReason}</p>
+          ) : null}
+          <p className="mt-1 text-xs text-ui-muted">
+            <span className="line-clamp-2">{lastLine}</span>
+            <span className="block">{ownerLine}</span>
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+          {canReassign ? (
+            <Button
+              aria-controls={assignId}
+              aria-expanded={reassigning}
+              onClick={() => setReassigning((current) => !current)}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              {item.assignedToName ? "Reasignar" : "Asignar"}
+            </Button>
+          ) : null}
+          <Button asChild size="inline" variant="link">
+            <Link href={`/recovery/sales/${item.id}`}>Abrir caso</Link>
+          </Button>
+          {item.canManage && !resolvedView && !editing && !unmanageableReason ? (
+            <Button
               aria-controls={editorId}
               aria-expanded={false}
-              className="ui-row-toggle mt-1"
+              aria-label={`Registrar gestión: ${item.holderName}`}
               onClick={() => draft.startEditing(item.id)}
               type="button"
             >
-              Registrar gestión
-            </button>
+              {confirmed ? "Otra gestión" : "Registrar gestión"}
+            </Button>
           ) : null}
-        </td>
-        <td>
-          {resolvedView ? (
-            <>
-              {item.resolutionLabel ?? "—"}
-              {item.resolvedAtLabel ? (
-                <small>El {item.resolvedAtLabel}</small>
-              ) : null}
-            </>
-          ) : (
-            <>
-              {nextActionAtLabel ??
-                (due === "primer_contacto" ? "Llamar ya" : "—")}
-              {due ? (
-                <small>{dueLabels[due] ?? due}</small>
-              ) : stageLabel ? (
-                <small title={stageDetail}>{stageLabel}</small>
-              ) : null}
-            </>
-          )}
-        </td>
-      </tr>
+        </div>
+      </div>
+
+      {canReassign && reassigning ? (
+        <div className="border-t border-ui-border bg-ui-subtle p-4" id={assignId}>
+          <AssignSalesRecoveryForm
+            advisors={advisors}
+            blockedAdvisorId={item.isCritical ? item.originalAgentUserId : null}
+            caseId={item.id}
+            hasAssignee={item.assignedToName !== null}
+          />
+        </div>
+      ) : null}
 
       {editing ? (
-        <tr data-result-tone={tone}>
-          <td
-            className="ui-row-panel"
-            colSpan={salesRecoveryColumnCount}
-            id={editorId}
-          >
-            <p className="mb-2 text-sm font-medium text-ui-text lg:hidden">
-              {item.holderName} · {item.documentNumber}
-            </p>
-            <CampaignAttemptEditor
-              caseId={item.id}
-              defaultPhone={item.contactPhone}
-              holderName={item.holderName}
-              lastObservation={lastObservation}
-              lastResult={lastResult}
-              onCancel={draft.stopEditing}
-              onSaved={handleSaved}
-              onUnmanageable={setUnmanageableReason}
-              phoneOptions={item.phoneOptions}
-            />
-          </td>
-        </tr>
+        <div className="border-t border-ui-border bg-ui-subtle p-4" id={editorId}>
+          <CampaignAttemptEditor
+            caseId={item.id}
+            defaultPhone={item.contactPhone}
+            holderName={item.holderName}
+            lastObservation={lastObservation}
+            lastResult={lastResult}
+            onCancel={draft.stopEditing}
+            onSaved={handleSaved}
+            onUnmanageable={setUnmanageableReason}
+            phoneOptions={item.phoneOptions}
+          />
+        </div>
       ) : null}
-    </>
+    </article>
   );
 }

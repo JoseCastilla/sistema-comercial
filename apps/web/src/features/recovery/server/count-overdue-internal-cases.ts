@@ -49,6 +49,11 @@ export async function getSalesRecoveryAccessWhere(
   };
 }
 
+/**
+ * SPEC-068 BR-008: el aviso y el resumen cuentan solo lo caliente —ventas de
+ * los últimos 7 días—, igual que el del asesor (SPEC-063 BR-014). Lo antiguo
+ * sigue en la bandeja, plegado, sin hacer ruido.
+ */
 export async function countOverdueInternalCases(
   organizationId: string,
   access: OverdueCountAccess,
@@ -67,11 +72,16 @@ export async function countOverdueInternalCases(
       firstContactAt: true,
       nextActionAt: true,
       lastSightingAt: true,
+      sourceDitoOrder: { select: { registeredAt: true } },
     },
   });
 
   return rows.filter(
     (row) =>
+      isMyDayHotSale(
+        row.sourceDitoOrder?.registeredAt ?? row.lastSightingAt,
+        now,
+      ) &&
       classifyInternalRecoveryDue(
         {
           status: String(row.status),

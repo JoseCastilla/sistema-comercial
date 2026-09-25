@@ -48,9 +48,9 @@ export function describeAdminPending(
       items: [
         {
           key: "overdue-internal",
-          label: "Casos vencidos",
+          label: "Ventas calientes vencidas",
           definition:
-            "Primer contacto, seguimiento o agenda con la fecha ya pasada.",
+            "Ventas de los últimos 7 días con el primer contacto, el seguimiento o la agenda vencidos. Las antiguas no cuentan aquí.",
           count: counts.overdueInternalCases,
           responsible:
             "El responsable del caso; sin responsable, su supervisor",

@@ -153,7 +153,7 @@ export function EscalationNotification({ role }: { role: string }) {
           aria-label={
             isAgent
               ? `${recoveryOverdue} ventas caídas recientes por llamar`
-              : `${recoveryOverdue} recuperos con la próxima acción vencida`
+              : `${recoveryOverdue} ventas caídas calientes vencidas`
           }
           className="flex items-center gap-2 rounded-full border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-sm font-semibold text-ui-warning"
           href={isAgent ? "/my-day" : "/recovery/sales?vence=vencido"}
@@ -167,8 +167,8 @@ export function EscalationNotification({ role }: { role: string }) {
                 ? "venta caída por llamar"
                 : "ventas caídas por llamar"
               : recoveryOverdue === 1
-                ? "recupero vencido"
-                : "recuperos vencidos"}
+                ? "venta caliente vencida"
+                : "ventas calientes vencidas"}
           </span>
         </Link>
       ) : null}
