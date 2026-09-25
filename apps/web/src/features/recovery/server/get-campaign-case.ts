@@ -31,7 +31,6 @@ import {
 } from "@repo/validation";
 
 import { database } from "@/server/database";
-import { formatLimaDateTime } from "@repo/ui/format";
 
 import { lossReasonLabels } from "../loss-reason-labels";
 
@@ -379,12 +378,12 @@ export async function getCampaignCase(
     assignedToName: recoveryCase.assignedUser?.name ?? null,
     isAssignedToViewer,
     sightingCount: recoveryCase._count.sightings,
-    lastSightingLabel: formatLimaDateTime(recoveryCase.lastSightingAt),
+    lastSightingLabel: formatCampaignMoment(recoveryCase.lastSightingAt),
     claimedAtLabel: recoveryCase.claimedAt
-      ? formatLimaDateTime(recoveryCase.claimedAt)
+      ? formatCampaignMoment(recoveryCase.claimedAt)
       : null,
     nextActionAtLabel: recoveryCase.nextActionAt
-      ? formatLimaDateTime(recoveryCase.nextActionAt)
+      ? formatCampaignMoment(recoveryCase.nextActionAt)
       : null,
     nextActionOverdue:
       recoveryCase.nextActionAt !== null &&
@@ -464,7 +463,7 @@ export async function getCampaignCase(
       motherName: recoveryCase.motherName,
       birthPlace: recoveryCase.birthPlace,
       revealedAtLabel: recoveryCase.sensitiveRevealedAt
-        ? formatLimaDateTime(recoveryCase.sensitiveRevealedAt)
+        ? formatCampaignMoment(recoveryCase.sensitiveRevealedAt)
         : null,
     },
     attempts: recoveryCase.attempts.map((attempt) => {
@@ -484,13 +483,13 @@ export async function getCampaignCase(
         phoneUsed: attempt.phoneUsed,
         observation: attempt.correction?.observation ?? attempt.observation,
         actorName: attempt.actor.name,
-        createdAtLabel: formatLimaDateTime(attempt.createdAt),
+        createdAtLabel: formatCampaignMoment(attempt.createdAt),
         correction: attempt.correction
           ? {
               observation: attempt.correction.observation,
               correctionReason: attempt.correction.correctionReason,
               actorName: attempt.correction.actor.name,
-              createdAtLabel: formatLimaDateTime(attempt.correction.createdAt),
+              createdAtLabel: formatCampaignMoment(attempt.correction.createdAt),
             }
           : null,
         canCorrect: canCorrect(attempt),
@@ -499,7 +498,7 @@ export async function getCampaignCase(
     recoveredOrderSuggestions: suggestions.map((order) => ({
       id: order.id,
       orderCode: order.orderCodeRaw,
-      registeredAtLabel: formatLimaDateTime(order.registeredAt),
+      registeredAtLabel: formatCampaignMoment(order.registeredAt),
       status: String(order.status),
     })),
     // SPEC-049 BR-007: el mismo selector que la bandeja y la agenda.
@@ -561,14 +560,14 @@ export async function getCampaignCase(
       return pending
         ? {
             id: pending.id,
-            scheduledAtLabel: formatLimaDateTime(pending.scheduledAt),
+            scheduledAtLabel: formatCampaignMoment(pending.scheduledAt),
             overdue: pending.scheduledAt.getTime() < now.getTime(),
           }
         : null;
     })(),
     commitments: recoveryCase.commitments.map((commitment) => ({
       id: commitment.id,
-      scheduledAtLabel: formatLimaDateTime(commitment.scheduledAt),
+      scheduledAtLabel: formatCampaignMoment(commitment.scheduledAt),
       stateLabel:
         recoveryCommitmentStateLabels[
           describeRecoveryCommitmentState(
@@ -578,10 +577,10 @@ export async function getCampaignCase(
           )
         ],
       reason: commitment.reason,
-      createdAtLabel: formatLimaDateTime(commitment.createdAt),
+      createdAtLabel: formatCampaignMoment(commitment.createdAt),
       createdByName: commitment.createdBy.name,
       closedAtLabel: commitment.closedAt
-        ? formatLimaDateTime(commitment.closedAt)
+        ? formatCampaignMoment(commitment.closedAt)
         : null,
     })),
   };

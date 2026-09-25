@@ -12,4 +12,4 @@
       historial en lista, encabezados sin jerga (BR-012 a BR-014).
 - [x] Grupo 4, cierre sin preselección (BR-015).
 - [x] Pruebas: validation 406; web 252 (`ficha-caso.test.tsx` 8 de 8).
-- [ ] Lectura en producción.
+- [x] Lectura en producción (25/09/2026).

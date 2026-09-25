@@ -1,6 +1,6 @@
 # SPEC-067 — Ficha del caso, control por control
 
-**Estado:** `ENTREGADA` — quince mejoras aprobadas por José (25/09/2026)
+**Estado:** `VERIFICADA` — quince mejoras aprobadas por José, verificadas en producción (25/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25
