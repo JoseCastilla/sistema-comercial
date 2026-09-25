@@ -33,6 +33,7 @@ export * from "./recovery-work-views.js";
 export * from "./my-day.js";
 export * from "./my-day-sales.js";
 export * from "./campaign-work.js";
+export * from "./sales-recovery-work.js";
 export * from "./recovery-attempt-corrections.js";
 export * from "./recovery-attempt-quality.js";
 export * from "./recovery-board-period.js";

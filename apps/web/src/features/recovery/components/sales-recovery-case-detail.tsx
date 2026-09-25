@@ -1,40 +1,17 @@
 import Link from "next/link";
 
+import { formatCount } from "@repo/ui/format";
 import { PageHeader } from "@repo/ui/page-header";
-import { attemptResultLabels } from "../attempt-result-labels";
+import { SectionPanel } from "@repo/ui/section-panel";
 
-import { RegisterAttemptForm } from "./register-attempt-form";
-import { ResolveCaseForm } from "./resolve-case-form";
+import { attemptResultLabels } from "../attempt-result-labels";
 import { buildOrderHref } from "../order-link";
 
+import { CaseWorkCard } from "./case-work-card";
+import { CopyValue } from "./copy-value";
+import { ResolveCaseForm } from "./resolve-case-form";
+
 import type { SalesRecoveryCaseDetail } from "../server/get-sales-recovery-case";
-
-const reasonLabels: Record<string, string> = {
-  NO_ENTREGADO: "No recibió",
-  INCIDENCIA_LOGISTICA: "Incidencia logística",
-  PROMESA_COMERCIAL_INCORRECTA: "Promesa comercial incorrecta",
-  DEUDA: "Deuda",
-  ANTIGUEDAD_PORTA: "Antigüedad de porta",
-  OTRO: "Otro",
-};
-
-const statusLabels: Record<string, string> = {
-  OPEN: "Sin responsable",
-  ASSIGNED: "Asignado",
-  IN_PROGRESS: "En gestión",
-  SCHEDULED: "Agendado",
-  WAITING: "Esperando confirmación",
-  RECOVERED: "Recuperado",
-  LOST: "Perdido",
-  DISCARDED: "Cerrado: ya era Movistar",
-};
-
-const priorityLabels: Record<string, string> = {
-  CRITICA: "Crítica",
-  ALTA: "Alta",
-  MEDIA: "Media",
-  CONDICIONADA: "Condicionada",
-};
 
 const channelLabels: Record<string, string> = {
   LLAMADA: "Llamada",
@@ -44,188 +21,165 @@ const channelLabels: Record<string, string> = {
   OTRO: "Otro",
 };
 
-const resultLabels = attemptResultLabels;
-
+/**
+ * Ficha de una venta caída (SPEC-067). La misma estructura que la de
+ * Campañas: arriba la tarjeta de «Mi día» —plazo, qué hacer, por qué se cayó,
+ * el número y el editor de botones—; debajo el historial y, al final, cerrar
+ * el caso. Antes eran cuatro tarjetas de cifras («Asignado», el código del
+ * pedido en grande), un párrafo de reglas y un formulario de listas recortado
+ * por su propio recuadro.
+ */
 export function SalesRecoveryCaseDetail({
   data,
+  from,
 }: {
   data: SalesRecoveryCaseDetail;
+  /** De dónde vino el asesor, para volver ahí (BR-004). */
+  from?: string;
 }) {
+  const back =
+    from === "mi-dia"
+      ? { href: `/my-day#mi-dia-${data.id}`, label: "← Volver a Mi día" }
+      : { href: "/recovery/sales", label: "← Volver a Recupero de ventas" };
+  const count = data.attempts.length;
+
   return (
     <div className="ui-page-stack">
       <PageHeader
-        description={
-          data.isResolved
-            ? (data.resolutionLabel ?? "Caso resuelto")
-            : "Registra cada intento; el sistema te dice cuándo volver a llamar."
-        }
-        eyebrow={`Recupero de ventas · ${data.priority ? (priorityLabels[data.priority] ?? data.priority) : "Sin prioridad"}`}
-        meta={<Link href="/recovery/sales">← Volver a la bandeja</Link>}
+        description={data.isResolved ? (data.resolutionLabel ?? "Caso resuelto") : undefined}
+        eyebrow="Venta caída"
+        meta={<Link href={back.href}>{back.label}</Link>}
         title={data.holderName}
       />
 
-      <section aria-label="Datos del caso" className="reconciliation-summary">
-        <article>
-          <span>Estado</span>
-          <strong>{statusLabels[data.status] ?? data.status}</strong>
-          <small>
-            {data.assignedToName
-              ? `Responsable: ${data.assignedToName}`
-              : "Sin responsable"}
-          </small>
-        </article>
-        <article>
-          <span>Venta origen</span>
-          <strong>
-            {data.orderCode ? (
-              <Link
-                href={buildOrderHref(data.orderCode, data.orderRegisteredDay)}
-              >
-                {data.orderCode}
-              </Link>
-            ) : (
-              "—"
-            )}
-          </strong>
-          <small>
+      {data.isResolved ? null : (
+        <CaseWorkCard
+          action={data.work?.action ?? "Sin acción pendiente"}
+          canManage={data.canManage}
+          caseId={data.id}
+          due={data.work?.due ?? null}
+          holderName={data.holderName}
+          lastObservation={data.lastObservation}
+          lastResult={data.lastResult}
+          meta={
+            <>
+              {data.saleDayLabel ? `Venta del ${data.saleDayLabel}` : "Venta"}
+              {data.orderCode ? (
+                <>
+                  {" · pedido "}
+                  <Link
+                    className="text-ui-accent underline-offset-2 hover:underline"
+                    href={buildOrderHref(data.orderCode, data.orderRegisteredDay)}
+                  >
+                    {data.orderCode}
+                  </Link>
+                </>
+              ) : null}
+            </>
+          }
+          notes={data.fallReason ? [{ text: data.fallReason }] : []}
+          phone={data.phoneOptions[0] ?? null}
+          phoneOptions={data.phoneOptions}
+          serviceNumbers={[]}
+        />
+      )}
+
+      {/* BR-011: la regla del plazo, plegada y en palabras simples. */}
+      {data.isResolved ? null : (
+        <details className="rounded-lg border border-ui-border bg-ui-surface text-sm">
+          <summary className="cursor-pointer px-4 py-3 font-semibold text-ui-text">
+            Cómo se calcula el plazo
+          </summary>
+          <div className="grid gap-1 border-t border-ui-border p-4 text-ui-muted">
+            <p>
+              Tienes dos horas desde que la venta se cayó para la primera
+              llamada. Después, el caso vuelve a tocar al día 1, al 3 y al 7
+              desde que lo tomaste.
+            </p>
+            <p>
+              Si acuerdas una llamada con el cliente, se espera esa hora. Si
+              dice que no, el caso descansa uno o dos días. Al día 7 hay que
+              cerrarlo o agendar una fecha.
+            </p>
+            {data.claimedAtLabel ? (
+              <p>Tomaste este caso el {data.claimedAtLabel}.</p>
+            ) : null}
+          </div>
+        </details>
+      )}
+
+      <details className="rounded-lg border border-ui-border bg-ui-surface text-sm">
+        <summary className="cursor-pointer px-4 py-3 font-semibold text-ui-text">
+          Datos de la venta
+        </summary>
+        <div className="grid gap-1 border-t border-ui-border p-4 text-ui-muted">
+          <p>
+            DNI <CopyValue label="DNI" value={data.documentNumber} />
+          </p>
+          <p>
             {data.originalAgentName
               ? `Venta de ${data.originalAgentName}${data.originalTeamName ? ` · ${data.originalTeamName}` : ""}`
               : "Sin asesor registrado"}
-          </small>
-        </article>
-        <article>
-          <span>Contacto</span>
-          <strong>{data.contactPhone ?? "—"}</strong>
-          <small>DNI {data.documentNumber}</small>
-        </article>
-        <article
-          data-tone={
-            data.nextActionOverdue && !data.isResolved ? "attention" : undefined
-          }
-        >
-          <span>{data.stage ? data.stage.label : "Próxima acción"}</span>
-          <strong>
-            {data.nextActionAtLabel ??
-              (data.stage?.key === "primer_contacto" ? "Llamar ya" : "—")}
-          </strong>
-          <small>
-            {data.isResolved ? "Caso cerrado" : (data.stage?.detail ?? "")}
-          </small>
-        </article>
-      </section>
+          </p>
+          <p>
+            Responsable del recupero: {data.assignedToName ?? "sin responsable"}
+          </p>
+          {data.entryObservation ? (
+            <p className="whitespace-pre-wrap">
+              Anotado al abrir el caso: {data.entryObservation}
+            </p>
+          ) : null}
+        </div>
+      </details>
 
-      {data.isResolved ? null : (
-        <section className="performance-panel">
-          <header className="performance-panel__header">
-            <div>
-              <p className="performance-panel__eyebrow">Cómo se calcula</p>
-              <h2>Plazo del recupero</h2>
-              <p>
-                Es independiente del plazo de entrega de la venta. El primer
-                contacto vence dos horas después de que la venta se cayó; luego
-                la cadencia toca los días 1, 3 y 7 desde que se tomó el caso.
-                Una agenda acordada con el cliente la suspende; un rechazo la
-                pausa uno o dos días; al séptimo día el caso entra en resolución
-                obligatoria. No aplica la regla de tres intentos al día de
-                Campañas.
-                {data.claimedAtLabel
-                  ? ` Este caso se tomó el ${data.claimedAtLabel}.`
-                  : ""}
-              </p>
-            </div>
-          </header>
-        </section>
-      )}
-
-      <section className="performance-panel">
-        <header className="performance-panel__header">
-          <div>
-            <p className="performance-panel__eyebrow">Motivo de entrada</p>
-            <h2>
-              {data.entryReason
-                ? (reasonLabels[data.entryReason] ?? data.entryReason)
-                : "Sin motivo"}
-            </h2>
-            {data.entryObservation ? (
-              <p className="whitespace-pre-wrap">{data.entryObservation}</p>
-            ) : null}
-          </div>
-        </header>
-      </section>
+      {/* BR-013: el historial como lista; «gestiones», como el botón. */}
+      <SectionPanel
+        title="Historial de gestiones"
+        description={`${formatCount(count)} ${count === 1 ? "gestión registrada" : "gestiones registradas"}. No se pueden editar y queda quién las hizo.`}
+      >
+        {count === 0 ? (
+          <p className="text-sm text-ui-muted">
+            Todavía no hay gestión sobre este caso.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {data.attempts.map((attempt) => (
+              <li
+                className="rounded-xl border border-ui-border p-3 text-sm"
+                key={attempt.id}
+              >
+                <p className="font-medium text-ui-text">
+                  {attemptResultLabels[attempt.result] ?? attempt.result}
+                  <span className="ml-2 text-xs font-normal text-ui-muted">
+                    {channelLabels[attempt.channel] ?? attempt.channel} ·{" "}
+                    {attempt.createdAtLabel} · {attempt.actorName}
+                    {attempt.phoneUsed ? ` · ${attempt.phoneUsed}` : ""}
+                  </span>
+                </p>
+                {attempt.observation ? (
+                  <p className="mt-1 text-xs text-ui-muted">
+                    «{attempt.observation}»
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionPanel>
 
       {data.canManage && !data.isResolved ? (
-        <div className="performance-insight-grid">
-          <section className="performance-panel">
-            <header className="performance-panel__header">
-              <div>
-                <p className="performance-panel__eyebrow">Gestión</p>
-                <h2>Registrar intento</h2>
-              </div>
-            </header>
-            <RegisterAttemptForm caseId={data.id} />
-          </section>
-          <section className="performance-panel">
-            <header className="performance-panel__header">
-              <div>
-                <p className="performance-panel__eyebrow">Cierre</p>
-                <h2>Resolver el caso</h2>
-              </div>
-            </header>
-            <ResolveCaseForm
-              canUseOther={data.canResolveOther}
-              caseId={data.id}
-              gates={data.lossReasonGates}
-              suggestions={data.recoveredOrderSuggestions}
-            />
-          </section>
-        </div>
+        <SectionPanel
+          title="Cerrar el caso"
+          description="Recuperado pide la venta nueva del cliente; perdido pide el motivo y lo que ese motivo exige."
+        >
+          <ResolveCaseForm
+            canUseOther={data.canResolveOther}
+            caseId={data.id}
+            gates={data.lossReasonGates}
+            suggestions={data.recoveredOrderSuggestions}
+          />
+        </SectionPanel>
       ) : null}
-
-      <section className="performance-panel">
-        <header className="performance-panel__header">
-          <div>
-            <p className="performance-panel__eyebrow">Historial</p>
-            <h2>Intentos registrados</h2>
-            <p>
-              Los intentos no se pueden editar y queda registrado quién los
-              hizo.
-            </p>
-          </div>
-        </header>
-        <div className="ui-table-wrap">
-          <table className="ui-table">
-            <thead>
-              <tr>
-                <th>Momento</th>
-                <th>Canal</th>
-                <th>Resultado</th>
-                <th>Teléfono</th>
-                <th>Observación</th>
-                <th>Quién lo registró</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.attempts.map((attempt) => (
-                <tr key={attempt.id}>
-                  <td>{attempt.createdAtLabel}</td>
-                  <td>{channelLabels[attempt.channel] ?? attempt.channel}</td>
-                  <td>{resultLabels[attempt.result] ?? attempt.result}</td>
-                  <td>{attempt.phoneUsed ?? "—"}</td>
-                  <td>{attempt.observation ?? "—"}</td>
-                  <td>{attempt.actorName}</td>
-                </tr>
-              ))}
-              {data.attempts.length === 0 ? (
-                <tr>
-                  <td className="reconciliation-empty" colSpan={6}>
-                    Aún no hay intentos registrados.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
   );
 }

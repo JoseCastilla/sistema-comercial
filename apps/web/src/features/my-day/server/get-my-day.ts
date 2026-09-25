@@ -2,7 +2,6 @@ import "server-only";
 
 import {
   calculatePerformanceMetrics,
-  classifyInternalRecoveryDue,
   classifyMyDaySale,
   classifyRecoveryWorkItem,
   compareMyDayItems,
@@ -11,13 +10,13 @@ import {
   campaignWorkNotes,
   describeCampaignWorkDue,
   describeMyDayDue,
+  describeSalesRecoveryWork,
   describeMyDaySince,
   formatMyDayTime,
   effectiveAttemptResult,
   formatMyDaySaleDay,
   myDayNoCommissionReasons,
   getDefaultMonthlyQuotaTarget,
-  getInternalRecoveryFirstActionAt,
   getLimaDayOfMonth,
   getLimaIsoDate,
   getOrderPeriodRange,
@@ -27,11 +26,9 @@ import {
   parsePerformanceMonth,
   placeMyDayCommitment,
   placeMyDayOrder,
-  placeMyDaySalesRecovery,
   resolveCurrentAcceleratorWindow,
   resolveRelevantAcceleratorWindow,
   salesRecoveryOpenStatuses,
-  salesRecoveryReasonOptions,
   selectRecoveryAgendaItem,
   summarizeMyDaySales,
   type MyDaySaleBucket,
@@ -43,6 +40,7 @@ import { formatLimaMonth } from "@repo/ui/format";
 
 import { getAgrAction } from "@/features/orders/server/get-order-inbox";
 import { buildOrderHref } from "@/features/recovery/order-link";
+import { describeSalesRecoveryFall } from "@/features/recovery/server/sales-recovery-fall";
 import { database } from "@/server/database";
 import { toMetricInput } from "@/features/performance/server/order-metric-input";
 
@@ -298,58 +296,6 @@ async function readCommitments(
   });
 }
 
-/**
- * Qué hacer con una venta caída, en una frase (fase 6): el plazo ya lo dice
- * la etiqueta, así que la frase no lo repite con otras palabras.
- */
-function salesRecoveryAction(input: {
-  cold: boolean;
-  neverCalled: boolean;
-  overdue: boolean;
-  dueAt: Date | null;
-}): string {
-  if (input.cold)
-    return input.neverCalled ? "Sin llamar" : "Seguimiento pendiente";
-  if (input.neverCalled) {
-    return input.overdue || !input.dueAt
-      ? "Llamar ya"
-      : `Llamar antes de las ${formatMyDayTime(input.dueAt)}`;
-  }
-  return "Volver a llamar";
-}
-
-const entryReasonLabels = new Map<string, string>(
-  salesRecoveryReasonOptions.map((option) => [option.value, option.label]),
-);
-
-/**
- * Por qué se cayó la venta, en palabras del asesor: lo que sugiere la
- * logística si el pedido es una entrega fallida por gestionar; si no, el
- * motivo con que se abrió el caso.
- */
-function fallReason(row: {
-  entryReason: string | null;
-  entryObservation: string | null;
-  sourceDitoOrder: {
-    agrDeliverySnapshot: {
-      estadoPedido: string;
-      motivoRechazo: string | null;
-      submotivoRechazo: string | null;
-      isRecoveryOpportunity: boolean;
-    } | null;
-  } | null;
-}): string | null {
-  const snapshot = row.sourceDitoOrder?.agrDeliverySnapshot;
-  if (snapshot?.isRecoveryOpportunity) return getAgrAction(snapshot).label;
-  // «Otro» no le dice nada al asesor: en su lugar, lo que se anotó al abrir.
-  if (row.entryReason === "OTRO" || !row.entryReason) {
-    const observation = row.entryObservation?.trim() ?? "";
-    if (!observation) return null;
-    return observation.length > 80 ? `${observation.slice(0, 80)}…` : observation;
-  }
-  return entryReasonLabels.get(row.entryReason) ?? null;
-}
-
 async function readSalesRecovery(
   organizationId: string,
   userId: string,
@@ -404,30 +350,22 @@ async function readSalesRecovery(
 
   return rows.flatMap((row, index) => {
     const status = String(row.status);
-    const input = {
-      status,
-      firstContactAt: row.firstContactAt,
-      nextActionAt: row.nextActionAt,
-      noveltyAt: row.lastSightingAt,
-    };
-    const due = classifyInternalRecoveryDue(input, now);
     const saleAt = row.sourceDitoOrder?.registeredAt ?? row.lastSightingAt;
-    const placement = placeMyDaySalesRecovery(
+    // La misma regla que la ficha del caso (SPEC-067): plazo, tono y frase.
+    const work = describeSalesRecoveryWork(
       {
         status,
         saleAt,
         firstContactAt: row.firstContactAt,
         nextActionAt: row.nextActionAt,
-        firstActionAt: getInternalRecoveryFirstActionAt(row.lastSightingAt),
-        due,
+        noveltyAt: row.lastSightingAt,
       },
       now,
     );
-    if (!placement) return [];
+    if (!work) return [];
 
     const last = row.attempts[0];
-    const cold = placement.bucket === "frio";
-    const neverCalled = row.firstContactAt === null;
+    const { placement } = work;
 
     return [
       {
@@ -436,35 +374,23 @@ async function readSalesRecovery(
         ...placement,
         saleAt,
         // Lo frío no se pinta en rojo ni cuenta minutos: no debe hacer ruido.
-        dueLabel:
-          !cold && placement.dueAt
-            ? describeMyDayDue(placement.dueAt, now)
-            : null,
-        overdue: !cold && due !== null,
-        tone: cold
-          ? ("neutral" as const)
-          : due !== null
-            ? ("danger" as const)
-            : ("warning" as const),
+        dueLabel: work.due?.label ?? null,
+        overdue: work.due?.tone === "danger",
+        tone: work.due?.tone ?? ("neutral" as const),
         phone: null,
         rank: index,
         title: row.holderName,
-        action: salesRecoveryAction({
-          cold,
-          neverCalled,
-          overdue: due !== null,
-          dueAt: placement.dueAt,
-        }),
+        action: work.action,
         detail: [
           `Venta del ${formatMyDaySaleDay(saleAt)}`,
           row.sourceDitoOrder
             ? `pedido ${row.sourceDitoOrder.orderCodeRaw}`
             : null,
-          fallReason(row),
+          describeSalesRecoveryFall(row),
         ]
           .filter(Boolean)
           .join(" · "),
-        href: `/recovery/sales/${row.id}`,
+        href: `/recovery/sales/${row.id}?from=mi-dia`,
         actionLabel: "Abrir caso",
         manage: buildManage({
           caseId: row.id,
@@ -577,7 +503,7 @@ async function readCampaign(
     title: row.holderName,
     action: campaignWorkActions[item.kind],
     detail: campaignWorkNotes[item.origin] ?? null,
-    href: `/recovery/campaigns/${row.id}`,
+    href: `/recovery/campaigns/${row.id}?from=mi-dia`,
     actionLabel: "Abrir caso",
     manage: buildManage({
       caseId: row.id,

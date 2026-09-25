@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 
 import {
   countOnSameLimaDay,
@@ -27,7 +26,6 @@ import {
 
 import type {
   CampaignAttemptInlineState,
-  SendOrderToRecoveryActionState,
 } from "./recovery-action.types";
 import type { RecoveryWorkView } from "@repo/validation";
 
@@ -554,42 +552,6 @@ function describeAttemptOutcome(
   }
 
   return parts.join(" ");
-}
-
-/**
- * Acción de la ficha: mensaje en prosa y revalidación de las colas, porque
- * el asesor sale de la ficha hacia su cola y quiere verla ya reordenada.
- */
-export async function registerRecoveryAttemptAction(
-  previousState: SendOrderToRecoveryActionState,
-  formData: FormData,
-): Promise<SendOrderToRecoveryActionState> {
-  void previousState;
-
-  const outcome = await registerRecoveryAttempt(readAttemptInput(formData));
-
-  if (outcome.kind === "INVALID") {
-    return { type: "error", message: outcome.message };
-  }
-
-  if (outcome.kind === "NOT_FOUND") {
-    return {
-      type: "error",
-      message:
-        "El caso no existe, ya se resolvió o no pertenece a tus equipos.",
-    };
-  }
-
-  revalidatePath("/recovery/sales");
-  revalidatePath("/recovery/campaigns");
-  revalidatePath("/recovery/agenda");
-
-  const suffix = describeAttemptOutcome(outcome);
-
-  return {
-    type: "success",
-    message: `Intento registrado para ${outcome.holderName}.${suffix ? ` ${suffix}` : ""}`,
-  };
 }
 
 /**

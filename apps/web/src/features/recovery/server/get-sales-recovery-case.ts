@@ -2,7 +2,12 @@ import "server-only";
 
 import {
   describeInternalRecoveryStage,
+  describeMyDayDue,
+  describeSalesRecoveryWork,
+  effectiveAttemptResult,
   evaluateInternalLossReasonGates,
+  formatCampaignMoment,
+  formatMyDaySaleDay,
   getLimaIsoDate,
 } from "@repo/validation";
 
@@ -10,6 +15,10 @@ import { database } from "@/server/database";
 import { formatLimaDateTime } from "@repo/ui/format";
 
 import { lossReasonLabels } from "../loss-reason-labels";
+import {
+  describeSalesRecoveryFall,
+  salesRecoveryFallOrderSelect,
+} from "./sales-recovery-fall";
 
 import type { SalesRecoveryAccess } from "./get-sales-recovery-inbox";
 import type {
@@ -61,6 +70,22 @@ export interface SalesRecoveryCaseDetail {
     status: string;
   }>;
   lossReasonGates: Record<RecoveryLossReasonOption, LossReasonGate>;
+  /**
+   * Qué hacer, con la misma regla que «Mi día» (SPEC-067 BR-001): el plazo con
+   * su tono y la frase. Nulo si está resuelto.
+   */
+  work: {
+    action: string;
+    due: { label: string; tone: "danger" | "warning" | "neutral" } | null;
+  } | null;
+  /** Por qué se cayó, como en «Mi día»: la acción de logística o el motivo. */
+  fallReason: string | null;
+  /** «24/09»: el día de la venta. */
+  saleDayLabel: string | null;
+  /** Teléfonos para el editor: contacto, el del pedido y la línea. */
+  phoneOptions: string[];
+  lastResult: string | null;
+  lastObservation: string | null;
 }
 
 export async function getSalesRecoveryCase(
@@ -124,7 +149,13 @@ export async function getSalesRecoveryCase(
           orderCodeRaw: true,
           deliveryContactPhone: true,
           registeredAt: true,
+          serviceNumber: true,
+          ...salesRecoveryFallOrderSelect,
         },
+      },
+      phones: {
+        where: { kind: "CONTACT", invalidMarkedAt: null },
+        select: { phoneNumber: true },
       },
       recoveredDitoOrder: { select: { orderCodeRaw: true } },
       attempts: {
@@ -138,6 +169,7 @@ export async function getSalesRecoveryCase(
           observation: true,
           createdAt: true,
           actor: { select: { name: true } },
+          correction: { select: { effectiveResult: true } },
         },
       },
     },
@@ -172,6 +204,46 @@ export async function getSalesRecoveryCase(
         },
       });
 
+  const saleAt =
+    recoveryCase.sourceDitoOrder?.registeredAt ?? recoveryCase.lastSightingAt;
+  const stage = isResolved
+    ? null
+    : describeInternalRecoveryStage(
+        {
+          status: String(recoveryCase.status),
+          firstContactAt: recoveryCase.firstContactAt,
+          nextActionAt: recoveryCase.nextActionAt,
+          noveltyAt: recoveryCase.lastSightingAt,
+          claimedAt: recoveryCase.claimedAt,
+          lastResult: recoveryCase.attempts[0]
+            ? String(recoveryCase.attempts[0].result)
+            : null,
+        },
+        now,
+      );
+  const todayWork = isResolved
+    ? null
+    : describeSalesRecoveryWork(
+        {
+          status: String(recoveryCase.status),
+          saleAt,
+          firstContactAt: recoveryCase.firstContactAt,
+          nextActionAt: recoveryCase.nextActionAt,
+          noveltyAt: recoveryCase.lastSightingAt,
+        },
+        now,
+      );
+  const lastAttempt = recoveryCase.attempts[0] ?? null;
+  const phoneOptions = [
+    ...new Set(
+      [
+        ...recoveryCase.phones.map((phone) => phone.phoneNumber),
+        recoveryCase.sourceDitoOrder?.deliveryContactPhone ?? null,
+        recoveryCase.sourceDitoOrder?.serviceNumber ?? null,
+      ].filter((phone): phone is string => Boolean(phone)),
+    ),
+  ];
+
   return {
     id: recoveryCase.id,
     holderName: recoveryCase.holderName,
@@ -204,21 +276,7 @@ export async function getSalesRecoveryCase(
     nextActionOverdue:
       recoveryCase.nextActionAt !== null &&
       recoveryCase.nextActionAt.getTime() < now.getTime(),
-    stage: isResolved
-      ? null
-      : describeInternalRecoveryStage(
-          {
-            status: String(recoveryCase.status),
-            firstContactAt: recoveryCase.firstContactAt,
-            nextActionAt: recoveryCase.nextActionAt,
-            noveltyAt: recoveryCase.lastSightingAt,
-            claimedAt: recoveryCase.claimedAt,
-            lastResult: recoveryCase.attempts[0]
-              ? String(recoveryCase.attempts[0].result)
-              : null,
-          },
-          now,
-        ),
+    stage,
     isResolved,
     resolutionLabel: isResolved
       ? recoveryCase.status === "RECOVERED"
@@ -244,7 +302,7 @@ export async function getSalesRecoveryCase(
       phoneUsed: attempt.phoneUsed,
       observation: attempt.observation,
       actorName: attempt.actor.name,
-      createdAtLabel: formatLimaDateTime(attempt.createdAt),
+      createdAtLabel: formatCampaignMoment(attempt.createdAt),
     })),
     recoveredOrderSuggestions: suggestions.map((order) => ({
       id: order.id,
@@ -253,5 +311,25 @@ export async function getSalesRecoveryCase(
       status: String(order.status),
     })),
     lossReasonGates: evaluateInternalLossReasonGates(recoveryCase.attempts),
+    // Lo que toca hoy dice lo mismo que «Mi día»; si hoy no toca, la etapa
+    // dice en qué está y cuándo vuelve.
+    work: isResolved
+      ? null
+      : todayWork
+        ? { action: todayWork.action, due: todayWork.due }
+        : {
+            action: stage?.label ?? "Sin acción pendiente",
+            due: recoveryCase.nextActionAt
+              ? {
+                  label: describeMyDayDue(recoveryCase.nextActionAt, now),
+                  tone: "neutral",
+                }
+              : null,
+          },
+    fallReason: describeSalesRecoveryFall(recoveryCase, 200),
+    saleDayLabel: formatMyDaySaleDay(saleAt),
+    phoneOptions,
+    lastResult: lastAttempt ? effectiveAttemptResult(lastAttempt) : null,
+    lastObservation: lastAttempt?.observation ?? null,
   };
 }

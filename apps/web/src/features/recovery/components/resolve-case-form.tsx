@@ -50,8 +50,10 @@ export function ResolveCaseForm({
     resolveRecoveryCaseAction,
     initialState,
   );
-  const [resolution, setResolution] = useState("RECOVERED");
-  const [lossReason, setLossReason] = useState("YA_MIGRO_OTRA_AGENCIA");
+  // SPEC-067 BR-015: nada elegido de entrada; el aviso de cada opción
+  // aparece al elegirla, no antes.
+  const [resolution, setResolution] = useState("");
+  const [lossReason, setLossReason] = useState("");
   const selectedGate = gates[lossReason];
   const showExpressPath =
     lossReason === "RECHAZO_DEFINITIVO" && !gates.RECHAZO_DEFINITIVO?.enabled;
@@ -60,19 +62,23 @@ export function ResolveCaseForm({
     <form action={action} className="space-y-3">
       <input name="caseId" type="hidden" value={caseId} />
       <label className="block text-sm font-medium text-ui-text">
-        Resultado final
+        Cómo termina
         <select
           className="mt-1 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2"
           name="resolution"
           onChange={(event) => setResolution(event.target.value)}
+          required
           value={resolution}
         >
+          <option disabled value="">
+            Elige cómo termina…
+          </option>
           <option value="RECOVERED">Recuperado: hay una venta nueva</option>
           <option value="LOST">Perdido</option>
         </select>
       </label>
 
-      {resolution === "RECOVERED" ? (
+      {resolution === "" ? null : resolution === "RECOVERED" ? (
         <label className="block text-sm font-medium text-ui-text">
           ¿Con qué venta nueva se recuperó?
           {suggestions.length > 0 ? (
@@ -94,9 +100,9 @@ export function ResolveCaseForm({
             </select>
           ) : (
             <span className="mt-1 block rounded-lg border border-ui-warning-border bg-ui-warning-soft px-3 py-2 text-xs font-normal text-ui-warning">
-              El cliente aún no tiene una orden nueva posterior al caso. La
-              recuperación se confirma cuando la venta reingresada exista en el
-              sistema.
+              El cliente todavía no tiene una venta nueva registrada después de
+              este caso. Podrás cerrarlo como recuperado cuando esa venta
+              aparezca en el sistema.
             </span>
           )}
         </label>
@@ -108,8 +114,12 @@ export function ResolveCaseForm({
               className="mt-1 w-full rounded-lg border border-ui-border bg-ui-surface px-3 py-2"
               name="lossReason"
               onChange={(event) => setLossReason(event.target.value)}
+              required
               value={lossReason}
             >
+              <option disabled value="">
+                Elige el motivo…
+              </option>
               {Object.entries(lossLabels)
                 .filter(([value]) => canUseOther || value !== "OTRO")
                 .map(([value, label]) => (
@@ -175,7 +185,10 @@ export function ResolveCaseForm({
       <button
         className="rounded-lg bg-ui-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
         disabled={
-          pending || (resolution === "RECOVERED" && suggestions.length === 0)
+          pending ||
+          resolution === "" ||
+          (resolution === "LOST" && lossReason === "") ||
+          (resolution === "RECOVERED" && suggestions.length === 0)
         }
         type="submit"
       >

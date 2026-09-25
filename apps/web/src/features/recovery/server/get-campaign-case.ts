@@ -20,8 +20,11 @@ import {
   effectiveAttempts,
   evaluateInternalLossReasonGates,
   isBaseRecoveryResolutionDue,
-  recoveryAgendaKindLabels,
-  recoveryAgendaOriginLabels,
+  campaignWorkActions,
+  campaignWorkNotes,
+  describeCampaignWorkDue,
+  formatCampaignMoment,
+  formatMyDaySaleDay,
   recoveryAttemptReasonLabels,
   recoveryCommitmentStateLabels,
   selectRecoveryAgendaItem,
@@ -126,14 +129,21 @@ export interface CampaignCaseDetail {
     status: string;
   }>;
   lossReasonGates: Record<RecoveryLossReasonOption, LossReasonGate>;
-  /** SPEC-049 BR-007: qué toca ahora y de dónde sale; nulo si está resuelto. */
+  /**
+   * Qué toca, con la misma regla que «Mi día» y la cola (SPEC-065, SPEC-067
+   * BR-001): la frase, la nota que le dice algo al asesor y el plazo con su
+   * tono. En espera, la frase es el motivo y la nota cómo termina. Nulo si
+   * está resuelto.
+   */
   work: {
-    label: string;
-    detail: string;
-    overdue: boolean;
+    action: string;
+    note: string | null;
+    due: { label: string; tone: "danger" | "warning" | "neutral" } | null;
     view: "ahora" | "completar" | "espera";
-    wait: { reason: string; ends: string } | null;
   } | null;
+  /** La última gestión, para el editor (SPEC-049 BR-017: la efectiva). */
+  lastResult: string | null;
+  lastObservation: string | null;
   /** SPEC-048 BR-005: la cita acordada vigente, si la hay. */
   pendingCommitment: {
     id: string;
@@ -421,8 +431,9 @@ export async function getCampaignCase(
         portabilityState: service.portabilityState
           ? String(service.portabilityState)
           : null,
+        // Día sin hora: la habilitación no tiene hora (SPEC-067 BR-006).
         portabilityEligibleLabel: service.portabilityEligibleAt
-          ? formatLimaDateTime(service.portabilityEligibleAt)
+          ? formatMyDaySaleDay(service.portabilityEligibleAt)
           : null,
         isPlantLine: service.isPlantLine,
         originOperator: origin.operator,
@@ -520,17 +531,22 @@ export async function getCampaignCase(
       );
       if (!item) return null;
       const view = classifyRecoveryWorkItem(item, now);
+      const wait = view === "espera" ? describeRecoveryWait(item) : null;
       return {
-        label: recoveryAgendaKindLabels[item.kind],
-        detail:
-          item.origin === "devuelto" && returned
-            ? `${recoveryAgendaOriginLabels[item.origin]} · ${returned.actor?.name ?? "el cruce"} · ${formatLimaDateTime(returned.createdAt)}`
-            : recoveryAgendaOriginLabels[item.origin],
-        overdue: item.overdue,
+        action: wait ? wait.reason : campaignWorkActions[item.kind],
+        note: wait
+          ? wait.ends || null
+          : item.origin === "devuelto" && returned
+            ? `${campaignWorkNotes.devuelto} · ${returned.actor?.name ?? "el cruce"} · ${formatCampaignMoment(returned.createdAt)}`
+            : (campaignWorkNotes[item.origin] ?? null),
+        due: describeCampaignWorkDue(item, now),
         view,
-        wait: view === "espera" ? describeRecoveryWait(item) : null,
       };
     })(),
+    lastResult: recoveryCase.attempts[0]
+      ? effectiveAttemptResult(recoveryCase.attempts[0])
+      : null,
+    lastObservation: recoveryCase.attempts[0]?.observation ?? null,
     // SPEC-049 BR-002: datos inválidos exige todos los teléfonos errados.
     lossReasonGates: evaluateInternalLossReasonGates(effectiveAttempts(recoveryCase.attempts), {
       total: recoveryCase.phones.length,

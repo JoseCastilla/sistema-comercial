@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { campaignResolutionNote } from "@repo/validation";
+
+import {
+  CaseWorkCard,
+  type CaseWorkNote,
+} from "@/features/recovery/components/case-work-card";
 import { CopyValue } from "@/features/recovery/components/copy-value";
 import { CorrectAttemptForm } from "@/features/recovery/components/correct-attempt-form";
-import { RegisterAttemptForm } from "@/features/recovery/components/register-attempt-form";
 import { ResolveCaseForm } from "@/features/recovery/components/resolve-case-form";
 import { VerifyReportedForm } from "@/features/recovery/components/verify-reported-form";
 import { getCampaignCase } from "@/features/recovery/server/get-campaign-case";
@@ -83,6 +88,7 @@ export default async function CampaignCasePage({
   queue.set("visto", caseId);
   // SPEC-048 BR-013: desde Mi agenda se vuelve a la misma vista y fecha.
   const fromAgenda = context.from === "agenda";
+  const fromMyDay = context.from === "mi-dia";
   const agendaContext = new URLSearchParams();
   if (fromAgenda) {
     for (const key of ["view", "fecha", "q", "age", "tipo", "estado", "cita"]) {
@@ -90,17 +96,23 @@ export default async function CampaignCasePage({
       if (value) agendaContext.set(key, value.slice(0, 40));
     }
   }
-  const backBase = fromAgenda
+  const backBase = fromMyDay
+    ? "/my-day"
+    : fromAgenda
     ? "/recovery/agenda"
     : fromFollowUp
       ? "/recovery/follow-up"
       : "/recovery/campaigns";
-  const backLabel = fromAgenda
+  const backLabel = fromMyDay
+    ? "← Volver a Mi día"
+    : fromAgenda
     ? "← Volver a mi agenda"
     : fromFollowUp
       ? "← Volver a Seguimiento"
       : "← Volver a mi cola";
-  const backHref = fromAgenda
+  const backHref = fromMyDay
+    ? `/my-day#mi-dia-${caseId}`
+    : fromAgenda
     ? `${backBase}?${agendaContext.toString()}`
     : `${backBase}?${queue.toString()}#caso-${caseId}`;
 
@@ -117,17 +129,44 @@ export default async function CampaignCasePage({
     notFound();
   }
 
+  const workPhones = [
+    ...detail.contactPhones,
+    ...detail.activeServiceNumbers.filter(
+      (line) => !detail.contactPhones.includes(line),
+    ),
+  ];
+  const noValidPhones = workPhones.length === 0;
+  const notes: CaseWorkNote[] = [];
+  if (detail.resolutionDue && !detail.isResolved) {
+    notes.push({
+      text: `${campaignResolutionNote}; si no, pasa a tu supervisor.`,
+      tone: "warning",
+    });
+  }
+  if (detail.interestedWithOrder && !detail.isResolved) {
+    notes.push({
+      text: "Tenía pedido en curso con otra agencia: pregunta si se cayó. Si se cayó y compra, registra «Vendido» y vincula la venta nueva.",
+      tone: "accent",
+    });
+  }
+  if (detail.work?.note) notes.push({ text: detail.work.note });
+  if (noValidPhones && !detail.isResolved) {
+    notes.push({
+      text: "No quedan teléfonos válidos: ciérralo como datos inválidos.",
+      tone: "warning",
+    });
+  }
+  const attemptsWord = (count: number) =>
+    `${formatCount(count)} ${count === 1 ? "gestión registrada" : "gestiones registradas"}`;
+
   return (
     <>
       <div className="ui-page-stack">
+        {/* SPEC-067 BR-014: el encabezado sin jerga; lo demás, en los datos. */}
         <PageHeader
           eyebrow="Campañas"
           title={detail.holderName}
-          description={`Caso de base nacional · ${detail.teamName ?? "sin equipo"} · ${
-            detail.sightingCount > 1
-              ? `apareció ${detail.sightingCount} veces en la base; la última el ${detail.lastSightingLabel}`
-              : `apareció en la base el ${detail.lastSightingLabel}`
-          }`}
+          description={`Campaña · ${detail.teamName ?? "sin equipo"}`}
         />
 
         <p className="text-sm">
@@ -138,25 +177,6 @@ export default async function CampaignCasePage({
             {backLabel}
           </Link>
         </p>
-
-        {detail.work ? (
-          <p
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              detail.work.overdue
-                ? "border-ui-danger bg-ui-danger-soft text-ui-danger"
-                : "border-ui-border bg-ui-surface text-ui-text"
-            }`}
-          >
-            <span className="ui-label-eyebrow">Qué toca</span>{" "}
-            <span className="font-medium">{detail.work.label}</span>
-            <span className="text-ui-muted"> · {detail.work.detail}</span>
-            {detail.work.wait ? (
-              <span className="block text-xs text-ui-muted">
-                {detail.work.wait.reason}. {detail.work.wait.ends}.
-              </span>
-            ) : null}
-          </p>
-        ) : null}
 
         {detail.isResolved ? (
           <SectionPanel
@@ -186,139 +206,140 @@ export default async function CampaignCasePage({
           </SectionPanel>
         ) : null}
 
-        {detail.interestedWithOrder && !detail.isResolved ? (
-          <SectionPanel
-            title="Interesado con pedido en curso"
-            description="El cliente quiere, pero otra agencia ya le envió un pedido. Reaparece cada mañana para re-contactar; el cruce lo sigue revisando."
-          >
-            <p className="text-sm text-ui-muted">
-              Si el cliente confirma que el pedido anterior cayó, registra{" "}
-              <strong>Vendido</strong> y vincula la orden nueva.
-            </p>
-          </SectionPanel>
-        ) : null}
+        {/* SPEC-067 BR-001, BR-007 a BR-009: arriba, la tarjeta de «Mi día». */}
+        {detail.isResolved ? null : (
+          <CaseWorkCard
+            action={detail.work?.action ?? "Sin acción pendiente"}
+            canManage={detail.canManage}
+            caseId={detail.id}
+            due={detail.work?.due ?? null}
+            holderName={detail.holderName}
+            lastObservation={detail.lastObservation}
+            lastResult={detail.lastResult}
+            meta={`${detail.attemptsToday} de ${detail.minimumDailyAttempts} intentos hoy`}
+            notes={notes}
+            phone={workPhones[0] ?? null}
+            phoneOptions={workPhones}
+            serviceNumbers={detail.activeServiceNumbers}
+          />
+        )}
 
-        {detail.resolutionDue && !detail.isResolved ? (
-          <SectionPanel
-            title="Resolución obligatoria"
-            description="Séptimo día de gestión sin venta ni agenda vigente: resuelve o agenda con fecha concreta hoy."
-          >
-            <p className="text-sm text-ui-danger">
-              Si no actúas hoy, el caso escala a tu supervisor.
-            </p>
-          </SectionPanel>
-        ) : null}
-
-        <SectionPanel
-          title="Cliente y líneas"
-          description={`Responsable: ${detail.assignedToName ?? "sin asignar"}${
-            detail.claimedAtLabel
-              ? ` · asignado el ${detail.claimedAtLabel}`
-              : ""
-          }`}
-        >
-          <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
-            <span>
-              DNI: <CopyValue label="DNI" value={detail.documentNumber} />
-            </span>
-            <span className="text-ui-muted">
-              Intentos hoy: {detail.attemptsToday} /{" "}
-              {detail.minimumDailyAttempts}
-            </span>
-            {detail.nextActionAtLabel ? (
-              <span
-                className={
-                  detail.nextActionOverdue
-                    ? "font-semibold text-ui-danger"
-                    : "text-ui-muted"
-                }
-              >
-                Próxima acción: {detail.nextActionAtLabel}
-              </span>
-            ) : null}
-          </div>
-
-          <div className="rounded-xl border border-ui-border p-3 text-sm">
-            <p className="ui-label-eyebrow">Ubicación</p>
-            <p className="text-ui-text">
-              {[detail.department, detail.province, detail.district]
-                .filter(Boolean)
-                .join(" · ") || "Sin ubicación en la base"}
-            </p>
-            {detail.address ? (
-              <p className="mt-1 text-ui-muted">{detail.address}</p>
-            ) : null}
-            {detail.reference ? (
-              <p className="mt-1 text-ui-muted">
-                Referencia: {detail.reference}
+        {/* SPEC-067 BR-012: lo de consulta, plegado; el mapa, a un clic. */}
+        <details className="rounded-lg border border-ui-border bg-ui-surface">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ui-text">
+            Datos del cliente
+          </summary>
+          <div className="grid gap-5 border-t border-ui-border p-4 text-sm sm:grid-cols-2">
+            <section className="grid gap-1">
+              <h2 className="ui-label-eyebrow">Identidad del titular</h2>
+              <p>
+                DNI <CopyValue label="DNI" value={detail.documentNumber} />
               </p>
-            ) : null}
-            {detail.deliveryInstructions ? (
-              <p className="mt-1 text-ui-muted">
-                Indicaciones: {detail.deliveryInstructions}
+              <p className="text-ui-muted">
+                Padre: {detail.sensitive.fatherName ?? "—"} · Madre:{" "}
+                {detail.sensitive.motherName ?? "—"} · Nacimiento:{" "}
+                {detail.sensitive.birthPlace ?? "—"}
               </p>
-            ) : null}
-            {detail.osmEmbedUrl ? (
-              <iframe
-                className="mt-2 h-64 w-full rounded-lg border border-ui-border"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                src={detail.osmEmbedUrl}
-                title={`Ubicación de entrega de ${detail.holderName}`}
-              />
-            ) : null}
-            {detail.mapsUrl ? (
-              <p className="mt-1">
+              {detail.sensitive.revealedAtLabel ? (
+                <p className="text-xs text-ui-muted">
+                  Este caso registra una revelación auditada el{" "}
+                  {detail.sensitive.revealedAtLabel}.
+                </p>
+              ) : null}
+            </section>
+
+            <section className="grid gap-1">
+              <h2 className="ui-label-eyebrow">Teléfonos de contacto</h2>
+              {detail.contactPhones.length > 0 ? (
+                <ul className="grid gap-1">
+                  {detail.contactPhones.map((phone) => (
+                    <li key={phone}>
+                      <CopyValue label="Teléfono" value={phone} />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-ui-muted">Sin teléfono de contacto.</p>
+              )}
+              {detail.invalidPhones.length > 0 ? (
+                <p className="text-xs text-ui-muted">
+                  Errados:{" "}
+                  {detail.invalidPhones.map((phone, index) => (
+                    <span key={phone}>
+                      {index > 0 ? " · " : ""}
+                      <s>{phone}</s>
+                    </span>
+                  ))}
+                </p>
+              ) : null}
+            </section>
+
+            <section className="grid gap-1">
+              <h2 className="ui-label-eyebrow">Dónde entregar</h2>
+              <p>
+                {[detail.department, detail.province, detail.district]
+                  .filter(Boolean)
+                  .join(" · ") || "Sin ubicación en la base"}
+              </p>
+              {detail.address ? (
+                <p className="text-ui-muted">{detail.address}</p>
+              ) : null}
+              {detail.reference ? (
+                <p className="text-ui-muted">Referencia: {detail.reference}</p>
+              ) : null}
+              {detail.deliveryInstructions ? (
+                <p className="text-ui-muted">
+                  Indicaciones: {detail.deliveryInstructions}
+                </p>
+              ) : null}
+              {detail.mapsUrl ? (
                 <a
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={detail.mapsUrl}
                   rel="noreferrer"
                   target="_blank"
                 >
-                  Ver coordenadas en el mapa ↗
+                  Ver en el mapa ↗
                 </a>
-              </p>
-            ) : null}
-          </div>
+              ) : null}
+              {detail.osmEmbedUrl ? (
+                <details>
+                  <summary className="cursor-pointer text-xs font-semibold text-ui-accent">
+                    Mostrar el mapa aquí
+                  </summary>
+                  <iframe
+                    className="mt-2 h-64 w-full rounded-lg border border-ui-border"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    src={detail.osmEmbedUrl}
+                    title={`Ubicación de entrega de ${detail.holderName}`}
+                  />
+                </details>
+              ) : null}
+            </section>
 
-          <div className="overflow-x-auto rounded-xl border border-ui-border">
-            <table className="ui-table">
-              <thead>
-                <tr>
-                  <th>Línea a portar</th>
-                  <th>Plan</th>
-                  <th>Operador actual</th>
-                  <th>Portabilidad</th>
-                </tr>
-              </thead>
-              <tbody>
+            <section className="grid gap-1">
+              <h2 className="ui-label-eyebrow">Líneas a portar</h2>
+              <ul className="grid gap-2">
                 {detail.services.map((service) => (
-                  <tr
+                  <li
                     className={service.discarded ? "opacity-50" : undefined}
                     key={service.serviceNumber}
                   >
-                    <td className="font-mono text-xs">
-                      <CopyValue label="Línea" value={service.serviceNumber} />
-                      {service.isPlantLine ? (
-                        <span className="ml-2 text-[11px] text-ui-muted">
-                          línea de planta (nunca ha portado)
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="text-xs text-ui-muted">
-                      {service.planRaw ?? "—"}
-                    </td>
-                    <td className="text-xs">
-                      <span className="font-medium text-ui-text">
-                        {service.originOperator}
-                      </span>
-                      {service.originDetail ? (
-                        <span className="block text-[11px] text-ui-muted">
-                          {service.originDetail}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="text-xs text-ui-muted">
+                    <CopyValue label="Línea" value={service.serviceNumber} />
+                    <span className="block text-xs text-ui-muted">
+                      {[
+                        service.originOperator,
+                        service.originDetail,
+                        service.planRaw,
+                        service.isPlantLine
+                          ? "línea de planta (nunca ha portado)"
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                    <span className="block text-xs text-ui-muted">
                       {service.discarded
                         ? "Descartada"
                         : (portabilityLabels[service.portabilityState ?? ""] ??
@@ -326,85 +347,24 @@ export default async function CampaignCasePage({
                       {service.portabilityEligibleLabel
                         ? ` · puede portar desde el ${service.portabilityEligibleLabel}`
                         : ""}
-                    </td>
-                  </tr>
+                    </span>
+                  </li>
                 ))}
-              </tbody>
-            </table>
+              </ul>
+            </section>
+
+            <p className="text-xs text-ui-muted sm:col-span-2">
+              Responsable: {detail.assignedToName ?? "sin asignar"}
+              {detail.claimedAtLabel
+                ? ` · asignado el ${detail.claimedAtLabel}`
+                : ""}{" "}
+              ·{" "}
+              {detail.sightingCount > 1
+                ? `apareció ${detail.sightingCount} veces en la base; la última el ${detail.lastSightingLabel}`
+                : `apareció en la base el ${detail.lastSightingLabel}`}
+            </p>
           </div>
-
-          {detail.contactPhones.length > 0 ? (
-            <p className="text-sm text-ui-muted">
-              Teléfonos de contacto:{" "}
-              {detail.contactPhones.map((phone, index) => (
-                <span key={phone}>
-                  {index > 0 ? " · " : ""}
-                  <CopyValue label="Teléfono" value={phone} />
-                </span>
-              ))}
-            </p>
-          ) : null}
-          {detail.invalidPhones.length > 0 ? (
-            <p className="text-sm text-ui-muted">
-              Marcados como errados:{" "}
-              {detail.invalidPhones.map((phone, index) => (
-                <span key={phone}>
-                  {index > 0 ? " · " : ""}
-                  <s>{phone}</s>
-                </span>
-              ))}
-              {detail.contactPhones.length === 0 &&
-              detail.activeServiceNumbers.length === 0
-                ? " · No quedan teléfonos válidos: corresponde resolverlo como datos inválidos."
-                : ""}
-            </p>
-          ) : null}
-        </SectionPanel>
-
-        <SectionPanel
-          title="Identidad del titular"
-          description="Datos de RENIEC para confirmar con quién estás hablando."
-        >
-          <dl className="grid gap-3 sm:grid-cols-3">
-            <div>
-              <dt className="ui-label-eyebrow">Padre</dt>
-              <dd>{detail.sensitive.fatherName ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="ui-label-eyebrow">Madre</dt>
-              <dd>{detail.sensitive.motherName ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="ui-label-eyebrow">Nacimiento</dt>
-              <dd>{detail.sensitive.birthPlace ?? "—"}</dd>
-            </div>
-          </dl>
-          {detail.sensitive.revealedAtLabel ? (
-            <p className="mt-3 text-xs text-ui-muted">
-              Este caso registra una revelación auditada el{" "}
-              {detail.sensitive.revealedAtLabel}.
-            </p>
-          ) : null}
-        </SectionPanel>
-
-        {detail.canManage && !detail.isResolved ? (
-          <SectionPanel
-            title="Registrar intento"
-            description="Lo que registres no se puede editar después. Si no contesta, intenta 3 veces en el día; si agendas, se pausa hasta la fecha acordada."
-          >
-            <RegisterAttemptForm
-              caseId={detail.id}
-              phoneOptions={[
-                ...detail.contactPhones,
-                ...detail.activeServiceNumbers.filter(
-                  (line) => !detail.contactPhones.includes(line),
-                ),
-              ]}
-              returnTo={backHref}
-              serviceNumbers={detail.activeServiceNumbers}
-            />
-          </SectionPanel>
-        ) : null}
+        </details>
 
         {detail.pendingCommitment || detail.commitments.length > 0 ? (
           <SectionPanel
@@ -423,7 +383,7 @@ export default async function CampaignCasePage({
                   className="text-ui-accent underline-offset-2 hover:underline"
                   href={`/recovery/agenda?cita=${detail.pendingCommitment.id}`}
                 >
-                  Reprogramar o cancelar desde mi agenda
+                  Reprogramar o cancelar en mi agenda
                 </Link>
               </p>
             ) : null}
@@ -454,9 +414,10 @@ export default async function CampaignCasePage({
           </SectionPanel>
         ) : null}
 
+        {/* SPEC-067 BR-013: gestiones, como el botón que las registra. */}
         <SectionPanel
-          title="Historial de intentos"
-          description={`${formatCount(detail.attempts.length)} intento(s) registrados.`}
+          title="Historial de gestiones"
+          description={`${attemptsWord(detail.attempts.length)}. No se pueden editar y queda quién las hizo.`}
         >
           {detail.attempts.length === 0 ? (
             <p className="text-sm text-ui-muted">
@@ -490,7 +451,7 @@ export default async function CampaignCasePage({
                   </p>
                   {attempt.observation ? (
                     <p className="mt-1 text-xs text-ui-muted">
-                      {attempt.observation}
+                      «{attempt.observation}»
                     </p>
                   ) : null}
                   {attempt.correction ? (
@@ -516,17 +477,17 @@ export default async function CampaignCasePage({
 
         {detail.canManage && !detail.isResolved ? (
           <div id="resolver">
-          <SectionPanel
-            title="Resolver el caso"
-            description="Recuperado exige vincular la orden DITO nueva; para darlo por perdido debes elegir un motivo y cumplir lo que ese motivo pide."
-          >
-            <ResolveCaseForm
-              canUseOther={detail.canResolveOther}
-              caseId={detail.id}
-              gates={detail.lossReasonGates}
-              suggestions={detail.recoveredOrderSuggestions}
-            />
-          </SectionPanel>
+            <SectionPanel
+              title="Cerrar el caso"
+              description="Recuperado pide la venta nueva del cliente; perdido pide el motivo y lo que ese motivo exige."
+            >
+              <ResolveCaseForm
+                canUseOther={detail.canResolveOther}
+                caseId={detail.id}
+                gates={detail.lossReasonGates}
+                suggestions={detail.recoveredOrderSuggestions}
+              />
+            </SectionPanel>
           </div>
         ) : null}
       </div>

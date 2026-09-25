@@ -6,13 +6,16 @@ import { requireCommercialAccess } from "@/server/auth/access";
 
 interface SalesRecoveryCasePageProps {
   params: Promise<{ caseId: string }>;
+  searchParams: Promise<{ from?: string }>;
 }
 
 export default async function SalesRecoveryCasePage({
   params,
+  searchParams,
 }: SalesRecoveryCasePageProps) {
   const { session, membership } = await requireCommercialAccess();
   const { caseId } = await params;
+  const { from } = await searchParams;
   const data = await getSalesRecoveryCase(
     membership.organization.id,
     { userId: session.user.id, role: membership.role },
@@ -21,5 +24,5 @@ export default async function SalesRecoveryCasePage({
 
   if (!data) notFound();
 
-  return <SalesRecoveryCaseDetail data={data} />;
+  return <SalesRecoveryCaseDetail data={data} from={from} />;
 }
