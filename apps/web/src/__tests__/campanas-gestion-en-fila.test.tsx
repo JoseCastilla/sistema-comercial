@@ -92,12 +92,9 @@ function renderEditor(
     onCancel,
     form: () =>
       screen.getByRole("button", { name: /Guardar gestión/ }).closest("form")!,
-    resultado: () => screen.getByLabelText("Resultado") as HTMLSelectElement,
+    resultado: resultadoElegido,
     // SPEC-049 BR-009: nada viene preseleccionado; elegir es un acto.
-    elegir: (value: string) =>
-      fireEvent.change(screen.getByLabelText("Resultado"), {
-        target: { value },
-      }),
+    elegir: elegirResultado,
     observacion: () =>
       screen.getByPlaceholderText(
         "Qué dijo el cliente hoy",
@@ -123,11 +120,38 @@ function claveEnviada(llamada: number): string {
   return String(formData.get("clientRequestId"));
 }
 
+/**
+ * Fase 6 de SPEC-063: los cuatro resultados frecuentes son botones («No
+ * contesta»…) y el resto va en «Otro resultado». El valor viaja en un campo
+ * oculto `result`.
+ */
+const botonesRapidos: Record<string, string> = {
+  SIN_RESPUESTA: "No contesta",
+  INTERESADO: "Interesado",
+  RECHAZA: "No interesado",
+  AGENDA: "Agenda una próxima llamada",
+};
+
+function elegirResultado(value: string) {
+  const rapido = botonesRapidos[value];
+  if (rapido) {
+    fireEvent.click(screen.getByRole("button", { name: rapido }));
+    return;
+  }
+  fireEvent.change(screen.getByLabelText("Otro resultado"), {
+    target: { value },
+  });
+}
+
+function resultadoElegido(): HTMLInputElement {
+  return document.querySelector('input[name="result"]') as HTMLInputElement;
+}
+
 describe("Gestión en fila · elegir no es guardar", () => {
   it("cambiar el resultado no envía nada", () => {
-    const { resultado } = renderEditor();
+    renderEditor();
 
-    fireEvent.change(resultado(), { target: { value: "INTERESADO" } });
+    elegirResultado("INTERESADO");
 
     expect(inlineAction).not.toHaveBeenCalled();
   });
@@ -143,9 +167,9 @@ describe("Gestión en fila · elegir no es guardar", () => {
   });
 
   it("agendar exige una fecha y hora futuras antes de enviar", async () => {
-    const { resultado, form } = renderEditor();
+    const { form } = renderEditor();
 
-    fireEvent.change(resultado(), { target: { value: "AGENDA" } });
+    elegirResultado("AGENDA");
     await enviar(form());
 
     expect(inlineAction).not.toHaveBeenCalled();
@@ -159,6 +183,29 @@ describe("Gestión en fila · elegir no es guardar", () => {
     await enviar(form());
 
     await waitFor(() => expect(inlineAction).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("Gestión en fila · canal y teléfono (SPEC-063 fase 6)", () => {
+  it("el canal se elige con un botón y viaja en el formulario", () => {
+    renderEditor();
+    const canal = () =>
+      document.querySelector('input[name="channel"]') as HTMLInputElement;
+
+    expect(canal().value).toBe("LLAMADA");
+    fireEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
+    expect(canal().value).toBe("WHATSAPP");
+    fireEvent.change(screen.getByLabelText("Otro canal"), {
+      target: { value: "SMS" },
+    });
+    expect(canal().value).toBe("SMS");
+  });
+
+  it("un solo número se muestra como texto, sin lista", () => {
+    renderEditor({ phoneOptions: ["999111222"] });
+
+    expect(screen.queryByLabelText("Teléfono utilizado")).not.toBeInTheDocument();
+    expect(screen.getByText("999111222")).toBeInTheDocument();
   });
 });
 
@@ -188,9 +235,8 @@ describe("Gestión en fila · el teléfono utilizado", () => {
     const { form, elegir } = renderEditor();
     elegir("SIN_RESPUESTA");
 
-    fireEvent.change(screen.getByLabelText("Teléfono utilizado"), {
-      target: { value: "__otro__" },
-    });
+    // Con un solo número no hay lista: se muestra y se puede cambiar.
+    fireEvent.click(screen.getByRole("button", { name: "Usar otro número" }));
     await enviar(form());
 
     expect(inlineAction).not.toHaveBeenCalled();
@@ -405,8 +451,12 @@ describe("Gestión en fila · tipificación (SPEC-049)", () => {
 
     elegir("RECHAZA");
 
-    expect(screen.getByLabelText("Pausa antes de reintentar")).toBeInTheDocument();
-    expect(screen.getByTestId("consecuencia")).toHaveTextContent(/pausado hasta/);
+    expect(
+      screen.getByLabelText("Pausa antes de reintentar"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("consecuencia")).toHaveTextContent(
+      /pausado hasta/,
+    );
   });
 
   it("pedir que no lo llamen exige la observación como evidencia", async () => {
@@ -430,10 +480,16 @@ describe("Gestión en fila · tipificación (SPEC-049)", () => {
   });
 
   it("«Cancelado» ya no se ofrece", () => {
-    const { resultado } = renderEditor();
+    renderEditor();
 
-    const values = Array.from(resultado().options).map((option) => option.value);
+    const otros = screen.getByLabelText("Otro resultado") as HTMLSelectElement;
+    const values = Array.from(otros.options).map((option) => option.value);
     expect(values).not.toContain("CANCELADO");
     expect(values).toContain("NO_CONTACTAR");
+    // Los frecuentes son botones y no se repiten en la lista.
+    expect(values).not.toContain("SIN_RESPUESTA");
+    expect(
+      screen.getByRole("button", { name: "No contesta" }),
+    ).toBeInTheDocument();
   });
 });

@@ -1,6 +1,12 @@
 import { webcrypto } from "node:crypto";
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MyDayList } from "@/features/my-day/components/my-day-list";
@@ -31,24 +37,28 @@ Element.prototype.scrollIntoView = vi.fn();
 
 beforeEach(() => {
   inlineAction.mockReset();
-  inlineAction.mockImplementation(async (_previous: unknown, formData: FormData) => ({
-    type: "success" as const,
-    message: "Gestión guardada.",
-    detail: "",
-    attempt: {
-      result: String(formData.get("result")),
-      observation: null,
-      phoneUsed: null,
-      status: "IN_PROGRESS",
-      attemptsToday: 1,
-      nextActionAtLabel: "25/09, 10:00",
-      mustResolve: false,
-      workView: "espera" as const,
-    },
-  }));
+  inlineAction.mockImplementation(
+    async (_previous: unknown, formData: FormData) => ({
+      type: "success" as const,
+      message: "Gestión guardada.",
+      detail: "",
+      attempt: {
+        result: String(formData.get("result")),
+        observation: null,
+        phoneUsed: null,
+        status: "IN_PROGRESS",
+        attemptsToday: 1,
+        nextActionAtLabel: "25/09, 10:00",
+        mustResolve: false,
+        workView: "espera" as const,
+      },
+    }),
+  );
 });
 
-function entry(overrides: Partial<MyDayEntry> & Pick<MyDayEntry, "key" | "title">): MyDayEntry {
+function entry(
+  overrides: Partial<MyDayEntry> & Pick<MyDayEntry, "key" | "title">,
+): MyDayEntry {
   return {
     kind: "venta_caida",
     tier: "venta_en_riesgo",
@@ -127,17 +137,21 @@ describe("Mi día · gestión en fila", () => {
         tier: "pedido",
         manage: null,
       }),
-      entry({ key: "c2", title: "SEGUNDO CLIENTE", tier: "seguimiento_vencido" }),
+      entry({
+        key: "c2",
+        title: "SEGUNDO CLIENTE",
+        tier: "seguimiento_vencido",
+      }),
     ]);
 
     fireEvent.click(
       screen.getByRole("button", { name: "Registrar gestión: PRIMER CLIENTE" }),
     );
-    fireEvent.change(screen.getByLabelText("Resultado"), {
-      target: { value: "SIN_RESPUESTA" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "No contesta" }));
 
-    const siguiente = screen.getByRole("button", { name: "Guardar y siguiente" });
+    const siguiente = screen.getByRole("button", {
+      name: "Guardar y siguiente",
+    });
     await act(async () => {
       fireEvent.click(siguiente);
     });
@@ -147,13 +161,19 @@ describe("Mi día · gestión en fila", () => {
     await waitFor(() =>
       expect(screen.getByText(/Gestionado:/)).toBeInTheDocument(),
     );
-    expect(screen.getByText("Próxima acción: 25/09, 10:00")).toBeInTheDocument();
+    expect(
+      screen.getByText("Próxima acción: 25/09, 10:00"),
+    ).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        screen.queryByRole("button", { name: "Registrar gestión: SEGUNDO CLIENTE" }),
+        screen.queryByRole("button", {
+          name: "Registrar gestión: SEGUNDO CLIENTE",
+        }),
       ).not.toBeInTheDocument(),
     );
-    expect(screen.getByLabelText("Resultado")).toHaveValue("");
+    expect(
+      document.querySelector('input[name="result"]') as HTMLInputElement,
+    ).toHaveValue("");
     // Sin el aviso de «gestión sin guardar»: lo guardado no es un borrador.
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });

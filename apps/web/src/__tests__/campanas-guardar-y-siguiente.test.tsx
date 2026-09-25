@@ -78,11 +78,15 @@ function renderEditor(
     form: () =>
       screen.getByRole("button", { name: /Guardar gestión/ }).closest("form")!,
     elegir: (value: string) =>
-      fireEvent.change(screen.getByLabelText("Resultado"), {
-        target: { value },
-      }),
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: value === "SIN_RESPUESTA" ? "No contesta" : value,
+        }),
+      ),
     observacion: () =>
-      screen.getByPlaceholderText("Qué dijo el cliente hoy") as HTMLInputElement,
+      screen.getByPlaceholderText(
+        "Qué dijo el cliente hoy",
+      ) as HTMLInputElement,
   };
 }
 
@@ -95,7 +99,9 @@ async function enviar(form: HTMLFormElement) {
 /** El botón envía el formulario por `requestSubmit`, como Enter. */
 async function pulsarSiguiente() {
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Guardar y siguiente" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Guardar y siguiente" }),
+    );
   });
 }
 

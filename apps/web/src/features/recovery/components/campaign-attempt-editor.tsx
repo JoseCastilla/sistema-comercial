@@ -9,7 +9,10 @@ import {
   recoveryAttemptFields,
 } from "@repo/validation";
 
-import { attemptResultLabels, attemptResultTones } from "../attempt-result-labels";
+import {
+  attemptResultLabels,
+  attemptResultTones,
+} from "../attempt-result-labels";
 import { registerCampaignAttemptInlineAction } from "../server/register-recovery-attempt-action";
 import {
   AttemptResultFields,
@@ -33,6 +36,12 @@ const channelLabels: Record<string, string> = {
 const otherPhone = "__otro__";
 
 const quickChoices = recoveryAttemptChoices.filter((choice) => choice.hotkey);
+/** Los resultados sin tecla: van en «Otro resultado», sin repetir los rápidos. */
+const otherChoices = recoveryAttemptChoices.filter((choice) => !choice.hotkey);
+const quickValues = new Set<string>(quickChoices.map((choice) => choice.value));
+
+/** Los canales de casi siempre van como botones; el resto, en una lista. */
+const mainChannels = ["LLAMADA", "WHATSAPP"];
 
 export type ConfirmedAttempt = NonNullable<
   CampaignAttemptInlineState["attempt"]
@@ -97,7 +106,7 @@ export function CampaignAttemptEditor({
     initialState,
   );
   const formRef = useRef<HTMLFormElement>(null);
-  const resultRef = useRef<HTMLSelectElement>(null);
+  const resultRef = useRef<HTMLButtonElement>(null);
   const ids = useId();
 
   /**
@@ -120,6 +129,7 @@ export function CampaignAttemptEditor({
         : (phoneOptions[0] ?? otherPhone),
   );
   const [otherNumber, setOtherNumber] = useState("");
+  const [channel, setChannel] = useState("LLAMADA");
   const [extras, setExtras] = useState<AttemptExtras>(emptyAttemptExtras);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [saved, setSaved] = useState<{
@@ -282,7 +292,12 @@ export function CampaignAttemptEditor({
     ) {
       return;
     }
-    if (target.tagName === "TEXTAREA" || event.altKey || event.ctrlKey || event.metaKey) {
+    if (
+      target.tagName === "TEXTAREA" ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey
+    ) {
       return;
     }
     const key = event.key.toUpperCase();
@@ -374,6 +389,8 @@ export function CampaignAttemptEditor({
       <input name="caseId" type="hidden" value={caseId} />
       <input name="clientRequestId" type="hidden" value={clientRequestId} />
       <input name="phoneUsed" type="hidden" value={phoneUsed} />
+      <input name="result" type="hidden" value={result} />
+      <input name="channel" type="hidden" value={channel} />
 
       {lastResult ? (
         <p className="text-xs text-ui-muted">
@@ -424,47 +441,54 @@ export function CampaignAttemptEditor({
         </div>
       ) : null}
 
+      {/*
+        Fase 6 de SPEC-063: los cuatro resultados de casi siempre son botones
+        y la lista solo trae los demás. Antes la lista repetía los cuatro.
+      */}
       <div
-        aria-label="Resultados frecuentes"
-        className="flex flex-wrap gap-2"
+        aria-label="Resultado"
+        className="flex flex-wrap items-center gap-2"
         role="group"
       >
-        {quickChoices.map((choice) => (
+        {quickChoices.map((choice, index) => (
           <button
             aria-pressed={result === choice.value}
             className={`ui-button ${result === choice.value ? "ui-button--primary" : "ui-button--secondary"}`}
             key={choice.value}
             onClick={() => choose(choice.value)}
+            ref={index === 0 ? resultRef : undefined}
             title={`Tecla ${choice.hotkey}`}
             type="button"
           >
-            <span className="mr-1 rounded bg-ui-surface-muted px-1 text-xs">
+            <span
+              aria-hidden="true"
+              className="mr-1 rounded bg-ui-surface-muted px-1 text-xs"
+            >
               {choice.hotkey}
             </span>
             {choice.label}
           </button>
         ))}
+        <select
+          aria-label="Otro resultado"
+          className={`rounded-lg border px-2 py-2 text-sm ${
+            result && !quickValues.has(result)
+              ? "border-ui-accent bg-ui-accent-soft text-ui-text"
+              : "border-ui-border-strong bg-ui-surface text-ui-muted"
+          }`}
+          onChange={(event) => choose(event.target.value)}
+          value={quickValues.has(result) ? "" : result}
+        >
+          <option value="">Otro resultado…</option>
+          {otherChoices.map((choice) => (
+            <option key={choice.value} value={choice.value}>
+              {choice.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block text-sm">
-          <span className="ui-label-eyebrow">Resultado</span>
-          <select
-            className="mt-1 block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-            name="result"
-            onChange={(event) => choose(event.target.value)}
-            ref={resultRef}
-            value={result}
-          >
-            <option value="">Elige qué pasó…</option>
-            {recoveryAttemptChoices.map((choice) => (
-              <option key={choice.value} value={choice.value}>
-                {choice.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <AttemptResultFields
           errorId={fieldError ? `${ids}-error` : undefined}
           extras={extras}
@@ -494,36 +518,76 @@ export function CampaignAttemptEditor({
           />
         </label>
 
-        <label className="block text-sm">
-          <span className="ui-label-eyebrow">Canal</span>
-          <select
-            className="mt-1 block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-            defaultValue="LLAMADA"
-            name="channel"
+        <div className="block text-sm">
+          <span className="ui-label-eyebrow" id={`${ids}-channel`}>
+            Canal
+          </span>
+          <div
+            aria-labelledby={`${ids}-channel`}
+            className="mt-1 flex flex-wrap items-center gap-1.5"
+            role="group"
           >
-            {Object.entries(channelLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
+            {mainChannels.map((value) => (
+              <button
+                aria-pressed={channel === value}
+                className={`ui-button ${channel === value ? "ui-button--primary" : "ui-button--secondary"}`}
+                key={value}
+                onClick={() => setChannel(value)}
+                type="button"
+              >
+                {channelLabels[value]}
+              </button>
             ))}
-          </select>
-        </label>
+            <select
+              aria-label="Otro canal"
+              className="rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
+              onChange={(event) => setChannel(event.target.value || "LLAMADA")}
+              value={mainChannels.includes(channel) ? "" : channel}
+            >
+              <option value="">Otro…</option>
+              {Object.entries(channelLabels)
+                .filter(([value]) => !mainChannels.includes(value))
+                .map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+            </select>
+          </div>
+        </div>
 
-        <label className="block text-sm">
-          <span className="ui-label-eyebrow">Teléfono utilizado</span>
-          <select
-            className="mt-1 block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
-            onChange={(event) => setPhoneChoice(event.target.value)}
-            value={phoneChoice}
-          >
-            {phoneOptions.map((phone) => (
-              <option key={phone} value={phone}>
-                {phone}
-              </option>
-            ))}
-            <option value={otherPhone}>Otro número…</option>
-          </select>
-        </label>
+        {/* Un solo número no necesita lista: se muestra y se puede cambiar. */}
+        {phoneOptions.length === 1 && phoneChoice !== otherPhone ? (
+          <div className="block text-sm">
+            <span className="ui-label-eyebrow">Teléfono utilizado</span>
+            <p className="mt-1 flex flex-wrap items-center gap-2 py-2">
+              <span className="font-mono text-ui-text">{phoneOptions[0]}</span>
+              <button
+                className="text-xs font-semibold text-ui-accent underline-offset-4 hover:underline"
+                onClick={() => setPhoneChoice(otherPhone)}
+                type="button"
+              >
+                Usar otro número
+              </button>
+            </p>
+          </div>
+        ) : (
+          <label className="block text-sm">
+            <span className="ui-label-eyebrow">Teléfono utilizado</span>
+            <select
+              className="mt-1 block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text"
+              onChange={(event) => setPhoneChoice(event.target.value)}
+              value={phoneChoice}
+            >
+              {phoneOptions.map((phone) => (
+                <option key={phone} value={phone}>
+                  {phone}
+                </option>
+              ))}
+              <option value={otherPhone}>Otro número…</option>
+            </select>
+          </label>
+        )}
 
         {phoneChoice === otherPhone ? (
           <label className="block text-sm">

@@ -46,8 +46,12 @@ Una casilla se marca solo con evidencia en `verification.md`.
 - [x] Grupo 2, filas: teléfono a la vista (BR-022); frases, tonos y tipo
       oculto dentro del grupo (BR-023). Pruebas: `my-day.test.mjs` 18 de
       18, `mi-dia-gestion-en-fila.test.tsx` 3 de 3.
-- [ ] Grupo 3, editor: resultados en botones con «Otro resultado», canal en
-      botones, teléfono como texto cuando hay uno solo.
+- [x] Grupo 3, editor (compartido con la cola de Campañas y Recupero):
+      los cuatro resultados frecuentes son botones y «Otro resultado» trae
+      solo los demás; canal en botones «Llamada | WhatsApp» más «Otro…»;
+      un solo teléfono se muestra como texto con «Usar otro número». La
+      tecla de cada botón queda fuera del nombre accesible (antes se leía
+      «NNo contesta»). 20 pruebas del editor de Campañas en verde.
 - [ ] Grupo 4, progreso: «Ahora» primero, franja compacta, sin subtítulo,
       el próximo bono en vez del cerrado, «Tu comisión» unida, grupos que se
       abren por separado.
