@@ -448,6 +448,19 @@ export function CommercialAppShell({
         className="app-shell__mobile-nav"
         data-items={isAdmin ? "8" : role === "SUPERVISOR" && sells ? "7" : "6"}
       >
+        {role === "SUPERVISOR" ? (
+          // En el celular no caben dos ítems de equipo: «Equipo» abre «Hoy en
+          // mi equipo», primero porque es su entrada; desde ahí se llega al alta
+          // de asesores.
+          <MobileNavigationItem
+            active={
+              currentSection === "team-today" || currentSection === "my-team"
+            }
+            href="/team/today"
+            icon="teams"
+            label="Equipo"
+          />
+        ) : null}
         {sells ? (
           <MobileNavigationItem
             active={currentSection === "my-day"}
@@ -486,18 +499,6 @@ export function CommercialAppShell({
           icon="campaigns"
           label="Campañas"
         />
-        {role === "SUPERVISOR" ? (
-          // En el celular no caben dos ítems de equipo: «Equipo» abre «Hoy en
-          // mi equipo», y desde ahí se llega al alta de asesores.
-          <MobileNavigationItem
-            active={
-              currentSection === "team-today" || currentSection === "my-team"
-            }
-            href="/team/today"
-            icon="teams"
-            label="Equipo"
-          />
-        ) : null}
         {isAdmin ? (
           <>
             <MobileNavigationItem

@@ -6,5 +6,5 @@
       sobre `getMyDay`, `/team/today`, menú («Hoy en mi equipo» primero;
       «Equipo» en el celular) y entrada del supervisor. Web 259 pruebas
       (`hoy-en-mi-equipo.test.tsx` 5 de 5); validation 410.
-- [ ] Fase 1: verificación en producción con la sesión de supervisora.
+- [x] Fase 1: verificación en producción con la sesión de supervisora (25/09/2026).
 - [ ] Fase 2: «Ver su día» en solo lectura.
