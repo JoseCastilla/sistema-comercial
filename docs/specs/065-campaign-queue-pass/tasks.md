@@ -13,4 +13,4 @@
       sus 3 intentos de hoy»; tomar casos al final en una línea con «Elegir
       cuáles»; «Más filtros» con plan y antigüedad (BR-010 a BR-013).
 - [x] Grupo 4, aviso dentro del contenido, sin flotar (BR-014).
-- [ ] Lectura en producción.
+- [x] Lectura en producción (25/09/2026).

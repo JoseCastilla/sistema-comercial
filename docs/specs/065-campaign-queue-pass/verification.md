@@ -11,5 +11,12 @@
   en consola. Validation 404 pruebas; web: tipos, lint y 239 pruebas en
   verde.
 
-Pendiente: lectura en producción (historial con su cifra real desde
-«Trabajar ahora», aviso en su línea).
+- **25/09/2026** — Producción (`f52481f`), sesión de asesora, solo lectura:
+  las vistas dicen «Trabajar ahora 26 · Por completar 0 · En espera 0 ·
+  Historial 68» desde «Trabajar ahora» (AC-002; antes, «Historial 0»). La
+  primera fila dice «desde el 12/09 · Ya puede portar: llámalo», igual que
+  «Mi día» (AC-001); la línea del resultado, «26 casos · 24 sin sus 3
+  intentos de hoy». El aviso «4 ventas caídas por llamar» ocupa su línea
+  sobre el título sin tapar nada (AC-005). En el celular la página mide 375
+  px de ancho y la primera fila muestra cliente, teléfono, frase y
+  «Registrar gestión» (AC-003).

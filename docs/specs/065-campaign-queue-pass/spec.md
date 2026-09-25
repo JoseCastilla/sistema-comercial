@@ -1,6 +1,6 @@
 # SPEC-065 — Cola de campaña, control por control
 
-**Estado:** `ENTREGADA` — catorce mejoras aprobadas por José (25/09/2026), construidas y verificadas en local
+**Estado:** `VERIFICADA` — catorce mejoras aprobadas por José, verificadas en producción (25/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25
