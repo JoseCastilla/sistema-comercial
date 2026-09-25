@@ -57,7 +57,10 @@ Una casilla se marca solo con evidencia en `verification.md`.
       (BR-020) con grupos que abren cada uno su lista; sin subtítulo;
       motivo «Otro» con su observación. `my-day-sales.tsx` retirado.
       `mi-dia-ventas-del-mes.test.tsx` 3 de 3; web 234 pruebas en verde.
-- [ ] Lectura en producción de cada grupo.
+- [x] Lectura en producción de cada grupo (grupos 1 y 2 con `2aa5842`;
+      3 y 4 con `d8116ab`). La lectura del grupo 3 encontró que, en Noche,
+      el resultado y el canal elegidos casi no se distinguían: ahora se
+      marcan con el acento, igual que «Otro resultado».
 
 ## Fase 2 — Actuar sin salir
 

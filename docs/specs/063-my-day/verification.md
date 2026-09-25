@@ -139,5 +139,17 @@
   confirmadas = S/ 100.00» y, al abrir, «Bono días 1 al 15: cerrado con 0
   confirmadas». Tipos, lint y 234 pruebas de web en verde.
 
+- **24/09/2026** — Producción (`d8116ab`), sesión de asesora, solo
+  lectura: la franja dice «Hoy 6 ventas · 0 gestiones · Comisión S/
+  1 412.50 · Cuota 55 de 100 · Bono del día 25: 15 confirmadas = S/ 100.00».
+  Al abrirla: S/ 1 212.50 por 52 pagables + S/ 200.00 de bonos = S/
+  1 412.50, y por cobrar S/ 562.50 (75.00 + 62.50 + 425.00 de los grupos);
+  «Entregadas, esperan activación» abre solo sus 3 ventas. El editor
+  muestra los cuatro resultados en botones, «Otro resultado…», canal
+  «Llamada | WhatsApp | Otro…» y el teléfono como texto con «Usar otro
+  número». Hallazgo: en Noche el botón elegido (#222c3b) casi no se
+  distinguía del resto (#141a23); corregido con el acento y revisado en
+  local en Día y Noche.
+
 Pendiente: AC-010 (lista vacía) con un asesor sin pendientes; una cita de
 venta caída en Mi agenda con datos reales.

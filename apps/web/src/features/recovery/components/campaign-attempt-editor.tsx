@@ -43,6 +43,17 @@ const quickValues = new Set<string>(quickChoices.map((choice) => choice.value));
 /** Los canales de casi siempre van como botones; el resto, en una lista. */
 const mainChannels = ["LLAMADA", "WHATSAPP"];
 
+/**
+ * Lo elegido se marca con el acento, igual que «Otro resultado». El botón
+ * principal servía en Día, pero en Noche su fondo casi no se distingue del
+ * resto y el asesor no veía qué había marcado.
+ */
+function choiceClass(pressed: boolean): string {
+  return pressed
+    ? "ui-button border-ui-accent bg-ui-accent-soft text-ui-text"
+    : "ui-button ui-button--secondary";
+}
+
 export type ConfirmedAttempt = NonNullable<
   CampaignAttemptInlineState["attempt"]
 >;
@@ -453,7 +464,7 @@ export function CampaignAttemptEditor({
         {quickChoices.map((choice, index) => (
           <button
             aria-pressed={result === choice.value}
-            className={`ui-button ${result === choice.value ? "ui-button--primary" : "ui-button--secondary"}`}
+            className={choiceClass(result === choice.value)}
             key={choice.value}
             onClick={() => choose(choice.value)}
             ref={index === 0 ? resultRef : undefined}
@@ -530,7 +541,7 @@ export function CampaignAttemptEditor({
             {mainChannels.map((value) => (
               <button
                 aria-pressed={channel === value}
-                className={`ui-button ${channel === value ? "ui-button--primary" : "ui-button--secondary"}`}
+                className={choiceClass(channel === value)}
                 key={value}
                 onClick={() => setChannel(value)}
                 type="button"
