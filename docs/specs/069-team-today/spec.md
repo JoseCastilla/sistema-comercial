@@ -1,6 +1,6 @@
 # SPEC-069 — Hoy en mi equipo
 
-**Estado:** `ENTREGADA` — fase 1 verificada en producción; José aprobó las recomendaciones de P-01 a P-04 (25/09/2026). Fase 2 pendiente
+**Estado:** `VERIFICADA` — fases 1 y 2 verificadas en producción; José aprobó las recomendaciones de P-01 a P-04 (25/09/2026). La fase 3 queda fuera hasta que José la pida
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25

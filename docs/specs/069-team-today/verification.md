@@ -16,3 +16,17 @@
   gestiones hoy · la última a las 09:50». La página cargó en 925 ms,
   incluida la redirección (AC-005). En el celular no se desplaza de lado
   (AC-004); «Equipo» se movió después al primer lugar del menú de abajo.
+
+- **25/09/2026** — Fase 2 en producción (`3e50115`), sesión de la
+  supervisora, solo lectura. Cada tarjeta tiene «Ver su día». El de
+  Francesco abre «El día de FRANCESCO ANDREE GALA ZACARIAS» con su franja
+  (hoy 1 venta, comisión, cuota 43 de 60), «Citas que ya pasaron 1»,
+  «Ventas caídas por salvar 5», «Pedidos que te necesitan 2» y «Campaña
+  37»: lo mismo que su tarjeta en «Hoy en mi equipo». Ningún botón
+  «Registrar gestión»; los casos abren su ficha sin `from=mi-dia`. Un
+  identificador fuera del equipo responde 404.
+
+Observaciones para después: los títulos compartidos con «Mi día» siguen en
+segunda persona («Tu comisión», «Pedidos que te necesitan») aunque aquí se
+refieren al asesor; y el 404 es la página genérica de Next, en inglés.
+
