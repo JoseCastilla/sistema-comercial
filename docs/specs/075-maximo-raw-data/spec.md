@@ -46,6 +46,24 @@ Hasta ahora (SPEC-029, SPEC-041):
   - Parámetro: `maximo=<estado>`, que reemplaza a `accion`.
 - **BR-005 — Mi día y Recupero** dicen «Máximo: <estado> · <motivo> ·
   <submotivo>», sin traducir.
+- **BR-007 — Qué no se muestra** (José, 25/09/2026, sobre el panel en
+  producción, 22 campos):
+  - **No sirven para gestionar:** fechas de entrega pactada, de entrega real
+    y de toma del pedido; vendedor y nombre del vendedor; monto a cobrar y
+    monto facturado; región y zonal.
+  - **Ya los dice la ficha:** nombre y teléfono del cliente; departamento,
+    provincia y distrito; tipo de delivery; entidad (somos nosotros).
+  - **El teléfono del receptor** solo aparece si es distinto del teléfono
+    del cliente.
+  - **Quedan:**
+    - estado, motivo y submotivo;
+    - estado de gestión, resultado y próxima acción;
+    - fecha de compromiso;
+    - quién actualizó y cuándo;
+    - pedido y envío en Máximo, como referencia para reclamar.
+  - Los campos nuevos siguen apareciendo solos.
+  - La lista vive en `features/orders/agr-delivery-fields.ts` y se prueba
+    en `campos-maximo.test.ts`.
 - **BR-006 — Sin cambios por ahora:**
   - Qué pedidos cuentan como entrega fallida (SPEC-029 BR-017).
   - El orden de la bandeja, que todavía usa la acción calculada por dentro

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { getAgrDeliveryFields } from "../agr-delivery-fields";
+
 import {
   canCloseDitoOrder,
   canCancelDitoOrder,
@@ -703,77 +705,6 @@ type AgrActionKind =
  * El mismo "CLIENTE AUSENTE" se reagenda mientras la orden vive y se reingresa
  * cuando ya excedio las visitas. Por eso el estado se evalua siempre primero.
  */
-/**
- * SPEC-075: los campos de Máximo en el orden y con el nombre de la fuente.
- * Solo se les pone tilde y mayúscula inicial; el valor va tal como llega.
- * Lo que Máximo mande además de esto también se muestra, con su propio
- * nombre: no se deja información sin aprovechar.
- */
-const agrDeliveryFieldLabels: ReadonlyArray<[string, string]> = [
-  ["estado_pedido", "Estado del pedido"],
-  ["motivo_rechazo", "Motivo de rechazo"],
-  ["submotivo_rechazo", "Submotivo de rechazo"],
-  ["gestion_status", "Estado de gestión"],
-  ["resultado", "Resultado"],
-  ["proxima_accion", "Próxima acción"],
-  ["fecha_compromiso", "Fecha de compromiso"],
-  ["fecha_entrega_pactada", "Fecha de entrega pactada"],
-  ["fecha_entrega_real", "Fecha de entrega real"],
-  ["fecha_toma_pedido", "Fecha de toma del pedido"],
-  ["tipo_delivery", "Tipo de delivery"],
-  ["envio", "Envío"],
-  ["pedido", "Pedido"],
-  ["vendedor", "Vendedor"],
-  ["nombre_vendedor", "Nombre del vendedor"],
-  ["updated_by_name", "Actualizado por"],
-  ["gestion_updated_at", "Gestión actualizada"],
-];
-const agrDeliveryHiddenKeys = new Set(["order_id"]);
-
-function humanizeAgrKey(key: string): string {
-  const text = key.replace(/_/g, " ").trim();
-  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : key;
-}
-
-function readAgrValue(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "string") return value.trim() || null;
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  return null;
-}
-
-export function getAgrDeliveryFields(snapshot: {
-  estadoPedido: string;
-  motivoRechazo: string | null;
-  submotivoRechazo: string | null;
-  rawPayload: Prisma.JsonValue;
-}): Array<{ key: string; label: string; value: string }> {
-  const raw =
-    snapshot.rawPayload &&
-    typeof snapshot.rawPayload === "object" &&
-    !Array.isArray(snapshot.rawPayload)
-      ? (snapshot.rawPayload as Record<string, unknown>)
-      : {
-          estado_pedido: snapshot.estadoPedido,
-          motivo_rechazo: snapshot.motivoRechazo,
-          submotivo_rechazo: snapshot.submotivoRechazo,
-        };
-  const known = new Set(agrDeliveryFieldLabels.map(([key]) => key));
-  const fields: Array<{ key: string; label: string; value: string }> = [];
-  for (const [key, label] of agrDeliveryFieldLabels) {
-    const value = readAgrValue(raw[key]);
-    if (value) fields.push({ key, label, value });
-  }
-  for (const key of Object.keys(raw).sort()) {
-    if (known.has(key) || agrDeliveryHiddenKeys.has(key)) continue;
-    const value = readAgrValue(raw[key]);
-    if (value) fields.push({ key, label: humanizeAgrKey(key), value });
-  }
-  return fields;
-}
-
 /** Estado y motivo de Máximo en una línea, tal como llegan (SPEC-075). */
 export function describeAgrDeliveryRaw(snapshot: {
   estadoPedido: string;
