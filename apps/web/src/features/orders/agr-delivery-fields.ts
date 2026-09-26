@@ -11,16 +11,16 @@
  */
 const agrDeliveryFieldLabels: ReadonlyArray<[string, string]> = [
   ["estado_pedido", "Estado del pedido"],
-  ["motivo_rechazo", "Motivo de rechazo"],
-  ["submotivo_rechazo", "Submotivo de rechazo"],
-  ["gestion_status", "Estado de gestión"],
+  ["motivo_rechazo", "Motivo"],
+  ["submotivo_rechazo", "Submotivo"],
+  ["gestion_status", "Gestión"],
   ["resultado", "Resultado"],
   ["proxima_accion", "Próxima acción"],
   ["fecha_compromiso", "Fecha de compromiso"],
   ["updated_by_name", "Actualizado por"],
   ["gestion_updated_at", "Gestión actualizada"],
   ["telefono_receptor", "Teléfono del receptor"],
-  ["pedido", "Pedido en Máximo"],
+  ["pedido", "Pedido"],
   ["envio", "Envío"],
 ];
 /*

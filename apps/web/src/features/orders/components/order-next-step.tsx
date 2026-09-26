@@ -110,8 +110,7 @@ export function OrderNextStep({
   if (steps.length === 0) {
     return order.status === "SENT" && order.sentSubstatus === "DELIVERED" ? (
       <p className="text-sm text-ui-muted">
-        Entregado. Falta que el operador active la línea; supervisión lo
-        cierra.
+        Entregado. Falta que el operador active la línea.
       </p>
     ) : null;
   }
@@ -147,7 +146,7 @@ export function OrderNextStep({
       </div>
 
       <label className="block space-y-1 text-xs text-ui-muted">
-        <span>Nota (opcional)</span>
+        <span>Nota</span>
         <textarea
           className="min-h-16 w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-sm text-ui-text"
           disabled={pending}
@@ -169,8 +168,8 @@ export function OrderNextStep({
         {state.type === "error"
           ? state.message
           : onSaved
-            ? "Un toque guarda y pasa al pedido de abajo."
-            : "Un toque guarda."}
+            ? "Guarda y pasa al siguiente."
+            : null}
       </p>
     </div>
   );

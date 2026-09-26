@@ -141,22 +141,15 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
     const logistics = data.filter === "LOGISTICS";
     return (
       <Surface className="ui-period-bar" raised>
-        <div>
-          <p className="ui-period-bar__eyebrow">Bandeja operativa</p>
-          <p className="ui-period-bar__label">
-            {logistics
-              ? "Entregas fallidas por gestionar desde el 10/08"
-              : "Escalaciones de todas las fechas"}
-          </p>
-        </div>
-        <p className="max-w-xl text-sm text-ui-muted">
+        {/* SPEC-078: una línea; estas vistas no usan el período. */}
+        <p className="text-sm text-ui-muted">
           {logistics
-            ? `Pedidos con un problema de entrega reportado por Máximo. ${
+            ? `Desde el 10/08, según Máximo${
                 data.logisticsSummary.lastFetchedAtLabel
-                  ? `Última consulta: ${data.logisticsSummary.lastFetchedAtLabel}.`
-                  : "Aún no se ha consultado hoy."
+                  ? ` · consultado ${data.logisticsSummary.lastFetchedAtLabel}`
+                  : " · aún sin consultar hoy"
               }`
-            : "Las incidencias permanecen aquí hasta que un supervisor las resuelva, aunque la venta pertenezca a un período anterior."}
+            : "De todas las fechas, hasta que supervisión las resuelva"}
         </p>
       </Surface>
     );
@@ -164,10 +157,11 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
 
   return (
     <Surface className="ui-period-bar" raised>
-      <div>
-        <p className="ui-period-bar__eyebrow">Período de ventas</p>
+      {/* SPEC-078: el botón elegido ya dice el período; el texto solo hace
+          falta para un rango o el histórico, que no tienen botón propio. */}
+      {advancedPeriodActive ? (
         <p className="ui-period-bar__label">{data.periodLabel}</p>
-      </div>
+      ) : null}
 
       <div className="ui-period-controls">
         <nav aria-label="Período de ventas" className="ui-period-navigation">
@@ -731,14 +725,14 @@ function OrderDetails({
         </div>
 
         <div>
-          <dt>En este estado desde hace</dt>
-          <dd>{order.statusAgeLabel}</dd>
+          <dt>Último cambio</dt>
+          <dd>hace {order.statusAgeLabel}</dd>
         </div>
 
         {showAdvisor ? (
           <>
             <div>
-              <dt>Agente</dt>
+              <dt>Asesor</dt>
               <dd>{order.agentName || "Sin asesor asignado"}</dd>
             </div>
 
@@ -763,11 +757,14 @@ function OrderDetails({
           </dd>
         </div>
 
+        {/* SPEC-078: «Asignado» no dice nada; solo se muestra lo que falta. */}
         {showAdvisor ? (
-          <div>
-            <dt>Asignación</dt>
-            <dd>{order.assignmentStatusLabel}</dd>
-          </div>
+          order.assignmentStatusLabel !== "Asignado" ? (
+            <div>
+              <dt>Asignación</dt>
+              <dd>{order.assignmentStatusLabel}</dd>
+            </div>
+          ) : null
         ) : (
           <div className="ui-order-identity__item--wide">
             <dt>Ubicación</dt>
@@ -940,7 +937,7 @@ function MobileOrderCard({
 
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="truncate text-xs text-ui-muted">
-            En este estado desde hace {order.statusAgeLabel}
+            Último cambio hace {order.statusAgeLabel}
           </p>
 
           <SlaBadge order={order} />
@@ -1118,6 +1115,46 @@ function plural(count: number, one: string, many: string): string {
   return `${formatCount(count)} ${count === 1 ? one : many}`;
 }
 
+/** SPEC-078: el vacío de cada vista, corto y dicho como resultado. */
+function emptyStateFor(data: OrderInboxData): {
+  title: string;
+  description: string;
+} {
+  if (data.search || data.dueFilter || data.maximoFilter) {
+    return {
+      title: "Sin coincidencias",
+      description: "Prueba con otra búsqueda o quita un filtro.",
+    };
+  }
+  switch (data.filter) {
+    case "TO_MOVE":
+      return {
+        title: "Nada por mover",
+        description: "Todo lo del período ya se entregó, se cerró o está en otra vista.",
+      };
+    case "LOGISTICS":
+      return { title: "Sin entregas fallidas", description: "Máximo no reporta ninguna." };
+    case "AWAITING_ACTIVATION":
+      return { title: "Nada por activar", description: "Lo entregado ya se cerró." };
+    case "ESCALATIONS":
+      return { title: "Nada escalado", description: "Supervisión no tiene casos pendientes." };
+    case "RECOVERY":
+      return {
+        title: "Nada por recuperar",
+        description: "Sin pedidos no entregados ni cancelados este mes.",
+      };
+    default:
+      break;
+  }
+  if (data.teamFilter === "UNASSIGNED") {
+    return { title: "Todo está asignado", description: "No hay ventas sin asesor en el período." };
+  }
+  return {
+    title: "Sin ventas en el período",
+    description: "Elige otro período arriba.",
+  };
+}
+
 function SummaryFigure({
   label,
   value,
@@ -1184,7 +1221,7 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
         ) : (
           <>
             <SummaryFigure
-              label={`Ventas · ${data.periodLabel}`}
+              label="Ventas"
               value={data.totals.visible}
             />
             <SummaryFigure label="Entregados" value={data.totals.delivered} />
@@ -1279,7 +1316,6 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
   return (
     <div className="ui-page-stack">
       <PageHeader
-        eyebrow="Operación comercial"
         meta={
           <span className="flex flex-wrap items-center justify-end gap-2">
             {data.returnTo ? (
@@ -1386,53 +1422,15 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         />
 
         <p className="text-xs text-ui-muted md:basis-full">
-          {plural(data.items.length, "pedido", "pedidos")} en esta página
           {data.filteredTotal > data.pagination.pageSize
-            ? ` de ${formatCount(data.filteredTotal)} encontrados`
-            : ""}
+            ? `${formatCount(data.items.length)} de ${plural(data.filteredTotal, "pedido", "pedidos")}`
+            : plural(data.items.length, "pedido", "pedidos")}
           {data.search ? ` para “${data.search}”` : ""}
         </p>
       </Surface>
 
       {data.items.length === 0 ? (
-        <EmptyState
-          description={
-            data.filter === "RECOVERY"
-              ? "No tienes pedidos no entregados o cancelados pendientes de recuperación este mes."
-              : data.filter === "LOGISTICS"
-                ? "Máximo no reporta pedidos con una acción comercial pendiente."
-                : data.filter === "ESCALATIONS"
-                  ? "No hay incidencias escaladas pendientes de atención."
-                  : data.totals.visible > 0
-                    ? "No hay ventas que coincidan con este estado o búsqueda."
-                    : data.teamFilter === "UNASSIGNED"
-                      ? "No hay ventas pendientes de asignación en este período."
-                      : data.period === "TODAY"
-                        ? "No se registraron ventas hoy."
-                        : data.period === "YESTERDAY"
-                          ? "No se registraron ventas ayer."
-                          : data.period === "WEEK"
-                            ? "No se registraron ventas esta semana."
-                            : data.period === "MONTH"
-                              ? "No se registraron ventas en el mes actual."
-                              : data.period === "RANGE"
-                                ? "No se registraron ventas en el rango seleccionado."
-                                : "No se encontraron ventas en el histórico."
-          }
-          title={
-            data.filter === "RECOVERY"
-              ? "Recuperación al día"
-              : data.filter === "LOGISTICS"
-                ? "Gestión logística al día"
-                : data.filter === "ESCALATIONS"
-                  ? "Escalaciones al día"
-                  : data.totals.visible > 0
-                    ? "No hay coincidencias"
-                    : data.teamFilter === "UNASSIGNED"
-                      ? "Todo está asignado"
-                      : "Aún no hay ventas en este período"
-          }
-        />
+        <EmptyState {...emptyStateFor(data)} />
       ) : (
         <>
           <section className="space-y-3 lg:hidden">

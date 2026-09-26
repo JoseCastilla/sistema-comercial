@@ -47,10 +47,10 @@ describe("Campos de Máximo", () => {
   it("muestra solo lo útil, con el valor tal como llega y en el orden de la fuente", () => {
     expect(campos(registro).map((field) => `${field.label}: ${field.value}`)).toEqual([
       "Estado del pedido: NO ENTREGADO",
-      "Motivo de rechazo: CLIENTE AUSENTE",
-      "Submotivo de rechazo: CLIENTE NO CONTESTA LLAMADAS",
-      "Estado de gestión: Sin gestión",
-      "Pedido en Máximo: 261036282",
+      "Motivo: CLIENTE AUSENTE",
+      "Submotivo: CLIENTE NO CONTESTA LLAMADAS",
+      "Gestión: Sin gestión",
+      "Pedido: 261036282",
       "Envío: 8461500",
       "Campo nuevo: VALOR NUEVO",
     ]);

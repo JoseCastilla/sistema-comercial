@@ -204,7 +204,7 @@ const orderSelect = {
       priority: true,
       entryReason: true,
       resolvedAt: true,
-      assignedUser: { select: { name: true } },
+      assignedUser: { select: { name: true, email: true } },
     },
   },
 } as const;
@@ -246,7 +246,7 @@ function createLocationLabel(
 
 function createWindowLabel(start: Date | null, end: Date | null): string {
   if (!start || !end) {
-    return "Sin horario asignado";
+    return "Sin horario";
   }
 
   const sameBusinessDate =
@@ -365,14 +365,14 @@ function getSlaState(
     ) {
       return {
         state: "PENDING_SHIFT",
-        label: "Sin horario asignado",
+        label: "Sin horario",
         detail: null,
       };
     }
 
     return {
       state: "NO_DEADLINE",
-      label: "Todavía sin plazo",
+      label: "Sin plazo",
       detail: null,
     };
   }
@@ -403,7 +403,8 @@ function getSlaState(
 
   return {
     state: "ON_TIME",
-    label: "Dentro del plazo",
+    // SPEC-078: la hora dice más que «Dentro del plazo».
+    label: `Vence ${dueLabel}`,
     detail: `hasta ${dueLabel}`,
   };
 }
@@ -1599,8 +1600,13 @@ export async function getOrderInbox(
             entryReason: order.recoveryCasesOriginated[0].entryReason
               ? String(order.recoveryCasesOriginated[0].entryReason)
               : null,
-            assignedToName:
-              order.recoveryCasesOriginated[0].assignedUser?.name ?? null,
+            // SPEC-078: el mismo nombre corto que en el resto de Pedidos.
+            assignedToName: order.recoveryCasesOriginated[0].assignedUser
+              ? formatAdvisorCompactName(
+                  order.recoveryCasesOriginated[0].assignedUser.name,
+                  order.recoveryCasesOriginated[0].assignedUser.email,
+                )
+              : null,
             isOpen: !resolvedRecoveryStatuses.includes(
               String(order.recoveryCasesOriginated[0].status),
             ),
@@ -1657,10 +1663,7 @@ export async function getOrderInbox(
     filter: query.filter,
     search,
     teamFilter,
-    teamAllLabel:
-      access.role === "SUPERVISOR"
-        ? "Mis equipos + sin asignar"
-        : "Todos los equipos",
+    teamAllLabel: "Todos",
     teamOptions,
     advisorFilter,
     advisorOptions,

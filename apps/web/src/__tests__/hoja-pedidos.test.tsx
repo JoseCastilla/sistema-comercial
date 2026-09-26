@@ -186,9 +186,8 @@ describe("Hoja de pedidos", () => {
     render(<OrderInbox data={datos()} />);
 
     const resumen = screen.getByRole("region", { name: "Resumen de pedidos" });
-    expect(within(resumen).getByText(/Ventas · Mes actual/)).toHaveTextContent(
-      "Ventas · Mes actual 403",
-    );
+    // SPEC-078: el período ya lo dice su botón; aquí solo «Ventas».
+    expect(within(resumen).getByText(/^Ventas/)).toHaveTextContent("Ventas 403");
     expect(
       within(resumen).getByRole("link", {
         name: "6 pendientes de meses anteriores →",

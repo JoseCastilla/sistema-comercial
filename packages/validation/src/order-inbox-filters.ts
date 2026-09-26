@@ -110,8 +110,8 @@ export const orderDueFilterOptions: ReadonlyArray<{
 }> = [
   { value: "vencido", label: "Fuera de plazo" },
   { value: "pronto", label: `Vence en ${orderDueSoonMinutes} minutos` },
-  { value: "sin_horario", label: "Sin horario asignado" },
-  { value: "sin_plazo", label: "Todavía sin plazo" },
+  { value: "sin_horario", label: "Sin horario" },
+  { value: "sin_plazo", label: "Sin plazo" },
 ];
 
 export function parseOrderDueFilter(
