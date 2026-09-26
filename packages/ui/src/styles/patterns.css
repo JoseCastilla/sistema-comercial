@@ -2156,8 +2156,8 @@
   .ui-order-grid__row {
     display: grid;
     grid-template-columns:
-      6rem minmax(6.5rem, 1.7fr) 4.6rem 5.2rem 4rem
-      minmax(6rem, 0.9fr) 5.3rem 5.9rem;
+      6rem minmax(6.5rem, 1.5fr) 4.6rem 5.2rem 4rem
+      minmax(6rem, 1.3fr) 5.3rem 5.9rem;
     align-items: center;
     gap: 0.3rem;
     min-width: 45.2rem;
@@ -2166,8 +2166,8 @@
   .ui-order-grid__header[data-show-advisor="true"],
   .ui-order-grid__row[data-show-advisor="true"] {
     grid-template-columns:
-      6rem minmax(6.5rem, 1.5fr) 4.6rem 5.2rem 4rem
-      minmax(4.5rem, 1fr) minmax(6rem, 0.8fr) 5.3rem 5.9rem;
+      6rem minmax(6.5rem, 1.4fr) 4.6rem 5.2rem 4rem
+      minmax(4.5rem, 0.8fr) minmax(6rem, 1.3fr) 5.3rem 5.9rem;
     min-width: 49.8rem;
   }
 
@@ -2283,7 +2283,10 @@
     min-width: 0;
   }
 
+  /* El display va aquí y no como utilidad: una utilidad le ganaría a la
+     regla que oculta la columna cuando la fila pasa a dos líneas. */
   .ui-order-grid__order-code {
+    display: flex;
     font-family: inherit;
     font-size: inherit;
     font-weight: 650;
@@ -2296,8 +2299,8 @@
   }
 
   /* Datos que solo se muestran cuando la fila pasa a dos líneas. */
-  .ui-order-grid__meta,
-  .ui-order-grid__inline-action {
+  .ui-order-grid__client .ui-order-grid__meta,
+  .ui-order-grid__status .ui-order-grid__inline-action {
     display: none;
   }
 

@@ -317,14 +317,16 @@ export function OrderScopeFilters({
         ) : null}
       </div>
 
-      <p aria-live="polite" className="text-xs text-ui-muted md:basis-full">
+      {/* SPEC-073: sin pista fija; solo habla cuando hay algo que decir. */}
+      <p
+        aria-live="polite"
+        className="text-xs text-ui-muted empty:hidden md:basis-full"
+      >
         {pending
           ? "Buscando…"
           : !searchable
             ? `Sigue escribiendo: hacen falta ${minimumSearchLength} caracteres, o Enter para buscar igual.`
-            : chips.length > 0
-              ? null
-              : "Escribe para buscar; los filtros aplican al elegirlos."}
+            : null}
         {chips.length > 0 && !pending && searchable ? (
           <span className="flex flex-wrap items-center gap-2">
             {chips.map((chip) => (

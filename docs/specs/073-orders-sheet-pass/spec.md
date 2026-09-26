@@ -74,15 +74,19 @@ Lo que se midió con la sesión de la supervisora (panel de 1070 px):
   - No hay desplazamiento lateral.
   - DNI, teléfono y orden se copian desde el panel.
 - **BR-006 — Nombre y subtítulo**: el título es «Pedidos», como en el menú,
-  sin subtítulo. «N pedidos en esta página».
+  sin subtítulo. «N pedidos en esta página de M encontrados». Los filtros
+  no llevan pista fija («Escribe para buscar…»): solo hablan cuando hay
+  algo que decir.
 
 ## 3. Criterios de aceptación
 
 - **AC-001**: en el panel de 1070 px, la lista no se desliza de lado y
   muestra cliente, plazo, estado y acción de cada pedido.
 - **AC-002**: en un monitor ancho, la hoja conserva sus columnas.
-- **AC-003**: el primer pedido sube a menos de la mitad de la distancia
-  actual (1055 px).
+- **AC-003**: el primer pedido sube al menos 300 px desde los 1055 px
+  actuales. (Se había escrito «a menos de la mitad»; con el período y los
+  filtros arriba no se alcanza sin tocar su forma, que queda fuera de esta
+  pasada.)
 - **AC-004**: los enlaces de «por atender» abren el mismo filtro que los
   avisos anteriores.
 - **AC-005**: en el panel, la acción del operador y el formulario aparecen

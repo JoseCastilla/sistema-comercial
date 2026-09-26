@@ -1068,7 +1068,7 @@ function CopyOrderCodeButton({
       aria-label={`Seleccionar y copiar orden ${orderCode}`}
       aria-pressed={selected}
       className={[
-        "ui-order-grid__order-code group flex min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2",
+        "ui-order-grid__order-code group min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2",
         copyState === "COPIED"
           ? "bg-ui-success-soft text-ui-success"
           : copyState === "ERROR"
@@ -1596,7 +1596,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         <p className="text-xs text-ui-muted md:basis-full">
           {plural(data.items.length, "pedido", "pedidos")} en esta página
           {data.filteredTotal > data.pagination.pageSize
-            ? ` de ${data.filteredTotal} encontradas`
+            ? ` de ${formatCount(data.filteredTotal)} encontrados`
             : ""}
           {data.search ? ` para “${data.search}”` : ""}
         </p>
