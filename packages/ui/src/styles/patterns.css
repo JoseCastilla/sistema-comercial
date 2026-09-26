@@ -2160,19 +2160,21 @@
   .ui-order-grid__row {
     display: grid;
     grid-template-columns:
-      6rem minmax(6.5rem, 1.5fr) 4.6rem 5.2rem 4rem
-      minmax(6rem, 1.3fr) 5.3rem 5.9rem;
+      6rem minmax(6.5rem, 1.5fr) 4.6rem 5.2rem 4.75rem
+      minmax(8.5rem, 1.2fr) 7rem 5.9rem;
     align-items: center;
     gap: 0.3rem;
-    min-width: 45.2rem;
+    /* Suma de columnas, huecos, relleno y borde (SPEC-077): por debajo de
+       esto la fila pasa a dos líneas (ver @container order-list). */
+    min-width: 52.5rem;
   }
 
   .ui-order-grid__header[data-show-advisor="true"],
   .ui-order-grid__row[data-show-advisor="true"] {
     grid-template-columns:
-      6rem minmax(6.5rem, 1.4fr) 4.6rem 5.2rem 4rem
-      minmax(4.5rem, 0.8fr) minmax(6rem, 1.3fr) 5.3rem 5.9rem;
-    min-width: 49.8rem;
+      6rem minmax(6.5rem, 1.4fr) 4.6rem 5.2rem 4.75rem
+      minmax(4.5rem, 0.8fr) minmax(8.5rem, 1.2fr) 7rem 5.9rem;
+    min-width: 57.3rem;
   }
 
   .ui-order-grid__action {
@@ -2310,13 +2312,13 @@
   }
 
   /*
-   * SPEC-073: cuando la lista no alcanza el ancho de la hoja (45,2rem, o
-   * 49,8rem con la columna Asesor), cada venta pasa a dos líneas en vez de
+   * SPEC-073: cuando la lista no alcanza el ancho de la hoja (52,5rem, o
+   * 57,3rem con la columna Asesor; SPEC-077), cada venta pasa a dos líneas en vez de
    * cortarse con desplazamiento lateral: arriba quién es y su plazo; abajo en
    * qué está y qué hay que hacer. Orden, DNI y teléfono siguen a un clic en
    * el panel de gestión, que los copia.
    */
-  @container order-list (width < 45.25rem) {
+  @container order-list (width < 52.55rem) {
     .ui-order-grid__header:not([data-show-advisor="true"]) {
       display: none;
     }
@@ -2360,7 +2362,7 @@
     }
   }
 
-  @container order-list (width < 49.85rem) {
+  @container order-list (width < 57.35rem) {
     .ui-order-grid__header[data-show-advisor="true"] {
       display: none;
     }

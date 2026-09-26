@@ -49,4 +49,13 @@ perdía.
   - Rojo para cancelado y «sin avance», verde para cerrado.
 - **BR-003 — La fila elegida va en azul** (`accent-soft` más el borde
   izquierdo), distinta del hover.
+- **BR-004 — Columnas de la hoja ancha:** en producción, «OPERADOR» se
+  pegaba a «ASESOR», y «Enviado · No entregado» y «NO ENTREGADO» se partían
+  en dos líneas. Se ensanchan:
+  - Operador: de 4 a 4,75 rem.
+  - Estado: mínimo de 6 a 8,5 rem.
+  - Máximo: de 5,3 a 7 rem.
+
+  La hoja de una línea pasa a necesitar 52,5 rem (57,3 rem con Asesor); por
+  debajo de eso va en dos líneas (SPEC-073).
 - El modo Día no cambia, salvo la fila elegida en azul claro.
