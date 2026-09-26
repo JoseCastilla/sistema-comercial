@@ -158,7 +158,14 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
     filteredTotal: 1,
     items: [pedido()],
     pagination: { page: 1, pageSize: 50, totalPages: 1 },
-    priorPending: { toMove: 6, awaiting: 2, from: "2025-09-01", to: "2026-08-31" },
+    priorPending: {
+      toMove: 6,
+      awaiting: 2,
+      failed: 30,
+      escalated: 1,
+      from: "2025-09-01",
+      to: "2026-08-31",
+    },
     advisorSummary: [
       { id: "u-1", name: "Silvia S.", teamName: "HUANCAYO", toDeliver: 4, failed: 3, overdue: 2, awaiting: 1 },
       { id: "u-2", name: "Steven L.", teamName: "HUANCAYO", toDeliver: 1, failed: 0, overdue: 0, awaiting: 0 },
@@ -209,9 +216,17 @@ describe("Hoja de pedidos", () => {
     expect(
       within(resumen).getByRole("link", { name: "2 por activar →" }),
     ).toHaveAttribute("href", expect.stringContaining("status=AWAITING_ACTIVATION"));
+    // SPEC-085: las vistas usan el período; lo fallido y lo escalado de antes
+    // sigue a un toque.
+    expect(
+      within(resumen).getByRole("link", { name: "30 entregas fallidas →" }),
+    ).toHaveAttribute("href", expect.stringContaining("status=LOGISTICS"));
+    expect(
+      within(resumen).getByRole("link", { name: "1 escalada →" }),
+    ).toHaveAttribute("href", expect.stringContaining("status=ESCALATIONS"));
     // SPEC-074: ningún aviso repite una pestaña.
     expect(within(resumen).queryByText(/fuera de plazo/)).toBeNull();
-    expect(within(resumen).queryByText(/entregas fallidas/)).toBeNull();
+    expect(within(resumen).queryByText(/por gestionar/)).toBeNull();
 
     const vistas = screen.getByRole("navigation", {
       name: "Estado de los pedidos",

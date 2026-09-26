@@ -159,24 +159,6 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
   const [rangeFrom, setRangeFrom] = useState(data.from ?? "");
   const [rangeTo, setRangeTo] = useState(data.to ?? "");
 
-  if (data.filter === "ESCALATIONS" || data.filter === "LOGISTICS") {
-    const logistics = data.filter === "LOGISTICS";
-    return (
-      <Surface className="ui-period-bar" raised>
-        {/* SPEC-078: una línea; estas vistas no usan el período. */}
-        <p className="text-sm text-ui-muted">
-          {logistics
-            ? `Desde el 10/08, según Máximo${
-                data.logisticsSummary.lastFetchedAtLabel
-                  ? ` · consultado ${data.logisticsSummary.lastFetchedAtLabel}`
-                  : " · aún sin consultar hoy"
-              }`
-            : "De todas las fechas, hasta que supervisión las resuelva"}
-        </p>
-      </Surface>
-    );
-  }
-
   return (
     <Surface className="ui-period-bar" raised>
       {/* SPEC-078: el botón elegido ya dice el período; el texto solo hace
@@ -1479,6 +1461,11 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
               label="Por revisar"
               value={data.logisticsSummary.total}
             />
+            <span className="text-xs">
+              {data.logisticsSummary.lastFetchedAtLabel
+                ? `Máximo, consultado ${data.logisticsSummary.lastFetchedAtLabel}`
+                : "Máximo aún no se consultó hoy"}
+            </span>
             {/* SPEC-075: agrupados por el estado que manda Máximo, tal cual. */}
             {data.logisticsSummary.byState.map((item) => (
               <SummaryFigure
@@ -1537,10 +1524,13 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
        * llevan su cifra. Queda lo que ninguna pestaña muestra: lo pendiente de
        * meses anteriores, fuera del período.
        */}
-      {!logistics &&
-      data.period !== "HISTORY" &&
+      {data.period !== "HISTORY" &&
       data.period !== "RANGE" &&
-      data.priorPending.toMove + data.priorPending.awaiting > 0 ? (
+      data.priorPending.toMove +
+        data.priorPending.awaiting +
+        data.priorPending.failed +
+        data.priorPending.escalated >
+        0 ? (
         <p className="mt-2 flex flex-wrap gap-x-3 text-xs">
           <span className="text-ui-muted">
             {data.period === "TODAY"
@@ -1551,32 +1541,30 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
                   ? "Antes de esta semana:"
                   : "Antes de este mes:"}
           </span>
-          {data.priorPending.toMove > 0 ? (
-            <Link
-              className="font-semibold text-ui-warning hover:underline"
-              href={ordersHref(data, {
-                range: data.priorPending,
-                filter: data.role === "AGENT" ? "ALL" : "TO_MOVE",
-                search: "",
-                due: null,
-              })}
-            >
-              {formatCount(data.priorPending.toMove)} por entregar →
-            </Link>
-          ) : null}
-          {data.priorPending.awaiting > 0 ? (
-            <Link
-              className="font-semibold text-ui-warning hover:underline"
-              href={ordersHref(data, {
-                range: data.priorPending,
-                filter: data.role === "AGENT" ? "ALL" : "AWAITING_ACTIVATION",
-                search: "",
-                due: null,
-              })}
-            >
-              {formatCount(data.priorPending.awaiting)} por activar →
-            </Link>
-          ) : null}
+          {(
+            [
+              ["toMove", "TO_MOVE", "por entregar", "por entregar"],
+              ["failed", "LOGISTICS", "entrega fallida", "entregas fallidas"],
+              ["awaiting", "AWAITING_ACTIVATION", "por activar", "por activar"],
+              ["escalated", "ESCALATIONS", "escalada", "escaladas"],
+            ] as const
+          ).map(([key, filter, one, many]) =>
+            data.priorPending[key] > 0 ? (
+              <Link
+                className="font-semibold text-ui-warning hover:underline"
+                href={ordersHref(data, {
+                  range: data.priorPending,
+                  filter: data.role === "AGENT" ? "ALL" : filter,
+                  search: "",
+                  due: null,
+                })}
+                key={key}
+              >
+                {formatCount(data.priorPending[key])}{" "}
+                {data.priorPending[key] === 1 ? one : many} →
+              </Link>
+            ) : null,
+          )}
         </p>
       ) : null}
     </section>

@@ -1117,10 +1117,10 @@ export async function getOrderInbox(
         ? {}
         : { assignedTeamId: teamFilter };
 
+  // SPEC-085 (José, 26/09/2026): toda vista es del período elegido, también
+  // Entregas fallidas y Escaladas. Otro período se elige arriba.
   const periodFilter: Prisma.DitoOrderWhereInput =
-    !["ESCALATIONS", "LOGISTICS"].includes(query.filter) &&
-    range.start &&
-    range.end
+    range.start && range.end
       ? {
           registeredAt: {
             gte: range.start,
@@ -1190,7 +1190,7 @@ export async function getOrderInbox(
     AND: [
       accessFilter,
       teamFilterWhere,
-      filter !== "LOGISTICS" && range.start && range.end
+      range.start && range.end
         ? { registeredAt: { gte: range.start, lt: range.end } }
         : {},
       getStatusFilter(filter, now, incidentThreshold),
@@ -1248,7 +1248,7 @@ export async function getOrderInbox(
   const logisticsRecords = await database.ditoOrder.findMany({
     where: {
       organizationId,
-      AND: [accessFilter, teamFilterWhere, advisorFilterWhere],
+      AND: [accessFilter, teamFilterWhere, advisorFilterWhere, periodFilter],
       status: { not: "CLOSED" },
       deliveryStatus: { not: "DELIVERED" },
       agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } },
@@ -1301,6 +1301,8 @@ export async function getOrderInbox(
     overdueCount,
     priorToMoveCount,
     priorAwaitingCount,
+    priorFailedCount,
+    priorEscalatedCount,
     toMoveCount,
     awaitingActivationCount,
     doneCount,
@@ -1308,24 +1310,8 @@ export async function getOrderInbox(
   ] = await database.$transaction([
     database.ditoOrder.count({ where: summaryWhere }),
     database.ditoOrder.count({ where: filteredWhere }),
-    database.ditoOrder.count({
-      where: {
-        organizationId,
-        AND: [accessFilter, teamFilterWhere, advisorFilterWhere],
-        escalations: {
-          some: { status: { in: ["OPEN", "ACKNOWLEDGED"] } },
-        },
-      },
-    }),
-    database.ditoOrder.count({
-      where: {
-        organizationId,
-        AND: [accessFilter, teamFilterWhere, advisorFilterWhere],
-        status: { not: "CLOSED" },
-        deliveryStatus: { not: "DELIVERED" },
-        agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } },
-      },
-    }),
+    database.ditoOrder.count({ where: tabWhere("ESCALATIONS") }),
+    database.ditoOrder.count({ where: tabWhere("LOGISTICS") }),
     database.ditoOrder.count({
       where: {
         ...summaryWhere,
@@ -1380,6 +1366,8 @@ export async function getOrderInbox(
     }),
     database.ditoOrder.count({ where: priorWhere("TO_MOVE") }),
     database.ditoOrder.count({ where: priorWhere("AWAITING_ACTIVATION") }),
+    database.ditoOrder.count({ where: priorWhere("LOGISTICS") }),
+    database.ditoOrder.count({ where: priorWhere("ESCALATIONS") }),
     database.ditoOrder.count({ where: tabWhere("TO_MOVE") }),
     database.ditoOrder.count({ where: tabWhere("AWAITING_ACTIVATION") }),
     database.ditoOrder.count({ where: tabWhere("DONE") }),
@@ -1822,6 +1810,8 @@ export async function getOrderInbox(
     priorPending: {
       toMove: priorToMoveCount,
       awaiting: priorAwaitingCount,
+      failed: priorFailedCount,
+      escalated: priorEscalatedCount,
       from: getLimaIsoDate(priorStart),
       to: getLimaIsoDate(new Date(priorEnd.getTime() - 1)),
     },

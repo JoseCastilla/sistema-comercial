@@ -140,7 +140,8 @@ export function EscalationNotification({ role }: { role: string }) {
         <Link
           aria-label={`${count} incidencias escaladas requieren atención`}
           className="flex items-center gap-2 rounded-full border border-ui-danger-border bg-ui-danger-soft px-3 py-2 text-sm font-semibold text-ui-danger"
-          href="/orders?period=MONTH&status=ESCALATIONS"
+          // SPEC-085: el aviso cuenta todas las pendientes; abre todas.
+          href="/orders?period=HISTORY&status=ESCALATIONS"
           role="status"
         >
           <span aria-hidden="true">🔔</span>

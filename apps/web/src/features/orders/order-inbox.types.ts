@@ -229,6 +229,9 @@ export interface OrderInboxData {
   priorPending: {
     toMove: number;
     awaiting: number;
+    /** SPEC-085: con el período, lo fallido y lo escalado de antes no se pierde. */
+    failed: number;
+    escalated: number;
     from: string;
     to: string;
   };
