@@ -1,6 +1,6 @@
 # SPEC-074 — Pedidos como hoja de trabajo: cada control, una sola vez
 
-**Estado:** `BORRADOR` — pendiente de la decisión de José sobre §4 y §5
+**Estado:** `ENTREGADA` (fase 1) — José: «sigue con la hoja de trabajo de SPEC-074» (25/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25
@@ -116,3 +116,53 @@ con los pasos que tienen sentido desde el estado actual:
 - **AC-003**: pasar un pedido de «Agendado» a «Entregado» cuesta un toque.
 - **AC-004**: ningún botón se llama «Guardar», «Seleccionar» o «Enviar»
   sin decir qué guarda o envía.
+
+## 7. Fase 1: lo entregado (25/09/2026)
+
+- **Vistas:** siete, cada una con su cifra.
+  - «Por mover», nueva, que reemplaza a Activos e Incidencias.
+  - «Entregas fallidas».
+  - «Falta activar».
+  - «Escaladas».
+  - «Por recuperar».
+  - «Cerrados», nueva, que reemplaza a Entregados y Finalizados.
+  - «Todos».
+
+  Detalles:
+  - Todos los roles entran a «Por mover».
+  - Los enlaces antiguos (`ACTIVE`, `INCIDENTS`, `DELIVERED`, `FINAL`)
+    siguen abriendo; la vista antigua aparece como una pestaña más.
+  - «Por mover» y «Cerrados» dejan fuera lo que Máximo reporta con
+    problema, que vive en «Entregas fallidas».
+  - «Escaladas» es una marca, no una etapa: un pedido escalado también
+    sigue en su vista.
+- **Avisos:** los de «por atender» (SPEC-073) desaparecen porque repetían
+  las pestañas. Queda solo el enlace a lo pendiente de meses anteriores.
+- **«¿En qué va?»:**
+  - Un botón por resultado, según la tabla de §4.3
+    (`order-next-step.tsx`).
+  - Un toque guarda con la nota de siempre, que se puede editar antes.
+  - En escritorio pasa al pedido de abajo.
+  - El formulario completo queda plegado en «Otro cambio», para volver a
+    Abierto y para cancelar o pedir cancelación.
+- **Fila:**
+  - Elegir la fila ya no copia la orden al portapapeles.
+  - Orden, DNI y teléfono se copian en el panel.
+  - ↑ y ↓ recorren la hoja; Enter o espacio eligen.
+- **Cabecera:** un solo indicador, «Actualizado 21:53 · en vivo».
+- **Filtro de asesor:** el mismo nombre corto que la lista.
+
+### Ajustes a la propuesta
+
+- **«Entregas fallidas»**, no «Máximo pide acción». Desde SPEC-075 no
+  interpretamos a Máximo, así que el nombre dice lo que hay, no una acción
+  nuestra.
+- **D1 (confirmar lo que dice Máximo)** se aplaza. Traducir un estado de
+  Máximo a un paso nuestro es interpretarlo, y José pidió no hacerlo por
+  ahora (SPEC-075).
+- **D2 (quitar «Por recuperar»)** sigue pendiente de José. La pestaña se
+  mantiene.
+- **Los botones de paso van solo en el panel, no también en la fila.** Si
+  estuvieran en los dos lugares, repetirían el mismo control, que es lo que
+  esta spec quita. Con el panel al lado y el paso automático al siguiente,
+  mover un pedido cuesta un toque.

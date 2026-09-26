@@ -28,7 +28,12 @@ const EVENT_DEBOUNCE_MS = 400;
 const RECONNECT_BASE_MS = 3_000;
 const RECONNECT_MAX_MS = 60_000;
 
-export function OrderRealtimeStatus() {
+export function OrderRealtimeStatus({
+  updatedAt,
+}: {
+  /** SPEC-074: la hora de los datos va en el mismo indicador. */
+  updatedAt?: string;
+} = {}) {
   const router = useRouter();
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("CONNECTING");
@@ -157,11 +162,14 @@ export function OrderRealtimeStatus() {
   }, [router]);
 
   const live = connectionState === "LIVE";
-  const label = live
-    ? "Actualización automática"
+  // «25/09/2026, 21:53» → «21:53»: el día ya se sobreentiende.
+  const time = updatedAt?.split(", ").pop();
+  const state = live
+    ? "en vivo"
     : connectionState === "CONNECTING"
-      ? "Conectando…"
-      : "Sin conexión en vivo";
+      ? "conectando…"
+      : "sin conexión en vivo";
+  const label = time ? `Actualizado ${time} · ${state}` : state;
 
   return (
     <span

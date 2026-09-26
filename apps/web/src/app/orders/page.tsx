@@ -21,6 +21,8 @@ function parseOrderFilter(
   fallback: OrderFilter,
 ): OrderFilter {
   return [
+    "TO_MOVE",
+    "DONE",
     "ACTIVE",
     "ESCALATIONS",
     "LOGISTICS",
@@ -48,7 +50,8 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const rawPage = Number(firstValue(parameters.page));
   const filter = parseOrderFilter(
     firstValue(parameters.status),
-    membership.role === "AGENT" ? "ACTIVE" : "ALL",
+    // SPEC-074: todos entran a lo que falta mover, no a la lista completa.
+    "TO_MOVE",
   );
   const search = firstValue(parameters.q)?.trim().slice(0, 100) ?? "";
   const team = firstValue(parameters.team)?.trim().slice(0, 50);

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import Form from "next/form";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { formatCount } from "@repo/ui/format";
 import { EmptyState } from "@repo/ui/empty-state";
 import { PageHeader } from "@repo/ui/page-header";
 import { Surface } from "@repo/ui/surface";
 
+import { OrderNextStep } from "./order-next-step";
 import { OrderStatusForm } from "./order-status-form";
 import { OrderCancellationRequestPanel } from "./order-cancellation-request-panel";
 import { OrderAssignmentResolution } from "./order-assignment-resolution";
@@ -27,47 +28,39 @@ import type {
 } from "../order-inbox.types";
 import type { OrderDueFilter } from "@repo/validation";
 
+/*
+ * SPEC-074 §4.1: cada pedido vive en una sola vista y cada vista lleva su
+ * cifra. «Activos», «Incidencias» y «Entregados» se contenían entre sí; sus
+ * enlaces antiguos siguen abriendo (ver `legacyFilterLabels`).
+ */
 const filterOptions: Array<{
   value: OrderFilter;
   label: string;
 }> = [
-  {
-    value: "ACTIVE",
-    label: "Activos",
-  },
-  {
-    value: "ESCALATIONS",
-    label: "Escaladas",
-  },
-  {
-    value: "LOGISTICS",
-    label: "Entregas fallidas por gestionar",
-  },
-  {
-    value: "INCIDENTS",
-    label: "Incidencias",
-  },
-  {
-    value: "RECOVERY",
-    label: "Por recuperar",
-  },
-  {
-    value: "AWAITING_ACTIVATION",
-    label: "Por activar",
-  },
-  {
-    value: "DELIVERED",
-    label: "Entregados",
-  },
-  {
-    value: "FINAL",
-    label: "Finalizados",
-  },
-  {
-    value: "ALL",
-    label: "Todos",
-  },
+  { value: "TO_MOVE", label: "Por mover" },
+  { value: "LOGISTICS", label: "Entregas fallidas" },
+  { value: "AWAITING_ACTIVATION", label: "Falta activar" },
+  { value: "ESCALATIONS", label: "Escaladas" },
+  { value: "RECOVERY", label: "Por recuperar" },
+  { value: "DONE", label: "Cerrados" },
+  { value: "ALL", label: "Todos" },
 ];
+
+const legacyFilterLabels: Partial<Record<OrderFilter, string>> = {
+  ACTIVE: "Activos",
+  INCIDENTS: "Incidencias",
+  DELIVERED: "Entregados",
+  FINAL: "Finalizados",
+};
+
+function visibleFilterOptions(
+  current: OrderFilter,
+): Array<{ value: OrderFilter; label: string }> {
+  const legacy = legacyFilterLabels[current];
+  return legacy
+    ? [...filterOptions, { value: current, label: legacy }]
+    : filterOptions;
+}
 
 const periodOptions: Array<{
   value: OrderInboxData["period"];
@@ -563,10 +556,13 @@ function OrderDetails({
   order,
   assignmentTeams,
   showAdvisor,
+  onSaved,
 }: {
   order: OrderInboxItem;
   assignmentTeams: OrderAssignmentTeamOption[];
   showAdvisor: boolean;
+  /** Tras guardar un paso, pasar al pedido de abajo (escritorio). */
+  onSaved?: () => void;
 }) {
   const [operationDetailsOpen, setOperationDetailsOpen] = useState(
     showAdvisor || !order.canUpdate,
@@ -661,25 +657,45 @@ function OrderDetails({
       {order.incidentEscalation ? <OrderEscalationPanel order={order} /> : null}
 
       {order.canUpdate || showAdvisor ? (
-        <section
-          className="ui-order-management"
-          aria-label="Actualizar seguimiento"
-        >
-          <h4 className="mb-4 text-sm font-semibold text-ui-text">
-            Actualizar seguimiento
+        <section className="ui-order-management" aria-label="¿En qué va?">
+          <h4 className="mb-3 text-sm font-semibold text-ui-text">
+            ¿En qué va?
           </h4>
 
-          <OrderStatusForm
-            key={formKey}
-            canCancelDirectly={order.canCancelDirectly}
-            canClose={order.canClose}
-            canRequestCancellation={order.canRequestCancellation}
-            canUpdate={order.canUpdate}
-            initialObservation={order.deliveryObservation}
-            initialSentSubstatus={order.sentSubstatus}
-            initialStatus={order.status}
-            orderId={order.id}
-          />
+          {/* SPEC-074 §4.3: un botón por resultado; guarda y sigue. */}
+          <OrderNextStep key={formKey} onSaved={onSaved} order={order} />
+
+          {/*
+           * Lo que no es un paso adelante —volver a Abierto, pedir o hacer una
+           * cancelación— sigue en el formulario completo, plegado.
+           */}
+          {order.canUpdate ? (
+            <details className="ui-order-disclosure mt-4">
+              <summary>
+                <span>Otro cambio</span>
+                <span className="ui-order-disclosure__hint">
+                  {order.canCancelDirectly
+                    ? "Volver a Abierto o cancelar"
+                    : order.canRequestCancellation
+                      ? "Volver a Abierto o pedir cancelación"
+                      : "Volver a Abierto"}
+                </span>
+              </summary>
+              <div className="ui-order-disclosure__content">
+                <OrderStatusForm
+                  key={formKey}
+                  canCancelDirectly={order.canCancelDirectly}
+                  canClose={order.canClose}
+                  canRequestCancellation={order.canRequestCancellation}
+                  canUpdate={order.canUpdate}
+                  initialObservation={order.deliveryObservation}
+                  initialSentSubstatus={order.sentSubstatus}
+                  initialStatus={order.status}
+                  orderId={order.id}
+                />
+              </div>
+            </details>
+          ) : null}
 
           {/*
            * Escalar es gestionar la venta, no un aviso paralelo: va dentro de
@@ -941,102 +957,6 @@ function MobileOrderCard({
   );
 }
 
-function CopyOrderCodeButton({
-  orderCode,
-  selected,
-  onSelect,
-}: {
-  orderCode: string;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const [copyState, setCopyState] = useState<"COPIED" | "ERROR" | null>(null);
-
-  useEffect(() => {
-    if (copyState === null) return;
-
-    const timeout = window.setTimeout(() => {
-      setCopyState(null);
-    }, 2_000);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [copyState]);
-
-  async function selectAndCopyOrderCode() {
-    onSelect();
-
-    try {
-      await copyTextToClipboard(orderCode);
-      setCopyState("COPIED");
-    } catch {
-      setCopyState("ERROR");
-    }
-  }
-
-  const feedback =
-    copyState === "COPIED"
-      ? "Orden copiada"
-      : copyState === "ERROR"
-        ? "No se pudo copiar"
-        : "";
-
-  return (
-    <button
-      aria-label={`Seleccionar y copiar orden ${orderCode}`}
-      aria-pressed={selected}
-      className={[
-        "ui-order-grid__order-code group min-w-0 items-center gap-1.5 rounded-lg px-1.5 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent focus-visible:ring-offset-2",
-        copyState === "COPIED"
-          ? "bg-ui-success-soft text-ui-success"
-          : copyState === "ERROR"
-            ? "bg-ui-danger-soft text-ui-danger"
-            : "text-ui-muted hover:bg-ui-subtle hover:text-ui-text",
-      ].join(" ")}
-      onClick={selectAndCopyOrderCode}
-      title={feedback || `Seleccionar y copiar orden ${orderCode}`}
-      type="button"
-    >
-      <span className="truncate">{orderCode}</span>
-
-      <span aria-hidden="true" className="shrink-0">
-        {copyState === "COPIED" ? (
-          <svg className="size-3.5" fill="none" viewBox="0 0 16 16">
-            <path
-              d="m3.5 8 3 3 6-7"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.75"
-            />
-          </svg>
-        ) : (
-          <svg className="size-3.5" fill="none" viewBox="0 0 16 16">
-            <rect
-              height="8.5"
-              rx="1.5"
-              stroke="currentColor"
-              width="8.5"
-              x="5"
-              y="4.5"
-            />
-            <path
-              d="M3.5 10.5h-1a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v1"
-              stroke="currentColor"
-              strokeLinecap="round"
-            />
-          </svg>
-        )}
-      </span>
-
-      <span aria-live="polite" className="sr-only">
-        {feedback}
-      </span>
-    </button>
-  );
-}
-
 function DesktopOrderList({
   items,
   selectedOrderId,
@@ -1079,18 +999,41 @@ function DesktopOrderList({
 
             return (
               <div
+                aria-pressed={selected}
                 className="ui-order-grid__row"
                 data-incident={order.noStatusIncident ? "true" : "false"}
+                data-order-row={order.id}
                 data-selected={selected ? "true" : "false"}
                 data-show-advisor={showAdvisorColumn ? "true" : "false"}
                 key={order.id}
                 onClick={() => onSelect(order.id)}
+                onKeyDown={(event) => {
+                  // SPEC-074: ↑ y ↓ recorren la hoja; Enter o espacio eligen.
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelect(order.id);
+                    return;
+                  }
+                  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+                    return;
+                  }
+                  event.preventDefault();
+                  const sibling =
+                    event.key === "ArrowDown"
+                      ? event.currentTarget.nextElementSibling
+                      : event.currentTarget.previousElementSibling;
+                  if (sibling instanceof HTMLElement && sibling.dataset.orderRow) {
+                    sibling.focus();
+                    onSelect(sibling.dataset.orderRow);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
-                <CopyOrderCodeButton
-                  onSelect={() => onSelect(order.id)}
-                  orderCode={order.orderCode}
-                  selected={selected}
-                />
+                {/* SPEC-074: elegir la fila ya no copia nada; copiar, en el panel. */}
+                <span className="ui-order-grid__order-code truncate">
+                  {order.orderCode}
+                </span>
 
                 <span className="ui-order-grid__client">
                   <strong>{order.holderName}</strong>
@@ -1106,9 +1049,9 @@ function DesktopOrderList({
                   </small>
                 </span>
 
-                <InlineCopyValue label="DNI" value={order.documentNumber} />
+                <span className="ui-order-grid__plain">{order.documentNumber}</span>
 
-                <InlineCopyValue label="teléfono" value={order.serviceNumber} />
+                <span className="ui-order-grid__plain">{order.serviceNumber}</span>
 
                 <span className="ui-order-grid__carrier">
                   {getOperatorLabel(order)}
@@ -1168,115 +1111,8 @@ function DesktopOrderList({
   );
 }
 
-type AttentionTone = "danger" | "warning" | "info";
-
-const attentionToneClass: Record<AttentionTone, string> = {
-  danger: "border-ui-danger-border bg-ui-danger-soft text-ui-danger",
-  warning: "border-ui-warning-border bg-ui-warning-soft text-ui-warning",
-  info: "border-ui-info-border bg-ui-info-soft text-ui-info",
-};
-
-type AttentionItem = {
-  key: string;
-  label: string;
-  href: string;
-  tone: AttentionTone;
-  current: boolean;
-};
-
 function plural(count: number, one: string, many: string): string {
   return `${formatCount(count)} ${count === 1 ? one : many}`;
-}
-
-/**
- * SPEC-073 BR-002: lo que pide acción, en una sola línea de enlaces que solo
- * aparecen cuando hay algo. Antes eran una tarjeta roja y tres avisos
- * apilados que empujaban la hoja a más de una pantalla de distancia.
- */
-function attentionItems(data: OrderInboxData): AttentionItem[] {
-  const logistics = data.filter === "LOGISTICS";
-  const items: Array<AttentionItem | null> = [
-    data.totals.escalations > 0
-      ? {
-          key: "escalations",
-          label: plural(
-            data.totals.escalations,
-            "escalada esperando al supervisor",
-            "escaladas esperando al supervisor",
-          ),
-          href: ordersHref(data, { filter: "ESCALATIONS" }),
-          tone: "danger",
-          current: data.filter === "ESCALATIONS",
-        }
-      : null,
-    !logistics && data.totals.overdue > 0
-      ? {
-          key: "overdue",
-          label: plural(data.totals.overdue, "fuera de plazo", "fuera de plazo"),
-          href: ordersHref(data, { filter: "ACTIVE", due: "vencido" }),
-          tone: "danger",
-          current: data.filter === "ACTIVE" && data.dueFilter === "vencido",
-        }
-      : null,
-    !logistics && data.totals.incidents > 0
-      ? {
-          key: "incidents",
-          label: plural(
-            data.totals.incidents,
-            "sin avance hace más de 10 min",
-            "sin avance hace más de 10 min",
-          ),
-          href: ordersHref(data, { filter: "INCIDENTS" }),
-          tone: "danger",
-          current: data.filter === "INCIDENTS",
-        }
-      : null,
-    !logistics && data.totals.logistics > 0
-      ? {
-          key: "logistics",
-          label: plural(
-            data.totals.logistics,
-            "entrega fallida por gestionar",
-            "entregas fallidas por gestionar",
-          ),
-          href: ordersHref(data, { filter: "LOGISTICS", search: "" }),
-          tone: "warning",
-          current: false,
-        }
-      : null,
-    !logistics && data.totals.recovery > 0 && data.filter !== "RECOVERY"
-      ? {
-          key: "recovery",
-          label: plural(
-            data.totals.recovery,
-            "pedido por recuperar este mes",
-            "pedidos por recuperar este mes",
-          ),
-          href: ordersHref(data, {
-            period: "MONTH",
-            filter: "RECOVERY",
-            search: "",
-          }),
-          tone: "info",
-          current: false,
-        }
-      : null,
-    !logistics && data.pendingBeforeMonth > 0 && data.period !== "HISTORY"
-      ? {
-          key: "prior",
-          label: plural(
-            data.pendingBeforeMonth,
-            "pendiente de meses anteriores",
-            "pendientes de meses anteriores",
-          ),
-          href: ordersHref(data, { period: "HISTORY", filter: "ACTIVE" }),
-          tone: "warning",
-          current: false,
-        }
-      : null,
-  ];
-
-  return items.filter((item): item is AttentionItem => item !== null);
 }
 
 function SummaryFigure({
@@ -1313,7 +1149,6 @@ function SummaryFigure({
 }
 
 function OrderSummary({ data }: { data: OrderInboxData }) {
-  const attention = attentionItems(data);
   const logistics = data.filter === "LOGISTICS";
   const recoveryQueueCount =
     data.filter === "RECOVERY" ? data.filteredTotal : data.totals.recovery;
@@ -1374,25 +1209,25 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
         </p>
       ) : null}
 
-      {attention.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ui-border pt-3">
-          <span className="text-2xs font-semibold uppercase tracking-wide text-ui-soft">
-            Por atender
-          </span>
-          {attention.map((item) => (
-            <Link
-              aria-current={item.current ? "page" : undefined}
-              className={[
-                "rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent aria-[current=page]:ring-2 aria-[current=page]:ring-ui-accent",
-                attentionToneClass[item.tone],
-              ].join(" ")}
-              href={item.href}
-              key={item.key}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
+      {/*
+       * SPEC-074: los avisos de «por atender» repetían las pestañas, que ahora
+       * llevan su cifra. Queda lo que ninguna pestaña muestra: lo pendiente de
+       * meses anteriores, fuera del período.
+       */}
+      {!logistics && data.pendingBeforeMonth > 0 && data.period !== "HISTORY" ? (
+        <p className="mt-2 text-xs">
+          <Link
+            className="font-semibold text-ui-warning hover:underline"
+            href={ordersHref(data, { period: "HISTORY", filter: "TO_MOVE" })}
+          >
+            {plural(
+              data.pendingBeforeMonth,
+              "pendiente de meses anteriores",
+              "pendientes de meses anteriores",
+            )}{" "}
+            →
+          </Link>
+        </p>
       ) : null}
     </section>
   );
@@ -1416,6 +1251,17 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
    */
   const selectionLeftView = selectedOrderId !== null && selectedOrder === null;
 
+  // SPEC-074: guardar un paso pasa al pedido de abajo, antes de que el
+  // refresco saque de la vista al que se acaba de mover.
+  const selectNextAfter = useCallback(
+    (orderId: string) => {
+      const index = data.items.findIndex((order) => order.id === orderId);
+      const next = data.items[index + 1] ?? null;
+      if (next) setSelectedOrderId(next.id);
+    },
+    [data.items],
+  );
+
   return (
     <div className="ui-page-stack">
       <PageHeader
@@ -1427,8 +1273,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                 ← Volver a Rendimiento
               </Link>
             ) : null}
-            <OrderRealtimeStatus />
-            <span>Actualizado: {data.generatedAt}</span>
+            <OrderRealtimeStatus updatedAt={data.generatedAt} />
           </span>
         }
         title="Pedidos"
@@ -1465,9 +1310,12 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               name="status"
               onChange={(event) => event.currentTarget.form?.requestSubmit()}
             >
-              {filterOptions.map((option) => (
+              {visibleFilterOptions(data.filter).map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
+                  {data.tabCounts[option.value] !== undefined
+                    ? ` · ${formatCount(data.tabCounts[option.value] ?? 0)}`
+                    : ""}
                 </option>
               ))}
             </select>
@@ -1479,8 +1327,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           className="ui-segmented-scroll hidden lg:block"
         >
           <div className="ui-segmented">
-            {filterOptions.map((option) => {
+            {visibleFilterOptions(data.filter).map((option) => {
               const active = option.value === data.filter;
+              const count = data.tabCounts[option.value];
 
               return (
                 <Link
@@ -1490,6 +1339,12 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                   key={option.value}
                 >
                   {option.label}
+                  {count !== undefined ? " " : null}
+                  {count !== undefined ? (
+                    <span className="text-xs text-ui-muted">
+                      {formatCount(count)}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -1598,6 +1453,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                 <OrderDetails
                   assignmentTeams={data.assignmentTeams}
                   key={selectedOrder.id}
+                  onSaved={() => selectNextAfter(selectedOrder.id)}
                   order={selectedOrder}
                   showAdvisor={data.showAdvisorColumn}
                 />

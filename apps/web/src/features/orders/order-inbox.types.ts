@@ -22,6 +22,10 @@ export type OrderSentSubstatusValue =
   | null;
 
 export type OrderFilter =
+  /** SPEC-074: en curso, sin entregar ni cancelar y sin problema en Máximo. */
+  | "TO_MOVE"
+  /** SPEC-074: cerrados y cancelados que Máximo no reporta con problema. */
+  | "DONE"
   | "ACTIVE"
   | "ESCALATIONS"
   | "LOGISTICS"
@@ -221,6 +225,9 @@ export interface OrderInboxData {
     byState: Array<{ state: string; count: number }>;
     lastFetchedAtLabel: string | null;
   };
+
+  /** SPEC-074: la cifra de cada pestaña, en el período (salvo las que no lo usan). */
+  tabCounts: Partial<Record<OrderFilter, number>>;
 
   totals: {
     visible: number;

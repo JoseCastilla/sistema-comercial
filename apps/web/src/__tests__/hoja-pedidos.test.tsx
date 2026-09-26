@@ -26,6 +26,9 @@ vi.mock("@/features/orders/components/order-realtime-status", () => ({
 vi.mock("@/features/orders/components/order-scope-filters", () => ({
   OrderScopeFilters: () => null,
 }));
+vi.mock("@/features/orders/components/order-next-step", () => ({
+  OrderNextStep: () => <p>Pasos del pedido</p>,
+}));
 vi.mock("@/features/orders/components/order-status-form", () => ({
   OrderStatusForm: () => <p>Formulario de estado</p>,
 }));
@@ -147,6 +150,15 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
     items: [pedido()],
     pagination: { page: 1, pageSize: 50, totalPages: 1 },
     pendingBeforeMonth: 6,
+    tabCounts: {
+      TO_MOVE: 35,
+      LOGISTICS: 175,
+      AWAITING_ACTIVATION: 11,
+      ESCALATIONS: 1,
+      RECOVERY: 130,
+      DONE: 300,
+      ALL: 403,
+    },
     logisticsSummary: {
       total: 175,
       byState: [
@@ -171,42 +183,44 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
 }
 
 describe("Hoja de pedidos", () => {
-  it("arriba, una línea de cifras y otra de lo que hay por atender", () => {
+  it("arriba, una línea de cifras; las vistas llevan su cifra y no se repiten en avisos", () => {
     render(<OrderInbox data={datos()} />);
 
     const resumen = screen.getByRole("region", { name: "Resumen de pedidos" });
     expect(within(resumen).getByText(/Ventas · Mes actual/)).toHaveTextContent(
       "Ventas · Mes actual 403",
     );
-    expect(within(resumen).getByText(/Entregados/)).toHaveTextContent(
-      "Entregados 258",
-    );
-
-    expect(
-      within(resumen).getByRole("link", { name: "16 fuera de plazo" }),
-    ).toHaveAttribute("href", expect.stringContaining("plazo=vencido"));
     expect(
       within(resumen).getByRole("link", {
-        name: "1 escalada esperando al supervisor",
-      }),
-    ).toHaveAttribute("href", expect.stringContaining("status=ESCALATIONS"));
-    expect(
-      within(resumen).getByRole("link", {
-        name: "175 entregas fallidas por gestionar",
-      }),
-    ).toHaveAttribute("href", expect.stringContaining("status=LOGISTICS"));
-    expect(
-      within(resumen).getByRole("link", {
-        name: "130 pedidos por recuperar este mes",
-      }),
-    ).toHaveAttribute("href", expect.stringContaining("status=RECOVERY"));
-    expect(
-      within(resumen).getByRole("link", {
-        name: "6 pendientes de meses anteriores",
+        name: "6 pendientes de meses anteriores →",
       }),
     ).toHaveAttribute("href", expect.stringContaining("period=HISTORY"));
-    // Lo que está en cero no ocupa lugar.
-    expect(within(resumen).queryByText(/sin avance/)).toBeNull();
+    // SPEC-074: ningún aviso repite una pestaña.
+    expect(within(resumen).queryByText(/fuera de plazo/)).toBeNull();
+    expect(within(resumen).queryByText(/entregas fallidas/)).toBeNull();
+
+    const vistas = screen.getByRole("navigation", {
+      name: "Estado de los pedidos",
+    });
+    expect(
+      within(vistas).getByRole("link", { name: "Por mover 35" }),
+    ).toHaveAttribute("href", expect.stringContaining("status=TO_MOVE"));
+    expect(
+      within(vistas).getByRole("link", { name: "Falta activar 11" }),
+    ).toBeInTheDocument();
+    expect(within(vistas).queryByRole("link", { name: /Incidencias/ })).toBeNull();
+  });
+
+  it("un enlace antiguo a «Activos» sigue abriendo y se ve como pestaña", () => {
+    render(<OrderInbox data={datos({ filter: "ACTIVE" })} />);
+
+    const vistas = screen.getByRole("navigation", {
+      name: "Estado de los pedidos",
+    });
+    expect(within(vistas).getByRole("link", { name: "Activos" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("sin subtítulo y con el mismo nombre que el menú", () => {
@@ -282,7 +296,7 @@ describe("Hoja de pedidos", () => {
     expect(panel).not.toBeNull();
     const texto = panel!.textContent ?? "";
     const accion = texto.indexOf("CLIENTE AUSENTE");
-    const formulario = texto.indexOf("Formulario de estado");
+    const formulario = texto.indexOf("Pasos del pedido");
     const ficha = texto.indexOf("Tipo de entrega");
 
     expect(accion).toBeGreaterThan(-1);

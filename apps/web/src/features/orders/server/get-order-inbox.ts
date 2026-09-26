@@ -531,6 +531,19 @@ function getStatusFilter(
   incidentThreshold: Date,
 ): Prisma.DitoOrderWhereInput {
   switch (filter) {
+    case "TO_MOVE":
+      // SPEC-074: cada pedido en una sola vista. Lo que Máximo reporta con
+      // problema va a «Entregas fallidas»; lo entregado, a «Falta activar».
+      return {
+        status: { in: ["OPEN", "SENT", "UNKNOWN"] },
+        deliveryStatus: { notIn: ["DELIVERED", "CANCELLED"] },
+        NOT: { agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } } },
+      };
+    case "DONE":
+      return {
+        status: { in: ["CLOSED", "CANCELLED"] },
+        NOT: { agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } } },
+      };
     case "ACTIVE":
       return { status: { in: ["OPEN", "SENT", "UNKNOWN"] } };
     case "ESCALATIONS":
@@ -958,7 +971,7 @@ export async function getOrderInbox(
                 },
                 select: {
                   userId: true,
-                  user: { select: { name: true } },
+                  user: { select: { name: true, email: true } },
                 },
               },
             },
@@ -983,7 +996,11 @@ export async function getOrderInbox(
       id: team.id,
       name: team.name,
       agents: team.members
-        .map((member) => ({ id: member.userId, name: member.user.name }))
+        .map((member) => ({
+          id: member.userId,
+          name: member.user.name,
+          email: member.user.email,
+        }))
         .sort((left, right) => left.name.localeCompare(right.name, "es")),
     }))
     .filter((team) => team.agents.length > 0);
@@ -1008,7 +1025,8 @@ export async function getOrderInbox(
     .flatMap((team) =>
       team.agents.map((agent) => ({
         id: agent.id,
-        name: agent.name,
+        // SPEC-074: el mismo nombre corto que la lista («Christian R.»).
+        name: formatAdvisorCompactName(agent.name, agent.email),
         teamId: team.id,
         teamName: team.name,
       })),
@@ -1079,6 +1097,20 @@ export async function getOrderInbox(
     organizationId,
     AND: [accessFilter, teamFilterWhere, advisorFilterWhere, periodFilter],
   };
+  // SPEC-074: las cifras de las pestañas usan el período elegido aunque la
+  // vista abierta no lo use (Escaladas y Entregas fallidas).
+  const tabWhere = (filter: OrderFilter): Prisma.DitoOrderWhereInput => ({
+    organizationId,
+    AND: [
+      accessFilter,
+      teamFilterWhere,
+      advisorFilterWhere,
+      range.start && range.end
+        ? { registeredAt: { gte: range.start, lt: range.end } }
+        : {},
+      getStatusFilter(filter, now, incidentThreshold),
+    ],
+  });
   /*
    * SPEC-041: la acción derivada se calcula en código (BR-019), no vive en la
    * base. El conjunto logístico es pequeño y ya se cargaba para los
@@ -1139,6 +1171,10 @@ export async function getOrderInbox(
     deliveredCount,
     overdueCount,
     pendingBeforeMonth,
+    toMoveCount,
+    awaitingActivationCount,
+    doneCount,
+    periodTotal,
   ] = await database.$transaction([
     database.ditoOrder.count({ where: baseWhere }),
     database.ditoOrder.count({ where: filteredWhere }),
@@ -1220,6 +1256,10 @@ export async function getOrderInbox(
         status: { in: ["OPEN", "SENT", "UNKNOWN"] },
       },
     }),
+    database.ditoOrder.count({ where: tabWhere("TO_MOVE") }),
+    database.ditoOrder.count({ where: tabWhere("AWAITING_ACTIVATION") }),
+    database.ditoOrder.count({ where: tabWhere("DONE") }),
+    database.ditoOrder.count({ where: tabWhere("ALL") }),
   ]);
 
   const logisticsByState = new Map<string, number>();
@@ -1651,6 +1691,16 @@ export async function getOrderInbox(
       lastFetchedAtLabel: logisticsLastFetchedAt
         ? formatDateTime(logisticsLastFetchedAt)
         : null,
+    },
+
+    tabCounts: {
+      TO_MOVE: toMoveCount,
+      LOGISTICS: logisticsCount,
+      AWAITING_ACTIVATION: awaitingActivationCount,
+      ESCALATIONS: escalationCount,
+      RECOVERY: recoveryCount,
+      DONE: doneCount,
+      ALL: periodTotal,
     },
 
     totals: {
