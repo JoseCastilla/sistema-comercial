@@ -1,6 +1,6 @@
 # SPEC-081 — Pedidos: el equipo por asesor
 
-**Estado:** `ENTREGADA` — José: «sigue con el equipo por asesor para supervisión» (26/09/2026)
+**Estado:** `VERIFICADA` — José: «sigue con el equipo por asesor para supervisión» (26/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-26
