@@ -354,12 +354,21 @@ function getSlaState(
   if (
     status === "CLOSED" ||
     status === "CANCELLED" ||
-    deliveryStatus === "DELIVERED" ||
-    deliveryStatus === "CANCELLED"
+    deliveryStatus === "DELIVERED"
   ) {
     return {
       state: "CLOSED",
       label: "Finalizado",
+      detail: null,
+    };
+  }
+
+  // SPEC-084: la entrega rechazada no tiene plazo que correr, pero el pedido
+  // sigue enviado y por decidir: no está «Finalizado».
+  if (deliveryStatus === "CANCELLED") {
+    return {
+      state: "NO_DEADLINE",
+      label: "Entrega rechazada",
       detail: null,
     };
   }
@@ -1052,6 +1061,11 @@ export async function getOrderInbox(
         teamName: team.name,
       })),
     )
+    // SPEC-084: un asesor activo en dos equipos aparecía dos veces.
+    .filter(
+      (advisor, index, list) =>
+        list.findIndex((other) => other.id === advisor.id) === index,
+    )
     .sort((left, right) => left.name.localeCompare(right.name, "es"));
   const requestedAdvisor = query.advisor?.trim() ?? "";
   const advisorFilter =
@@ -1119,6 +1133,24 @@ export async function getOrderInbox(
    * también en Escaladas, que no usa período para su lista. Antes, ahí
    * decía «Ventas 2785»: todas las de la historia.
    */
+  /*
+   * SPEC-084: lo pendiente de antes del período elegido (antes de hoy, de
+   * esta semana o de este mes), en una ventana de un año que es la misma que
+   * abre el enlace. La supervisión que entra al día (SPEC-082) ve así lo
+   * que sigue abierto de días anteriores.
+   */
+  const priorEnd = range.start ?? range.monthStart;
+  const priorStart = new Date(priorEnd.getTime() - 366 * 24 * 60 * 60 * 1000);
+  const priorWhere = (filter: OrderFilter): Prisma.DitoOrderWhereInput => ({
+    organizationId,
+    AND: [
+      accessFilter,
+      teamFilterWhere,
+      advisorFilterWhere,
+      { registeredAt: { gte: priorStart, lt: priorEnd } },
+      getStatusFilter(filter, now, incidentThreshold),
+    ],
+  });
   const summaryWhere: Prisma.DitoOrderWhereInput = {
     organizationId,
     AND: [
@@ -1183,7 +1215,7 @@ export async function getOrderInbox(
             countByAdvisor(advisorScopeWhere("TO_MOVE")),
             countByAdvisor(advisorScopeWhere("LOGISTICS")),
             countByAdvisor(
-              advisorScopeWhere("TO_MOVE", { deliveryDueAt: { lt: now } }),
+              advisorScopeWhere("TO_MOVE", getDueFilterWhere("vencido", now)),
             ),
             countByAdvisor(advisorScopeWhere("AWAITING_ACTIVATION")),
           ]);
@@ -1346,30 +1378,8 @@ export async function getOrderInbox(
         deliveryStatus: { notIn: ["DELIVERED", "CANCELLED"] },
       },
     }),
-    database.ditoOrder.count({
-      where: {
-        organizationId,
-        AND: [
-          accessFilter,
-          teamFilterWhere,
-          advisorFilterWhere,
-          { registeredAt: { lt: range.monthStart } },
-          getStatusFilter("TO_MOVE", now, incidentThreshold),
-        ],
-      },
-    }),
-    database.ditoOrder.count({
-      where: {
-        organizationId,
-        AND: [
-          accessFilter,
-          teamFilterWhere,
-          advisorFilterWhere,
-          { registeredAt: { lt: range.monthStart } },
-          getStatusFilter("AWAITING_ACTIVATION", now, incidentThreshold),
-        ],
-      },
-    }),
+    database.ditoOrder.count({ where: priorWhere("TO_MOVE") }),
+    database.ditoOrder.count({ where: priorWhere("AWAITING_ACTIVATION") }),
     database.ditoOrder.count({ where: tabWhere("TO_MOVE") }),
     database.ditoOrder.count({ where: tabWhere("AWAITING_ACTIVATION") }),
     database.ditoOrder.count({ where: tabWhere("DONE") }),
@@ -1812,10 +1822,8 @@ export async function getOrderInbox(
     priorPending: {
       toMove: priorToMoveCount,
       awaiting: priorAwaitingCount,
-      from: getLimaIsoDate(
-        new Date(range.monthStart.getTime() - 366 * 24 * 60 * 60 * 1000),
-      ),
-      to: getLimaIsoDate(new Date(range.monthStart.getTime() - 1)),
+      from: getLimaIsoDate(priorStart),
+      to: getLimaIsoDate(new Date(priorEnd.getTime() - 1)),
     },
 
     logisticsSummary: {

@@ -90,19 +90,27 @@ export function getOrderSteps(
  * SPEC-074: un toque guarda y, en escritorio, pasa al pedido de abajo. La
  * nota es la misma observación de siempre: se envía con el paso para no
  * borrarla, y se puede cambiar antes de tocar.
+ *
+ * SPEC-084: el paso al siguiente lo decide el padre al tocar (`onStepStart`),
+ * no al terminar: `revalidatePath` trae los datos nuevos en la misma
+ * respuesta y este componente se vuelve a montar (o sale de la vista) antes
+ * de poder avisar. Si el guardado falla, `onStepFailed` lo anula.
  */
 export function OrderNextStep({
   order,
-  onSaved,
+  onStepStart,
+  onStepFailed,
 }: {
   order: OrderInboxItem;
-  onSaved?: () => void;
+  onStepStart?: () => void;
+  onStepFailed?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(
     updateOrderStatusAction,
     initialActionState,
   );
-  const [note, setNote] = useState(order.deliveryObservation ?? "");
+  const savedNote = order.deliveryObservation ?? "";
+  const [note, setNote] = useState(savedNote);
   const [chosen, setChosen] = useState<string | null>(null);
   // SPEC-084: cerrar no se deshace; pide un segundo toque, como en bloque.
   const [confirmingClose, setConfirmingClose] = useState(false);
@@ -110,24 +118,32 @@ export function OrderNextStep({
   const steps = getOrderSteps(order);
 
   useEffect(() => {
-    if (state.type !== "success" || handled.current === state) return;
+    if (state.type !== "error" || handled.current === state) return;
     handled.current = state;
-    onSaved?.();
-  }, [state, onSaved]);
+    onStepFailed?.();
+  }, [state, onStepFailed]);
 
-  if (steps.length === 0) {
-    if (order.pendingCancellationRequest) {
-      return (
-        <p className="text-sm text-ui-muted">
-          Cancelación pedida: el pedido queda como está hasta que la revisen.
-        </p>
-      );
-    }
-    return order.status === "SENT" && order.sentSubstatus === "DELIVERED" ? (
-      <p className="text-sm text-ui-muted">
-        Entregado. Falta que el operador active la línea.
-      </p>
-    ) : null;
+  // La nota se puede guardar sola, sin mover el pedido (SPEC-084).
+  const canSaveNote =
+    order.canUpdate &&
+    !order.pendingCancellationRequest &&
+    (order.status === "OPEN" || order.status === "SENT") &&
+    note.trim() !== savedNote.trim();
+
+  function submit(
+    status: string,
+    sentSubstatus: string | null,
+    label: string,
+    advance: boolean,
+  ) {
+    const data = new FormData();
+    data.set("orderId", order.id);
+    data.set("status", status);
+    if (sentSubstatus) data.set("sentSubstatus", sentSubstatus);
+    data.set("observation", note);
+    setChosen(label);
+    if (advance) onStepStart?.();
+    startTransition(() => formAction(data));
   }
 
   function save(step: OrderStep) {
@@ -136,74 +152,102 @@ export function OrderNextStep({
       return;
     }
     setConfirmingClose(false);
-    const data = new FormData();
-    data.set("orderId", order.id);
-    data.set("status", step.status);
-    if (step.sentSubstatus) data.set("sentSubstatus", step.sentSubstatus);
-    data.set("observation", note);
-    setChosen(step.label);
-    startTransition(() => formAction(data));
+    submit(step.status, step.sentSubstatus, step.label, true);
+  }
+
+  const notice = order.pendingCancellationRequest
+    ? "Cancelación pedida: el pedido queda como está hasta que la revisen."
+    : order.status === "SENT" && order.sentSubstatus === "DELIVERED" && steps.length === 0
+      ? "Entregado. Falta que el operador active la línea."
+      : null;
+  const showNote =
+    order.canUpdate &&
+    !order.pendingCancellationRequest &&
+    (order.status === "OPEN" || order.status === "SENT");
+
+  if (steps.length === 0 && !showNote) {
+    return notice ? <p className="text-sm text-ui-muted">{notice}</p> : null;
   }
 
   return (
     <div className="space-y-3">
-      <div
-        aria-label="¿En qué va?"
-        className="flex flex-wrap gap-2"
-        role="group"
-      >
-        {steps.map((step) => (
-          <button
-            className="rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-sm font-semibold text-ui-text transition hover:border-ui-accent hover:bg-ui-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent disabled:cursor-wait disabled:opacity-60"
+      {notice ? <p className="text-sm text-ui-muted">{notice}</p> : null}
+
+      {steps.length > 0 ? (
+        <div
+          aria-label="¿En qué va?"
+          className="flex flex-wrap gap-2"
+          role="group"
+        >
+          {steps.map((step) => (
+            <button
+              className="rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-sm font-semibold text-ui-text transition hover:border-ui-accent hover:bg-ui-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent disabled:cursor-wait disabled:opacity-60"
+              disabled={pending}
+              key={step.label}
+              onClick={() => save(step)}
+              type="button"
+            >
+              {pending && chosen === step.label
+                ? "Guardando…"
+                : step.status === "CLOSED" && confirmingClose
+                  ? "Sí, cerrar: no se puede deshacer"
+                  : step.label}
+            </button>
+          ))}
+          {confirmingClose ? (
+            <button
+              className="rounded-lg px-3 py-2 text-sm text-ui-muted hover:bg-ui-subtle"
+              onClick={() => setConfirmingClose(false)}
+              type="button"
+            >
+              Volver
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showNote ? (
+        <label className="block space-y-1 text-xs text-ui-muted">
+          <span>Nota</span>
+          <textarea
+            className="min-h-16 w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-sm text-ui-text"
             disabled={pending}
-            key={step.label}
-            onClick={() => save(step)}
-            type="button"
-          >
-            {pending && chosen === step.label
-              ? "Guardando…"
-              : step.status === "CLOSED" && confirmingClose
-                ? "Sí, cerrar: no se puede deshacer"
-                : step.label}
-          </button>
-        ))}
-        {confirmingClose ? (
+            maxLength={2000}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Qué pasó o qué se acordó con el cliente"
+            value={note}
+          />
+        </label>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p
+          aria-live="polite"
+          className={
+            state.type === "error"
+              ? "text-sm text-ui-danger"
+              : "text-xs text-ui-muted"
+          }
+        >
+          {state.type === "error"
+            ? state.message
+            : onStepStart && steps.length > 0
+              ? "Guarda y pasa al siguiente."
+              : null}
+        </p>
+        {canSaveNote ? (
           <button
-            className="rounded-lg px-3 py-2 text-sm text-ui-muted hover:bg-ui-subtle"
-            onClick={() => setConfirmingClose(false)}
+            className="rounded-lg border border-ui-border-strong px-3 py-1.5 text-xs font-semibold text-ui-text hover:border-ui-accent disabled:opacity-60"
+            disabled={pending}
+            onClick={() =>
+              submit(order.status, order.sentSubstatus, "Guardar nota", false)
+            }
             type="button"
           >
-            Volver
+            {pending && chosen === "Guardar nota" ? "Guardando…" : "Guardar nota"}
           </button>
         ) : null}
       </div>
-
-      <label className="block space-y-1 text-xs text-ui-muted">
-        <span>Nota</span>
-        <textarea
-          className="min-h-16 w-full rounded-lg border border-ui-border-strong bg-ui-surface px-3 py-2 text-sm text-ui-text"
-          disabled={pending}
-          maxLength={2000}
-          onChange={(event) => setNote(event.target.value)}
-          placeholder="Qué pasó o qué se acordó con el cliente"
-          value={note}
-        />
-      </label>
-
-      <p
-        aria-live="polite"
-        className={
-          state.type === "error"
-            ? "text-sm text-ui-danger"
-            : "text-xs text-ui-muted"
-        }
-      >
-        {state.type === "error"
-          ? state.message
-          : onSaved
-            ? "Guarda y pasa al siguiente."
-            : null}
-      </p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 
 import { setSaleOriginAction } from "../server/set-sale-origin-action";
 
@@ -30,6 +30,11 @@ export function SaleOriginPicker({
   );
   // Se muestra lo elegido mientras el servidor confirma.
   const [chosen, setChosen] = useState(order.saleOrigin);
+
+  // Si no se guardó, vuelve a lo que había, para poder intentarlo de nuevo.
+  useEffect(() => {
+    if (state.type === "error") setChosen(order.saleOrigin);
+  }, [state, order.saleOrigin]);
 
   if (!order.canSetSaleOrigin) {
     return order.saleOrigin ? (

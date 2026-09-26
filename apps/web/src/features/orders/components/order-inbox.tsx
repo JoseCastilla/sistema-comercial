@@ -124,7 +124,14 @@ function ordersHref(
         ? data.maximoFilter
         : overrides.maximo
       : null;
-  const due = overrides.due === undefined ? data.dueFilter : overrides.due;
+  // SPEC-084: el plazo solo filtra lo que sigue en curso; en Falta activar,
+  // Cerrados o Escaladas dejaba la lista vacía sin decir por qué.
+  const due =
+    filter === "TO_MOVE" || filter === "ALL"
+      ? overrides.due === undefined
+        ? data.dueFilter
+        : overrides.due
+      : null;
   const page = overrides.page ?? 1;
   const parameters = new URLSearchParams({ period });
   if (overrides.range) {
@@ -238,6 +245,9 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
               ) : null}
               {data.dueFilter ? (
                 <input name="plazo" type="hidden" value={data.dueFilter} />
+              ) : null}
+              {data.returnTo ? (
+                <input name="volver" type="hidden" value={data.returnTo} />
               ) : null}
               <label className="ui-period-range__field">
                 <span>Desde</span>
@@ -574,13 +584,15 @@ function OrderDetails({
   order,
   assignmentTeams,
   showAdvisor,
-  onSaved,
+  onStepStart,
+  onStepFailed,
 }: {
   order: OrderInboxItem;
   assignmentTeams: OrderAssignmentTeamOption[];
   showAdvisor: boolean;
-  /** Tras guardar un paso, pasar al pedido de abajo (escritorio). */
-  onSaved?: () => void;
+  /** Al tocar un paso, pasar al pedido de abajo (escritorio, SPEC-084). */
+  onStepStart?: () => void;
+  onStepFailed?: () => void;
 }) {
   const [operationDetailsOpen, setOperationDetailsOpen] = useState(
     showAdvisor || !order.canUpdate,
@@ -685,7 +697,12 @@ function OrderDetails({
           </h4>
 
           {/* SPEC-074 §4.3: un botón por resultado; guarda y sigue. */}
-          <OrderNextStep key={formKey} onSaved={onSaved} order={order} />
+          <OrderNextStep
+            key={formKey}
+            onStepFailed={onStepFailed}
+            onStepStart={onStepStart}
+            order={order}
+          />
 
           {/*
            * Lo que no es un paso adelante —volver a Abierto, pedir o hacer una
@@ -985,7 +1002,10 @@ function MobileOrderCard({
 /** SPEC-079: se puede cerrar en bloque lo entregado que el rol puede cerrar. */
 function canBulkClose(order: OrderInboxItem): boolean {
   return (
-    order.canClose && order.status !== "CLOSED" && order.status !== "CANCELLED"
+    order.canClose &&
+    order.status !== "CLOSED" &&
+    order.status !== "CANCELLED" &&
+    !order.pendingCancellationRequest
   );
 }
 
@@ -1522,13 +1542,23 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
       data.period !== "RANGE" &&
       data.priorPending.toMove + data.priorPending.awaiting > 0 ? (
         <p className="mt-2 flex flex-wrap gap-x-3 text-xs">
-          <span className="text-ui-muted">De meses anteriores:</span>
+          <span className="text-ui-muted">
+            {data.period === "TODAY"
+              ? "Antes de hoy:"
+              : data.period === "YESTERDAY"
+                ? "Antes de ayer:"
+                : data.period === "WEEK"
+                  ? "Antes de esta semana:"
+                  : "Antes de este mes:"}
+          </span>
           {data.priorPending.toMove > 0 ? (
             <Link
               className="font-semibold text-ui-warning hover:underline"
               href={ordersHref(data, {
                 range: data.priorPending,
-                filter: "TO_MOVE",
+                filter: data.role === "AGENT" ? "ALL" : "TO_MOVE",
+                search: "",
+                due: null,
               })}
             >
               {formatCount(data.priorPending.toMove)} por entregar →
@@ -1539,7 +1569,9 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
               className="font-semibold text-ui-warning hover:underline"
               href={ordersHref(data, {
                 range: data.priorPending,
-                filter: "AWAITING_ACTIVATION",
+                filter: data.role === "AGENT" ? "ALL" : "AWAITING_ACTIVATION",
+                search: "",
+                due: null,
               })}
             >
               {formatCount(data.priorPending.awaiting)} por activar →
@@ -1606,16 +1638,50 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
   }, []);
   const clearChecked = useCallback(() => setCheckedIds([]), []);
 
-  // SPEC-074: guardar un paso pasa al pedido de abajo, antes de que el
-  // refresco saque de la vista al que se acaba de mover.
-  const selectNextAfter = useCallback(
-    (orderId: string) => {
-      const index = displayItems.findIndex((order) => order.id === orderId);
-      const next = displayItems[index + 1] ?? null;
-      if (next) setSelectedOrderId(next.id);
-    },
-    [displayItems],
+  /*
+   * SPEC-084: al cambiar de vista (pestaña, período, filtros, página) la
+   * selección y las casillas empiezan de nuevo. Antes sobrevivían, y el panel
+   * decía «Esta venta salió de la bandeja» por un motivo que no era cierto.
+   */
+  const viewKey = [
+    data.filter,
+    data.period,
+    data.from,
+    data.to,
+    data.teamFilter,
+    data.advisorFilter,
+    data.search,
+    data.dueFilter,
+    data.maximoFilter,
+    data.pagination.page,
+  ].join("|");
+  const [shownViewKey, setShownViewKey] = useState(viewKey);
+  // SPEC-074/084: «Guarda y pasa al siguiente». El siguiente se fija al
+  // tocar el paso y se aplica cuando llegan los datos nuevos.
+  const [pendingNext, setPendingNext] = useState<{ to: string | null } | null>(
+    null,
   );
+  const [shownItems, setShownItems] = useState(data.items);
+  if (shownViewKey !== viewKey) {
+    setShownViewKey(viewKey);
+    setShownItems(data.items);
+    setSelectedOrderId(displayItems[0]?.id ?? null);
+    setCheckedIds([]);
+    setPendingNext(null);
+  } else if (shownItems !== data.items) {
+    setShownItems(data.items);
+    if (pendingNext) {
+      if (pendingNext.to) setSelectedOrderId(pendingNext.to);
+      setPendingNext(null);
+    }
+  }
+  const startStep = useCallback(() => {
+    const index = displayItems.findIndex(
+      (order) => order.id === selectedOrderId,
+    );
+    setPendingNext({ to: displayItems[index + 1]?.id ?? null });
+  }, [displayItems, selectedOrderId]);
+  const cancelStep = useCallback(() => setPendingNext(null), []);
 
   return (
     <div className="ui-page-stack">
@@ -1658,6 +1724,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           ) : null}
           {data.dueFilter ? (
             <input name="plazo" type="hidden" value={data.dueFilter} />
+          ) : null}
+          {data.returnTo ? (
+            <input name="volver" type="hidden" value={data.returnTo} />
           ) : null}
           <label className="min-w-0 flex-1">
             <span className="sr-only">Filtrar pedidos</span>
@@ -1719,6 +1788,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
               ? data.logisticsSummary.byState.map((item) => item.state)
               : null
           }
+          showDueFilter={data.filter === "TO_MOVE" || data.filter === "ALL"}
           showTeamFilter={data.showTeamFilter}
           teamAllLabel={data.teamAllLabel}
           teamOptions={data.teamOptions}
@@ -1835,7 +1905,8 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                 <OrderDetails
                   assignmentTeams={data.assignmentTeams}
                   key={selectedOrder.id}
-                  onSaved={() => selectNextAfter(selectedOrder.id)}
+                  onStepFailed={cancelStep}
+                  onStepStart={startStep}
                   order={selectedOrder}
                   showAdvisor={data.showAdvisorColumn}
                 />

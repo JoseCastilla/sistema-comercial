@@ -66,11 +66,12 @@ describe("Siguiente paso del pedido", () => {
     ).toEqual([]);
   });
 
-  it("un toque guarda el paso con la nota de siempre y pasa al siguiente", async () => {
+  it("un toque guarda el paso con la nota de siempre y avisa para pasar al siguiente", async () => {
+    guardar.mockClear();
     const siguiente = vi.fn();
     render(
       <OrderNextStep
-        onSaved={siguiente}
+        onStepStart={siguiente}
         order={
           {
             ...base,
@@ -83,11 +84,73 @@ describe("Siguiente paso del pedido", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Entregado" }));
 
-    await waitFor(() => expect(siguiente).toHaveBeenCalledTimes(1));
+    // SPEC-084: el aviso sale al tocar, no al terminar (el refresco llega antes).
+    expect(siguiente).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(guardar).toHaveBeenCalledTimes(1));
     const enviado = guardar.mock.calls[0]?.[1] as FormData;
     expect(enviado.get("status")).toBe("SENT");
     expect(enviado.get("sentSubstatus")).toBe("DELIVERED");
     expect(enviado.get("observation")).toBe("Cliente pidió la tarde");
+  });
+
+  it("si el guardado falla, se anula el paso al siguiente", async () => {
+    guardar.mockClear();
+    guardar.mockImplementationOnce(async () => ({
+      type: "error" as unknown as "success",
+      message: "La orden fue modificada por otro usuario.",
+    }));
+    const fallo = vi.fn();
+    render(
+      <OrderNextStep
+        onStepFailed={fallo}
+        onStepStart={vi.fn()}
+        order={
+          {
+            ...base,
+            id: "11111111-1111-4111-8111-111111111111",
+            deliveryObservation: null,
+          } as OrderInboxItem
+        }
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Entregado" }));
+    await waitFor(() => expect(fallo).toHaveBeenCalledTimes(1));
+    expect(
+      screen.getByText("La orden fue modificada por otro usuario."),
+    ).toBeInTheDocument();
+  });
+
+  it("la nota se guarda sola, sin mover el pedido", async () => {
+    guardar.mockClear();
+    const siguiente = vi.fn();
+    render(
+      <OrderNextStep
+        onStepStart={siguiente}
+        order={
+          {
+            ...base,
+            id: "11111111-1111-4111-8111-111111111111",
+            sentSubstatus: "DELIVERED",
+            canClose: false,
+            deliveryObservation: "BASE",
+          } as OrderInboxItem
+        }
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Guardar nota" })).toBeNull();
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "BASE - activa mañana" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar nota" }));
+
+    await waitFor(() => expect(guardar).toHaveBeenCalledTimes(1));
+    const enviado = guardar.mock.calls[0]?.[1] as FormData;
+    expect(enviado.get("status")).toBe("SENT");
+    expect(enviado.get("sentSubstatus")).toBe("DELIVERED");
+    expect(enviado.get("observation")).toBe("BASE - activa mañana");
+    expect(siguiente).not.toHaveBeenCalled();
   });
 
   it("cerrar pide un segundo toque: no se deshace", async () => {

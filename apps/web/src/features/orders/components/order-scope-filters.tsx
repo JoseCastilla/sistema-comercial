@@ -52,6 +52,7 @@ export function OrderScopeFilters({
   showTeamFilter,
   advisorOptions,
   maximoOptions,
+  showDueFilter = true,
   buildHref,
 }: {
   values: OrderScopeFilterValues;
@@ -65,6 +66,8 @@ export function OrderScopeFilters({
    * fallidas por gestionar» (SPEC-075). `null` oculta el selector.
    */
   maximoOptions: string[] | null;
+  /** SPEC-084: el plazo solo tiene sentido en lo que sigue en curso. */
+  showDueFilter?: boolean;
   buildHref: (overrides: OrderScopeFilterOverrides) => string;
 }) {
   const router = useRouter();
@@ -227,6 +230,7 @@ export function OrderScopeFilters({
       ) : null}
 
       <div className="ui-team-filter">
+        {showDueFilter ? (
         <label className="ui-team-filter__field">
           <span>Plazo</span>
           <select
@@ -246,6 +250,7 @@ export function OrderScopeFilters({
             ))}
           </select>
         </label>
+        ) : null}
 
         {maximoOptions ? (
           <label className="ui-team-filter__field">

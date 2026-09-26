@@ -325,6 +325,54 @@ describe("Hoja de pedidos", () => {
     expect(screen.queryByRole("region", { name: "Por asesor" })).toBeNull();
   });
 
+  it("una venta con cancelación por revisar no se puede marcar para cerrar", () => {
+    render(
+      <OrderInbox
+        data={datos({
+          filter: "AWAITING_ACTIVATION",
+          items: [
+            pedido({
+              id: "o-2",
+              orderCode: "1966000000A",
+              canClose: true,
+              sentSubstatus: "DELIVERED",
+            }),
+            pedido({
+              canClose: true,
+              sentSubstatus: "DELIVERED",
+              pendingCancellationRequest: {
+                id: "c-1",
+                reason: "Ya no desea",
+                requestedByName: "Asesor Uno",
+                requestedAtLabel: "25/09/2026, 10:00",
+              },
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Marcar 1966211921A para cerrar" }),
+    ).toBeDisabled();
+  });
+
+  it("el plazo no viaja a las vistas donde no aplica", () => {
+    render(<OrderInbox data={datos({ filter: "TO_MOVE", dueFilter: "vencido" })} />);
+    const vistas = screen.getByRole("navigation", { name: "Estado de los pedidos" });
+    expect(
+      within(vistas).getByRole("link", { name: /Falta activar/ }).getAttribute("href"),
+    ).not.toContain("plazo=");
+    expect(
+      within(vistas).getByRole("link", { name: /Todos/ }).getAttribute("href"),
+    ).toContain("plazo=vencido");
+  });
+
+  it("el asesor sale de «antes de este mes» a su lista completa, no a una vista", () => {
+    render(<OrderInbox data={datos({ role: "AGENT", advisorSummary: null })} />);
+    const enlace = screen.getByRole("link", { name: "6 por entregar →" });
+    expect(enlace.getAttribute("href")).not.toContain("status=TO_MOVE");
+  });
+
   it("fuera de «Falta activar» no hay casillas", () => {
     render(<OrderInbox data={datos()} />);
     expect(screen.queryByRole("checkbox")).toBeNull();

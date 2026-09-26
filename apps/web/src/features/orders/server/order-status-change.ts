@@ -327,6 +327,17 @@ export async function applyOrderStatusChange(
     );
   }
 
+  // SPEC-084: con una cancelación por revisar el pedido no se cierra; ni
+  // uno por uno ni en bloque (SPEC-013).
+  if (
+    normalized.status === "CLOSED" &&
+    order.cancellationRequests.length > 0
+  ) {
+    throw new OrderStatusUpdateError(
+      "Tiene una cancelación por revisar: resuélvela antes de cerrar.",
+    );
+  }
+
   const observation = inputObservation;
 
   const enteringClosed =
