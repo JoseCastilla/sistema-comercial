@@ -5,4 +5,12 @@
   cuántos, reparto parejo a todo el ancho y quién no participa, una forma a
   la vez, sin marcados no se envía).
 
-Pendiente: lectura en producción.
+- **25/09/2026** — Producción (`7808e5b`), sesión de la supervisora, sin
+  repartir nada. «Disponibles para asignar 66 · Asignados sin gestión 0 · En
+  gestión 221 · En revisión 6»; pestañas «Por repartir 66 | Asignados sin
+  gestión 0»; 66 filas compactas; la página mide 4888 px (antes 6883). Al
+  marcar los primeros 50, el botón dice «Repartir 50 casos» y cada asesor
+  «Recibiría 10 → quedaría con …». Se recargó sin enviar. En el celular el
+  selector de modo ensanchaba el formulario y el texto se cortaba a la
+  derecha: el formulario ahora no crece más que la pantalla y el selector se
+  desplaza de lado dentro de sí mismo.

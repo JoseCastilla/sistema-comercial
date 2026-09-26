@@ -220,7 +220,9 @@ export function DistributeRecoveryForm({
   const casesLabel = `${formatCount(count)} ${count === 1 ? "caso" : "casos"}`;
 
   return (
-    <form action={formAction} className="grid gap-4">
+    // `minmax(0, 1fr)`: ningún hijo ancho estira el formulario más allá de
+    // la pantalla (en el celular el selector de modo lo empujaba).
+    <form action={formAction} className="grid grid-cols-[minmax(0,1fr)] gap-4">
       {selectionCleared && count === 0 ? (
         <p className="text-xs text-ui-warning" role="status">
           La selección se limpió porque cambió la lista: marca de nuevo lo que
@@ -266,24 +268,30 @@ export function DistributeRecoveryForm({
       {/* 2. A quién van: una forma a la vez, a todo el ancho. */}
       <section
         aria-label="A quién van"
-        className="grid gap-3 rounded-lg border border-ui-border bg-ui-surface p-4"
+        className="grid grid-cols-[minmax(0,1fr)] gap-3 rounded-lg border border-ui-border bg-ui-surface p-4"
       >
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
           <span className="text-sm font-semibold text-ui-text">
             ¿A quién van?
           </span>
-          <div className="ui-segmented" role="group" aria-label="Forma de repartir">
-            {modeOptions.map((option) => (
-              <button
-                aria-pressed={mode === option.value}
-                className="ui-segmented__item"
-                key={option.value}
-                onClick={() => setMode(option.value)}
-                type="button"
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="ui-segmented-scroll">
+            <div
+              className="ui-segmented"
+              role="group"
+              aria-label="Forma de repartir"
+            >
+              {modeOptions.map((option) => (
+                <button
+                  aria-pressed={mode === option.value}
+                  className="ui-segmented__item"
+                  key={option.value}
+                  onClick={() => setMode(option.value)}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -343,21 +351,27 @@ export function DistributeRecoveryForm({
                       </label>
                       <span className="text-xs text-ui-muted">
                         Tiene {formatCount(advisor.openCases)} abiertos ·{" "}
-                        {formatCount(advisor.unworkedCases)} sin primer
-                        contacto · {formatCount(advisor.overdueCases)} vencidos
+                        {formatCount(advisor.unworkedCases)} sin primer contacto
+                        · {formatCount(advisor.overdueCases)} vencidos
                       </span>
-                      <span className="ml-auto text-xs tabular-nums text-ui-text">
+                      <span className="text-xs tabular-nums text-ui-text sm:ml-auto">
                         {participates ? (
                           <>
                             Recibiría{" "}
-                            <strong>{formatCount(preview?.receives ?? 0)}</strong>{" "}
+                            <strong>
+                              {formatCount(preview?.receives ?? 0)}
+                            </strong>{" "}
                             → quedaría con{" "}
                             <strong>
-                              {formatCount(preview?.resulting ?? advisor.openCases)}
+                              {formatCount(
+                                preview?.resulting ?? advisor.openCases,
+                              )}
                             </strong>
                           </>
                         ) : (
-                          <span className="text-ui-muted">No participa hoy</span>
+                          <span className="text-ui-muted">
+                            No participa hoy
+                          </span>
                         )}
                       </span>
                     </li>
