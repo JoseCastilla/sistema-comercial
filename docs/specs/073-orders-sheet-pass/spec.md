@@ -1,6 +1,6 @@
 # SPEC-073 — Hoja de pedidos, control por control
 
-**Estado:** `ENTREGADA` — mejoras de presentación, con la autorización de José del 25/09/2026
+**Estado:** `VERIFICADA` — mejoras de presentación, con la autorización de José del 25/09/2026
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25
