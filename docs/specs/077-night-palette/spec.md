@@ -1,6 +1,6 @@
 # SPEC-077 — Paleta de noche con jerarquía
 
-**Estado:** `ENTREGADA` — aprobada por José el 25/09/2026 («sí, aplica la paleta de noche propuesta»)
+**Estado:** `VERIFICADA` — aprobada por José el 25/09/2026 («sí, aplica la paleta de noche propuesta»)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25

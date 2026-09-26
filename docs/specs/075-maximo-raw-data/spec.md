@@ -1,6 +1,6 @@
 # SPEC-075 — Lo que manda Máximo, tal cual
 
-**Estado:** `ENTREGADA` — decisión de José del 25/09/2026
+**Estado:** `VERIFICADA` — decisión de José del 25/09/2026
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25

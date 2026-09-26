@@ -1,6 +1,6 @@
 # SPEC-076 — La lista de pedidos crece con la página
 
-**Estado:** `ENTREGADA` — mejora de presentación, con la autorización de José del 25/09/2026
+**Estado:** `VERIFICADA` — mejora de presentación, con la autorización de José del 25/09/2026
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25
