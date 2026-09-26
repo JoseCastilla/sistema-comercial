@@ -5,12 +5,12 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { computeRangeSelection } from "@repo/validation";
 
 import { formatCount } from "@repo/ui/format";
-import { Button } from "@repo/ui/button";
 import { InlineFeedback } from "@repo/ui/feedback";
 
-import { distributeRecoveryCasesAction } from "../server/distribute-recovery-cases-action";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-import { CopyValue } from "./copy-value";
+import { distributeRecoveryCasesAction } from "../server/distribute-recovery-cases-action";
 
 import {
   previewDirectLoad,
@@ -23,6 +23,22 @@ const initialState: RecoveryTriageActionState = {
   type: "idle",
   message: "",
 };
+
+const selectClass =
+  "block rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent";
+
+type DistributionMode = "EQUITATIVA" | "DIRECTA" | "COLA";
+
+/**
+ * SPEC-071: una forma de repartir a la vez, a todo el ancho. Antes las tres
+ * iban lado a lado y la tabla del reparto equitativo no cabía en su tercio.
+ * El reparto parejo en el equipo va primero: es el de siempre.
+ */
+const modeOptions: ReadonlyArray<{ value: DistributionMode; label: string }> = [
+  { value: "EQUITATIVA", label: "Parejo en el equipo" },
+  { value: "DIRECTA", label: "A un asesor" },
+  { value: "COLA", label: "A la cola del equipo" },
+];
 
 export interface DistributeRecoveryRow {
   id: string;
@@ -77,6 +93,7 @@ export function DistributeRecoveryForm({
   const [equitableTeamId, setEquitableTeamId] = useState(teams[0]?.id ?? "");
   const [directTargetId, setDirectTargetId] = useState("");
   const [poolTeamId, setPoolTeamId] = useState("");
+  const [mode, setMode] = useState<DistributionMode>("EQUITATIVA");
   const [excludedParticipants, setExcludedParticipants] = useState<
     ReadonlySet<string>
   >(new Set());
@@ -199,9 +216,12 @@ export function DistributeRecoveryForm({
     });
   }
 
+  const count = selected.size;
+  const casesLabel = `${formatCount(count)} ${count === 1 ? "caso" : "casos"}`;
+
   return (
-    <form action={formAction} className="space-y-4">
-      {selectionCleared && selected.size === 0 ? (
+    <form action={formAction} className="grid gap-4">
+      {selectionCleared && count === 0 ? (
         <p className="text-xs text-ui-warning" role="status">
           La selección se limpió porque cambió la lista: marca de nuevo lo que
           quieras aplicar.
@@ -211,256 +231,246 @@ export function DistributeRecoveryForm({
         <input key={id} name="caseIds" type="hidden" value={id} />
       ))}
 
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
-        <div className="flex items-end gap-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-ui-muted">
-              Seleccionar los primeros
-            </span>
-            <input
-              className="block w-24 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-1.5 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
-              inputMode="numeric"
-              onChange={(event) => setTakeCount(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  selectFirst();
-                }
-              }}
-              value={takeCount}
-            />
-          </label>
-          <Button onClick={selectFirst} type="button" variant="secondary">
-            Seleccionar
-          </Button>
-        </div>
-        <span className="pb-2 text-sm text-ui-muted">
-          {formatCount(selected.size)} de {formatCount(rows.length)} casos
-          seleccionados. Mantén{" "}
-          <kbd className="rounded border border-ui-border px-1">Shift</kbd> para
-          seleccionar un rango. Para repartir entre equipos, marca una cantidad
-          y asígnala a un equipo; luego repite con el resto.
+      {/* 1. Qué casos: marcar los primeros N, todos o un rango con Shift. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-ui-border bg-ui-surface px-4 py-3 text-sm">
+        <span className="font-semibold text-ui-text">
+          {formatCount(count)} de {formatCount(rows.length)} marcados
+        </span>
+        <label className="flex items-center gap-2 text-ui-muted">
+          Marcar los primeros
+          <input
+            aria-label="Cuántos marcar"
+            className="w-16 rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-1 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
+            inputMode="numeric"
+            onChange={(event) => setTakeCount(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                selectFirst();
+              }
+            }}
+            value={takeCount}
+          />
+        </label>
+        <Button onClick={selectFirst} size="sm" type="button" variant="outline">
+          Marcar
+        </Button>
+        <Button onClick={toggleAll} size="sm" type="button" variant="ghost">
+          {allSelected ? "Quitar las marcas" : "Marcar todos"}
+        </Button>
+        <span className="text-xs text-ui-muted">
+          Shift + clic marca un rango.
         </span>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-3">
-        <div className="rounded-xl border border-ui-border p-3">
-          <p className="mb-2 text-sm font-semibold text-ui-text">
-            Directa a un asesor
-          </p>
-          <div className="flex gap-2">
-            <select
-              aria-label="Asesor destino"
-              className="block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
-              name="targetUserId"
-              onChange={(event) => setDirectTargetId(event.target.value)}
-              value={directTargetId}
-            >
-              <option disabled value="">
-                Asesor destino…
-              </option>
-              {directTargets.map((advisor) => (
-                <option key={advisor.id} value={advisor.id}>
-                  {advisor.name} · {advisor.teamName} ({advisor.openCases}{" "}
-                  abiertos)
-                </option>
-              ))}
-            </select>
-            <Button
-              disabled={pending || selected.size === 0}
-              name="mode"
-              type="submit"
-              value="DIRECTA"
-              variant="secondary"
-            >
-              Asignar
-            </Button>
+      {/* 2. A quién van: una forma a la vez, a todo el ancho. */}
+      <section
+        aria-label="A quién van"
+        className="grid gap-3 rounded-lg border border-ui-border bg-ui-surface p-4"
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold text-ui-text">
+            ¿A quién van?
+          </span>
+          <div className="ui-segmented" role="group" aria-label="Forma de repartir">
+            {modeOptions.map((option) => (
+              <button
+                aria-pressed={mode === option.value}
+                className="ui-segmented__item"
+                key={option.value}
+                onClick={() => setMode(option.value)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
-          {directPreview ? (
-            <p className="mt-2 text-xs leading-5 text-ui-text" role="status">
-              Hoy carga {directPreview.openCases} abiertos (
-              {directPreview.unworkedCases} sin primer contacto,{" "}
-              {directPreview.overdueCases} vencidos). Recibiría{" "}
-              {directPreview.receives} y quedaría con{" "}
-              <strong>{directPreview.resulting}</strong>.
-            </p>
-          ) : null}
-          <p className="mt-2 text-xs leading-5 text-ui-muted">
-            Todos los casos marcados van a un solo asesor, de cualquiera de tus
-            equipos.
-          </p>
         </div>
 
-        <div className="rounded-xl border border-ui-border p-3">
-          <p className="mb-2 text-sm font-semibold text-ui-text">
-            Equitativa en un equipo
-          </p>
-          <div className="flex gap-2">
-            <select
-              aria-label="Equipo para el reparto equitativo"
-              className="block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
-              name="teamId-equitativa-selector"
-              onChange={(event) => {
-                setEquitableTeamId(event.target.value);
-                setExcludedParticipants(new Set());
-              }}
-              value={equitableTeamId}
-            >
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              disabled={
-                pending || selected.size === 0 || participantIds.length === 0
-              }
-              name="mode"
-              type="submit"
-              value="EQUITATIVA"
-            >
-              Repartir
-            </Button>
-          </div>
-          {equitableAdvisors.length === 0 ? (
-            <p className="mt-2 text-xs text-ui-muted">
-              Este equipo no tiene asesores activos con venta habilitada.
-            </p>
-          ) : (
-            <table className="mt-2 w-full text-xs text-ui-text">
-              <thead className="text-ui-muted">
-                <tr>
-                  <th className="py-1 text-left font-medium" scope="col">
-                    Participa
-                  </th>
-                  <th
-                    className="py-1 text-right font-medium"
-                    scope="col"
-                    title="Casos de campaña que ya carga"
-                  >
-                    Abiertos
-                  </th>
-                  <th
-                    className="py-1 text-right font-medium"
-                    scope="col"
-                    title="Con dueño y sin ningún intento"
-                  >
-                    Sin 1.er contacto
-                  </th>
-                  <th
-                    className="py-1 text-right font-medium"
-                    scope="col"
-                    title="Próxima acción ya vencida"
-                  >
-                    Vencidos
-                  </th>
-                  <th className="py-1 text-right font-medium" scope="col">
-                    Recibiría
-                  </th>
-                  <th className="py-1 text-right font-medium" scope="col">
-                    Quedaría
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+        {mode === "EQUITATIVA" ? (
+          <div className="grid gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label="Equipo para el reparto equitativo"
+                className={selectClass}
+                name="teamId-equitativa-selector"
+                onChange={(event) => {
+                  setEquitableTeamId(event.target.value);
+                  setExcludedParticipants(new Set());
+                }}
+                value={equitableTeamId}
+              >
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                disabled={pending || count === 0 || participantIds.length === 0}
+                name="mode"
+                type="submit"
+                value="EQUITATIVA"
+                variant="accent"
+              >
+                {pending ? "Repartiendo…" : `Repartir ${casesLabel}`}
+              </Button>
+            </div>
+            {equitableAdvisors.length === 0 ? (
+              <p className="text-xs text-ui-muted">
+                Este equipo no tiene asesores activos con venta habilitada.
+              </p>
+            ) : (
+              <ul className="divide-y divide-ui-border rounded-lg border border-ui-border text-sm">
                 {equitableAdvisors.map((advisor) => {
                   const participates = !excludedParticipants.has(advisor.id);
                   const preview = equitablePreview.get(advisor.id);
                   return (
-                    <tr key={advisor.id}>
-                      <td className="py-1">
-                        <label className="flex items-center gap-2">
-                          <input
-                            checked={participates}
-                            onChange={() => toggleParticipant(advisor.id)}
-                            type="checkbox"
-                          />
-                          <span>
-                            {advisor.name}
-                            {advisor.id === viewerUserId ? (
-                              <span className="text-ui-muted"> · tú</span>
-                            ) : null}
-                          </span>
-                        </label>
-                      </td>
-                      <td className="py-1 text-right tabular-nums">
-                        {advisor.openCases}
-                      </td>
-                      <td className="py-1 text-right tabular-nums">
-                        {advisor.unworkedCases}
-                      </td>
-                      <td className="py-1 text-right tabular-nums">
-                        {advisor.overdueCases}
-                      </td>
-                      <td className="py-1 text-right tabular-nums">
-                        {participates ? (preview?.receives ?? 0) : "—"}
-                      </td>
-                      <td className="py-1 text-right tabular-nums font-semibold">
-                        {participates
-                          ? (preview?.resulting ?? advisor.openCases)
-                          : advisor.openCases}
-                      </td>
-                    </tr>
+                    <li
+                      className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2"
+                      key={advisor.id}
+                    >
+                      <label className="flex min-w-48 items-center gap-2 font-medium text-ui-text">
+                        <input
+                          checked={participates}
+                          onChange={() => toggleParticipant(advisor.id)}
+                          type="checkbox"
+                        />
+                        {advisor.name}
+                        {advisor.id === viewerUserId ? (
+                          <span className="text-ui-muted"> · tú</span>
+                        ) : null}
+                      </label>
+                      <span className="text-xs text-ui-muted">
+                        Tiene {formatCount(advisor.openCases)} abiertos ·{" "}
+                        {formatCount(advisor.unworkedCases)} sin primer
+                        contacto · {formatCount(advisor.overdueCases)} vencidos
+                      </span>
+                      <span className="ml-auto text-xs tabular-nums text-ui-text">
+                        {participates ? (
+                          <>
+                            Recibiría{" "}
+                            <strong>{formatCount(preview?.receives ?? 0)}</strong>{" "}
+                            → quedaría con{" "}
+                            <strong>
+                              {formatCount(preview?.resulting ?? advisor.openCases)}
+                            </strong>
+                          </>
+                        ) : (
+                          <span className="text-ui-muted">No participa hoy</span>
+                        )}
+                      </span>
+                    </li>
                   );
                 })}
-              </tbody>
-            </table>
-          )}
-          <p className="mt-2 text-xs leading-5 text-ui-muted">
-            Reparto equitativo: parejo, a lo más un caso de diferencia, y el
-            residuo a quien menos abiertos tiene. La vista previa solo informa;
-            desmarca a quien no trabaja hoy y queda registrado quién quedó
-            fuera. Nadie se reasigna por tener carga alta.
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-ui-border p-3">
-          <p className="mb-2 text-sm font-semibold text-ui-text">
-            A la cola del equipo
-          </p>
-          <div className="flex gap-2">
-            <select
-              aria-label="Equipo destino de la cola"
-              className="block w-full rounded-lg border border-ui-border-strong bg-ui-surface px-2 py-2 text-sm text-ui-text focus:outline-none focus:ring-2 focus:ring-ui-accent"
-              name="poolTeamId"
-              onChange={(event) => setPoolTeamId(event.target.value)}
-              value={poolTeamId}
-            >
-              <option disabled value="">
-                Equipo destino…
-              </option>
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              disabled={pending || selected.size === 0}
-              name="mode"
-              type="submit"
-              value="COLA"
-              variant="secondary"
-            >
-              Enviar
-            </Button>
-          </div>
-          {poolTeamId ? (
-            <p className="mt-2 text-xs leading-5 text-ui-text" role="status">
-              El equipo carga hoy {poolLoad.open} abiertos entre{" "}
-              {poolTeamAdvisors.length}{" "}
-              {poolTeamAdvisors.length === 1 ? "asesor" : "asesores"} (
-              {poolLoad.unworked} sin primer contacto, {poolLoad.overdue}{" "}
-              vencidos). A la cola irían {selected.size}.
+              </ul>
+            )}
+            <p className="text-xs text-ui-muted">
+              Parejo, a lo más un caso de diferencia; el residuo va a quien
+              menos abiertos tiene. Desmarca a quien no trabaja hoy: queda
+              registrado quién quedó fuera.
             </p>
-          ) : null}
-          <p className="mt-2 text-xs leading-5 text-ui-muted">
-            Sin nominar asesor: cada asesor toma hasta 10 casos y nadie puede
-            tomar los mismos.
-          </p>
-        </div>
-      </div>
+          </div>
+        ) : mode === "DIRECTA" ? (
+          <div className="grid gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label="Asesor destino"
+                className={selectClass}
+                name="targetUserId"
+                onChange={(event) => setDirectTargetId(event.target.value)}
+                value={directTargetId}
+              >
+                <option disabled value="">
+                  Asesor destino…
+                </option>
+                {directTargets.map((advisor) => (
+                  <option key={advisor.id} value={advisor.id}>
+                    {advisor.name} · {advisor.teamName} ({advisor.openCases}{" "}
+                    abiertos)
+                  </option>
+                ))}
+              </select>
+              <Button
+                disabled={pending || count === 0 || !directTargetId}
+                name="mode"
+                type="submit"
+                value="DIRECTA"
+                variant="accent"
+              >
+                {pending ? "Asignando…" : `Asignar ${casesLabel}`}
+              </Button>
+            </div>
+            {directPreview ? (
+              <p className="text-xs text-ui-text" role="status">
+                Hoy tiene {directPreview.openCases} abiertos (
+                {directPreview.unworkedCases} sin primer contacto,{" "}
+                {directPreview.overdueCases} vencidos). Recibiría{" "}
+                {directPreview.receives} y quedaría con{" "}
+                <strong>{directPreview.resulting}</strong>.
+              </p>
+            ) : null}
+            <p className="text-xs text-ui-muted">
+              Todos los marcados van a un solo asesor, de cualquiera de tus
+              equipos.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label="Equipo destino de la cola"
+                className={selectClass}
+                name="poolTeamId"
+                onChange={(event) => setPoolTeamId(event.target.value)}
+                value={poolTeamId}
+              >
+                <option disabled value="">
+                  Equipo destino…
+                </option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                disabled={pending || count === 0 || !poolTeamId}
+                name="mode"
+                type="submit"
+                value="COLA"
+                variant="accent"
+              >
+                {pending ? "Enviando…" : `Enviar ${casesLabel}`}
+              </Button>
+            </div>
+            {poolTeamId ? (
+              <p className="text-xs text-ui-text" role="status">
+                El equipo tiene hoy {poolLoad.open} abiertos entre{" "}
+                {poolTeamAdvisors.length}{" "}
+                {poolTeamAdvisors.length === 1 ? "asesor" : "asesores"} (
+                {poolLoad.unworked} sin primer contacto, {poolLoad.overdue}{" "}
+                vencidos).
+              </p>
+            ) : null}
+            <p className="text-xs text-ui-muted">
+              Sin nombrar asesor: cada uno toma hasta 10 casos y nadie puede
+              tomar los mismos.
+            </p>
+          </div>
+        )}
+
+        <InlineFeedback
+          message={state.message}
+          tone={
+            state.type === "error"
+              ? "danger"
+              : state.type === "success"
+                ? "success"
+                : "neutral"
+          }
+        />
+      </section>
 
       {/* El teamId efectivo depende del modo: equitativa usa su selector. */}
       <EquitableTeamBridge
@@ -468,109 +478,59 @@ export function DistributeRecoveryForm({
         participantIds={participantIds}
       />
 
-      <InlineFeedback
-        message={state.message}
-        tone={
-          state.type === "error"
-            ? "danger"
-            : state.type === "success"
-              ? "success"
-              : "neutral"
-        }
-      />
-
-      <div className="overflow-x-auto rounded-xl border border-ui-border">
-        <table className="ui-table">
-          <thead>
-            <tr>
-              <th>
-                <input
-                  aria-label="Seleccionar todos"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  type="checkbox"
-                />
-              </th>
-              <th>Cliente</th>
-              <th>DNI</th>
-              <th>Departamento</th>
-              <th>Plan</th>
-              <th>Equipo</th>
-              <th>Responsable</th>
-              <th>Última vez en la base</th>
-            </tr>
-          </thead>
-          <tbody>
-            {/* Toda la fila selecciona, igual que en el triage. */}
-            {rows.map((row, index) => (
-              <tr
-                aria-selected={selected.has(row.id)}
-                className={`cursor-pointer select-none ${
-                  selected.has(row.id)
-                    ? "bg-ui-accent-soft"
-                    : "hover:bg-ui-subtle"
+      {/* 3. Los casos: una fila compacta que se marca con un clic y cabe en
+          cualquier ancho. Antes, una tabla de ocho columnas que no cabía. */}
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-ui-border bg-ui-surface px-4 py-6 text-center text-sm text-ui-muted">
+          No hay casos que cumplan el filtro en esta vista.
+        </p>
+      ) : (
+        <ul className="divide-y divide-ui-border rounded-lg border border-ui-border bg-ui-surface">
+          {rows.map((row, index) => {
+            const checked = selected.has(row.id);
+            return (
+              <li
+                aria-selected={checked}
+                className={`flex cursor-pointer select-none items-start gap-3 px-4 py-2.5 ${
+                  checked ? "bg-ui-accent-soft" : "hover:bg-ui-subtle"
                 }`}
                 key={row.id}
                 onClick={(event) => handleRowClick(index, event.shiftKey)}
               >
-                <td>
-                  <input
-                    aria-label={`Seleccionar a ${row.holderName}`}
-                    checked={selected.has(row.id)}
-                    className="pointer-events-none"
-                    readOnly
-                    tabIndex={-1}
-                    type="checkbox"
-                  />
-                </td>
-                <td className="font-medium text-ui-text">
-                  {row.holderName}
-                  {row.habilitationOverdue ? (
-                    <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-[11px] text-ui-warning">
-                      Ya puede portar
-                    </span>
-                  ) : null}
-                  {row.unverified ? (
-                    <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-[11px] text-ui-warning">
-                      Falta consultar portabilidad
-                    </span>
-                  ) : null}
-                </td>
-                <td>
-                  <CopyValue label="DNI" value={row.documentNumber} />
-                </td>
-                <td className="text-xs text-ui-muted">
-                  {row.department ?? "—"}
-                </td>
-                <td className="text-xs text-ui-muted">
-                  {row.planSummary}
-                  {row.serviceCount > 1 ? ` · ${row.serviceCount} líneas` : ""}
-                </td>
-                <td className="text-xs">
-                  {row.teamName ?? (
-                    <span className="text-ui-muted">Sin equipo</span>
-                  )}
-                </td>
-                <td className="text-xs">
-                  {row.assignedToName ?? (
-                    <span className="text-ui-muted">Sin asignar</span>
-                  )}
-                </td>
-                <td className="text-xs text-ui-muted">
-                  {row.lastSightingLabel}
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 ? (
-              <tr>
-                <td className="text-center text-ui-muted" colSpan={8}>
-                  No hay casos que cumplan el filtro en esta vista.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                <input
+                  aria-label={`Marcar a ${row.holderName}`}
+                  checked={checked}
+                  className="pointer-events-none mt-1"
+                  readOnly
+                  tabIndex={-1}
+                  type="checkbox"
+                />
+                <span className="grid min-w-0 gap-0.5">
+                  <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-ui-text">
+                    {row.holderName}
+                    {row.habilitationOverdue ? (
+                      <Badge tone="warning">Ya puede portar</Badge>
+                    ) : null}
+                    {row.unverified ? (
+                      <Badge tone="warning">Falta consultar portabilidad</Badge>
+                    ) : null}
+                  </span>
+                  <span className="text-xs text-ui-muted">
+                    {[
+                      row.department ?? "Sin departamento",
+                      `${row.planSummary}${row.serviceCount > 1 ? ` · ${row.serviceCount} líneas` : ""}`,
+                      row.assignedToName
+                        ? `Con ${row.assignedToName}`
+                        : (row.teamName ?? "Sin equipo"),
+                      `en la base el ${row.lastSightingLabel}`,
+                    ].join(" · ")}
+                  </span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </form>
   );
 }

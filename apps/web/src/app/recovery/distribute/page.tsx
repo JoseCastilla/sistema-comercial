@@ -25,25 +25,18 @@ import {
   recoveryTeamFilterNone,
   summarizeRecoveryPlan,
   allOf,
+  formatCampaignMoment,
 } from "@repo/validation";
 import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
 
 import { formatCount } from "@repo/ui/format";
-import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
-import { SectionPanel } from "@repo/ui/section-panel";
 
 const distributionRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
 
 const pageSize = 250;
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  dateStyle: "short",
-  timeStyle: "short",
-});
 
 export default async function RecoveryDistributePage({
   searchParams,
@@ -332,7 +325,7 @@ export default async function RecoveryDistributePage({
     habilitationOverdue:
       item.portabilityEligibleAt !== null &&
       item.portabilityEligibleAt.getTime() <= now.getTime(),
-    lastSightingLabel: dateTimeFormatter.format(item.lastSightingAt),
+    lastSightingLabel: formatCampaignMoment(item.lastSightingAt),
   }));
 
   const teamOptions: DistributeTeamOption[] = teams;
@@ -371,70 +364,93 @@ export default async function RecoveryDistributePage({
     return `/recovery/distribute${suffix ? `?${suffix}` : ""}`;
   }
 
+  // SPEC-071: las cuatro etapas en una línea; cada cifra abre su lista.
+  const stageFigures = [
+    {
+      label: campaignStageLabels.open,
+      value: openCount,
+      href: campaignStageHrefs.open,
+      hint: campaignStageHints.open,
+    },
+    {
+      label: campaignStageLabels.assignedUnworked,
+      value: unworkedCount,
+      href: campaignStageHrefs.assignedUnworked,
+      hint: campaignStageHints.assignedUnworked,
+    },
+    {
+      label: campaignStageLabels.managed,
+      value: inProgressCount,
+      href: campaignStageHrefs.managed,
+      hint: campaignStageHints.managed,
+    },
+    {
+      label: "En revisión",
+      value: triageCount,
+      href: "/recovery/triage",
+      hint: "Todavía en «Revisar»: falta consultar, verificados por entregar o con pedido en curso",
+    },
+  ];
+
   return (
     <>
       <div className="ui-page-stack">
-        <PageHeader
-          eyebrow="Campañas"
-          title="Repartir la base"
-          description="Reparte los casos listos entre asesores o envíalos a la cola del equipo. Los casos asignados sin gestión se pueden redistribuir."
-        />
+        {/* SPEC-071: sin subtítulo ni tarjetas; una línea de cifras. */}
+        <PageHeader eyebrow="Campañas" title="Repartir la base" />
         <CampaignNav current="repartir" role={membership.role} />
 
-        <MetricGroup>
-          <Metric
-            hint={campaignStageHints.open}
-            href={campaignStageHrefs.open}
-            label={campaignStageLabels.open}
-            value={openCount}
-          />
-          <Metric
-            hint={campaignStageHints.assignedUnworked}
-            href={campaignStageHrefs.assignedUnworked}
-            label={campaignStageLabels.assignedUnworked}
-            value={unworkedCount}
-          />
-          <Metric
-            hint={campaignStageHints.managed}
-            href={campaignStageHrefs.managed}
-            label={campaignStageLabels.managed}
-            value={inProgressCount}
-          />
-          <Metric
-            hint="Todavía en «Revisar»: falta consultar, verificados por entregar o con pedido en curso"
-            href={campaignStageHrefs.verified}
-            label="En revisión"
-            value={triageCount}
-          />
-        </MetricGroup>
-
-        {triageCount > 0 ? (
-          <p className="text-sm text-ui-muted">
-            Hay {formatCount(triageCount)} caso(s) que aún no pasan la revisión.{" "}
-            <Link
-              className="text-ui-accent underline-offset-2 hover:underline"
-              href="/recovery/triage"
-            >
-              Ir a revisarlos
-            </Link>
-          </p>
-        ) : null}
-
-        <SectionPanel
-          title={
-            view === "open"
-              ? "Base disponible"
-              : "Asignados sin gestión (redistribuibles)"
-          }
-          description={`${formatCount(filteredTotal)} caso(s) cumplen el filtro; se muestran ${formatCount(rows.length)} por página, los más recientes primero.`}
+        <section
+          aria-label="La base"
+          className="flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-lg border border-ui-border bg-ui-surface px-4 py-3 text-sm text-ui-muted"
         >
+          {stageFigures.map((figure) => (
+            <Link
+              className="underline-offset-2 hover:underline"
+              href={figure.href}
+              key={figure.label}
+              title={figure.hint}
+            >
+              {figure.label}{" "}
+              <strong className="text-base tabular-nums text-ui-text">
+                {formatCount(figure.value)}
+              </strong>
+            </Link>
+          ))}
+        </section>
+
+        {/* Las dos poblaciones que se reparten, como pestañas con su cifra. */}
+        <nav aria-label="Qué repartir" className="ui-segmented-scroll">
+          <div className="ui-segmented">
+            {(
+              [
+                { value: "open", label: "Por repartir", count: openCount },
+                {
+                  value: "unworked",
+                  label: "Asignados sin gestión",
+                  count: unworkedCount,
+                },
+              ] as const
+            ).map((option) => (
+              <Link
+                aria-current={view === option.value ? "page" : undefined}
+                className="ui-segmented__item"
+                href={campaignStageHrefs[option.value === "open" ? "open" : "assignedUnworked"]}
+                key={option.value}
+              >
+                {option.label}
+                <span className="ml-1 text-xs text-ui-muted">
+                  {formatCount(option.count)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+
+        <section aria-label="Base disponible" className="grid gap-4">
           <QueueFilters
             basePath="/recovery/distribute"
+            moreFilters
             options={{
-              views: [
-                { value: "open", label: "Por distribuir" },
-                { value: "unworked", label: "Asignados sin gestión" },
-              ],
               teams,
               allowNoTeam: !isSupervisor,
               advisors:
@@ -455,7 +471,7 @@ export default async function RecoveryDistributePage({
               plans: planOptions,
               ages: recoveryAgeBuckets,
             }}
-            resultLabel={`${formatCount(filteredTotal)} caso(s) cumplen el filtro.`}
+            resultLabel={`${formatCount(filteredTotal)} ${filteredTotal === 1 ? "caso" : "casos"}`}
             values={{
               q: searchInput,
               view,
@@ -498,7 +514,7 @@ export default async function RecoveryDistributePage({
               ) : null}
             </div>
           ) : null}
-        </SectionPanel>
+        </section>
       </div>
     </>
   );

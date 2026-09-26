@@ -247,11 +247,46 @@ export function QueueFilters({
     ? allExtras.filter((extra) => !visibleExtras.includes(extra.key))
     : [];
   const extrasControls = shownExtras.map(renderExtra);
+  const plansControl = options.plans ? (
+          <label className="block">
+            <span className="ui-label-eyebrow">Plan</span>
+            <select
+              className={selectClass}
+              onChange={(event) => navigate({ plan: event.target.value })}
+              value={values.plan}
+            >
+              <option value="">Todos</option>
+              {options.plans.map((plan) => (
+                <option key={plan} value={plan}>
+                  {plan}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null;
+  const agesControl = options.ages ? (
+          <label className="block">
+            <span className="ui-label-eyebrow">Antigüedad</span>
+            <select
+              className={selectClass}
+              onChange={(event) => navigate({ age: event.target.value })}
+              value={values.age ?? ""}
+            >
+              <option value="">Toda</option>
+              {options.ages.map((age) => (
+                <option key={age.value} value={age.value}>
+                  {age.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null;
   const foldedInUse =
     (options.views !== undefined &&
       Boolean(values.view) &&
       values.view !== options.views[0]?.value) ||
-    foldedExtras.some((extra) => Boolean(values.extra?.[extra.key]));
+    foldedExtras.some((extra) => Boolean(values.extra?.[extra.key])) ||
+    (moreFilters && (Boolean(values.plan) || Boolean(values.age)));
 
   return (
     <div className="space-y-3">
@@ -364,43 +399,15 @@ export function QueueFilters({
           </label>
         ) : null}
 
-        {options.plans ? (
-          <label className="block">
-            <span className="ui-label-eyebrow">Plan</span>
-            <select
-              className={selectClass}
-              onChange={(event) => navigate({ plan: event.target.value })}
-              value={values.plan}
-            >
-              <option value="">Todos</option>
-              {options.plans.map((plan) => (
-                <option key={plan} value={plan}>
-                  {plan}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
+        {moreFilters ? null : plansControl}
 
-        {options.ages ? (
-          <label className="block">
-            <span className="ui-label-eyebrow">Antigüedad</span>
-            <select
-              className={selectClass}
-              onChange={(event) => navigate({ age: event.target.value })}
-              value={values.age ?? ""}
-            >
-              <option value="">Toda</option>
-              {options.ages.map((age) => (
-                <option key={age.value} value={age.value}>
-                  {age.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
+        {moreFilters ? null : agesControl}
 
-        {moreFilters && (options.views || foldedExtras.length > 0) ? (
+        {moreFilters &&
+        (options.views ||
+          foldedExtras.length > 0 ||
+          options.plans ||
+          options.ages) ? (
           <details className="pb-2" open={foldedInUse || undefined}>
             <summary className="cursor-pointer text-xs font-semibold text-ui-accent">
               Más filtros
@@ -408,6 +415,8 @@ export function QueueFilters({
             <div className="mt-2 flex flex-wrap items-end gap-3">
               {viewsControl}
               {foldedExtras.map(renderExtra)}
+              {plansControl}
+              {agesControl}
             </div>
           </details>
         ) : null}
