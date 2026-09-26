@@ -11,7 +11,6 @@ import { buildRecoverySearchWhere } from "@/features/recovery/server/recovery-se
 import { releaseWaitingBaseCases } from "@/features/recovery/server/release-waiting-base-cases";
 import { CampaignNav } from "@/features/recovery/components/campaign-nav";
 import {
-  campaignStageHints,
   campaignStageHrefs,
   campaignStageLabels,
 } from "@/features/recovery/campaign-stage-labels";
@@ -24,15 +23,14 @@ import {
   recoveryTeamFilterNone,
   summarizeRecoveryPlan,
   allOf,
+  formatCampaignMoment,
 } from "@repo/validation";
 import { database } from "@/server/database";
 
 import type { Prisma } from "@repo/database";
 
 import { formatCount } from "@repo/ui/format";
-import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
-import { SectionPanel } from "@repo/ui/section-panel";
 
 const triageRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
 
@@ -43,16 +41,6 @@ const batchDateFormatter = new Intl.DateTimeFormat("es-PE", {
 });
 
 const pageSize = 250;
-
-const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  day: "2-digit",
-  month: "2-digit",
-  year: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 
 export default async function RecoveryTriagePage({
   searchParams,
@@ -309,7 +297,7 @@ export default async function RecoveryTriagePage({
       ),
     ].join(", "),
     teamName: recoveryCase.assignedTeam?.name ?? null,
-    lastSightingLabel: dateTimeFormatter.format(recoveryCase.lastSightingAt),
+    lastSightingLabel: formatCampaignMoment(recoveryCase.lastSightingAt),
     sightingCount: recoveryCase._count.sightings,
   }));
 
@@ -346,92 +334,60 @@ export default async function RecoveryTriagePage({
   return (
     <>
       <div className="ui-page-stack">
+        {/* SPEC-072: sin subtítulo ni tarjetas; las vistas llevan su cifra. */}
         <PageHeader
           eyebrow="Campañas"
           title={
             isSupervisor ? "Revisar mi bloque" : "Revisar y repartir la base"
           }
-          description={
-            isSupervisor
-              ? "La base entregada a tus equipos. El DNI y cada línea se copian con un clic."
-              : "Reparte bloques a los equipos o pon en espera a los que ya tienen pedido. El DNI y cada línea se copian con un clic."
-          }
         />
         <CampaignNav current="revisar" role={membership.role} />
 
-        <MetricGroup>
-          <Metric
-            href={viewHref("listos")}
-            label={campaignStageLabels.verified}
-            value={readyTotal}
-            hint="Líneas ya verificadas: se pueden entregar hoy"
-          />
-          <Metric
-            href={viewHref("pendientes")}
-            label={campaignStageLabels.unverified}
-            value={pendingTotal}
-            hint="Aún no pasan por el reporte de portabilidad"
-          />
-          <Metric
-            href={viewHref("espera")}
-            label={campaignStageLabels.waiting}
-            value={waitingTotal}
-            hint="Verificados que esperan a que su pedido se concrete o se caiga"
-          />
-          <Metric
-            href={campaignStageHrefs.open}
-            label={campaignStageLabels.open}
-            value={openTotal}
-            hint={campaignStageHints.open}
-          />
-        </MetricGroup>
-
-        <div className="ui-form-row">
-          <Link
-            className={`ui-button ${view === "listos" ? "ui-button--primary" : "ui-button--secondary"}`}
-            href={viewHref("listos")}
-          >
-            {campaignStageLabels.verified} ({formatCount(readyTotal)})
-          </Link>
-          <Link
-            className={`ui-button ${view === "pendientes" ? "ui-button--primary" : "ui-button--secondary"}`}
-            href={viewHref("pendientes")}
-          >
-            {campaignStageLabels.unverified} ({formatCount(pendingTotal)})
-          </Link>
-          <Link
-            className={`ui-button ${view === "espera" ? "ui-button--primary" : "ui-button--secondary"}`}
-            href={viewHref("espera")}
-          >
-            {campaignStageLabels.waiting} ({formatCount(waitingTotal)})
-          </Link>
-          <span className="pb-2 text-xs text-ui-muted">
-            {view === "pendientes"
-              ? "Aún sin verificar: si los repartes, el asesor llamará sin saber si el cliente ya es Movistar."
-              : view === "espera"
-                ? "Verificados con pedido en curso: vuelven solos a revisión al día siguiente, o cuando su fecha de portación pasa."
-                : "Ya verificados, sin pedido en curso: se pueden repartir hoy."}
-          </span>
-        </div>
-
-        {openTotal > 0 ? (
-          <p className="text-sm text-ui-muted">
-            Hay {formatCount(openTotal)} caso(s) disponibles para asignar.{" "}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <nav aria-label="Qué revisar" className="ui-segmented-scroll">
+            <div className="ui-segmented">
+              {(
+                [
+                  ["listos", campaignStageLabels.verified, readyTotal],
+                  ["pendientes", campaignStageLabels.unverified, pendingTotal],
+                  ["espera", campaignStageLabels.waiting, waitingTotal],
+                ] as const
+              ).map(([value, label, total]) => (
+                <Link
+                  aria-current={view === value ? "page" : undefined}
+                  className="ui-segmented__item"
+                  href={viewHref(value)}
+                  key={value}
+                >
+                  {label}
+                  <span className="ml-1 text-xs text-ui-muted">
+                    {formatCount(total)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </nav>
+          {openTotal > 0 ? (
             <Link
-              className="text-ui-accent underline-offset-2 hover:underline"
-              href="/recovery/distribute"
+              className="text-sm text-ui-accent underline-offset-2 hover:underline"
+              href={campaignStageHrefs.open}
             >
-              Distribuir la base
+              {formatCount(openTotal)} disponibles para asignar en Repartir →
             </Link>
-          </p>
-        ) : null}
+          ) : null}
+        </div>
+        <p className="-mt-2 text-xs text-ui-muted">
+          {view === "pendientes"
+            ? "Aún sin verificar: si los repartes, el asesor llamará sin saber si el cliente ya es Movistar."
+            : view === "espera"
+              ? "Verificados con pedido en curso: vuelven solos a revisión al día siguiente, o cuando su fecha de portación pasa."
+              : "Ya verificados, sin pedido en curso: se pueden repartir hoy."}
+        </p>
 
-        <SectionPanel
-          title="Casos pendientes"
-          description={`${formatCount(filteredTotal)} caso(s) cumplen el filtro; se muestran ${formatCount(rows.length)} por página, primero los del último archivo cargado. Puedes marcar un rango con Shift o elegir cuántos tomar.`}
-        >
+        <section aria-label="Casos por revisar" className="grid gap-4">
           <QueueFilters
             basePath="/recovery/triage"
+            moreFilters
             options={{
               teams: isSupervisor ? undefined : teams,
               allowNoTeam: !isSupervisor,
@@ -450,7 +406,7 @@ export default async function RecoveryTriagePage({
                 },
               ],
             }}
-            resultLabel={`${formatCount(filteredTotal)} caso(s) cumplen el filtro.`}
+            resultLabel={`${formatCount(filteredTotal)} ${filteredTotal === 1 ? "caso" : "casos"}`}
             values={{
               q: searchInput,
               view: view === "listos" ? "" : view,
@@ -460,7 +416,35 @@ export default async function RecoveryTriagePage({
               age: ageFilter ?? "",
               extra: { batch: batchFilter },
             }}
+            visibleExtras={["batch"]}
           />
+
+          {/* Sin nada que revisar, decir cuál es el siguiente paso. */}
+          {filteredTotal === 0 && !searchInput && !departmentFilter && !planFilter && !ageFilter && !batchFilter ? (
+            <p className="rounded-lg border border-ui-border bg-ui-surface px-4 py-6 text-center text-sm text-ui-muted">
+              Nada por revisar en «
+              {view === "pendientes"
+                ? campaignStageLabels.unverified
+                : view === "espera"
+                  ? campaignStageLabels.waiting
+                  : campaignStageLabels.verified}
+              ». Lo siguiente está en{" "}
+              <Link
+                className="text-ui-accent underline-offset-2 hover:underline"
+                href="/recovery/distribute"
+              >
+                Repartir
+              </Link>{" "}
+              y{" "}
+              <Link
+                className="text-ui-accent underline-offset-2 hover:underline"
+                href="/recovery/follow-up"
+              >
+                Seguimiento
+              </Link>
+              .
+            </p>
+          ) : null}
 
           <RecoveryTriageForm
             canAssignTeams={!isSupervisor}
@@ -491,7 +475,7 @@ export default async function RecoveryTriagePage({
               ) : null}
             </div>
           ) : null}
-        </SectionPanel>
+        </section>
       </div>
     </>
   );

@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import {
   formatAdvisorDisplayName,
   recoveryBoardPeriods,
+  recoveryDaysUntouched,
+  recoveryStaleDays,
   resolveRecoveryBoardPeriod,
 } from "@repo/validation";
 
@@ -203,8 +205,15 @@ export default async function RecoveryBoardPage({
         assignedUserId: true,
         firstContactAt: true,
         nextActionAt: true,
+        claimedAt: true,
         assignedUser: { select: { name: true, email: true } },
         assignedTeam: { select: { name: true } },
+        // SPEC-072: para «sin tocar hace 7 días o más», como Seguimiento.
+        attempts: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true },
+        },
       },
     }),
     database.recoveryCaseAttempt.findMany({
@@ -280,6 +289,16 @@ export default async function RecoveryBoardPage({
   const workedToday = assignedCases.filter((item) =>
     attemptsByCase.has(item.id),
   );
+  const staleCases = assignedCases.filter((item) => {
+    const days = recoveryDaysUntouched(
+      {
+        lastAttemptAt: item.attempts[0]?.createdAt ?? null,
+        claimedAt: item.claimedAt,
+      },
+      new Date(),
+    );
+    return days !== null && days >= recoveryStaleDays;
+  });
   const noFirstContact = assignedCases.filter(
     (item) => item.firstContactAt === null && item.status !== "WAITING",
   );
@@ -434,14 +453,14 @@ export default async function RecoveryBoardPage({
   }
   const cohortRows = [...cohorts.values()].reverse();
 
+  // Con un solo equipo, la columna repetiría el mismo nombre en cada fila.
+  const showTeamColumn =
+    new Set(advisorRows.map((row) => row.teamName)).size > 1;
+
   return (
     <>
       <div className="ui-page-stack">
-        <PageHeader
-          eyebrow="Campañas"
-          title="Tablero"
-          description={`La cartera de ahora y la actividad de ${period.label.toLowerCase()}: cuánto se avanzó, con qué cobertura y con qué efectividad.`}
-        />
+        <PageHeader eyebrow="Campañas" title="Tablero" />
         <CampaignNav current="tablero" role={membership.role} />
 
         <QueueFilters
@@ -483,21 +502,9 @@ export default async function RecoveryBoardPage({
           }}
         />
 
-        <div className="ui-form-row">
-          <Link
-            className="ui-button ui-button--secondary"
-            href={followUpHref({})}
-          >
-            Seguimiento: la cartera cliente por cliente
-          </Link>
-          <span className="pb-2 text-xs text-ui-muted">
-            Cada cifra de abajo abre los clientes que la explican.
-          </span>
-        </div>
-
         <SectionPanel
           title="Cartera y actividad"
-          description="La cartera es el estado de ahora; la actividad, lo ocurrido en el período elegido. Los plazos corren desde la asignación: los casos sin repartir no generan alertas."
+          description="Cada cifra abre, en Seguimiento, los clientes que la explican."
         >
           <div className="space-y-4">
             <div>
@@ -508,6 +515,13 @@ export default async function RecoveryBoardPage({
                   href={followUpHref({})}
                   label="Asignados"
                   value={formatCount(assignedCases.length)}
+                />
+                <Stat
+                  detail="Ninguna gestión en una semana; se pueden devolver desde Seguimiento"
+                  href={followUpHref({ idle: String(recoveryStaleDays) })}
+                  label={`Sin tocar hace ${recoveryStaleDays} días o más`}
+                  tone={staleCases.length > 0 ? "warning" : undefined}
+                  value={formatCount(staleCases.length)}
                 />
                 <Stat
                   detail="Asignados que nadie ha llamado aún; los en espera no cuentan"
@@ -584,14 +598,16 @@ export default async function RecoveryBoardPage({
 
         <SectionPanel
           title="Efectividad por asesor"
-          description={`Intentos y contactos de ${period.label.toLowerCase()}; recuperos y pérdidas resueltos en el mismo período. Los intentos se atribuyen al dueño actual del caso.`}
+          description={`Intentos y contactos de ${period.label.toLowerCase()}; recuperos y pérdidas del mismo período, a nombre del dueño actual del caso.`}
         >
           <div className="overflow-x-auto">
             <table className="ui-table">
               <thead>
                 <tr>
                   <th className="font-semibold">Asesor</th>
-                  <th className="font-semibold">Equipo</th>
+                  {showTeamColumn ? (
+                    <th className="font-semibold">Equipo</th>
+                  ) : null}
                   <th data-numeric className="font-semibold">
                     Asignados
                   </th>
@@ -630,7 +646,9 @@ export default async function RecoveryBoardPage({
                         {row.name}
                       </Link>
                     </td>
-                    <td className="text-xs text-ui-muted">{row.teamName}</td>
+                    {showTeamColumn ? (
+                      <td className="text-xs text-ui-muted">{row.teamName}</td>
+                    ) : null}
                     <td data-numeric className="ui-data">
                       {row.assigned}
                     </td>
@@ -682,10 +700,10 @@ export default async function RecoveryBoardPage({
                   <tr>
                     <td
                       className="px-3 py-6 text-center text-ui-muted"
-                      colSpan={10}
+                      colSpan={showTeamColumn ? 10 : 9}
                     >
                       Nadie tiene casos asignados en estos equipos. Reparte
-                      desde Distribuir la base.
+                      desde Repartir.
                     </td>
                   </tr>
                 ) : null}
@@ -694,11 +712,12 @@ export default async function RecoveryBoardPage({
           </div>
         </SectionPanel>
 
-        <SectionPanel
-          title="Cómo se calcula"
-          description="Tres fechas distintas, tres preguntas distintas. Ninguna cifra mezcla dos."
-        >
-          <dl className="grid gap-3 text-xs sm:grid-cols-3">
+        {/* SPEC-072: la explicación, a un clic; no un bloque fijo. */}
+        <details className="rounded-lg border border-ui-border bg-ui-surface text-sm">
+          <summary className="cursor-pointer px-4 py-3 font-semibold text-ui-text">
+            Cómo se calcula
+          </summary>
+          <dl className="grid gap-3 border-t border-ui-border p-4 text-xs sm:grid-cols-3">
             <div>
               <dt className="font-semibold text-ui-text">Cartera · ahora</dt>
               <dd className="text-ui-muted">
@@ -730,91 +749,85 @@ export default async function RecoveryBoardPage({
               </dd>
             </div>
           </dl>
-        </SectionPanel>
+        </details>
 
         <SectionPanel
           title="Conversión por fecha de carga"
-          description="Cada fecha de carga —el día en que el caso entró— contra la meta del 3–6 %, con lo recuperado hasta hoy. Es independiente del período de actividad. Los que ya eran Movistar no cuentan: la conversión se mide sobre oportunidad real."
+          description="Cada día de carga contra la meta del 3–6 %, con lo recuperado hasta hoy y sin contar a quienes ya eran Movistar."
         >
-          <div className="overflow-x-auto">
-            <table className="ui-table">
-              <thead>
-                <tr>
-                  <th className="font-semibold">Día de carga</th>
-                  <th data-numeric className="font-semibold">
-                    Casos
-                  </th>
-                  <th data-numeric className="font-semibold">
-                    Ya eran Movistar
-                  </th>
-                  <th data-numeric className="font-semibold">
-                    Oportunidad real
-                  </th>
-                  <th data-numeric className="font-semibold">
-                    Recuperados
-                  </th>
-                  <th data-numeric className="font-semibold">
-                    Conversión
-                  </th>
-                  <th className="font-semibold">Meta 3–6 %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cohortRows.map((row) => {
-                  const denominator = row.total - row.discarded;
-                  const rate =
-                    denominator > 0
-                      ? (row.recovered / denominator) * 100
-                      : null;
-                  return (
-                    <tr key={row.key}>
-                      <td className="ui-data">{row.key}</td>
-                      <td data-numeric className="ui-data">
-                        {formatCount(row.total)}
-                      </td>
-                      <td data-numeric className="ui-data text-ui-muted">
-                        {formatCount(row.discarded)}
-                      </td>
-                      <td data-numeric className="ui-data">
-                        {formatCount(denominator)}
-                      </td>
-                      <td data-numeric className="ui-data">
-                        {formatCount(row.recovered)}
-                      </td>
-                      <td data-numeric className="ui-data">
-                        {rate === null ? "—" : `${rate.toFixed(1)}%`}
-                      </td>
-                      <td className="text-xs">
-                        {rate === null ? (
-                          <span className="text-ui-muted">
-                            Todavía sin casos
-                          </span>
-                        ) : rate >= 3 ? (
-                          <span className="text-ui-success">
-                            {rate > 6 ? "Sobre la meta" : "En rango"}
-                          </span>
-                        ) : (
-                          <span className="text-ui-warning">
-                            Aún por debajo de la meta
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {cohortRows.length === 0 ? (
+          {cohortRows.length === 0 ? (
+            <p className="text-sm text-ui-muted">Sin cargas en el período.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="ui-table">
+                <thead>
                   <tr>
-                    <td
-                      className="px-3 py-6 text-center text-ui-muted"
-                      colSpan={7}
-                    >
-                      Sin cargas en el período.
-                    </td>
+                    <th className="font-semibold">Día de carga</th>
+                    <th data-numeric className="font-semibold">
+                      Casos
+                    </th>
+                    <th data-numeric className="font-semibold">
+                      Ya eran Movistar
+                    </th>
+                    <th data-numeric className="font-semibold">
+                      Oportunidad real
+                    </th>
+                    <th data-numeric className="font-semibold">
+                      Recuperados
+                    </th>
+                    <th data-numeric className="font-semibold">
+                      Conversión
+                    </th>
+                    <th className="font-semibold">Meta 3–6 %</th>
                   </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {cohortRows.map((row) => {
+                    const denominator = row.total - row.discarded;
+                    const rate =
+                      denominator > 0
+                        ? (row.recovered / denominator) * 100
+                        : null;
+                    return (
+                      <tr key={row.key}>
+                        <td className="ui-data">{row.key}</td>
+                        <td data-numeric className="ui-data">
+                          {formatCount(row.total)}
+                        </td>
+                        <td data-numeric className="ui-data text-ui-muted">
+                          {formatCount(row.discarded)}
+                        </td>
+                        <td data-numeric className="ui-data">
+                          {formatCount(denominator)}
+                        </td>
+                        <td data-numeric className="ui-data">
+                          {formatCount(row.recovered)}
+                        </td>
+                        <td data-numeric className="ui-data">
+                          {rate === null ? "—" : `${rate.toFixed(1)}%`}
+                        </td>
+                        <td className="text-xs">
+                          {rate === null ? (
+                            <span className="text-ui-muted">
+                              Todavía sin casos
+                            </span>
+                          ) : rate >= 3 ? (
+                            <span className="text-ui-success">
+                              {rate > 6 ? "Sobre la meta" : "En rango"}
+                            </span>
+                          ) : (
+                            <span className="text-ui-warning">
+                              Aún por debajo de la meta
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </SectionPanel>
       </div>
     </>

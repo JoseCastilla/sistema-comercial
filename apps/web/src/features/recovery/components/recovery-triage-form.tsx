@@ -248,23 +248,30 @@ export function RecoveryTriageForm({
           </div>
         </label>
 
-        <span className="pb-2 text-xs leading-5 text-ui-muted">
-          {formatCount(selected.size)} de {formatCount(rows.length)}{" "}
-          seleccionados ·{" "}
-          <kbd className="rounded border border-ui-border px-1">↑</kbd>{" "}
-          <kbd className="rounded border border-ui-border px-1">↓</kbd> cambian
-          de cliente,{" "}
-          <kbd className="rounded border border-ui-border px-1">←</kbd>{" "}
-          <kbd className="rounded border border-ui-border px-1">→</kbd> eligen
-          DNI o línea,{" "}
-          <kbd className="rounded border border-ui-border px-1">Espacio</kbd>{" "}
-          copia ese dato y{" "}
-          <kbd className="rounded border border-ui-border px-1">Shift</kbd> +{" "}
-          <kbd className="rounded border border-ui-border px-1">Espacio</kbd>{" "}
-          marca al cliente. Con el ratón, la fila entera marca y{" "}
-          <kbd className="rounded border border-ui-border px-1">Shift</kbd> +
-          clic extiende el rango.
+        <span className="pb-2 text-sm font-semibold text-ui-text">
+          {formatCount(selected.size)} de {formatCount(rows.length)} marcados
         </span>
+        {/* SPEC-072: los atajos, a un clic; no un párrafo fijo. */}
+        <details className="pb-2 text-xs text-ui-muted">
+          <summary className="cursor-pointer font-semibold text-ui-accent">
+            Atajos de teclado
+          </summary>
+          <p className="mt-1 max-w-xl leading-5">
+            <kbd className="rounded border border-ui-border px-1">↑</kbd>{" "}
+            <kbd className="rounded border border-ui-border px-1">↓</kbd> cambian
+            de cliente,{" "}
+            <kbd className="rounded border border-ui-border px-1">←</kbd>{" "}
+            <kbd className="rounded border border-ui-border px-1">→</kbd> eligen
+            DNI o línea,{" "}
+            <kbd className="rounded border border-ui-border px-1">Espacio</kbd>{" "}
+            copia ese dato y{" "}
+            <kbd className="rounded border border-ui-border px-1">Shift</kbd> +{" "}
+            <kbd className="rounded border border-ui-border px-1">Espacio</kbd>{" "}
+            marca al cliente. Con el ratón, la fila entera marca y{" "}
+            <kbd className="rounded border border-ui-border px-1">Shift</kbd> +
+            clic extiende el rango.
+          </p>
+        </details>
       </div>
 
       <div className="ui-form-row">
