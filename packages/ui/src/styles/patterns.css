@@ -2246,6 +2246,33 @@
     gap: 0.2rem;
   }
 
+  /* SPEC-080: cabecera de grupo en la hoja del asesor. */
+  .ui-order-grid__group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    padding: 0.55rem 1rem;
+    border-top: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    background: var(--ui-surface-subtle);
+    font-size: var(--ui-text-sm);
+    font-weight: 650;
+  }
+
+  .ui-order-grid__body > .ui-order-grid__group:first-child {
+    border-top: 0;
+  }
+
+  /* El motivo de Máximo en la entrega fallida: visible en una y dos líneas. */
+  .ui-order-grid__reason {
+    overflow: hidden;
+    color: var(--ui-warning);
+    font-size: var(--ui-text-2xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .ui-order-grid__client-text {
     display: grid;
     min-width: 0;

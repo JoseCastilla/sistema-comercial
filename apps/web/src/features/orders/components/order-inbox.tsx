@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Form from "next/form";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 import { formatCount } from "@repo/ui/format";
 import { EmptyState } from "@repo/ui/empty-state";
@@ -19,6 +19,12 @@ import { OrderRealtimeStatus } from "./order-realtime-status";
 import { OrderEscalationPanel } from "./order-escalation-panel";
 import { SendOrderToRecoveryPanel } from "./send-order-to-recovery-panel";
 import { OrderScopeFilters } from "./order-scope-filters";
+
+import {
+  getAdvisorOrderGroup,
+  getAgrReasonText,
+  groupAdvisorOrders,
+} from "../advisor-order-groups";
 
 import type {
   OrderAssignmentTeamOption,
@@ -979,6 +985,9 @@ function DesktopOrderList({
   showAdvisorColumn,
   checked,
   onToggleChecked,
+  groups,
+  expandedGroups,
+  onToggleGroup,
 }: {
   items: OrderInboxItem[];
   selectedOrderId: string | null;
@@ -987,6 +996,10 @@ function DesktopOrderList({
   /** SPEC-079: casillas para cerrar varios; solo en «Falta activar». */
   checked?: ReadonlySet<string>;
   onToggleChecked?: (orderId: string) => void;
+  /** SPEC-080: la hoja del asesor, agrupada por lo que toca. */
+  groups?: ReturnType<typeof groupAdvisorOrders<OrderInboxItem>>;
+  expandedGroups?: ReadonlySet<string>;
+  onToggleGroup?: (key: string) => void;
 }) {
   /*
    * SPEC-073: la hoja es una línea por venta cuando cabe. Cuando la lista es
@@ -995,6 +1008,154 @@ function DesktopOrderList({
    * con desplazamiento lateral. Lo decide el ancho de la lista, no la
    * pantalla: ver `@container order-list` en patterns.css.
    */
+  const renderRow = (order: OrderInboxItem) => {
+    const selected = selectedOrderId === order.id;
+    const reason =
+      groups && getAdvisorOrderGroup(order) === "fallida"
+        ? getAgrReasonText(order)
+        : null;
+
+    return (
+      <div
+        aria-pressed={selected}
+        className="ui-order-grid__row"
+        data-incident={order.noStatusIncident ? "true" : "false"}
+        data-order-row={order.id}
+        data-selected={selected ? "true" : "false"}
+        data-show-advisor={showAdvisorColumn ? "true" : "false"}
+        key={order.id}
+        onClick={() => onSelect(order.id)}
+        onKeyDown={(event) => {
+          // SPEC-074: ↑ y ↓ recorren la hoja; Enter o espacio eligen.
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect(order.id);
+            return;
+          }
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
+            return;
+          }
+          event.preventDefault();
+          // Entre grupos hay cabeceras: se recorre la lista de filas.
+          const rows = Array.from(
+            event.currentTarget
+              .closest(".ui-order-grid")
+              ?.querySelectorAll<HTMLElement>("[data-order-row]") ?? [],
+          );
+          const index = rows.indexOf(event.currentTarget);
+          const sibling =
+            rows[event.key === "ArrowDown" ? index + 1 : index - 1];
+          if (sibling?.dataset.orderRow) {
+            sibling.focus();
+            onSelect(sibling.dataset.orderRow);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
+        {/* SPEC-074: elegir la fila ya no copia nada; copiar, en el panel. */}
+        <span className="ui-order-grid__order-code truncate">
+          {order.orderCode}
+        </span>
+
+        <span
+          className="ui-order-grid__client"
+          data-checkable={checked ? "true" : undefined}
+        >
+          {checked && onToggleChecked ? (
+            <input
+              aria-label={`Marcar ${order.orderCode} para cerrar`}
+              checked={checked.has(order.id)}
+              className="mt-0.5 size-4 shrink-0 accent-[var(--ui-accent)]"
+              disabled={!canBulkClose(order)}
+              onChange={() => onToggleChecked(order.id)}
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+              type="checkbox"
+            />
+          ) : null}
+          <span className="ui-order-grid__client-text">
+            <strong>{order.holderName}</strong>
+            {/* Solo en dos líneas: lo que las columnas ocultas decían. */}
+            <small className="ui-order-grid__meta">
+              {[
+                order.orderCode,
+                getOperatorLabel(order),
+                showAdvisorColumn
+                  ? order.agentName || "Sin asesor"
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </small>
+            {/* SPEC-080: en la entrega fallida, por qué, según Máximo. */}
+            {reason ? (
+              <small className="ui-order-grid__reason">
+                Máximo: {reason}
+              </small>
+            ) : null}
+          </span>
+        </span>
+
+        <span className="ui-order-grid__plain">{order.documentNumber}</span>
+
+        <span className="ui-order-grid__plain">{order.serviceNumber}</span>
+
+        <span className="ui-order-grid__carrier">
+          {getOperatorLabel(order)}
+        </span>
+
+        {showAdvisorColumn ? (
+          <span className="ui-order-grid__agent">
+            {order.agentName}
+          </span>
+        ) : null}
+
+        <span className="ui-order-grid__status">
+          <StatusBadge
+            order={order}
+            showAgr={false}
+            showEscalationAction={false}
+          />
+          {order.agrDelivery && !order.agrDelivery.stale ? (
+            <span
+              className="ui-order-badge ui-order-grid__inline-action"
+              data-tone={
+                order.agrDelivery.opportunity ? "warning" : undefined
+              }
+            >
+              Máximo: {order.agrDelivery.estadoPedido}
+            </span>
+          ) : null}
+        </span>
+
+        <span className="ui-order-grid__action">
+          {/* Cerrado o entregado: Máximo ya no se consulta y su último
+              dato («AGENDADO») confundiría. */}
+          {order.agrDelivery && !order.agrDelivery.stale ? (
+            <span
+              className="ui-order-badge"
+              data-tone={
+                order.agrDelivery.opportunity ? "warning" : undefined
+              }
+              title={order.agrDelivery.estadoPedido}
+            >
+              {order.agrDelivery.estadoPedido}
+            </span>
+          ) : (
+            <span aria-hidden="true" className="text-ui-soft">
+              —
+            </span>
+          )}
+        </span>
+
+        <span className="ui-order-grid__sla">
+          <SlaBadge order={order} />
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="ui-order-grid">
       <div className="ui-order-grid__scroll">
@@ -1014,138 +1175,40 @@ function DesktopOrderList({
         </div>
 
         <div className="ui-order-grid__body">
-          {items.map((order) => {
-            const selected = selectedOrderId === order.id;
-
-            return (
-              <div
-                aria-pressed={selected}
-                className="ui-order-grid__row"
-                data-incident={order.noStatusIncident ? "true" : "false"}
-                data-order-row={order.id}
-                data-selected={selected ? "true" : "false"}
-                data-show-advisor={showAdvisorColumn ? "true" : "false"}
-                key={order.id}
-                onClick={() => onSelect(order.id)}
-                onKeyDown={(event) => {
-                  // SPEC-074: ↑ y ↓ recorren la hoja; Enter o espacio eligen.
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onSelect(order.id);
-                    return;
-                  }
-                  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") {
-                    return;
-                  }
-                  event.preventDefault();
-                  const sibling =
-                    event.key === "ArrowDown"
-                      ? event.currentTarget.nextElementSibling
-                      : event.currentTarget.previousElementSibling;
-                  if (sibling instanceof HTMLElement && sibling.dataset.orderRow) {
-                    sibling.focus();
-                    onSelect(sibling.dataset.orderRow);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-              >
-                {/* SPEC-074: elegir la fila ya no copia nada; copiar, en el panel. */}
-                <span className="ui-order-grid__order-code truncate">
-                  {order.orderCode}
-                </span>
-
-                <span
-                  className="ui-order-grid__client"
-                  data-checkable={checked ? "true" : undefined}
-                >
-                  {checked && onToggleChecked ? (
-                    <input
-                      aria-label={`Marcar ${order.orderCode} para cerrar`}
-                      checked={checked.has(order.id)}
-                      className="mt-0.5 size-4 shrink-0 accent-[var(--ui-accent)]"
-                      disabled={!canBulkClose(order)}
-                      onChange={() => onToggleChecked(order.id)}
-                      onClick={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => event.stopPropagation()}
-                      type="checkbox"
-                    />
-                  ) : null}
-                  <span className="ui-order-grid__client-text">
-                    <strong>{order.holderName}</strong>
-                    {/* Solo en dos líneas: lo que las columnas ocultas decían. */}
-                    <small className="ui-order-grid__meta">
-                      {[
-                        order.orderCode,
-                        getOperatorLabel(order),
-                        showAdvisorColumn
-                          ? order.agentName || "Sin asesor"
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </small>
-                  </span>
-                </span>
-
-                <span className="ui-order-grid__plain">{order.documentNumber}</span>
-
-                <span className="ui-order-grid__plain">{order.serviceNumber}</span>
-
-                <span className="ui-order-grid__carrier">
-                  {getOperatorLabel(order)}
-                </span>
-
-                {showAdvisorColumn ? (
-                  <span className="ui-order-grid__agent">
-                    {order.agentName}
-                  </span>
-                ) : null}
-
-                <span className="ui-order-grid__status">
-                  <StatusBadge
-                    order={order}
-                    showAgr={false}
-                    showEscalationAction={false}
-                  />
-                  {order.agrDelivery && !order.agrDelivery.stale ? (
-                    <span
-                      className="ui-order-badge ui-order-grid__inline-action"
-                      data-tone={
-                        order.agrDelivery.opportunity ? "warning" : undefined
-                      }
-                    >
-                      Máximo: {order.agrDelivery.estadoPedido}
-                    </span>
-                  ) : null}
-                </span>
-
-                <span className="ui-order-grid__action">
-                  {/* Cerrado o entregado: Máximo ya no se consulta y su último
-                      dato («AGENDADO») confundiría. */}
-                  {order.agrDelivery && !order.agrDelivery.stale ? (
-                    <span
-                      className="ui-order-badge"
-                      data-tone={
-                        order.agrDelivery.opportunity ? "warning" : undefined
-                      }
-                      title={order.agrDelivery.estadoPedido}
-                    >
-                      {order.agrDelivery.estadoPedido}
-                    </span>
-                  ) : (
-                    <span aria-hidden="true" className="text-ui-soft">
-                      —
-                    </span>
-                  )}
-                </span>
-
-                <span className="ui-order-grid__sla">
-                  <SlaBadge order={order} />
-                </span>
-              </div>
-            );
-          })}
+          {groups
+            ? groups.map((group) => {
+                const open =
+                  !group.collapsed || (expandedGroups?.has(group.key) ?? false);
+                return (
+                  <Fragment key={group.key}>
+                    <div className="ui-order-grid__group">
+                      <span>
+                        {group.label}{" "}
+                        <span className="text-ui-muted">
+                          {formatCount(group.items.length)}
+                        </span>
+                      </span>
+                      {group.hint ? (
+                        <span className="text-xs font-normal text-ui-muted">
+                          {group.hint}
+                        </span>
+                      ) : null}
+                      {group.collapsed ? (
+                        <button
+                          aria-expanded={open}
+                          className="ml-auto text-xs font-semibold text-ui-accent hover:underline"
+                          onClick={() => onToggleGroup?.(group.key)}
+                          type="button"
+                        >
+                          {open ? "Ocultar" : "Ver"}
+                        </button>
+                      ) : null}
+                    </div>
+                    {open ? group.items.map(renderRow) : null}
+                  </Fragment>
+                );
+              })
+            : items.map(renderRow)}
         </div>
       </div>
     </div>
@@ -1326,9 +1389,29 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
 }
 
 export function OrderInbox({ data }: { data: OrderInboxData }) {
+  // SPEC-080: el asesor ve su mes en una sola lista agrupada, sin pestañas.
+  const advisorSheet = data.role === "AGENT";
+  const groups = advisorSheet ? groupAdvisorOrders(data.items) : null;
+  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const toggleGroup = useCallback((key: string) => {
+    setExpandedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+  // El orden en pantalla: por grupo, y dentro de cada uno por urgencia.
+  const displayItems = groups
+    ? groups
+        .filter((group) => !group.collapsed || expandedGroups.has(group.key))
+        .flatMap((group) => group.items)
+    : data.items;
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(
-    data.items[0]?.id ?? null,
+    displayItems[0]?.id ?? null,
   );
   const selectedOrder =
     data.items.find((order) => {
@@ -1364,11 +1447,11 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
   // refresco saque de la vista al que se acaba de mover.
   const selectNextAfter = useCallback(
     (orderId: string) => {
-      const index = data.items.findIndex((order) => order.id === orderId);
-      const next = data.items[index + 1] ?? null;
+      const index = displayItems.findIndex((order) => order.id === orderId);
+      const next = displayItems[index + 1] ?? null;
       if (next) setSelectedOrderId(next.id);
     },
-    [data.items],
+    [displayItems],
   );
 
   return (
@@ -1392,6 +1475,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       <OrderSummary data={data} />
 
       <Surface className="ui-filter-bar" raised>
+        {advisorSheet ? null : (
         <Form action="/orders" className="lg:hidden">
           <input name="period" type="hidden" value={data.period} />
           {data.from ? (
@@ -1429,7 +1513,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             </select>
           </label>
         </Form>
+        )}
 
+        {advisorSheet ? null : (
         <nav
           aria-label="Estado de los pedidos"
           className="ui-segmented-scroll hidden lg:block"
@@ -1458,6 +1544,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             })}
           </div>
         </nav>
+        )}
 
         <OrderScopeFilters
           advisorOptions={data.advisorOptions}
@@ -1492,7 +1579,46 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       ) : (
         <>
           <section className="space-y-3 lg:hidden">
-            {data.items.map((order) => {
+            {(groups
+              ? groups.flatMap((group) => {
+                  const open =
+                    !group.collapsed || expandedGroups.has(group.key);
+                  return [
+                    { kind: "group" as const, group, open },
+                    ...(open
+                      ? group.items.map((order) => ({
+                          kind: "order" as const,
+                          order,
+                        }))
+                      : []),
+                  ];
+                })
+              : data.items.map((order) => ({ kind: "order" as const, order }))
+            ).map((entry) => {
+              if (entry.kind === "group") {
+                return (
+                  <div
+                    className="flex items-baseline gap-2 pt-2 text-sm font-semibold text-ui-text"
+                    key={`grupo-${entry.group.key}`}
+                  >
+                    {entry.group.label}
+                    <span className="text-ui-muted">
+                      {formatCount(entry.group.items.length)}
+                    </span>
+                    {entry.group.collapsed ? (
+                      <button
+                        aria-expanded={entry.open}
+                        className="ml-auto text-xs text-ui-accent"
+                        onClick={() => toggleGroup(entry.group.key)}
+                        type="button"
+                      >
+                        {entry.open ? "Ocultar" : "Ver"}
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              }
+              const order = entry.order;
               const expanded = expandedOrderId === order.id;
 
               return (
@@ -1529,7 +1655,10 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
           <section className="ui-order-workspace hidden lg:grid">
             <DesktopOrderList
               checked={closable.length > 0 ? checkedSet : undefined}
+              expandedGroups={expandedGroups}
+              groups={groups ?? undefined}
               items={data.items}
+              onToggleGroup={toggleGroup}
               onSelect={setSelectedOrderId}
               onToggleChecked={toggleChecked}
               selectedOrderId={selectedOrder?.id ?? null}

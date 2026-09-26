@@ -50,8 +50,9 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const rawPage = Number(firstValue(parameters.page));
   const filter = parseOrderFilter(
     firstValue(parameters.status),
-    // SPEC-074: todos entran a lo que falta mover, no a la lista completa.
-    "TO_MOVE",
+    // SPEC-080: el asesor ve su mes en una sola lista agrupada; el resto
+    // entra a lo que falta entregar (SPEC-074).
+    membership.role === "AGENT" ? "ALL" : "TO_MOVE",
   );
   const search = firstValue(parameters.q)?.trim().slice(0, 100) ?? "";
   const team = firstValue(parameters.team)?.trim().slice(0, 50);

@@ -38,7 +38,13 @@ import type {
 import type { OrderDueFilter } from "@repo/validation";
 
 const businessTimeZone = "America/Lima";
-const pageSize = 50;
+const defaultPageSize = 50;
+/*
+ * SPEC-080: el asesor ve su mes entero en una lista agrupada, sin páginas.
+ * En septiembre, el que más vendió tuvo menos de 150 pedidos; el tope solo
+ * evita una página descontrolada.
+ */
+const advisorPageSize = 300;
 
 export interface OrderInboxQuery {
   period: OrderPeriod;
@@ -909,6 +915,7 @@ export async function getOrderInbox(
   query: OrderInboxQuery,
 ): Promise<OrderInboxData> {
   const now = new Date();
+  const pageSize = access.role === "AGENT" ? advisorPageSize : defaultPageSize;
   const parsedRange =
     query.period === "RANGE"
       ? parseOrderRange(query.from, query.to, now)

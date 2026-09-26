@@ -247,6 +247,49 @@ describe("Hoja de pedidos", () => {
     expect(barra).toHaveTextContent("1 pedido marcado");
   });
 
+  it("el asesor ve una sola lista agrupada por lo que toca, sin pestañas", () => {
+    render(
+      <OrderInbox
+        data={datos({
+          role: "AGENT",
+          showAdvisorColumn: false,
+          items: [
+            pedido({ id: "p-1", orderCode: "A1" }),
+            pedido({
+              id: "p-2",
+              orderCode: "A2",
+              agrDelivery: null,
+              sentSubstatus: "SCHEDULED",
+            }),
+            pedido({
+              id: "p-3",
+              orderCode: "A3",
+              status: "CLOSED",
+              sentSubstatus: null,
+              agrDelivery: null,
+            }),
+          ],
+        })}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("navigation", { name: "Estado de los pedidos" }),
+    ).toBeNull();
+    expect(
+      screen.getAllByText("Entrega fallida: llama al cliente")[0],
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Por entregar")[0]).toBeInTheDocument();
+    // El motivo de Máximo, tal cual, en la fila de la entrega fallida.
+    expect(
+      screen.getAllByText("Máximo: CLIENTE AUSENTE")[0],
+    ).toBeInTheDocument();
+    // Lo cerrado va plegado.
+    expect(screen.queryByText("A3 · Claro")).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Ver" })[0]!);
+    expect(screen.getAllByText("A3 · Claro")[0]).toBeInTheDocument();
+  });
+
   it("fuera de «Falta activar» no hay casillas", () => {
     render(<OrderInbox data={datos()} />);
     expect(screen.queryByRole("checkbox")).toBeNull();
