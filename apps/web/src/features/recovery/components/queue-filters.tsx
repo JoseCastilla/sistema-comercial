@@ -74,6 +74,7 @@ export function QueueFilters({
   searchPlaceholder = "Nombre, DNI o teléfono",
   hideSearch = false,
   moreFilters = false,
+  visibleExtras = [],
 }: {
   basePath: string;
   values: QueueFilterValues;
@@ -90,6 +91,8 @@ export function QueueFilters({
    * abre solo si alguno de los plegados está en uso.
    */
   moreFilters?: boolean;
+  /** Con `moreFilters`, los selectores propios que siguen a la vista. */
+  visibleExtras?: string[];
 }) {
   const router = useRouter();
   const [term, setTerm] = useState(values.q);
@@ -217,7 +220,7 @@ export function QueueFilters({
             </select>
           </label>
         ) : null;
-  const extrasControls = (options.extras ?? []).map((extra) => (
+  const renderExtra = (extra: QueueFilterExtra) => (
           <label className="block" key={extra.key}>
             <span className="ui-label-eyebrow">{extra.label}</span>
             <select
@@ -235,12 +238,20 @@ export function QueueFilters({
               ))}
             </select>
           </label>
-        ));
+        );
+  const allExtras = options.extras ?? [];
+  const shownExtras = moreFilters
+    ? allExtras.filter((extra) => visibleExtras.includes(extra.key))
+    : allExtras;
+  const foldedExtras = moreFilters
+    ? allExtras.filter((extra) => !visibleExtras.includes(extra.key))
+    : [];
+  const extrasControls = shownExtras.map(renderExtra);
   const foldedInUse =
     (options.views !== undefined &&
       Boolean(values.view) &&
       values.view !== options.views[0]?.value) ||
-    (options.extras ?? []).some((extra) => Boolean(values.extra?.[extra.key]));
+    foldedExtras.some((extra) => Boolean(values.extra?.[extra.key]));
 
   return (
     <div className="space-y-3">
@@ -333,7 +344,7 @@ export function QueueFilters({
           </label>
         ) : null}
 
-        {moreFilters ? null : extrasControls}
+        {extrasControls}
 
         {options.departments ? (
           <label className="block">
@@ -389,14 +400,14 @@ export function QueueFilters({
           </label>
         ) : null}
 
-        {moreFilters && (options.views || options.extras?.length) ? (
+        {moreFilters && (options.views || foldedExtras.length > 0) ? (
           <details className="pb-2" open={foldedInUse || undefined}>
             <summary className="cursor-pointer text-xs font-semibold text-ui-accent">
               Más filtros
             </summary>
             <div className="mt-2 flex flex-wrap items-end gap-3">
               {viewsControl}
-              {extrasControls}
+              {foldedExtras.map(renderExtra)}
             </div>
           </details>
         ) : null}

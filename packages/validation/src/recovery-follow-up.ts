@@ -77,6 +77,66 @@ export const recoveryFollowUpWorkedOptions = [
   { value: "no", label: "Sin gestión en el período" },
 ] as const;
 
+/**
+ * SPEC-070 BR-004: cuánto lleva la cartera sin que nadie la toque. Un caso
+ * sin gestiones cuenta desde que se asignó.
+ */
+export type RecoveryIdleFilter = "hoy" | "3" | "7";
+
+export const recoveryIdleOptions: ReadonlyArray<{
+  value: RecoveryIdleFilter;
+  label: string;
+}> = [
+  { value: "hoy", label: "Sin gestión hoy" },
+  { value: "3", label: "3 días o más" },
+  { value: "7", label: "7 días o más" },
+];
+
+/** SPEC-070 BR-010: días sin gestión para devolverlo a los casos libres. */
+export const recoveryStaleDays = 7;
+
+const dayMs = 24 * 60 * 60 * 1000;
+
+/** El último toque: la última gestión o, sin gestiones, la asignación. */
+export function recoveryLastTouchAt(item: {
+  lastAttemptAt: Date | null;
+  claimedAt: Date | null;
+}): Date | null {
+  return item.lastAttemptAt ?? item.claimedAt;
+}
+
+/** Días enteros desde el último toque; `null` si no hay ninguno. */
+export function recoveryDaysUntouched(
+  item: { lastAttemptAt: Date | null; claimedAt: Date | null },
+  now: Date,
+): number | null {
+  const touch = recoveryLastTouchAt(item);
+  if (!touch) return null;
+
+  return Math.floor((now.getTime() - touch.getTime()) / dayMs);
+}
+
+/**
+ * SPEC-070 BR-010: se puede devolver a los casos libres del equipo lo que
+ * lleva `recoveryStaleDays` sin gestión, no tiene una cita pendiente y no
+ * está en verificación. Lo decide el supervisor; nada se devuelve solo.
+ */
+export function isRecoveryCaseStale(
+  item: {
+    status: string;
+    lastAttemptAt: Date | null;
+    claimedAt: Date | null;
+    hasPendingCommitment: boolean;
+  },
+  now: Date,
+): boolean {
+  if (item.status !== "ASSIGNED" && item.status !== "IN_PROGRESS") return false;
+  if (item.hasPendingCommitment) return false;
+  const days = recoveryDaysUntouched(item, now);
+
+  return days !== null && days >= recoveryStaleDays;
+}
+
 export interface FollowUpCaseLike {
   status: string;
   firstContactAt: Date | null;
@@ -90,6 +150,9 @@ export interface FollowUpCaseLike {
    * el período «hoy» coincide con `attemptsToday`.
    */
   attemptsInPeriod: number;
+  /** SPEC-070: para «sin tocar desde». */
+  lastAttemptAt?: Date | null;
+  claimedAt?: Date | null;
 }
 
 export interface FollowUpFilters {
@@ -99,6 +162,8 @@ export interface FollowUpFilters {
   contact?: "sin" | "con" | null;
   worked?: "hoy" | "no" | null;
   status?: RecoveryFollowUpStatus | null;
+  /** SPEC-070 BR-008: sin gestión hoy, o hace 3 o 7 días o más. */
+  idle?: RecoveryIdleFilter | null;
 }
 
 /**
@@ -143,6 +208,81 @@ export function selectFollowUpCases<T extends FollowUpCaseLike>(
     if (filters.worked === "hoy" && item.attemptsInPeriod === 0) return false;
     if (filters.worked === "no" && item.attemptsInPeriod > 0) return false;
 
+    if (filters.idle === "hoy" && item.attemptsToday > 0) return false;
+    if (filters.idle === "3" || filters.idle === "7") {
+      const days = recoveryDaysUntouched(
+        {
+          lastAttemptAt: item.lastAttemptAt ?? null,
+          claimedAt: item.claimedAt ?? null,
+        },
+        now,
+      );
+      if (days === null || days < Number(filters.idle)) return false;
+    }
+
     return true;
   });
+}
+
+export interface FollowUpAdvisorSummary {
+  advisorId: string;
+  name: string;
+  portfolio: number;
+  /** Sin gestión hace `recoveryStaleDays` días o más. */
+  stale: number;
+  /** Los que se pueden devolver (BR-010): sin cita pendiente ni verificación. */
+  releasable: number;
+  workedToday: number;
+  agendaOverdue: number;
+}
+
+/**
+ * SPEC-070 BR-004: la cartera por asesor, primero quien más tiene sin tocar.
+ */
+export function summarizeFollowUpByAdvisor(
+  cases: ReadonlyArray<{
+    advisorId: string | null;
+    advisorName: string;
+    status: string;
+    nextActionAt: Date | null;
+    attemptsToday: number;
+    lastAttemptAt: Date | null;
+    claimedAt: Date | null;
+    hasPendingCommitment: boolean;
+  }>,
+  now: Date,
+): FollowUpAdvisorSummary[] {
+  const groups = new Map<string, FollowUpAdvisorSummary>();
+
+  for (const item of cases) {
+    if (!item.advisorId) continue;
+    const group = groups.get(item.advisorId) ?? {
+      advisorId: item.advisorId,
+      name: item.advisorName,
+      portfolio: 0,
+      stale: 0,
+      releasable: 0,
+      workedToday: 0,
+      agendaOverdue: 0,
+    };
+    group.portfolio += 1;
+    const days = recoveryDaysUntouched(item, now);
+    if (days !== null && days >= recoveryStaleDays) group.stale += 1;
+    if (isRecoveryCaseStale(item, now)) group.releasable += 1;
+    if (item.attemptsToday > 0) group.workedToday += 1;
+    if (
+      item.status === "SCHEDULED" &&
+      recoveryNextActionBucket(item.nextActionAt, now) === "vencida"
+    ) {
+      group.agendaOverdue += 1;
+    }
+    groups.set(item.advisorId, group);
+  }
+
+  return [...groups.values()].sort(
+    (left, right) =>
+      right.stale - left.stale ||
+      right.portfolio - left.portfolio ||
+      left.name.localeCompare(right.name, "es"),
+  );
 }

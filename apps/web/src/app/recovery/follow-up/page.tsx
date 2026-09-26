@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { formatCount, formatLimaDateTime } from "@repo/ui/format";
+import { formatCount } from "@repo/ui/format";
 import { redirect } from "next/navigation";
 
-import {
-  attemptResultLabels,
-  attemptResultTones,
-} from "@/features/recovery/attempt-result-labels";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { attemptResultLabels } from "@/features/recovery/attempt-result-labels";
 import { CopyValue } from "@/features/recovery/components/copy-value";
+import { PhoneNumber } from "@/features/recovery/components/phone-number";
 import { QueueFilters } from "@/features/recovery/components/queue-filters";
+import { ReleaseStaleCasesForm } from "@/features/recovery/components/release-stale-cases-form";
 import { buildRecoverySearchWhere } from "@/features/recovery/server/recovery-search-where";
 import { returnStaleBaseCasesToPool } from "@/features/recovery/server/return-stale-base-cases";
 import { CampaignNav } from "@/features/recovery/components/campaign-nav";
@@ -18,44 +19,36 @@ import {
   allOf,
   countOnSameLimaDay,
   formatAdvisorDisplayName,
+  formatCampaignMoment,
+  formatMyDaySaleDay,
   getLimaIsoDate,
   isWithoutFirstContact,
+  recoveryDaysUntouched,
   recoveryFollowUpContactOptions,
   recoveryFollowUpStatusOptions,
   recoveryFollowUpStatuses,
   recoveryFollowUpWorkedOptions,
   recoveryBoardPeriods,
+  recoveryIdleOptions,
   resolveRecoveryBoardPeriod,
   recoveryLastResultNone,
   recoveryNextActionBucket,
   recoveryNextActionBuckets,
+  recoveryStaleDays,
   recoveryTeamFilterNone,
   selectFollowUpCases,
+  summarizeFollowUpByAdvisor,
   effectiveAttemptResult,
   type FollowUpFilters,
   type RecoveryFollowUpStatus,
-  type RecoveryNextActionBucket,
 } from "@repo/validation";
 
-import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
-import { SectionPanel } from "@repo/ui/section-panel";
 
 import type { Prisma } from "@repo/database";
 
 const followUpRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
 const pageSize = 100;
-
-const statusLabels = Object.fromEntries(
-  recoveryFollowUpStatusOptions.map((option) => [option.value, option.label]),
-);
-
-const nextActionTones: Record<RecoveryNextActionBucket, string> = {
-  vencida: "font-semibold text-ui-danger",
-  hoy: "font-semibold text-ui-warning",
-  futura: "text-ui-muted",
-  sin: "text-ui-muted",
-};
 
 function pick<T extends string>(
   value: string | undefined,
@@ -66,15 +59,19 @@ function pick<T extends string>(
   return allowed.some((option) => option.value === text) ? (text as T) : null;
 }
 
+function plural(count: number, singular: string, pluralForm: string): string {
+  return `${formatCount(count)} ${count === 1 ? singular : pluralForm}`;
+}
+
 /**
- * Seguimiento de la cartera asignada — SPEC-040.
+ * Seguimiento de la cartera asignada — SPEC-040 y SPEC-070.
  *
- * Es la lista que le faltaba al tablero: la misma población, las mismas
- * definiciones (BR-053/BR-055), pero por cliente. Un indicador que dice
- * «Sin primer contacto: 27» abre aquí exactamente esos 27 (BR-001).
- * Última tipificación, próxima acción y contacto se resuelven en memoria con
- * la regla pura del paquete de validación, sobre una cartera acotada por
- * alcance: la misma decisión que ya tomó el tablero.
+ * La misma población y las mismas definiciones que el tablero (BR-001), pero
+ * por cliente. SPEC-070 la ordena para quien supervisa: arriba, cuánto de la
+ * cartera de cada asesor lleva días sin que nadie la toque, con la opción de
+ * devolverlo a los casos libres del equipo; debajo, la tarjeta de cada
+ * cliente. Antes era una tabla de diez columnas que no cabía, con la fecha
+ * interna de la próxima acción en rojo en todas las filas.
  */
 export default async function RecoveryFollowUpPage({
   searchParams,
@@ -91,6 +88,7 @@ export default async function RecoveryFollowUpPage({
     page?: string;
     visto?: string;
     periodo?: string;
+    idle?: string;
   }>;
 }) {
   const { session, membership } = await requireCommercialAccess();
@@ -131,6 +129,7 @@ export default async function RecoveryFollowUpPage({
       parameters.status,
       recoveryFollowUpStatusOptions,
     ),
+    idle: pick(parameters.idle, recoveryIdleOptions),
   };
 
   // BR-077: lo abandonado ya volvió al pool; no aparece como cartera de nadie.
@@ -179,8 +178,6 @@ export default async function RecoveryFollowUpPage({
       : teamScope
         ? { assignedTeamId: teamScope }
         : null,
-    // BR-005: el dueño de hoy. Fuera del alcance no devuelve filas.
-    advisorFilter ? { assignedUserId: advisorFilter } : null,
     buildRecoverySearchWhere(searchInput),
   );
 
@@ -195,6 +192,7 @@ export default async function RecoveryFollowUpPage({
         status: true,
         firstContactAt: true,
         nextActionAt: true,
+        claimedAt: true,
         assignedUserId: true,
         assignedUser: { select: { name: true, email: true } },
         assignedTeam: { select: { name: true } },
@@ -217,6 +215,11 @@ export default async function RecoveryFollowUpPage({
             createdAt: true,
             correction: { select: { effectiveResult: true } },
           },
+        },
+        commitments: {
+          where: { status: "PENDING" },
+          take: 1,
+          select: { scheduledAt: true },
         },
       },
     }),
@@ -251,7 +254,7 @@ export default async function RecoveryFollowUpPage({
     attemptsByCase.set(attempt.caseId, list);
   }
 
-  const cases = portfolio.map((item) => ({
+  const allCases = portfolio.map((item) => ({
     id: item.id,
     holderName: item.holderName,
     documentNumber: item.documentNumber,
@@ -260,6 +263,7 @@ export default async function RecoveryFollowUpPage({
     status: String(item.status),
     firstContactAt: item.firstContactAt,
     nextActionAt: item.nextActionAt,
+    claimedAt: item.claimedAt,
     advisorId: item.assignedUserId,
     advisorName: item.assignedUser
       ? formatAdvisorDisplayName(
@@ -272,6 +276,8 @@ export default async function RecoveryFollowUpPage({
     lastResult: item.attempts[0] ? effectiveAttemptResult(item.attempts[0]) : null,
     lastObservation: item.attempts[0]?.observation ?? null,
     lastAttemptAt: item.attempts[0]?.createdAt ?? null,
+    pendingCommitmentAt: item.commitments[0]?.scheduledAt ?? null,
+    hasPendingCommitment: item.commitments.length > 0,
     attemptsToday: countOnSameLimaDay(attemptsByCase.get(item.id) ?? [], now),
     attemptsInPeriod: (attemptsByCase.get(item.id) ?? []).filter(
       (at) =>
@@ -280,12 +286,16 @@ export default async function RecoveryFollowUpPage({
     ).length,
   }));
 
+  // BR-004: el resumen por asesor mira toda la cartera del alcance; el
+  // filtro de asesor estrecha la lista, no el resumen.
+  const byAdvisor = summarizeFollowUpByAdvisor(allCases, now);
+  const cases = advisorFilter
+    ? allCases.filter((item) => item.advisorId === advisorFilter)
+    : allCases;
+
   // Las cifras de cabecera cuentan sobre la cartera acotada, no sobre la
-  // página: son las del tablero, aquí abribles.
+  // página: son las del tablero, aquí abribles (BR-001).
   const withoutContact = cases.filter(isWithoutFirstContact).length;
-  // BR-053, como el tablero: «agenda vencida» es una cita agendada que ya
-  // pasó, no cualquier próxima acción en el pasado. La cabecera y el
-  // indicador que la abre cuentan lo mismo (BR-001).
   const overdue = cases.filter(
     (item) =>
       item.status === "SCHEDULED" &&
@@ -294,25 +304,19 @@ export default async function RecoveryFollowUpPage({
   const workedInPeriod = cases.filter(
     (item) => item.attemptsInPeriod > 0,
   ).length;
+  const staleCount = cases.filter((item) => {
+    const days = recoveryDaysUntouched(item, now);
+    return days !== null && days >= recoveryStaleDays;
+  }).length;
 
   const selected = selectFollowUpCases(cases, filters, now);
   const totalPages = Math.max(1, Math.ceil(selected.length / pageSize));
   const page = Math.min(requestedPage, totalPages);
   const rows = selected.slice((page - 1) * pageSize, page * pageSize);
 
-  const advisors = [
-    ...new Map(
-      cases
-        .filter((item) => item.advisorId)
-        .map((item) => [
-          item.advisorId as string,
-          {
-            id: item.advisorId as string,
-            name: `${item.advisorName} · ${item.teamName}`,
-          },
-        ]),
-    ).values(),
-  ].sort((left, right) => left.name.localeCompare(right.name, "es"));
+  const advisors = byAdvisor
+    .map((item) => ({ id: item.advisorId, name: item.name }))
+    .sort((left, right) => left.name.localeCompare(right.name, "es"));
 
   const query = new URLSearchParams();
   if (searchInput) query.set("q", searchInput);
@@ -323,6 +327,7 @@ export default async function RecoveryFollowUpPage({
   if (filters.contact) query.set("contact", filters.contact);
   if (filters.worked) query.set("worked", filters.worked);
   if (filters.status) query.set("status", filters.status);
+  if (filters.idle) query.set("idle", filters.idle);
   if (activityPeriod.key !== "hoy") query.set("periodo", activityPeriod.key);
 
   function href(overrides: Record<string, string | null>): string {
@@ -341,183 +346,288 @@ export default async function RecoveryFollowUpPage({
   if (page > 1) caseContext.set("page", String(page));
   const caseContextQuery = caseContext.toString();
 
+  const periodLabel = activityPeriod.label.toLowerCase();
+  const figures = [
+    {
+      label: "Cartera",
+      value: cases.length,
+      href: href({ contact: null, next: null, worked: null, idle: null }),
+      alert: false,
+    },
+    {
+      label: `Sin tocar hace ${recoveryStaleDays} días o más`,
+      value: staleCount,
+      href: href({ idle: String(recoveryStaleDays) }),
+      alert: staleCount > 0,
+    },
+    {
+      label: `Con gestión · ${periodLabel}`,
+      value: workedInPeriod,
+      href: href({ worked: "hoy" }),
+      alert: false,
+    },
+    {
+      label: "Citas vencidas",
+      value: overdue,
+      href: href({ next: "vencida", status: "SCHEDULED" }),
+      alert: overdue > 0,
+    },
+    ...(withoutContact > 0
+      ? [
+          {
+            label: "Sin primer contacto",
+            value: withoutContact,
+            href: href({ contact: "sin" }),
+            alert: true,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="ui-page-stack">
-      <PageHeader
-        eyebrow="Campañas"
-        title="Seguimiento"
-        description="La cartera asignada, cliente por cliente: quién la tiene, qué pasó en la última llamada y cuándo toca la siguiente."
-      />
+      {/* BR-005: sin subtítulo; las cifras dicen lo que hay. */}
+      <PageHeader eyebrow="Campañas" title="Seguimiento" />
       <CampaignNav current="seguimiento" role={membership.role} />
 
-      <p className="text-sm">
+      <section
+        aria-label="La cartera"
+        className="flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-lg border border-ui-border bg-ui-surface px-4 py-3 text-sm text-ui-muted"
+      >
+        {figures.map((figure) => (
+          <Link
+            className="underline-offset-2 hover:underline"
+            href={figure.href}
+            key={figure.label}
+          >
+            {figure.label}{" "}
+            <strong
+              className={`text-base tabular-nums ${figure.alert ? "text-ui-warning" : "text-ui-text"}`}
+            >
+              {formatCount(figure.value)}
+            </strong>
+          </Link>
+        ))}
         <Link
-          className="text-ui-accent underline-offset-2 hover:underline"
+          className="ml-auto text-xs text-ui-accent underline-offset-2 hover:underline"
           href="/recovery/follow-up/calidad"
         >
-          Revisar tipificaciones: observaciones que contradicen al resultado →
+          Revisar tipificaciones →
         </Link>
-      </p>
+      </section>
 
-      <MetricGroup>
-        <Metric
-          href={href({ contact: null, next: null, worked: null })}
-          label="Cartera"
-          value={cases.length}
-        />
-        <Metric
-          href={href({ contact: "sin" })}
-          label="Sin primer contacto"
-          tone={withoutContact > 0 ? "warning" : undefined}
-          value={withoutContact}
-        />
-        <Metric
-          href={href({ next: "vencida", status: "SCHEDULED" })}
-          label="Agenda vencida"
-          tone={overdue > 0 ? "danger" : undefined}
-          value={overdue}
-        />
-        <Metric
-          hint={`Con al menos un intento · ${activityPeriod.label.toLowerCase()}`}
-          href={href({ worked: "hoy" })}
-          label={`Con gestión · ${activityPeriod.label.toLowerCase()}`}
-          value={workedInPeriod}
-        />
-      </MetricGroup>
+      {/* BR-004 y BR-010: la cartera por asesor y devolver lo abandonado. */}
+      {byAdvisor.length > 0 ? (
+        <section aria-labelledby="por-asesor" className="grid gap-2">
+          <h2 className="text-sm font-semibold text-ui-text" id="por-asesor">
+            Por asesor
+          </h2>
+          <ul className="divide-y divide-ui-border rounded-lg border border-ui-border bg-ui-surface text-sm">
+            {byAdvisor.map((advisor) => {
+              const selectedAdvisor = advisorFilter === advisor.advisorId;
+              return (
+                <li
+                  className={`grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${selectedAdvisor ? "bg-ui-accent-soft" : ""}`}
+                  key={advisor.advisorId}
+                >
+                  <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                    <Link
+                      className="min-w-40 font-medium text-ui-text underline-offset-2 hover:underline"
+                      href={href({
+                        advisor: selectedAdvisor ? null : advisor.advisorId,
+                        page: null,
+                      })}
+                    >
+                      {advisor.name}
+                    </Link>
+                    <span
+                      className={
+                        advisor.stale > 0
+                          ? "font-semibold text-ui-warning"
+                          : "text-ui-muted"
+                      }
+                    >
+                      {formatCount(advisor.stale)} de{" "}
+                      {formatCount(advisor.portfolio)} sin tocar hace{" "}
+                      {recoveryStaleDays} días o más
+                    </span>
+                    <span className="text-ui-muted">
+                      {plural(
+                        advisor.workedToday,
+                        "con gestión hoy",
+                        "con gestión hoy",
+                      )}
+                    </span>
+                    {advisor.agendaOverdue > 0 ? (
+                      <span className="text-ui-warning">
+                        {plural(
+                          advisor.agendaOverdue,
+                          "cita vencida",
+                          "citas vencidas",
+                        )}
+                      </span>
+                    ) : null}
+                  </p>
+                  {advisor.releasable > 0 ? (
+                    <ReleaseStaleCasesForm
+                      advisorId={advisor.advisorId}
+                      advisorName={advisor.name}
+                      count={advisor.releasable}
+                    />
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
-      <SectionPanel
-        title="Clientes"
-        description="Vencidos primero, luego lo de hoy, después lo agendado; al fondo lo que no tiene fecha."
-      >
-        <QueueFilters
-          basePath="/recovery/follow-up"
-          options={{
-            teams: isSupervisor ? undefined : teams,
-            allowNoTeam: false,
-            advisors,
-            extras: [
-              {
-                key: "result",
-                label: "Última tipificación",
-                options: [
-                  { value: recoveryLastResultNone, label: "Sin gestión" },
-                  ...Object.entries(attemptResultLabels).map(
-                    ([value, label]) => ({
-                      value,
-                      label,
-                    }),
-                  ),
-                ],
-              },
-              {
-                key: "next",
-                label: "Próxima acción",
-                emptyLabel: "Cualquiera",
-                options: recoveryNextActionBuckets,
-              },
-              {
-                key: "contact",
-                label: "Primer contacto",
-                emptyLabel: "Todos",
-                options: recoveryFollowUpContactOptions,
-              },
-              {
-                key: "periodo",
-                label: "Período de actividad",
-                emptyLabel: "Hoy",
-                options: recoveryBoardPeriods.filter(
-                  (option) => option.value !== "hoy",
-                ),
-              },
-              {
-                key: "worked",
-                label: "Gestión en el período",
-                emptyLabel: "Todos",
-                options: recoveryFollowUpWorkedOptions,
-              },
-              {
-                key: "status",
-                label: "Estado",
-                options: recoveryFollowUpStatusOptions,
-              },
-            ],
-          }}
-          resultLabel={`${formatCount(selected.length)} caso(s) cumplen el filtro.`}
-          values={{
-            q: searchInput,
-            team: teamScope,
-            department: "",
-            plan: "",
-            advisor: advisorFilter,
-            extra: {
-              result: filters.lastResult ?? "",
-              next: filters.nextAction ?? "",
-              contact: filters.contact ?? "",
-              worked: filters.worked ?? "",
-              status: filters.status ?? "",
-              periodo: activityPeriod.key === "hoy" ? "" : activityPeriod.key,
+      <QueueFilters
+        basePath="/recovery/follow-up"
+        moreFilters
+        options={{
+          teams: isSupervisor ? undefined : teams,
+          allowNoTeam: false,
+          advisors,
+          extras: [
+            {
+              key: "idle",
+              label: "Sin tocar desde",
+              emptyLabel: "Cualquiera",
+              options: recoveryIdleOptions,
             },
-          }}
-        />
+            {
+              key: "result",
+              label: "Última tipificación",
+              options: [
+                { value: recoveryLastResultNone, label: "Sin gestión" },
+                ...Object.entries(attemptResultLabels).map(
+                  ([value, label]) => ({
+                    value,
+                    label,
+                  }),
+                ),
+              ],
+            },
+            {
+              key: "next",
+              label: "Próxima acción",
+              emptyLabel: "Cualquiera",
+              options: recoveryNextActionBuckets,
+            },
+            {
+              key: "contact",
+              label: "Primer contacto",
+              emptyLabel: "Todos",
+              options: recoveryFollowUpContactOptions,
+            },
+            {
+              key: "periodo",
+              label: "Período de actividad",
+              emptyLabel: "Hoy",
+              options: recoveryBoardPeriods.filter(
+                (option) => option.value !== "hoy",
+              ),
+            },
+            {
+              key: "worked",
+              label: "Gestión en el período",
+              emptyLabel: "Todos",
+              options: recoveryFollowUpWorkedOptions,
+            },
+            {
+              key: "status",
+              label: "Estado",
+              options: recoveryFollowUpStatusOptions,
+            },
+          ],
+        }}
+        resultLabel={plural(selected.length, "caso", "casos")}
+        values={{
+          q: searchInput,
+          team: teamScope,
+          department: "",
+          plan: "",
+          advisor: advisorFilter,
+          extra: {
+            idle: filters.idle ?? "",
+            result: filters.lastResult ?? "",
+            next: filters.nextAction ?? "",
+            contact: filters.contact ?? "",
+            worked: filters.worked ?? "",
+            status: filters.status ?? "",
+            periodo: activityPeriod.key === "hoy" ? "" : activityPeriod.key,
+          },
+        }}
+        visibleExtras={["idle"]}
+      />
 
-        <div className="overflow-x-auto rounded-xl border border-ui-border">
-          <table className="ui-table">
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>DNI</th>
-                <th>Teléfono</th>
-                <th>Asesor</th>
-                <th>Estado</th>
-                <th>Última tipificación</th>
-                <th>Observación</th>
-                <th data-numeric>Intentos hoy</th>
-                <th>Próxima acción</th>
-                <th data-actions />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const bucket = recoveryNextActionBucket(row.nextActionAt, now);
-                const tone = row.lastResult
-                  ? attemptResultTones[row.lastResult]
-                  : undefined;
+      {rows.length === 0 ? (
+        <p className="rounded-lg border border-ui-border bg-ui-surface px-4 py-6 text-center text-sm text-ui-muted">
+          {selected.length === 0 && cases.length > 0
+            ? "Ningún caso de la cartera coincide con estos filtros. Prueba con menos o límpialos."
+            : "No hay cartera asignada en este alcance."}
+        </p>
+      ) : (
+        <ol className="grid gap-2">
+          {rows.map((row) => {
+            const days = recoveryDaysUntouched(row, now);
+            const stale = days !== null && days >= recoveryStaleDays;
+            const touchedAt = row.lastAttemptAt ?? row.claimedAt;
+            const citaOverdue =
+              row.pendingCommitmentAt !== null &&
+              row.pendingCommitmentAt.getTime() < now.getTime();
+            const lastLine = row.lastResult
+              ? [
+                  `Última gestión: ${attemptResultLabels[row.lastResult] ?? row.lastResult}`,
+                  row.lastAttemptAt ? formatCampaignMoment(row.lastAttemptAt) : null,
+                  row.lastObservation ? `«${row.lastObservation}»` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "Sin gestión todavía";
 
-                return (
-                  <tr
-                    className="scroll-mt-24"
-                    data-result-tone={tone}
-                    id={`caso-${row.id}`}
-                    key={row.id}
-                  >
-                    <td className="font-medium text-ui-text">
-                      {row.holderName}
-                      {row.id === justVisited ? (
-                        <span className="ml-2 rounded-full bg-ui-subtle px-2 py-0.5 text-2xs text-ui-muted">
-                          Lo acabas de ver
-                        </span>
+            return (
+              <li key={row.id}>
+                <article
+                  className={`grid scroll-mt-24 gap-3 rounded-lg border bg-ui-surface p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${
+                    row.id === justVisited ? "border-ui-accent" : "border-ui-border"
+                  }`}
+                  id={`caso-${row.id}`}
+                >
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ui-soft">
+                      {/* BR-001 y BR-006: cuánto lleva sin tocar, no la
+                          fecha interna de la próxima acción. */}
+                      {touchedAt ? (
+                        <Badge tone={stale ? "warning" : "neutral"}>
+                          {days === 0
+                            ? row.lastAttemptAt
+                              ? "Gestionado hoy"
+                              : "Asignado hoy"
+                            : `Sin tocar desde el ${formatMyDaySaleDay(touchedAt)} · ${plural(days ?? 0, "día", "días")}`}
+                        </Badge>
+                      ) : null}
+                      {row.pendingCommitmentAt ? (
+                        <Badge tone={citaOverdue ? "danger" : "neutral"}>
+                          Cita {citaOverdue ? "vencida " : ""}del{" "}
+                          {formatCampaignMoment(row.pendingCommitmentAt)}
+                        </Badge>
                       ) : null}
                       {isWithoutFirstContact(row) ? (
-                        <span className="ml-2 rounded-full bg-ui-warning-soft px-2 py-0.5 text-2xs text-ui-warning">
-                          Sin primer contacto
-                        </span>
+                        <Badge tone="warning">Sin primer contacto</Badge>
                       ) : null}
-                    </td>
-                    <td>
-                      <CopyValue label="DNI" value={row.documentNumber} />
-                    </td>
-                    <td>
-                      {row.phone ? (
-                        <CopyValue label="Teléfono" value={row.phone} />
-                      ) : (
-                        <span className="text-xs text-ui-muted">—</span>
-                      )}
-                    </td>
-                    <td className="text-xs">
+                      {row.id === justVisited ? <Badge>Lo acabas de ver</Badge> : null}
+                    </p>
+                    <h3 className="mt-1 flex flex-wrap items-baseline gap-x-3 text-base font-semibold text-ui-text">
+                      <span className="min-w-0 truncate">{row.holderName}</span>
+                      {row.phone ? <PhoneNumber phone={row.phone} /> : null}
+                    </h3>
+                    <p className="mt-0.5 text-sm text-ui-text">
                       {row.advisorId ? (
                         <Link
-                          className="text-ui-accent underline-offset-2 hover:underline"
-                          href={href({ advisor: row.advisorId })}
+                          className="underline-offset-2 hover:underline"
+                          href={href({ advisor: row.advisorId, page: null })}
                           title="Ver solo su cartera"
                         >
                           {row.advisorName}
@@ -525,112 +635,64 @@ export default async function RecoveryFollowUpPage({
                       ) : (
                         row.advisorName
                       )}
-                      <span className="block text-2xs text-ui-muted">
-                        {row.teamName}
+                      <span className="text-ui-muted">
+                        {" "}
+                        · {row.attemptsToday} de 3 hoy
                       </span>
-                    </td>
-                    <td className="text-xs">
-                      {statusLabels[row.status] ?? row.status}
-                    </td>
-                    <td className="text-xs">
-                      <span
-                        className="ui-status-badge"
-                        data-tone={tone ?? "neutral"}
-                      >
-                        {row.lastResult
-                          ? (attemptResultLabels[row.lastResult] ??
-                            row.lastResult)
-                          : "Sin gestión"}
-                      </span>
-                      {row.lastAttemptAt ? (
-                        <span className="block text-2xs text-ui-muted">
-                          {formatLimaDateTime(row.lastAttemptAt)}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="text-xs">
-                      {row.lastObservation ? (
-                        <span
-                          className="ui-cell-clamp"
-                          title={row.lastObservation}
-                        >
-                          {row.lastObservation}
-                        </span>
-                      ) : (
-                        <span className="text-ui-muted">—</span>
-                      )}
-                    </td>
-                    <td className="text-xs" data-numeric>
-                      <span
-                        className={
-                          row.status !== "WAITING" &&
-                          row.status !== "SCHEDULED" &&
-                          row.attemptsToday < 3
-                            ? "font-semibold text-ui-warning"
-                            : "text-ui-muted"
-                        }
-                      >
-                        {row.attemptsToday} / 3
-                      </span>
-                    </td>
-                    <td className="text-xs">
-                      <span className={nextActionTones[bucket]}>
-                        {row.nextActionAt
-                          ? formatLimaDateTime(row.nextActionAt)
-                          : "Sin fecha"}
-                      </span>
-                    </td>
-                    <td className="text-xs" data-actions>
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-xs text-ui-muted">
+                      {lastLine}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                    {/* BR-007: el DNI, a un clic; no en cada fila. */}
+                    <details className="text-xs">
+                      <summary className="cursor-pointer font-semibold text-ui-accent">
+                        Ver datos
+                      </summary>
+                      <p className="mt-1">
+                        DNI{" "}
+                        <CopyValue label="DNI" value={row.documentNumber} />
+                      </p>
+                    </details>
+                    <Button asChild size="sm">
                       <Link
-                        className="text-ui-accent underline-offset-2 hover:underline"
                         href={`/recovery/campaigns/${row.id}?${caseContextQuery}`}
                       >
-                        Abrir
+                        Abrir caso
                       </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-              {rows.length === 0 ? (
-                <tr>
-                  <td
-                    className="px-3 py-6 text-center text-ui-muted"
-                    colSpan={10}
-                  >
-                    {selected.length === 0 && cases.length > 0
-                      ? "Ningún caso de la cartera coincide con estos filtros. Prueba con menos o límpialos."
-                      : "No hay cartera asignada en este alcance."}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+                    </Button>
+                  </div>
+                </article>
+              </li>
+            );
+          })}
+        </ol>
+      )}
 
-        {totalPages > 1 ? (
-          <div className="flex items-center gap-3 text-sm">
-            {page > 1 ? (
-              <Link
-                className="text-ui-accent underline-offset-2 hover:underline"
-                href={href({ page: String(page - 1) })}
-              >
-                ← Anterior
-              </Link>
-            ) : null}
-            <span className="text-ui-muted">
-              Página {page} de {totalPages}
-            </span>
-            {page < totalPages ? (
-              <Link
-                className="text-ui-accent underline-offset-2 hover:underline"
-                href={href({ page: String(page + 1) })}
-              >
-                Siguiente →
-              </Link>
-            ) : null}
-          </div>
-        ) : null}
-      </SectionPanel>
+      {totalPages > 1 ? (
+        <div className="flex items-center gap-3 text-sm">
+          {page > 1 ? (
+            <Link
+              className="text-ui-accent underline-offset-2 hover:underline"
+              href={href({ page: String(page - 1) })}
+            >
+              ← Anterior
+            </Link>
+          ) : null}
+          <span className="text-ui-muted">
+            Página {page} de {totalPages}
+          </span>
+          {page < totalPages ? (
+            <Link
+              className="text-ui-accent underline-offset-2 hover:underline"
+              href={href({ page: String(page + 1) })}
+            >
+              Siguiente →
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
