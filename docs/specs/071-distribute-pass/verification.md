@@ -14,3 +14,7 @@
   selector de modo ensanchaba el formulario y el texto se cortaba a la
   derecha: el formulario ahora no crece más que la pantalla y el selector se
   desplaza de lado dentro de sí mismo.
+- **25/09/2026** — Producción (`9eaaf5f`), celular (375 px): el formulario
+  mide 343 px dentro de 375, ningún elemento sale de él; cada asesor se lee
+  completo («Recibiría 0 → quedaría con 7») y el selector de modo se
+  desplaza dentro de sí mismo (AC-001).
