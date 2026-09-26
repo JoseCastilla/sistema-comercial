@@ -40,7 +40,18 @@ function parseOrderFilter(
 export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   const { session, membership } = await requireCommercialAccess();
   const parameters = await searchParams;
-  const requestedPeriod = parseOrderPeriod(firstValue(parameters.period));
+  /*
+   * SPEC-082: la supervisión entra a las ventas del día, todas, para
+   * validarlas una a una. Un enlace con período o vista propios manda.
+   */
+  const supervisorDay =
+    membership.role === "SUPERVISOR" &&
+    firstValue(parameters.period) === undefined &&
+    firstValue(parameters.status) === undefined &&
+    firstValue(parameters.q) === undefined;
+  const requestedPeriod = supervisorDay
+    ? "TODAY"
+    : parseOrderPeriod(firstValue(parameters.period));
   const requestedRange = parseOrderRange(
     firstValue(parameters.from),
     firstValue(parameters.to),
@@ -52,7 +63,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     firstValue(parameters.status),
     // SPEC-080: el asesor ve su mes en una sola lista agrupada; el resto
     // entra a lo que falta entregar (SPEC-074).
-    membership.role === "AGENT" ? "ALL" : "TO_MOVE",
+    membership.role === "AGENT" || supervisorDay ? "ALL" : "TO_MOVE",
   );
   const search = firstValue(parameters.q)?.trim().slice(0, 100) ?? "";
   const team = firstValue(parameters.team)?.trim().slice(0, 50);
