@@ -1,6 +1,6 @@
 # SPEC-083 — Origen de la venta
 
-**Estado:** `ENTREGADA` — José: «sí, agrega el campo Origen de la venta» (26/09/2026)
+**Estado:** `VERIFICADA` — José: «sí, agrega el campo Origen de la venta» (26/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-26
