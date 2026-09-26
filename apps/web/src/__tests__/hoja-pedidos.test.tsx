@@ -83,14 +83,15 @@ function pedido(extra: Partial<OrderInboxItem> = {}): OrderInboxItem {
     noStatusIncident: false,
     deliveryObservation: null,
     agrDelivery: {
-      status: "NO ENTREGADO",
-      actionKind: "RESCHEDULE",
-      actionLabel: "Contactar al cliente y reagendar la visita",
-      actionShortLabel: "Reagendar",
-      reason: "CLIENTE AUSENTE",
-      result: null,
-      nextAction: null,
-      commitmentDate: null,
+      opportunity: true,
+      estadoPedido: "NO ENTREGADO",
+      fields: [
+        { key: "estado_pedido", label: "Estado del pedido", value: "NO ENTREGADO" },
+        { key: "motivo_rechazo", label: "Motivo de rechazo", value: "CLIENTE AUSENTE" },
+        { key: "fecha_entrega_pactada", label: "Fecha de entrega pactada", value: "2026-09-26" },
+        { key: "canal", label: "Canal", value: "DELIVERY" },
+      ],
+      fetchedAtLabel: "25/09/2026, 18:00",
     },
     registeredAtLabel: "25/09/2026, 14:27",
     approvedAtLabel: "",
@@ -136,7 +137,7 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
     teamOptions: [],
     advisorFilter: "ALL",
     advisorOptions: [],
-    actionFilter: null,
+    maximoFilter: null,
     dueFilter: null,
     returnTo: null,
     assignmentTeams: [],
@@ -148,9 +149,11 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
     pendingBeforeMonth: 6,
     logisticsSummary: {
       total: 175,
-      reschedule: 40,
-      contact: 100,
-      review: 35,
+      byState: [
+        { state: "CANCELADO", count: 100 },
+        { state: "RECHAZADO", count: 60 },
+        { state: "NO ENTREGADO", count: 15 },
+      ],
       lastFetchedAtLabel: null,
     },
     totals: {
@@ -234,17 +237,20 @@ describe("Hoja de pedidos", () => {
     expect(within(resumen).queryByText(/por recuperar este mes/)).toBeNull();
   });
 
-  it("en Entregas fallidas, las cifras filtran por acción y marcan la elegida", () => {
+  it("en Entregas fallidas, las cifras son los estados de Máximo, tal cual", () => {
     render(
       <OrderInbox
-        data={datos({ filter: "LOGISTICS", actionFilter: "coordinar" })}
+        data={datos({ filter: "LOGISTICS", maximoFilter: "RECHAZADO" })}
       />,
     );
 
     const resumen = screen.getByRole("region", { name: "Resumen de pedidos" });
     expect(
-      within(resumen).getByRole("link", { name: /Visita por coordinar/ }),
+      within(resumen).getByRole("link", { name: "RECHAZADO 60" }),
     ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(resumen).getByRole("link", { name: "CANCELADO 100" }),
+    ).toHaveAttribute("href", expect.stringContaining("maximo=CANCELADO"));
     expect(
       within(resumen).queryByRole("link", { name: /fuera de plazo/ }),
     ).toBeNull();
@@ -258,13 +264,24 @@ describe("Hoja de pedidos", () => {
     ).toBeInTheDocument();
   });
 
-  it("en el panel, lo que hay que hacer va antes de la ficha de la venta", () => {
+  it("el panel muestra todo lo que manda Máximo, sin traducir, incluso campos nuevos", () => {
+    render(<OrderInbox data={datos()} />);
+
+    const maximo = screen.getByRole("region", { name: "Lo que dice Máximo" });
+    expect(within(maximo).getByText("CLIENTE AUSENTE")).toBeInTheDocument();
+    expect(within(maximo).getByText("2026-09-26")).toBeInTheDocument();
+    expect(within(maximo).getByText("Canal")).toBeInTheDocument();
+    expect(within(maximo).getByText("Consultado 25/09/2026, 18:00")).toBeInTheDocument();
+    expect(screen.queryByText(/reagendar la visita/)).toBeNull();
+  });
+
+  it("en el panel, lo que dice Máximo va antes de la ficha de la venta", () => {
     const { container } = render(<OrderInbox data={datos()} />);
 
     const panel = container.querySelector(".ui-order-detail-card");
     expect(panel).not.toBeNull();
     const texto = panel!.textContent ?? "";
-    const accion = texto.indexOf("Contactar al cliente y reagendar la visita");
+    const accion = texto.indexOf("CLIENTE AUSENTE");
     const formulario = texto.indexOf("Formulario de estado");
     const ficha = texto.indexOf("Tipo de entrega");
 

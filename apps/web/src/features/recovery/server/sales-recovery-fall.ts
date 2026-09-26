@@ -2,7 +2,7 @@ import "server-only";
 
 import { salesRecoveryReasonOptions } from "@repo/validation";
 
-import { getAgrAction } from "@/features/orders/server/get-order-inbox";
+import { describeAgrDeliveryRaw } from "@/features/orders/server/get-order-inbox";
 
 const entryReasonLabels = new Map<string, string>(
   salesRecoveryReasonOptions.map((option) => [option.value, option.label]),
@@ -48,7 +48,10 @@ export function describeSalesRecoveryFall(
   maxLength = 80,
 ): string | null {
   const snapshot = row.sourceDitoOrder?.agrDeliverySnapshot;
-  if (snapshot?.isRecoveryOpportunity) return getAgrAction(snapshot).label;
+  // SPEC-075: lo que dice Máximo, sin traducirlo.
+  if (snapshot?.isRecoveryOpportunity) {
+    return `Máximo: ${describeAgrDeliveryRaw(snapshot)}`;
+  }
   if (row.entryReason === "OTRO" || !row.entryReason) {
     const observation = row.entryObservation?.trim() ?? "";
     if (!observation) return null;

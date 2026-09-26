@@ -27,7 +27,7 @@ const valoresBase: OrderScopeFilterValues = {
   search: "",
   team: "ALL",
   advisor: "ALL",
-  action: null,
+  maximo: null,
   due: null,
 };
 
@@ -52,7 +52,7 @@ function renderFiltros(
     <OrderScopeFilters
       advisorOptions={asesores}
       buildHref={href}
-      showActionFilter={false}
+      maximoOptions={null}
       showTeamFilter
       teamAllLabel="Todos los equipos"
       teamOptions={[
@@ -137,11 +137,11 @@ describe("Filtros de alcance de Pedidos", () => {
     expect(screen.queryByRole("combobox", { name: "Asesor" })).toBeNull();
   });
 
-  it("plazo aplica al elegir, y acción solo existe en la vista logística", () => {
-    renderFiltros({}, { showActionFilter: true });
+  it("plazo aplica al elegir, y el estado de Máximo solo existe en la vista logística", () => {
+    renderFiltros({}, { maximoOptions: ["RECHAZADO", "NO ENTREGADO"] });
 
     expect(
-      screen.getByRole("combobox", { name: "Acción" }),
+      screen.getByRole("combobox", { name: "Estado en Máximo" }),
     ).toBeInTheDocument();
     fireEvent.change(screen.getByRole("combobox", { name: "Plazo" }), {
       target: { value: "vencido" },
@@ -150,11 +150,11 @@ describe("Filtros de alcance de Pedidos", () => {
       scroll: false,
     });
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Acción" }), {
-      target: { value: "RESCHEDULE" },
+    fireEvent.change(screen.getByRole("combobox", { name: "Estado en Máximo" }), {
+      target: { value: "NO ENTREGADO" },
     });
     expect(replace).toHaveBeenLastCalledWith(
-      "/orders?action=RESCHEDULE&search=",
+      "/orders?maximo=NO+ENTREGADO&search=",
       { scroll: false },
     );
   });
@@ -172,7 +172,7 @@ describe("Filtros de alcance de Pedidos", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
     expect(replace).toHaveBeenLastCalledWith(
-      "/orders?search=&team=ALL&advisor=ALL&due=null&action=null",
+      "/orders?search=&team=ALL&advisor=ALL&due=null&maximo=null",
       { scroll: false },
     );
   });

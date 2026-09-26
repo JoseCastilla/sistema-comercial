@@ -25,7 +25,7 @@ import type {
   OrderInboxItem,
   OrderSlaState,
 } from "../order-inbox.types";
-import type { OrderActionFilter, OrderDueFilter } from "@repo/validation";
+import type { OrderDueFilter } from "@repo/validation";
 
 const filterOptions: Array<{
   value: OrderFilter;
@@ -87,7 +87,7 @@ function ordersHref(
     search?: string;
     team?: string;
     advisor?: string;
-    action?: OrderActionFilter | null;
+    maximo?: string | null;
     due?: OrderDueFilter | null;
     page?: number;
   } = {},
@@ -109,13 +109,13 @@ function ordersHref(
   const search = overrides.search ?? data.search;
   const team = overrides.team ?? data.teamFilter;
   const advisor = overrides.advisor ?? data.advisorFilter;
-  // La acción derivada solo existe en la vista logística: al salir de ella
+  // El estado de Máximo solo filtra en la vista logística: al salir de ella
   // no viaja.
-  const action =
+  const maximo =
     filter === "LOGISTICS"
-      ? overrides.action === undefined
-        ? data.actionFilter
-        : overrides.action
+      ? overrides.maximo === undefined
+        ? data.maximoFilter
+        : overrides.maximo
       : null;
   const due = overrides.due === undefined ? data.dueFilter : overrides.due;
   const page = overrides.page ?? 1;
@@ -128,7 +128,7 @@ function ordersHref(
   if (search) parameters.set("q", search);
   if (team !== "ALL") parameters.set("team", team);
   if (advisor !== "ALL") parameters.set("advisor", advisor);
-  if (action) parameters.set("accion", action);
+  if (maximo) parameters.set("maximo", maximo);
   if (due) parameters.set("plazo", due);
   if (data.returnTo) parameters.set("volver", data.returnTo);
   if (page > 1) parameters.set("page", String(page));
@@ -155,7 +155,7 @@ function PeriodNavigation({ data }: { data: OrderInboxData }) {
         </div>
         <p className="max-w-xl text-sm text-ui-muted">
           {logistics
-            ? `Solo aparecen pedidos con una acción pendiente según Máximo. ${
+            ? `Pedidos con un problema de entrega reportado por Máximo. ${
                 data.logisticsSummary.lastFetchedAtLabel
                   ? `Última consulta: ${data.logisticsSummary.lastFetchedAtLabel}.`
                   : "Aún no se ha consultado hoy."
@@ -341,8 +341,11 @@ function StatusBadge({
       ) : null}
 
       {showAgr && order.agrDelivery ? (
-        <span className="ui-order-badge" data-tone="warning">
-          {order.agrDelivery.actionShortLabel}
+        <span
+          className="ui-order-badge"
+          data-tone={order.agrDelivery.opportunity ? "warning" : undefined}
+        >
+          Máximo: {order.agrDelivery.estadoPedido}
         </span>
       ) : null}
 
@@ -426,125 +429,40 @@ function DetailItem({
   );
 }
 
-/*
- * Máximo responde en mayúsculas de sistema (RECHAZADO, DEUDA EXIGIBLE...).
- * Aquí se traducen a frases que el asesor pueda leer y explicar al cliente.
- * Los valores no contemplados caen al texto original, solo capitalizado.
+/**
+ * SPEC-075: lo que manda Máximo, tal cual. Antes se traducía el estado y el
+ * motivo a frases propias y se proponía una acción; el equipo pidió ver el
+ * dato original porque la traducción dejaba información fuera.
  */
-function toSentenceCase(value: string): string {
-  const normalized = value.trim().toLocaleLowerCase("es-PE");
-  if (!normalized) return value;
-  return `${normalized.charAt(0).toLocaleUpperCase("es-PE")}${normalized.slice(1)}`;
-}
-
-const agrStatusRules: Array<{ pattern: RegExp; label: string }> = [
-  { pattern: /RECHAZ/, label: "El operador rechazó la entrega" },
-  { pattern: /CANCEL/, label: "El operador canceló el pedido" },
-  { pattern: /ANUL/, label: "El operador anuló el pedido" },
-  { pattern: /DEVUEL/, label: "El pedido fue devuelto" },
-  { pattern: /NO\s*ENTREG/, label: "El operador no pudo entregar" },
-  { pattern: /AGENDADO/, label: "Entrega agendada por el operador" },
-  { pattern: /SIN\s*GESTI/, label: "El operador aún no gestiona el pedido" },
-];
-
-function getAgrStatusLabel(status: string): string {
-  const normalized = status.trim().toUpperCase();
-  const match = agrStatusRules.find((rule) => rule.pattern.test(normalized));
-  return match ? match.label : toSentenceCase(status);
-}
-
-const agrReasonRules: Array<{ pattern: RegExp; label: string }> = [
-  {
-    pattern: /FUERA DE COBERTURA/,
-    label: "La dirección está fuera de la zona de reparto",
-  },
-  {
-    pattern: /ZONA PELIGROSA/,
-    label: "El courier considera peligrosa la zona de entrega",
-  },
-  {
-    pattern: /DIRECCION NO RECUPERABLE/,
-    label: "No se pudo ubicar la dirección de entrega",
-  },
-  {
-    pattern: /TIEMPO MINIMO DE PORTA/,
-    label: "La línea no cumple los 30 días para portar",
-  },
-  {
-    pattern: /NO ESTUVO EN SERVICIO/,
-    label: "No se pudo comprobar la antigüedad de la línea",
-  },
-  {
-    pattern: /DEUDA EXIGIBLE/,
-    label: "El cliente tiene deuda pendiente con su operador",
-  },
-  {
-    pattern: /SERVICIO SUSPENDIDO/,
-    label: "La línea del cliente está suspendida",
-  },
-  {
-    pattern: /OTRA PORTA EN CURSO/,
-    label: "Hay otra portabilidad en curso para esta línea",
-  },
-  {
-    pattern:
-      /HUELLA NO CORRESPONDE|NO CORRESPONDE AL DNI|CLIENTE NO IDENTIFICADO/,
-    label: "Falló la validación de identidad del cliente",
-  },
-  {
-    pattern: /NO CUENTA CON PIN/,
-    label: "El cliente no tenía el PIN de portabilidad",
-  },
-  {
-    pattern: /CLIENTE AUSENTE/,
-    label: "El cliente no estaba cuando llegó el courier",
-  },
-  {
-    pattern: /VISITA EN FECHA NO ACORDADA/,
-    label: "El courier fue en una fecha que el cliente no acordó",
-  },
-  {
-    pattern: /CLIENTE NO DESEA/,
-    label: "El cliente dijo que ya no quiere el servicio",
-  },
-];
-
-function getAgrReasonLabel(reason: string): string {
-  const normalized = reason.toUpperCase();
-  const match = agrReasonRules.find((rule) => rule.pattern.test(normalized));
-  return match ? match.label : toSentenceCase(reason);
-}
-
 function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
   const agr = order.agrDelivery;
   if (!agr) return null;
 
   return (
-    <section className="ui-order-notice">
+    <section
+      aria-label="Lo que dice Máximo"
+      className="ui-order-notice"
+      data-tone={agr.opportunity ? "warning" : "neutral"}
+    >
       <h4 className="ui-order-notice__headline">
-        <span className="ui-order-notice__source">
-          {getAgrStatusLabel(agr.status)}
-        </span>
+        <span className="ui-order-notice__source">Máximo</span>
         {" · "}
-        {agr.actionLabel}
+        {agr.estadoPedido}
       </h4>
       <dl className="ui-order-notice__details">
-        {agr.reason ? (
-          <DetailItem label="Motivo" value={getAgrReasonLabel(agr.reason)} />
-        ) : null}
-        {agr.result ? (
-          <DetailItem label="Resultado" value={agr.result} />
-        ) : null}
-        {agr.nextAction ? (
-          <DetailItem
-            label="Próxima acción del operador"
-            value={agr.nextAction}
-          />
-        ) : null}
-        {agr.commitmentDate ? (
-          <DetailItem label="Fecha de compromiso" value={agr.commitmentDate} />
-        ) : null}
+        {agr.fields
+          .filter((field) => field.key !== "estado_pedido")
+          .map((field) => (
+            <DetailItem
+              key={field.key}
+              label={field.label}
+              value={field.value}
+            />
+          ))}
       </dl>
+      <p className="mt-2 text-xs text-ui-muted">
+        Consultado {agr.fetchedAtLabel}
+      </p>
     </section>
   );
 }
@@ -1150,7 +1068,7 @@ function DesktopOrderList({
           <span>Operador</span>
           {showAdvisorColumn ? <span>Asesor</span> : null}
           <span>Estado</span>
-          <span>Acción</span>
+          <span>Máximo</span>
           <span>Plazo</span>
         </div>
 
@@ -1210,17 +1128,25 @@ function DesktopOrderList({
                   {order.agrDelivery ? (
                     <span
                       className="ui-order-badge ui-order-grid__inline-action"
-                      data-tone="warning"
+                      data-tone={
+                        order.agrDelivery.opportunity ? "warning" : undefined
+                      }
                     >
-                      {order.agrDelivery.actionShortLabel}
+                      Máximo: {order.agrDelivery.estadoPedido}
                     </span>
                   ) : null}
                 </span>
 
                 <span className="ui-order-grid__action">
                   {order.agrDelivery ? (
-                    <span className="ui-order-badge" data-tone="warning">
-                      {order.agrDelivery.actionShortLabel}
+                    <span
+                      className="ui-order-badge"
+                      data-tone={
+                        order.agrDelivery.opportunity ? "warning" : undefined
+                      }
+                      title={order.agrDelivery.estadoPedido}
+                    >
+                      {order.agrDelivery.estadoPedido}
                     </span>
                   ) : (
                     <span aria-hidden="true" className="text-ui-soft">
@@ -1400,29 +1326,21 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
         {logistics ? (
           <>
             <SummaryFigure
-              current={!data.actionFilter}
-              href={ordersHref(data, { action: null })}
+              current={!data.maximoFilter}
+              href={ordersHref(data, { maximo: null })}
               label="Por revisar"
               value={data.logisticsSummary.total}
             />
-            <SummaryFigure
-              current={data.actionFilter === "coordinar"}
-              href={ordersHref(data, { action: "coordinar" })}
-              label="Visita por coordinar"
-              value={data.logisticsSummary.reschedule}
-            />
-            <SummaryFigure
-              current={data.actionFilter === "contactar"}
-              href={ordersHref(data, { action: "contactar" })}
-              label="Contactar y validar"
-              value={data.logisticsSummary.contact}
-            />
-            <SummaryFigure
-              current={data.actionFilter === "reingresar"}
-              href={ordersHref(data, { action: "reingresar" })}
-              label="Por volver a ingresar"
-              value={data.logisticsSummary.review}
-            />
+            {/* SPEC-075: agrupados por el estado que manda Máximo, tal cual. */}
+            {data.logisticsSummary.byState.map((item) => (
+              <SummaryFigure
+                current={data.maximoFilter === item.state}
+                href={ordersHref(data, { maximo: item.state })}
+                key={item.state}
+                label={item.state}
+                value={item.count}
+              />
+            ))}
           </>
         ) : (
           <>
@@ -1580,7 +1498,11 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         <OrderScopeFilters
           advisorOptions={data.advisorOptions}
           buildHref={(overrides) => ordersHref(data, overrides)}
-          showActionFilter={data.filter === "LOGISTICS"}
+          maximoOptions={
+            data.filter === "LOGISTICS"
+              ? data.logisticsSummary.byState.map((item) => item.state)
+              : null
+          }
           showTeamFilter={data.showTeamFilter}
           teamAllLabel={data.teamAllLabel}
           teamOptions={data.teamOptions}
@@ -1588,7 +1510,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             search: data.search,
             team: data.teamFilter,
             advisor: data.advisorFilter,
-            action: data.actionFilter,
+            maximo: data.maximoFilter,
             due: data.dueFilter,
           }}
         />

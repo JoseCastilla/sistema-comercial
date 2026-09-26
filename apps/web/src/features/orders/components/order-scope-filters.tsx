@@ -4,16 +4,13 @@ import { useEffect, useRef, useState, useTransition } from "react";
 
 import { useRouter } from "next/navigation";
 
-import {
-  orderActionFilterOptions,
-  orderDueFilterOptions,
-} from "@repo/validation";
+import { orderDueFilterOptions } from "@repo/validation";
 
 import type {
   OrderAdvisorOption,
   OrderInboxTeamOption,
 } from "../order-inbox.types";
-import type { OrderActionFilter, OrderDueFilter } from "@repo/validation";
+import type { OrderDueFilter } from "@repo/validation";
 
 const debounceMs = 300;
 /** Menos de esto trae media bandeja: no acota, parpadea. */
@@ -23,7 +20,7 @@ export interface OrderScopeFilterValues {
   search: string;
   team: string;
   advisor: string;
-  action: OrderActionFilter | null;
+  maximo: string | null;
   due: OrderDueFilter | null;
 }
 
@@ -31,7 +28,7 @@ export interface OrderScopeFilterOverrides {
   search?: string;
   team?: string;
   advisor?: string;
-  action?: OrderActionFilter | null;
+  maximo?: string | null;
   due?: OrderDueFilter | null;
 }
 
@@ -54,7 +51,7 @@ export function OrderScopeFilters({
   teamOptions,
   showTeamFilter,
   advisorOptions,
-  showActionFilter,
+  maximoOptions,
   buildHref,
 }: {
   values: OrderScopeFilterValues;
@@ -63,8 +60,11 @@ export function OrderScopeFilters({
   showTeamFilter: boolean;
   /** Asesores del alcance; vacío para el asesor, que ya solo ve lo suyo. */
   advisorOptions: OrderAdvisorOption[];
-  /** La acción derivada solo existe en «Entregas fallidas por gestionar». */
-  showActionFilter: boolean;
+  /**
+   * Estados de Máximo presentes, con su texto original; solo en «Entregas
+   * fallidas por gestionar» (SPEC-075). `null` oculta el selector.
+   */
+  maximoOptions: string[] | null;
   buildHref: (overrides: OrderScopeFilterOverrides) => string;
 }) {
   const router = useRouter();
@@ -117,9 +117,6 @@ export function OrderScopeFilters({
   const dueLabel = (value: OrderDueFilter) =>
     orderDueFilterOptions.find((option) => option.value === value)?.label ??
     value;
-  const actionLabel = (value: OrderActionFilter) =>
-    orderActionFilterOptions.find((option) => option.value === value)?.label ??
-    value;
 
   const chips: Array<{
     key: string;
@@ -153,12 +150,12 @@ export function OrderScopeFilters({
           },
         ]
       : []),
-    ...(values.action && showActionFilter
+    ...(values.maximo && maximoOptions
       ? [
           {
-            key: "action",
-            label: `Acción: ${actionLabel(values.action)}`,
-            remove: { action: null },
+            key: "maximo",
+            label: `Máximo: ${values.maximo}`,
+            remove: { maximo: null },
           },
         ]
       : []),
@@ -247,23 +244,20 @@ export function OrderScopeFilters({
           </select>
         </label>
 
-        {showActionFilter ? (
+        {maximoOptions ? (
           <label className="ui-team-filter__field">
-            <span>Acción</span>
+            <span>Estado en Máximo</span>
             <select
               className="ui-filter-select"
               onChange={(event) =>
-                navigate({
-                  action: (event.target.value ||
-                    null) as OrderActionFilter | null,
-                })
+                navigate({ maximo: event.target.value || null })
               }
-              value={values.action ?? ""}
+              value={values.maximo ?? ""}
             >
-              <option value="">Todas</option>
-              {orderActionFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              <option value="">Todos</option>
+              {maximoOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
                 </option>
               ))}
             </select>
@@ -352,7 +346,7 @@ export function OrderScopeFilters({
                   team: "ALL",
                   advisor: "ALL",
                   due: null,
-                  action: null,
+                  maximo: null,
                 });
               }}
               type="button"

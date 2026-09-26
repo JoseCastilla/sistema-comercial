@@ -1,8 +1,4 @@
-import type {
-  OrderActionFilter,
-  OrderDueFilter,
-  OrderPeriod,
-} from "@repo/validation";
+import type { OrderDueFilter, OrderPeriod } from "@repo/validation";
 
 export type OrderSlaState =
   | "OVERDUE"
@@ -107,21 +103,17 @@ export interface OrderInboxItem {
   noStatusIncident: boolean;
 
   deliveryObservation: string | null;
+  /**
+   * SPEC-075: lo que manda Máximo, tal cual. Sin traducir el estado ni el
+   * motivo y sin una acción calculada por nosotros: cada campo que llega con
+   * valor, con su nombre y en el orden de la fuente.
+   */
   agrDelivery: {
-    status: string;
-    actionKind:
-      | "RESCHEDULE"
-      | "CONTACT"
-      | "REENTER"
-      | "MEETING_POINT"
-      | "VERIFY_TENURE"
-      | "WAIT_PORTABILITY";
-    actionLabel: string;
-    actionShortLabel: string;
-    reason: string | null;
-    result: string | null;
-    nextAction: string | null;
-    commitmentDate: string | null;
+    /** Máximo lo reporta como un problema de entrega (SPEC-029 BR-017). */
+    opportunity: boolean;
+    estadoPedido: string;
+    fields: Array<{ key: string; label: string; value: string }>;
+    fetchedAtLabel: string;
   } | null;
 
   registeredAtLabel: string;
@@ -203,7 +195,8 @@ export interface OrderInboxData {
   advisorFilter: string;
   advisorOptions: OrderAdvisorOption[];
   /** Solo en `LOGISTICS`; en cualquier otra vista es `null`. */
-  actionFilter: OrderActionFilter | null;
+  /** Estado de Máximo tal como llega; solo en `LOGISTICS` (SPEC-075). */
+  maximoFilter: string | null;
   dueFilter: OrderDueFilter | null;
   /** Ruta de Rendimiento desde la que se llegó, para volver con filtros. */
   returnTo?: string | null;
@@ -224,9 +217,8 @@ export interface OrderInboxData {
 
   logisticsSummary: {
     total: number;
-    reschedule: number;
-    contact: number;
-    review: number;
+    /** Cuántos hay en cada estado de Máximo, con el texto de Máximo. */
+    byState: Array<{ state: string; count: number }>;
     lastFetchedAtLabel: string | null;
   };
 

@@ -38,7 +38,7 @@ import {
 } from "@repo/validation";
 import { formatLimaMonth } from "@repo/ui/format";
 
-import { getAgrAction } from "@/features/orders/server/get-order-inbox";
+import { describeAgrDeliveryRaw } from "@/features/orders/server/get-order-inbox";
 import { buildOrderHref } from "@/features/recovery/order-link";
 import { describeSalesRecoveryFall } from "@/features/recovery/server/sales-recovery-fall";
 import { database } from "@/server/database";
@@ -585,7 +585,8 @@ async function readOrders(
     let badge: string | null = null;
 
     if (snapshot?.isRecoveryOpportunity) {
-      action = getAgrAction(snapshot).label;
+      // SPEC-075: lo que dice Máximo, sin traducirlo.
+      action = `Máximo: ${describeAgrDeliveryRaw(snapshot)}`;
     } else if (row.sentSubstatus === "REJECTED") {
       action = "Entrega rechazada: habla con el cliente";
       dueAt = row.sentSubstatusUpdatedAt;

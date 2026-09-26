@@ -2131,9 +2131,15 @@
     height: 1rem;
   }
 
+  /*
+   * SPEC-076: la lista crece con la página, sin caja con scroll propio.
+   * `clip` recorta las esquinas sin volverse contenedor de desplazamiento,
+   * así la cabecera de columnas queda pegada arriba al bajar la página y el
+   * panel de gestión, también pegado, acompaña.
+   */
   .ui-order-grid {
     min-width: 0;
-    overflow: hidden;
+    overflow: clip;
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-lg);
     background: var(--ui-surface);
@@ -2141,9 +2147,7 @@
   }
 
   .ui-order-grid__scroll {
-    max-height: calc(100vh - 17rem);
-    overflow: auto;
-    scrollbar-gutter: stable;
+    min-width: 0;
   }
 
   /**
@@ -2714,6 +2718,16 @@
     color: var(--ui-warning);
   }
 
+  /* Máximo sin problema de entrega (agendado, en ruta): dato, no alerta. */
+  .ui-order-notice[data-tone="neutral"] {
+    border-color: var(--ui-border);
+    background: var(--ui-surface-subtle);
+  }
+
+  .ui-order-notice[data-tone="neutral"] .ui-order-notice__source {
+    color: var(--ui-text-muted);
+  }
+
   /*
    * Ficha de datos de la tarjeta de gestion. Dos columnas fijas, sin consultas
    * de viewport: la tarjeta mide 400px en cualquier pantalla y solo existe en
@@ -2776,8 +2790,20 @@
 
   .ui-order-notice__details {
     display: grid;
-    gap: 0.75rem;
-    margin-top: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: 0.6rem 1rem;
+    margin-top: 0.85rem;
+  }
+
+  .ui-order-notice__details dt {
+    color: var(--ui-text-soft);
+    font-size: var(--ui-text-2xs);
+  }
+
+  .ui-order-notice__details dd {
+    color: var(--ui-text);
+    font-size: var(--ui-text-sm);
+    overflow-wrap: anywhere;
   }
 
   .ui-status-badge {

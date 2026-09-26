@@ -81,7 +81,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
       search,
       team,
       advisor,
-      action: firstValue(parameters.accion),
+      maximo: firstValue(parameters.maximo),
       due: firstValue(parameters.plazo),
     },
   );

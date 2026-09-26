@@ -13,12 +13,10 @@ import {
   getOrderRange,
   orderDueFilterWindow,
   orderRegularDeliveryMethods,
-  parseOrderActionFilter,
   parseOrderDueFilter,
   parseOrderRange,
   resolveDitoOrderScope,
   resolveDitoOrderVisibility,
-  resolveOrderActionKinds,
 } from "@repo/validation";
 
 import { database } from "@/server/database";
@@ -50,8 +48,8 @@ export interface OrderInboxQuery {
   team?: string;
   /** Asesor (`agentUserId`) dentro del alcance; SPEC-041. */
   advisor?: string;
-  /** Acción derivada (SPEC-029 BR-019); solo en `LOGISTICS`. */
-  action?: string;
+  /** Estado de Máximo tal cual (SPEC-075); solo en `LOGISTICS`. */
+  maximo?: string;
   /** Tramo del plazo de entrega. */
   due?: string;
 }
@@ -190,10 +188,9 @@ const orderSelect = {
       estadoPedido: true,
       motivoRechazo: true,
       submotivoRechazo: true,
-      resultado: true,
-      proximaAccion: true,
-      fechaCompromisoRaw: true,
       isRecoveryOpportunity: true,
+      rawPayload: true,
+      fetchedAt: true,
     },
   },
   recoveryCasesOriginated: {
@@ -684,7 +681,17 @@ function maskIdentifier(value: string): string {
   return visible ? `••••${visible}` : "Protegido";
 }
 
-type AgrActionKind = NonNullable<OrderInboxItem["agrDelivery"]>["actionKind"];
+/*
+ * SPEC-075: la acción derivada ya no se muestra. Queda solo para ordenar la
+ * bandeja (`getPriority`) mientras José decide si también sale de ahí.
+ */
+type AgrActionKind =
+  | "RESCHEDULE"
+  | "CONTACT"
+  | "REENTER"
+  | "MEETING_POINT"
+  | "VERIFY_TENURE"
+  | "WAIT_PORTABILITY";
 
 /*
  * Maximo describe lo que le paso al courier, no lo que la venta todavia
@@ -696,6 +703,89 @@ type AgrActionKind = NonNullable<OrderInboxItem["agrDelivery"]>["actionKind"];
  * El mismo "CLIENTE AUSENTE" se reagenda mientras la orden vive y se reingresa
  * cuando ya excedio las visitas. Por eso el estado se evalua siempre primero.
  */
+/**
+ * SPEC-075: los campos de Máximo en el orden y con el nombre de la fuente.
+ * Solo se les pone tilde y mayúscula inicial; el valor va tal como llega.
+ * Lo que Máximo mande además de esto también se muestra, con su propio
+ * nombre: no se deja información sin aprovechar.
+ */
+const agrDeliveryFieldLabels: ReadonlyArray<[string, string]> = [
+  ["estado_pedido", "Estado del pedido"],
+  ["motivo_rechazo", "Motivo de rechazo"],
+  ["submotivo_rechazo", "Submotivo de rechazo"],
+  ["gestion_status", "Estado de gestión"],
+  ["resultado", "Resultado"],
+  ["proxima_accion", "Próxima acción"],
+  ["fecha_compromiso", "Fecha de compromiso"],
+  ["fecha_entrega_pactada", "Fecha de entrega pactada"],
+  ["fecha_entrega_real", "Fecha de entrega real"],
+  ["fecha_toma_pedido", "Fecha de toma del pedido"],
+  ["tipo_delivery", "Tipo de delivery"],
+  ["envio", "Envío"],
+  ["pedido", "Pedido"],
+  ["vendedor", "Vendedor"],
+  ["nombre_vendedor", "Nombre del vendedor"],
+  ["updated_by_name", "Actualizado por"],
+  ["gestion_updated_at", "Gestión actualizada"],
+];
+const agrDeliveryHiddenKeys = new Set(["order_id"]);
+
+function humanizeAgrKey(key: string): string {
+  const text = key.replace(/_/g, " ").trim();
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : key;
+}
+
+function readAgrValue(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") return value.trim() || null;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return null;
+}
+
+export function getAgrDeliveryFields(snapshot: {
+  estadoPedido: string;
+  motivoRechazo: string | null;
+  submotivoRechazo: string | null;
+  rawPayload: Prisma.JsonValue;
+}): Array<{ key: string; label: string; value: string }> {
+  const raw =
+    snapshot.rawPayload &&
+    typeof snapshot.rawPayload === "object" &&
+    !Array.isArray(snapshot.rawPayload)
+      ? (snapshot.rawPayload as Record<string, unknown>)
+      : {
+          estado_pedido: snapshot.estadoPedido,
+          motivo_rechazo: snapshot.motivoRechazo,
+          submotivo_rechazo: snapshot.submotivoRechazo,
+        };
+  const known = new Set(agrDeliveryFieldLabels.map(([key]) => key));
+  const fields: Array<{ key: string; label: string; value: string }> = [];
+  for (const [key, label] of agrDeliveryFieldLabels) {
+    const value = readAgrValue(raw[key]);
+    if (value) fields.push({ key, label, value });
+  }
+  for (const key of Object.keys(raw).sort()) {
+    if (known.has(key) || agrDeliveryHiddenKeys.has(key)) continue;
+    const value = readAgrValue(raw[key]);
+    if (value) fields.push({ key, label: humanizeAgrKey(key), value });
+  }
+  return fields;
+}
+
+/** Estado y motivo de Máximo en una línea, tal como llegan (SPEC-075). */
+export function describeAgrDeliveryRaw(snapshot: {
+  estadoPedido: string;
+  motivoRechazo: string | null;
+  submotivoRechazo: string | null;
+}): string {
+  return [snapshot.estadoPedido, snapshot.motivoRechazo, snapshot.submotivoRechazo]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(" · ");
+}
+
 const TERMINAL_EXTERNAL_STATES = ["RECHAZADO", "CANCELADO"];
 
 export function getAgrAction(input: {
@@ -1001,8 +1091,9 @@ export async function getOrderInbox(
       : "ALL";
   const advisorFilterWhere: Prisma.DitoOrderWhereInput =
     advisorFilter === "ALL" ? {} : { agentUserId: advisorFilter };
-  const actionFilter =
-    query.filter === "LOGISTICS" ? parseOrderActionFilter(query.action) : null;
+  const requestedMaximo = query.maximo?.trim().slice(0, 80) ?? "";
+  const maximoFilter =
+    query.filter === "LOGISTICS" && requestedMaximo ? requestedMaximo : null;
   const dueFilter = parseOrderDueFilter(query.due);
   const dueFilterWhere = getDueFilterWhere(dueFilter, now);
 
@@ -1082,23 +1173,8 @@ export async function getOrderInbox(
       },
     },
   });
-  const actionKinds = actionFilter
-    ? resolveOrderActionKinds(actionFilter)
-    : null;
-  const actionFilterWhere: Prisma.DitoOrderWhereInput = actionKinds
-    ? {
-        id: {
-          in: logisticsRecords
-            .filter(
-              (record) =>
-                record.agrDeliverySnapshot !== null &&
-                actionKinds.includes(
-                  getAgrAction(record.agrDeliverySnapshot).kind,
-                ),
-            )
-            .map((record) => record.id),
-        },
-      }
+  const maximoFilterWhere: Prisma.DitoOrderWhereInput = maximoFilter
+    ? { agrDeliverySnapshot: { is: { estadoPedido: maximoFilter } } }
     : {};
 
   const filteredWhere: Prisma.DitoOrderWhereInput = {
@@ -1110,7 +1186,7 @@ export async function getOrderInbox(
       periodFilter,
       getStatusFilter(query.filter, now, incidentThreshold),
       dueFilterWhere,
-      actionFilterWhere,
+      maximoFilterWhere,
       access.role === "SUPERVISOR"
         ? getSupervisorSearchFilter(
             search,
@@ -1215,11 +1291,11 @@ export async function getOrderInbox(
     }),
   ]);
 
-  const logisticsActions = logisticsRecords.flatMap((record) =>
-    record.agrDeliverySnapshot
-      ? [getAgrAction(record.agrDeliverySnapshot)]
-      : [],
-  );
+  const logisticsByState = new Map<string, number>();
+  for (const record of logisticsRecords) {
+    const state = record.agrDeliverySnapshot?.estadoPedido.trim();
+    if (state) logisticsByState.set(state, (logisticsByState.get(state) ?? 0) + 1);
+  }
   const logisticsLastFetchedAt = logisticsRecords.reduce<Date | null>(
     (latest, record) => {
       const fetchedAt = record.agrDeliverySnapshot?.fetchedAt;
@@ -1423,28 +1499,14 @@ export async function getOrderInbox(
 
       noStatusIncident,
       deliveryObservation: order.deliveryObservation,
-      agrDelivery:
-        order.agrDeliverySnapshot?.isRecoveryOpportunity === true
-          ? (() => {
-              const action = getAgrAction(order.agrDeliverySnapshot);
-              return {
-                status: order.agrDeliverySnapshot.estadoPedido,
-                actionKind: action.kind,
-                actionLabel: action.label,
-                actionShortLabel: action.shortLabel,
-                reason:
-                  [
-                    order.agrDeliverySnapshot.motivoRechazo,
-                    order.agrDeliverySnapshot.submotivoRechazo,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || null,
-                result: order.agrDeliverySnapshot.resultado,
-                nextAction: order.agrDeliverySnapshot.proximaAccion,
-                commitmentDate: order.agrDeliverySnapshot.fechaCompromisoRaw,
-              };
-            })()
-          : null,
+      agrDelivery: order.agrDeliverySnapshot
+        ? {
+            opportunity: order.agrDeliverySnapshot.isRecoveryOpportunity,
+            estadoPedido: order.agrDeliverySnapshot.estadoPedido.trim(),
+            fields: getAgrDeliveryFields(order.agrDeliverySnapshot),
+            fetchedAtLabel: formatDateTime(order.agrDeliverySnapshot.fetchedAt),
+          }
+        : null,
 
       registeredAtLabel: formatDateTime(order.registeredAt),
 
@@ -1631,7 +1693,7 @@ export async function getOrderInbox(
     teamOptions,
     advisorFilter,
     advisorOptions,
-    actionFilter,
+    maximoFilter,
     dueFilter,
     assignmentTeams,
     showTeamFilter:
@@ -1651,16 +1713,10 @@ export async function getOrderInbox(
     pendingBeforeMonth,
 
     logisticsSummary: {
-      total: logisticsActions.length,
-      reschedule: logisticsActions.filter((action) =>
-        ["RESCHEDULE", "MEETING_POINT"].includes(action.kind),
-      ).length,
-      contact: logisticsActions.filter((action) =>
-        ["CONTACT", "VERIFY_TENURE"].includes(action.kind),
-      ).length,
-      review: logisticsActions.filter((action) =>
-        ["REENTER", "WAIT_PORTABILITY"].includes(action.kind),
-      ).length,
+      total: logisticsRecords.length,
+      byState: [...logisticsByState]
+        .map(([state, count]) => ({ state, count }))
+        .sort((left, right) => right.count - left.count),
       lastFetchedAtLabel: logisticsLastFetchedAt
         ? formatDateTime(logisticsLastFetchedAt)
         : null,
