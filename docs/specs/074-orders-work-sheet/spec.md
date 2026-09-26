@@ -1,6 +1,6 @@
 # SPEC-074 — Pedidos como hoja de trabajo: cada control, una sola vez
 
-**Estado:** `ENTREGADA` (fase 1) — José: «sigue con la hoja de trabajo de SPEC-074» (25/09/2026)
+**Estado:** `VERIFICADA` (fase 1) — José: «sigue con la hoja de trabajo de SPEC-074» (25/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25

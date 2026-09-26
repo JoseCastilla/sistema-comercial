@@ -109,6 +109,8 @@ export function OrderScopeFilters({
   const visibleAdvisors = scopedTeam
     ? advisorOptions.filter((advisor) => advisor.teamId === scopedTeam)
     : advisorOptions;
+  const severalTeams =
+    new Set(advisorOptions.map((advisor) => advisor.teamId)).size > 1;
   const showAdvisorFilter =
     advisorOptions.length > 0 && values.team !== "UNASSIGNED";
 
@@ -212,7 +214,8 @@ export function OrderScopeFilters({
                 <option value="ALL">Todos</option>
                 {visibleAdvisors.map((advisor) => (
                   <option key={advisor.id} value={advisor.id}>
-                    {scopedTeam
+                    {/* SPEC-078: el equipo solo distingue cuando hay varios. */}
+                    {scopedTeam || !severalTeams
                       ? advisor.name
                       : `${advisor.name} · ${advisor.teamName}`}
                   </option>

@@ -1,6 +1,6 @@
 # SPEC-078 — Pedidos con menos palabras
 
-**Estado:** `ENTREGADA` — mejora de presentación, con la autorización de José del 25/09/2026
+**Estado:** `VERIFICADA` — mejora de presentación, con la autorización de José del 25/09/2026
 
 **Versión:** 0.1
 **Fecha:** 2026-09-25
@@ -37,6 +37,8 @@ todo el texto que la pantalla muestra en producción.
 | «Un toque guarda y pasa al pedido de abajo.» | «Guarda y pasa al siguiente.» | — |
 | Recupero en el pedido: «CHRISTIAN HUGO RUIZ COTERA» | «Christian R.» | El mismo nombre corto de la lista |
 | Vacíos: «Máximo no reporta pedidos con una acción comercial pendiente.» y otros | «Sin entregas fallidas · Máximo no reporta ninguna», «Nada por mover», «Nada por activar», «Nada escalado», «Sin coincidencias» | Corto, y con las vistas nuevas de SPEC-074 |
+
+| Asesor: «Christian R. · HUANCAYO - EL TAMBO» con un solo equipo | «Christian R.» | El equipo solo distingue cuando hay varios |
 
 `PageHeader` acepta ahora el antetítulo como opcional.
 

@@ -1391,7 +1391,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
                   {option.label}
                   {count !== undefined ? " " : null}
                   {count !== undefined ? (
-                    <span className="text-xs text-ui-muted">
+                    <span className="ml-1.5 text-xs text-ui-muted">
                       {formatCount(count)}
                     </span>
                   ) : null}
