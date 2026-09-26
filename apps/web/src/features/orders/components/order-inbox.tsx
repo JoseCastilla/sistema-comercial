@@ -41,12 +41,15 @@ const filterOptions: Array<{
   { value: "LOGISTICS", label: "Entregas fallidas" },
   { value: "AWAITING_ACTIVATION", label: "Falta activar" },
   { value: "ESCALATIONS", label: "Escaladas" },
-  { value: "RECOVERY", label: "Por recuperar" },
   { value: "DONE", label: "Cerrados" },
   { value: "ALL", label: "Todos" },
 ];
 
 const legacyFilterLabels: Partial<Record<OrderFilter, string>> = {
+  // SPEC-074 D2 (José, 25/09/2026): «Por recuperar» sale de Pedidos; esos
+  // pedidos ya abren su caso y se trabajan en Recupero de ventas. La vista
+  // sigue abriendo desde Rendimiento, que la usa para explicar su cifra.
+  RECOVERY: "Por recuperar",
   ACTIVE: "Activos",
   INCIDENTS: "Incidencias",
   DELIVERED: "Entregados",
@@ -1192,6 +1195,17 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
           </>
         )}
       </div>
+
+      {data.filter === "DONE" ? (
+        <p className="mt-2 text-xs">
+          Los no entregados y cancelados que aún pueden volverse venta se
+          trabajan en{" "}
+          <Link className="text-ui-accent hover:underline" href="/recovery/sales">
+            Recupero de ventas
+          </Link>
+          .
+        </p>
+      ) : null}
 
       {data.filter === "RECOVERY" ? (
         <p className="mt-2 text-xs">

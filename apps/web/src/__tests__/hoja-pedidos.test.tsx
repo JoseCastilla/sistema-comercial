@@ -155,7 +155,6 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
       LOGISTICS: 175,
       AWAITING_ACTIVATION: 11,
       ESCALATIONS: 1,
-      RECOVERY: 130,
       DONE: 300,
       ALL: 403,
     },
@@ -209,6 +208,8 @@ describe("Hoja de pedidos", () => {
       within(vistas).getByRole("link", { name: "Falta activar 11" }),
     ).toBeInTheDocument();
     expect(within(vistas).queryByRole("link", { name: /Incidencias/ })).toBeNull();
+    // SPEC-074 D2: los pedidos por recuperar se trabajan en Recupero de ventas.
+    expect(within(vistas).queryByRole("link", { name: /Por recuperar/ })).toBeNull();
   });
 
   it("un enlace antiguo a «Activos» sigue abriendo y se ve como pestaña", () => {

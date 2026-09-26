@@ -1698,7 +1698,6 @@ export async function getOrderInbox(
       LOGISTICS: logisticsCount,
       AWAITING_ACTIVATION: awaitingActivationCount,
       ESCALATIONS: escalationCount,
-      RECOVERY: recoveryCount,
       DONE: doneCount,
       ALL: periodTotal,
     },

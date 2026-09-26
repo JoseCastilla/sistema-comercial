@@ -160,8 +160,13 @@ con los pasos que tienen sentido desde el estado actual:
 - **D1 (confirmar lo que dice Máximo)** se aplaza. Traducir un estado de
   Máximo a un paso nuestro es interpretarlo, y José pidió no hacerlo por
   ahora (SPEC-075).
-- **D2 (quitar «Por recuperar»)** sigue pendiente de José. La pestaña se
-  mantiene.
+- **D2 (quitar «Por recuperar»)**: aprobado por José el 25/09/2026 («sí,
+  quita Por recuperar de Pedidos»).
+  - La pestaña sale de Pedidos.
+  - En «Cerrados», una línea dice que esos pedidos se trabajan en Recupero
+    de ventas.
+  - La vista sigue abriendo desde Rendimiento, que la enlaza en 6 lugares
+    para explicar su cifra de «por recuperar».
 - **Los botones de paso van solo en el panel, no también en la fila.** Si
   estuvieran en los dos lugares, repetirían el mismo control, que es lo que
   esta spec quita. Con el panel al lado y el paso automático al siguiente,
