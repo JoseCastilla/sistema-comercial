@@ -171,3 +171,12 @@ con los pasos que tienen sentido desde el estado actual:
   estuvieran en los dos lugares, repetirían el mismo control, que es lo que
   esta spec quita. Con el panel al lado y el paso automático al siguiente,
   mover un pedido cuesta un toque.
+
+## 8. Después de la fase 1 (25/09/2026)
+
+- «Por mover» pasa a **«Por entregar»**: era jerga nuestra (José: «¿qué
+  significa "por mover"?»).
+- Con una cancelación por aprobar, «¿En qué va?» no ofrece pasos y dice que
+  el pedido espera la revisión.
+- El análisis por rol que ordena las fases siguientes está en
+  `docs/revisiones/2026-09-25-pedidos-por-rol.md`.

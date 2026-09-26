@@ -37,7 +37,8 @@ const filterOptions: Array<{
   value: OrderFilter;
   label: string;
 }> = [
-  { value: "TO_MOVE", label: "Por mover" },
+  // «Por mover» era jerga nuestra; lo que el asesor espera es la entrega.
+  { value: "TO_MOVE", label: "Por entregar" },
   { value: "LOGISTICS", label: "Entregas fallidas" },
   { value: "AWAITING_ACTIVATION", label: "Falta activar" },
   { value: "ESCALATIONS", label: "Escaladas" },
@@ -331,7 +332,7 @@ function StatusBadge({
         </span>
       ) : null}
 
-      {showAgr && order.agrDelivery ? (
+      {showAgr && order.agrDelivery && !order.agrDelivery.stale ? (
         <span
           className="ui-order-badge"
           data-tone={order.agrDelivery.opportunity ? "warning" : undefined}
@@ -433,10 +434,12 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
     <section
       aria-label="Lo que dice Máximo"
       className="ui-order-notice"
-      data-tone={agr.opportunity ? "warning" : "neutral"}
+      data-tone={agr.opportunity && !agr.stale ? "warning" : "neutral"}
     >
       <h4 className="ui-order-notice__headline">
-        <span className="ui-order-notice__source">Máximo</span>
+        <span className="ui-order-notice__source">
+          {agr.stale ? "Último dato de Máximo" : "Máximo"}
+        </span>
         {" · "}
         {agr.estadoPedido}
       </h4>
@@ -452,7 +455,11 @@ function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
           ))}
       </dl>
       <p className="mt-2 text-xs text-ui-muted">
-        Consultado {agr.fetchedAtLabel}
+        {agr.stale
+          ? `Del ${agr.fetchedAtLabel}. Ya no se consulta: el pedido está ${
+              order.status === "CLOSED" ? "cerrado" : "entregado"
+            }.`
+          : `Consultado ${agr.fetchedAtLabel}`}
       </p>
     </section>
   );
@@ -1069,7 +1076,7 @@ function DesktopOrderList({
                     showAgr={false}
                     showEscalationAction={false}
                   />
-                  {order.agrDelivery ? (
+                  {order.agrDelivery && !order.agrDelivery.stale ? (
                     <span
                       className="ui-order-badge ui-order-grid__inline-action"
                       data-tone={
@@ -1082,7 +1089,9 @@ function DesktopOrderList({
                 </span>
 
                 <span className="ui-order-grid__action">
-                  {order.agrDelivery ? (
+                  {/* Cerrado o entregado: Máximo ya no se consulta y su último
+                      dato («AGENDADO») confundiría. */}
+                  {order.agrDelivery && !order.agrDelivery.stale ? (
                     <span
                       className="ui-order-badge"
                       data-tone={
@@ -1129,7 +1138,7 @@ function emptyStateFor(data: OrderInboxData): {
   switch (data.filter) {
     case "TO_MOVE":
       return {
-        title: "Nada por mover",
+        title: "Nada por entregar",
         description: "Todo lo del período ya se entregó, se cerró o está en otra vista.",
       };
     case "LOGISTICS":

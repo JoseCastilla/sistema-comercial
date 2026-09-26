@@ -31,9 +31,15 @@ const sent = (sentSubstatus: string, label: string): OrderStep => ({
  * aprobación (SPEC-013), así que sigue en «Otro cambio».
  */
 export function getOrderSteps(
-  order: Pick<OrderInboxItem, "status" | "sentSubstatus" | "canUpdate" | "canClose">,
+  order: Pick<
+    OrderInboxItem,
+    "status" | "sentSubstatus" | "canUpdate" | "canClose"
+  > &
+    Partial<Pick<OrderInboxItem, "pendingCancellationRequest">>,
 ): OrderStep[] {
   if (!order.canUpdate) return [];
+  // Con una cancelación por aprobar el pedido no cambia (SPEC-013).
+  if (order.pendingCancellationRequest) return [];
 
   if (order.status === "OPEN" || order.status === "UNKNOWN") {
     return [sent("NO_STATUS", "Enviado")];
@@ -108,6 +114,13 @@ export function OrderNextStep({
   }, [state, onSaved]);
 
   if (steps.length === 0) {
+    if (order.pendingCancellationRequest) {
+      return (
+        <p className="text-sm text-ui-muted">
+          Cancelación pedida: el pedido queda como está hasta que la revisen.
+        </p>
+      );
+    }
     return order.status === "SENT" && order.sentSubstatus === "DELIVERED" ? (
       <p className="text-sm text-ui-muted">
         Entregado. Falta que el operador active la línea.

@@ -64,6 +64,11 @@ Hasta ahora (SPEC-029, SPEC-041):
   - Los campos nuevos siguen apareciendo solos.
   - La lista vive en `features/orders/agr-delivery-fields.ts` y se prueba
     en `campos-maximo.test.ts`.
+- **BR-008 — El dato viejo no se presenta como actual.** Máximo deja de
+  consultarse cuando el pedido se cierra o se entrega (SPEC-029). En
+  producción, 267 pedidos cerrados seguían diciendo «AGENDADO». Ahora la
+  fila no muestra el estado de Máximo en esos pedidos, y el panel dice
+  «Último dato de Máximo · del <fecha>. Ya no se consulta».
 - **BR-006 — Sin cambios por ahora:**
   - Qué pedidos cuentan como entrega fallida (SPEC-029 BR-017).
   - El orden de la bandeja, que todavía usa la acción calculada por dentro

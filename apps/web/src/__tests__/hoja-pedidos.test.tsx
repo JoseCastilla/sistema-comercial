@@ -87,6 +87,7 @@ function pedido(extra: Partial<OrderInboxItem> = {}): OrderInboxItem {
     deliveryObservation: null,
     agrDelivery: {
       opportunity: true,
+      stale: false,
       estadoPedido: "NO ENTREGADO",
       fields: [
         { key: "estado_pedido", label: "Estado del pedido", value: "NO ENTREGADO" },
@@ -201,7 +202,7 @@ describe("Hoja de pedidos", () => {
       name: "Estado de los pedidos",
     });
     expect(
-      within(vistas).getByRole("link", { name: "Por mover 35" }),
+      within(vistas).getByRole("link", { name: "Por entregar 35" }),
     ).toHaveAttribute("href", expect.stringContaining("status=TO_MOVE"));
     expect(
       within(vistas).getByRole("link", { name: "Falta activar 11" }),

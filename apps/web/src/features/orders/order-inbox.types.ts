@@ -115,6 +115,11 @@ export interface OrderInboxItem {
   agrDelivery: {
     /** Máximo lo reporta como un problema de entrega (SPEC-029 BR-017). */
     opportunity: boolean;
+    /**
+     * Máximo ya no se consulta: el pedido está cerrado o entregado
+     * (SPEC-029). El dato es el último que llegó, no el de hoy.
+     */
+    stale: boolean;
     estadoPedido: string;
     fields: Array<{ key: string; label: string; value: string }>;
     fetchedAtLabel: string;

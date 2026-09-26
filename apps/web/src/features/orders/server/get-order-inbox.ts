@@ -1474,6 +1474,8 @@ export async function getOrderInbox(
       agrDelivery: order.agrDeliverySnapshot
         ? {
             opportunity: order.agrDeliverySnapshot.isRecoveryOpportunity,
+            stale:
+              order.status === "CLOSED" || order.deliveryStatus === "DELIVERED",
             estadoPedido: order.agrDeliverySnapshot.estadoPedido.trim(),
             fields: getAgrDeliveryFields(order.agrDeliverySnapshot),
             fetchedAtLabel: formatDateTime(order.agrDeliverySnapshot.fetchedAt),

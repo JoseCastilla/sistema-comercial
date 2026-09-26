@@ -52,6 +52,18 @@ describe("Siguiente paso del pedido", () => {
     ]);
     expect(etiquetas({ status: "CLOSED", sentSubstatus: null })).toEqual([]);
     expect(etiquetas({ canUpdate: false })).toEqual([]);
+    // Con la cancelación por aprobar, el pedido no se mueve.
+    expect(
+      getOrderSteps({
+        ...base,
+        pendingCancellationRequest: {
+          id: "c-1",
+          reason: "Ya no desea",
+          requestedByName: "Asesor",
+          requestedAtLabel: "23/09/2026, 17:40",
+        },
+      }),
+    ).toEqual([]);
   });
 
   it("un toque guarda el paso con la nota de siempre y pasa al siguiente", async () => {
