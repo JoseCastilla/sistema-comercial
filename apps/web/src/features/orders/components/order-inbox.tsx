@@ -9,6 +9,7 @@ import { EmptyState } from "@repo/ui/empty-state";
 import { PageHeader } from "@repo/ui/page-header";
 import { Surface } from "@repo/ui/surface";
 
+import { BulkCloseBar } from "./bulk-close-bar";
 import { OrderNextStep } from "./order-next-step";
 import { OrderStatusForm } from "./order-status-form";
 import { OrderCancellationRequestPanel } from "./order-cancellation-request-panel";
@@ -964,16 +965,28 @@ function MobileOrderCard({
   );
 }
 
+/** SPEC-079: se puede cerrar en bloque lo entregado que el rol puede cerrar. */
+function canBulkClose(order: OrderInboxItem): boolean {
+  return (
+    order.canClose && order.status !== "CLOSED" && order.status !== "CANCELLED"
+  );
+}
+
 function DesktopOrderList({
   items,
   selectedOrderId,
   onSelect,
   showAdvisorColumn,
+  checked,
+  onToggleChecked,
 }: {
   items: OrderInboxItem[];
   selectedOrderId: string | null;
   onSelect: (orderId: string) => void;
   showAdvisorColumn: boolean;
+  /** SPEC-079: casillas para cerrar varios; solo en «Falta activar». */
+  checked?: ReadonlySet<string>;
+  onToggleChecked?: (orderId: string) => void;
 }) {
   /*
    * SPEC-073: la hoja es una línea por venta cuando cabe. Cuando la lista es
@@ -1042,18 +1055,37 @@ function DesktopOrderList({
                   {order.orderCode}
                 </span>
 
-                <span className="ui-order-grid__client">
-                  <strong>{order.holderName}</strong>
-                  {/* Solo en dos líneas: lo que las columnas ocultas decían. */}
-                  <small className="ui-order-grid__meta">
-                    {[
-                      order.orderCode,
-                      getOperatorLabel(order),
-                      showAdvisorColumn ? order.agentName || "Sin asesor" : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </small>
+                <span
+                  className="ui-order-grid__client"
+                  data-checkable={checked ? "true" : undefined}
+                >
+                  {checked && onToggleChecked ? (
+                    <input
+                      aria-label={`Marcar ${order.orderCode} para cerrar`}
+                      checked={checked.has(order.id)}
+                      className="mt-0.5 size-4 shrink-0 accent-[var(--ui-accent)]"
+                      disabled={!canBulkClose(order)}
+                      onChange={() => onToggleChecked(order.id)}
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      type="checkbox"
+                    />
+                  ) : null}
+                  <span className="ui-order-grid__client-text">
+                    <strong>{order.holderName}</strong>
+                    {/* Solo en dos líneas: lo que las columnas ocultas decían. */}
+                    <small className="ui-order-grid__meta">
+                      {[
+                        order.orderCode,
+                        getOperatorLabel(order),
+                        showAdvisorColumn
+                          ? order.agentName || "Sin asesor"
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </small>
+                  </span>
                 </span>
 
                 <span className="ui-order-grid__plain">{order.documentNumber}</span>
@@ -1311,6 +1343,23 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
    */
   const selectionLeftView = selectedOrderId !== null && selectedOrder === null;
 
+  // SPEC-079: en «Falta activar», marcar varios y cerrarlos de una vez.
+  const closable =
+    data.filter === "AWAITING_ACTIVATION" ? data.items.filter(canBulkClose) : [];
+  const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  const visibleChecked = checkedIds.filter((id) =>
+    closable.some((order) => order.id === id),
+  );
+  const checkedSet = new Set(visibleChecked);
+  const toggleChecked = useCallback((orderId: string) => {
+    setCheckedIds((current) =>
+      current.includes(orderId)
+        ? current.filter((id) => id !== orderId)
+        : [...current, orderId],
+    );
+  }, []);
+  const clearChecked = useCallback(() => setCheckedIds([]), []);
+
   // SPEC-074: guardar un paso pasa al pedido de abajo, antes de que el
   // refresco saque de la vista al que se acaba de mover.
   const selectNextAfter = useCallback(
@@ -1461,10 +1510,28 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             })}
           </section>
 
+          {closable.length > 0 ? (
+            <div className="hidden lg:block">
+              <BulkCloseBar
+                checkedIds={visibleChecked}
+                closableCount={closable.length}
+                onCheckAll={() =>
+                  setCheckedIds(closable.map((order) => order.id))
+                }
+                onClear={clearChecked}
+                orderCodes={Object.fromEntries(
+                  data.items.map((order) => [order.id, order.orderCode]),
+                )}
+              />
+            </div>
+          ) : null}
+
           <section className="ui-order-workspace hidden lg:grid">
             <DesktopOrderList
+              checked={closable.length > 0 ? checkedSet : undefined}
               items={data.items}
               onSelect={setSelectedOrderId}
+              onToggleChecked={toggleChecked}
               selectedOrderId={selectedOrder?.id ?? null}
               showAdvisorColumn={data.showAdvisorColumn}
             />

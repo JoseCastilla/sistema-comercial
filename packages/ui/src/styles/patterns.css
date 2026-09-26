@@ -2246,6 +2246,19 @@
     gap: 0.2rem;
   }
 
+  .ui-order-grid__client-text {
+    display: grid;
+    min-width: 0;
+    gap: 0.2rem;
+  }
+
+  /* SPEC-079: con casilla para cerrar varios, casilla y nombre en fila. */
+  .ui-order-grid__client[data-checkable="true"] {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
   .ui-order-grid__client strong {
     overflow: hidden;
     color: var(--ui-text);
@@ -2352,6 +2365,10 @@
       grid-area: client;
     }
 
+    .ui-order-grid__row:not([data-show-advisor="true"]) > .ui-order-grid__client[data-checkable="true"] {
+      display: flex;
+    }
+
     .ui-order-grid__row:not([data-show-advisor="true"]) > .ui-order-grid__status {
       display: flex;
       grid-area: status;
@@ -2394,6 +2411,10 @@
     .ui-order-grid__row[data-show-advisor="true"] > .ui-order-grid__client {
       display: grid;
       grid-area: client;
+    }
+
+    .ui-order-grid__row[data-show-advisor="true"] > .ui-order-grid__client[data-checkable="true"] {
+      display: flex;
     }
 
     .ui-order-grid__row[data-show-advisor="true"] > .ui-order-grid__status {

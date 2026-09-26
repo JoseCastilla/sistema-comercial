@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { OrderInbox } from "@/features/orders/components/order-inbox";
@@ -25,6 +25,9 @@ vi.mock("@/features/orders/components/order-realtime-status", () => ({
 }));
 vi.mock("@/features/orders/components/order-scope-filters", () => ({
   OrderScopeFilters: () => null,
+}));
+vi.mock("@/features/orders/server/close-orders-action", () => ({
+  closeOrdersAction: vi.fn(),
 }));
 vi.mock("@/features/orders/components/order-next-step", () => ({
   OrderNextStep: () => <p>Pasos del pedido</p>,
@@ -210,6 +213,44 @@ describe("Hoja de pedidos", () => {
     expect(within(vistas).queryByRole("link", { name: /Incidencias/ })).toBeNull();
     // SPEC-074 D2: los pedidos por recuperar se trabajan en Recupero de ventas.
     expect(within(vistas).queryByRole("link", { name: /Por recuperar/ })).toBeNull();
+  });
+
+  it("en «Falta activar», quien puede cerrar marca varios y ve la barra para cerrarlos", () => {
+    render(
+      <OrderInbox
+        data={datos({
+          filter: "AWAITING_ACTIVATION",
+          items: [
+            pedido({ canClose: true, sentSubstatus: "DELIVERED" }),
+            pedido({
+              id: "o-2",
+              orderCode: "1966000000A",
+              canClose: false,
+              sentSubstatus: "DELIVERED",
+            }),
+          ],
+        })}
+      />,
+    );
+
+    const barra = screen.getByRole("region", { name: "Cerrar varios" });
+    expect(barra).toHaveTextContent("Marca los que el operador ya activó");
+    const casilla = screen.getByRole("checkbox", {
+      name: "Marcar 1966211921A para cerrar",
+    });
+    // Venta propia o sin permiso: no se puede marcar.
+    expect(
+      screen.getByRole("checkbox", { name: "Marcar 1966000000A para cerrar" }),
+    ).toBeDisabled();
+
+    fireEvent.click(casilla);
+    expect(barra).toHaveTextContent("1 pedido marcado");
+  });
+
+  it("fuera de «Falta activar» no hay casillas", () => {
+    render(<OrderInbox data={datos()} />);
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Cerrar varios" })).toBeNull();
   });
 
   it("un enlace antiguo a «Activos» sigue abriendo y se ve como pestaña", () => {
