@@ -158,7 +158,7 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
     filteredTotal: 1,
     items: [pedido()],
     pagination: { page: 1, pageSize: 50, totalPages: 1 },
-    pendingBeforeMonth: 6,
+    priorPending: { toMove: 6, awaiting: 2, from: "2025-09-01", to: "2026-08-31" },
     advisorSummary: [
       { id: "u-1", name: "Silvia S.", teamName: "HUANCAYO", toDeliver: 4, failed: 3, overdue: 2, awaiting: 1 },
       { id: "u-2", name: "Steven L.", teamName: "HUANCAYO", toDeliver: 1, failed: 0, overdue: 0, awaiting: 0 },
@@ -201,11 +201,14 @@ describe("Hoja de pedidos", () => {
     const resumen = screen.getByRole("region", { name: "Resumen de pedidos" });
     // SPEC-078: el período ya lo dice su botón; aquí solo «Ventas».
     expect(within(resumen).getByText(/^Ventas/)).toHaveTextContent("Ventas 403");
+    // SPEC-084: cada cifra de meses anteriores abre exactamente lo que cuenta.
+    const anterior = within(resumen).getByRole("link", { name: "6 por entregar →" });
+    expect(anterior).toHaveAttribute("href", expect.stringContaining("period=RANGE"));
+    expect(anterior).toHaveAttribute("href", expect.stringContaining("to=2026-08-31"));
+    expect(anterior).toHaveAttribute("href", expect.stringContaining("status=TO_MOVE"));
     expect(
-      within(resumen).getByRole("link", {
-        name: "6 pendientes de meses anteriores →",
-      }),
-    ).toHaveAttribute("href", expect.stringContaining("period=HISTORY"));
+      within(resumen).getByRole("link", { name: "2 por activar →" }),
+    ).toHaveAttribute("href", expect.stringContaining("status=AWAITING_ACTIVATION"));
     // SPEC-074: ningún aviso repite una pestaña.
     expect(within(resumen).queryByText(/fuera de plazo/)).toBeNull();
     expect(within(resumen).queryByText(/entregas fallidas/)).toBeNull();

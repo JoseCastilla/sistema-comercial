@@ -104,6 +104,8 @@ export function OrderNextStep({
   );
   const [note, setNote] = useState(order.deliveryObservation ?? "");
   const [chosen, setChosen] = useState<string | null>(null);
+  // SPEC-084: cerrar no se deshace; pide un segundo toque, como en bloque.
+  const [confirmingClose, setConfirmingClose] = useState(false);
   const handled = useRef<OrderStatusActionState | null>(null);
   const steps = getOrderSteps(order);
 
@@ -129,6 +131,11 @@ export function OrderNextStep({
   }
 
   function save(step: OrderStep) {
+    if (step.status === "CLOSED" && !confirmingClose) {
+      setConfirmingClose(true);
+      return;
+    }
+    setConfirmingClose(false);
     const data = new FormData();
     data.set("orderId", order.id);
     data.set("status", step.status);
@@ -153,9 +160,22 @@ export function OrderNextStep({
             onClick={() => save(step)}
             type="button"
           >
-            {pending && chosen === step.label ? "Guardando…" : step.label}
+            {pending && chosen === step.label
+              ? "Guardando…"
+              : step.status === "CLOSED" && confirmingClose
+                ? "Sí, cerrar: no se puede deshacer"
+                : step.label}
           </button>
         ))}
+        {confirmingClose ? (
+          <button
+            className="rounded-lg px-3 py-2 text-sm text-ui-muted hover:bg-ui-subtle"
+            onClick={() => setConfirmingClose(false)}
+            type="button"
+          >
+            Volver
+          </button>
+        ) : null}
       </div>
 
       <label className="block space-y-1 text-xs text-ui-muted">

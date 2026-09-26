@@ -89,4 +89,32 @@ describe("Siguiente paso del pedido", () => {
     expect(enviado.get("sentSubstatus")).toBe("DELIVERED");
     expect(enviado.get("observation")).toBe("Cliente pidió la tarde");
   });
+
+  it("cerrar pide un segundo toque: no se deshace", async () => {
+    guardar.mockClear();
+    render(
+      <OrderNextStep
+        order={
+          {
+            ...base,
+            id: "11111111-1111-4111-8111-111111111111",
+            sentSubstatus: "DELIVERED",
+            canClose: true,
+            deliveryObservation: null,
+          } as OrderInboxItem
+        }
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar: ya activó" }));
+    expect(guardar).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Volver" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar: ya activó" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sí, cerrar: no se puede deshacer" }),
+    );
+
+    await waitFor(() => expect(guardar).toHaveBeenCalledTimes(1));
+    expect((guardar.mock.calls[0]?.[1] as FormData).get("status")).toBe("CLOSED");
+  });
 });

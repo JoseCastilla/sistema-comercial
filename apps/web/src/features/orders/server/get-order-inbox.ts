@@ -542,15 +542,27 @@ function getStatusFilter(
     case "TO_MOVE":
       // SPEC-074: cada pedido en una sola vista. Lo que Máximo reporta con
       // problema va a «Entregas fallidas»; lo entregado, a «Falta activar».
+      // SPEC-084: una entrega rechazada sigue viva mientras el pedido esté
+      // enviado; antes el estado de entrega «cancelado» la dejaba sin vista.
       return {
         status: { in: ["OPEN", "SENT", "UNKNOWN"] },
-        deliveryStatus: { notIn: ["DELIVERED", "CANCELLED"] },
+        deliveryStatus: { not: "DELIVERED" },
         NOT: { agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } } },
       };
     case "DONE":
+      // SPEC-084: un cerrado es cerrado aunque Máximo haya reportado un
+      // problema antes (23 en septiembre no caían en ninguna vista). Solo el
+      // cancelado con problema en Máximo sigue en «Entregas fallidas».
       return {
-        status: { in: ["CLOSED", "CANCELLED"] },
-        NOT: { agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } } },
+        OR: [
+          { status: "CLOSED" },
+          {
+            status: "CANCELLED",
+            NOT: {
+              agrDeliverySnapshot: { is: { isRecoveryOpportunity: true } },
+            },
+          },
+        ],
       };
     case "ACTIVE":
       return { status: { in: ["OPEN", "SENT", "UNKNOWN"] } };
@@ -1102,9 +1114,21 @@ export async function getOrderInbox(
           },
         }
       : {};
-  const baseWhere: Prisma.DitoOrderWhereInput = {
+  /*
+   * SPEC-084: «Ventas · Entregados · No entregados» son del período elegido
+   * también en Escaladas, que no usa período para su lista. Antes, ahí
+   * decía «Ventas 2785»: todas las de la historia.
+   */
+  const summaryWhere: Prisma.DitoOrderWhereInput = {
     organizationId,
-    AND: [accessFilter, teamFilterWhere, advisorFilterWhere, periodFilter],
+    AND: [
+      accessFilter,
+      teamFilterWhere,
+      advisorFilterWhere,
+      range.start && range.end
+        ? { registeredAt: { gte: range.start, lt: range.end } }
+        : {},
+    ],
   };
   // SPEC-074: las cifras de las pestañas usan el período elegido aunque la
   // vista abierta no lo use (Escaladas y Entregas fallidas).
@@ -1243,13 +1267,14 @@ export async function getOrderInbox(
     recoveryCount,
     deliveredCount,
     overdueCount,
-    pendingBeforeMonth,
+    priorToMoveCount,
+    priorAwaitingCount,
     toMoveCount,
     awaitingActivationCount,
     doneCount,
     periodTotal,
   ] = await database.$transaction([
-    database.ditoOrder.count({ where: baseWhere }),
+    database.ditoOrder.count({ where: summaryWhere }),
     database.ditoOrder.count({ where: filteredWhere }),
     database.ditoOrder.count({
       where: {
@@ -1271,7 +1296,7 @@ export async function getOrderInbox(
     }),
     database.ditoOrder.count({
       where: {
-        ...baseWhere,
+        ...summaryWhere,
         OR: [
           { sentSubstatus: "REJECTED" },
           {
@@ -1283,7 +1308,7 @@ export async function getOrderInbox(
       },
     }),
     database.ditoOrder.count({
-      where: { ...baseWhere, sentSubstatus: "NOT_DELIVERED" },
+      where: { ...summaryWhere, sentSubstatus: "NOT_DELIVERED" },
     }),
     database.ditoOrder.count({
       where: {
@@ -1309,13 +1334,13 @@ export async function getOrderInbox(
     }),
     database.ditoOrder.count({
       where: {
-        ...baseWhere,
+        ...summaryWhere,
         OR: [{ status: "CLOSED" }, { sentSubstatus: "DELIVERED" }],
       },
     }),
     database.ditoOrder.count({
       where: {
-        ...baseWhere,
+        ...summaryWhere,
         deliveryDueAt: { lt: now },
         status: { notIn: ["CLOSED", "CANCELLED"] },
         deliveryStatus: { notIn: ["DELIVERED", "CANCELLED"] },
@@ -1324,9 +1349,25 @@ export async function getOrderInbox(
     database.ditoOrder.count({
       where: {
         organizationId,
-        AND: [accessFilter, teamFilterWhere, advisorFilterWhere],
-        registeredAt: { lt: range.monthStart },
-        status: { in: ["OPEN", "SENT", "UNKNOWN"] },
+        AND: [
+          accessFilter,
+          teamFilterWhere,
+          advisorFilterWhere,
+          { registeredAt: { lt: range.monthStart } },
+          getStatusFilter("TO_MOVE", now, incidentThreshold),
+        ],
+      },
+    }),
+    database.ditoOrder.count({
+      where: {
+        organizationId,
+        AND: [
+          accessFilter,
+          teamFilterWhere,
+          advisorFilterWhere,
+          { registeredAt: { lt: range.monthStart } },
+          getStatusFilter("AWAITING_ACTIVATION", now, incidentThreshold),
+        ],
       },
     }),
     database.ditoOrder.count({ where: tabWhere("TO_MOVE") }),
@@ -1762,7 +1803,20 @@ export async function getOrderInbox(
       totalPages,
     },
 
-    pendingBeforeMonth,
+    /*
+     * SPEC-084: antes era una sola cifra de «pendientes» (abiertos y enviados,
+     * entregados incluidos) que abría el histórico entero: decía 51 y abría
+     * 65. Ahora son dos, cada una con la misma regla que la vista que abre,
+     * en el rango que termina el día antes de este mes.
+     */
+    priorPending: {
+      toMove: priorToMoveCount,
+      awaiting: priorAwaitingCount,
+      from: getLimaIsoDate(
+        new Date(range.monthStart.getTime() - 366 * 24 * 60 * 60 * 1000),
+      ),
+      to: getLimaIsoDate(new Date(range.monthStart.getTime() - 1)),
+    },
 
     logisticsSummary: {
       total: logisticsRecords.length,

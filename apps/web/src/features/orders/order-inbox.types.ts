@@ -225,7 +225,13 @@ export interface OrderInboxData {
     totalPages: number;
   };
 
-  pendingBeforeMonth: number;
+  /** SPEC-084: lo pendiente de meses anteriores, con su rango de fechas. */
+  priorPending: {
+    toMove: number;
+    awaiting: number;
+    from: string;
+    to: string;
+  };
 
   logisticsSummary: {
     total: number;

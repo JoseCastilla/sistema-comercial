@@ -92,6 +92,8 @@ function ordersHref(
     search?: string;
     team?: string;
     advisor?: string;
+    /** Un rango propio (fechas ISO), para lo de meses anteriores. */
+    range?: { from: string; to: string };
     maximo?: string | null;
     due?: OrderDueFilter | null;
     page?: number;
@@ -125,7 +127,11 @@ function ordersHref(
   const due = overrides.due === undefined ? data.dueFilter : overrides.due;
   const page = overrides.page ?? 1;
   const parameters = new URLSearchParams({ period });
-  if (period === "RANGE") {
+  if (overrides.range) {
+    parameters.set("period", "RANGE");
+    parameters.set("from", overrides.range.from);
+    parameters.set("to", overrides.range.to);
+  } else if (period === "RANGE") {
     if (data.from) parameters.set("from", data.from);
     if (data.to) parameters.set("to", data.to);
   }
@@ -1511,19 +1517,34 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
        * llevan su cifra. Queda lo que ninguna pestaña muestra: lo pendiente de
        * meses anteriores, fuera del período.
        */}
-      {!logistics && data.pendingBeforeMonth > 0 && data.period !== "HISTORY" ? (
-        <p className="mt-2 text-xs">
-          <Link
-            className="font-semibold text-ui-warning hover:underline"
-            href={ordersHref(data, { period: "HISTORY", filter: "TO_MOVE" })}
-          >
-            {plural(
-              data.pendingBeforeMonth,
-              "pendiente de meses anteriores",
-              "pendientes de meses anteriores",
-            )}{" "}
-            →
-          </Link>
+      {!logistics &&
+      data.period !== "HISTORY" &&
+      data.period !== "RANGE" &&
+      data.priorPending.toMove + data.priorPending.awaiting > 0 ? (
+        <p className="mt-2 flex flex-wrap gap-x-3 text-xs">
+          <span className="text-ui-muted">De meses anteriores:</span>
+          {data.priorPending.toMove > 0 ? (
+            <Link
+              className="font-semibold text-ui-warning hover:underline"
+              href={ordersHref(data, {
+                range: data.priorPending,
+                filter: "TO_MOVE",
+              })}
+            >
+              {formatCount(data.priorPending.toMove)} por entregar →
+            </Link>
+          ) : null}
+          {data.priorPending.awaiting > 0 ? (
+            <Link
+              className="font-semibold text-ui-warning hover:underline"
+              href={ordersHref(data, {
+                range: data.priorPending,
+                filter: "AWAITING_ACTIVATION",
+              })}
+            >
+              {formatCount(data.priorPending.awaiting)} por activar →
+            </Link>
+          ) : null}
         </p>
       ) : null}
     </section>
