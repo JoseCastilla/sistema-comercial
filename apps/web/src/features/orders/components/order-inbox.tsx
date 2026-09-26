@@ -1219,6 +1219,142 @@ function plural(count: number, one: string, many: string): string {
   return `${formatCount(count)} ${count === 1 ? one : many}`;
 }
 
+/**
+ * SPEC-081: supervisión y administración ven primero a su equipo, una fila
+ * por asesor con lo pendiente; cada cifra abre esa lista ya filtrada. Arriba
+ * quien tiene más entregas fallidas y fuera de plazo.
+ */
+function AdvisorSummary({ data }: { data: OrderInboxData }) {
+  const [showAll, setShowAll] = useState(false);
+  const rows = data.advisorSummary ?? [];
+  if (rows.length === 0) return null;
+
+  const severalTeams = new Set(rows.map((row) => row.teamName)).size > 1;
+  const visible = showAll ? rows : rows.slice(0, 6);
+  const cell = (
+    value: number,
+    href: string,
+    tone?: "danger" | "warning",
+    className = "",
+  ) => (
+    <td className={`px-3 py-2 text-right tabular-nums ${className}`}>
+      {value > 0 ? (
+        <Link
+          className={[
+            "font-semibold hover:underline",
+            tone === "danger"
+              ? "text-ui-danger"
+              : tone === "warning"
+                ? "text-ui-warning"
+                : "text-ui-text",
+          ].join(" ")}
+          href={href}
+        >
+          {formatCount(value)}
+        </Link>
+      ) : (
+        <span className="text-ui-soft">—</span>
+      )}
+    </td>
+  );
+
+  return (
+    <section
+      aria-label="Por asesor"
+      className="overflow-x-auto rounded-lg border border-ui-border bg-ui-surface"
+    >
+      <table className="w-full text-sm">
+        <thead className="text-left text-xs text-ui-muted">
+          <tr className="border-b border-ui-border">
+            <th className="px-3 py-2 font-semibold">Asesor</th>
+            <th className="px-3 py-2 text-right font-semibold">
+              Entregas fallidas
+            </th>
+            <th className="px-3 py-2 text-right font-semibold">
+              Fuera de plazo
+            </th>
+            <th className="hidden px-3 py-2 text-right font-semibold sm:table-cell">
+              Por entregar
+            </th>
+            <th className="hidden px-3 py-2 text-right font-semibold sm:table-cell">
+              Falta activar
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((row) => {
+            const current = data.advisorFilter === row.id;
+            return (
+              <tr
+                className={[
+                  "border-b border-ui-border last:border-b-0",
+                  current ? "bg-ui-accent-soft" : "",
+                ].join(" ")}
+                key={row.id}
+              >
+                <td className="px-3 py-2">
+                  <Link
+                    aria-current={current ? "true" : undefined}
+                    className="font-semibold text-ui-text hover:underline"
+                    href={ordersHref(data, {
+                      advisor: current ? "ALL" : row.id,
+                    })}
+                  >
+                    {row.name}
+                  </Link>
+                  {severalTeams ? (
+                    <span className="ml-2 text-xs text-ui-muted">
+                      {row.teamName}
+                    </span>
+                  ) : null}
+                </td>
+                {cell(
+                  row.failed,
+                  ordersHref(data, { advisor: row.id, filter: "LOGISTICS" }),
+                  "warning",
+                )}
+                {cell(
+                  row.overdue,
+                  ordersHref(data, {
+                    advisor: row.id,
+                    filter: "TO_MOVE",
+                    due: "vencido",
+                  }),
+                  "danger",
+                )}
+                {cell(
+                  row.toDeliver,
+                  ordersHref(data, { advisor: row.id, filter: "TO_MOVE" }),
+                  undefined,
+                  "hidden sm:table-cell",
+                )}
+                {cell(
+                  row.awaiting,
+                  ordersHref(data, {
+                    advisor: row.id,
+                    filter: "AWAITING_ACTIVATION",
+                  }),
+                  undefined,
+                  "hidden sm:table-cell",
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {rows.length > 6 ? (
+        <button
+          className="w-full border-t border-ui-border px-3 py-2 text-left text-xs font-semibold text-ui-accent hover:bg-ui-subtle"
+          onClick={() => setShowAll((value) => !value)}
+          type="button"
+        >
+          {showAll ? "Ver menos" : `Ver los ${formatCount(rows.length)} asesores`}
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
 /** SPEC-078: el vacío de cada vista, corto y dicho como resultado. */
 function emptyStateFor(data: OrderInboxData): {
   title: string;
@@ -1473,6 +1609,8 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       <PeriodNavigation data={data} />
 
       <OrderSummary data={data} />
+
+      {advisorSheet ? null : <AdvisorSummary data={data} />}
 
       <Surface className="ui-filter-bar" raised>
         {advisorSheet ? null : (

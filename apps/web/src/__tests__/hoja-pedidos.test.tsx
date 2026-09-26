@@ -154,6 +154,10 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
     items: [pedido()],
     pagination: { page: 1, pageSize: 50, totalPages: 1 },
     pendingBeforeMonth: 6,
+    advisorSummary: [
+      { id: "u-1", name: "Silvia S.", teamName: "HUANCAYO", toDeliver: 4, failed: 3, overdue: 2, awaiting: 1 },
+      { id: "u-2", name: "Steven L.", teamName: "HUANCAYO", toDeliver: 1, failed: 0, overdue: 0, awaiting: 0 },
+    ],
     tabCounts: {
       TO_MOVE: 35,
       LOGISTICS: 175,
@@ -288,6 +292,29 @@ describe("Hoja de pedidos", () => {
     expect(screen.queryByText("A3 · Claro")).toBeNull();
     fireEvent.click(screen.getAllByRole("button", { name: "Ver" })[0]!);
     expect(screen.getAllByText("A3 · Claro")[0]).toBeInTheDocument();
+  });
+
+  it("supervisión ve una fila por asesor y cada cifra abre su lista", () => {
+    render(<OrderInbox data={datos()} />);
+
+    const tabla = screen.getByRole("region", { name: "Por asesor" });
+    const fila = within(tabla).getByRole("link", { name: "Silvia S." }).closest("tr")!;
+    expect(within(fila).getByRole("link", { name: "3" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/status=LOGISTICS.*advisor=u-1|advisor=u-1.*status=LOGISTICS/),
+    );
+    expect(within(fila).getByRole("link", { name: "2" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("plazo=vencido"),
+    );
+    // Lo que está en cero no es enlace.
+    const otra = within(tabla).getByRole("link", { name: "Steven L." }).closest("tr")!;
+    expect(within(otra).getAllByText("—").length).toBeGreaterThan(0);
+  });
+
+  it("el asesor no ve la tabla por asesor", () => {
+    render(<OrderInbox data={datos({ role: "AGENT", advisorSummary: null })} />);
+    expect(screen.queryByRole("region", { name: "Por asesor" })).toBeNull();
   });
 
   it("fuera de «Falta activar» no hay casillas", () => {

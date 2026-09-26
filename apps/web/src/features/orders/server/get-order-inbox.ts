@@ -1120,6 +1120,70 @@ export async function getOrderInbox(
     ],
   });
   /*
+   * SPEC-081: por asesor, sin el filtro de asesor (la tabla muestra a todos
+   * los del alcance) y con la misma regla que cada pestaña: Entregas
+   * fallidas no usa el período; el resto, sí.
+   */
+  const advisorScopeWhere = (
+    filter: OrderFilter,
+    extra: Prisma.DitoOrderWhereInput = {},
+  ): Prisma.DitoOrderWhereInput => ({
+    organizationId,
+    agentUserId: { not: null },
+    AND: [
+      accessFilter,
+      teamFilterWhere,
+      filter !== "LOGISTICS" && range.start && range.end
+        ? { registeredAt: { gte: range.start, lt: range.end } }
+        : {},
+      getStatusFilter(filter, now, incidentThreshold),
+      extra,
+    ],
+  });
+  const countByAdvisor = async (where: Prisma.DitoOrderWhereInput) =>
+    new Map(
+      (
+        await database.ditoOrder.groupBy({
+          by: ["agentUserId"],
+          where,
+          _count: { _all: true },
+        })
+      ).map((row) => [row.agentUserId, row._count._all] as const),
+    );
+  const advisorSummary =
+    access.role === "AGENT" || advisorOptions.length === 0
+      ? null
+      : await (async () => {
+          const [toDeliver, failed, overdue, awaiting] = await Promise.all([
+            countByAdvisor(advisorScopeWhere("TO_MOVE")),
+            countByAdvisor(advisorScopeWhere("LOGISTICS")),
+            countByAdvisor(
+              advisorScopeWhere("TO_MOVE", { deliveryDueAt: { lt: now } }),
+            ),
+            countByAdvisor(advisorScopeWhere("AWAITING_ACTIVATION")),
+          ]);
+          return advisorOptions
+            .map((advisor) => ({
+              id: advisor.id,
+              name: advisor.name,
+              teamName: advisor.teamName,
+              toDeliver: toDeliver.get(advisor.id) ?? 0,
+              failed: failed.get(advisor.id) ?? 0,
+              overdue: overdue.get(advisor.id) ?? 0,
+              awaiting: awaiting.get(advisor.id) ?? 0,
+            }))
+            .filter(
+              (row) =>
+                row.toDeliver + row.failed + row.overdue + row.awaiting > 0,
+            )
+            .sort(
+              (left, right) =>
+                right.failed + right.overdue - (left.failed + left.overdue) ||
+                right.toDeliver - left.toDeliver ||
+                left.name.localeCompare(right.name, "es"),
+            );
+        })();
+  /*
    * SPEC-041: la acción derivada se calcula en código (BR-019), no vive en la
    * base. El conjunto logístico es pequeño y ya se cargaba para los
    * indicadores, así que el filtro por acción se traduce a una lista de ids.
@@ -1704,6 +1768,8 @@ export async function getOrderInbox(
         ? formatDateTime(logisticsLastFetchedAt)
         : null,
     },
+
+    advisorSummary,
 
     tabCounts: {
       TO_MOVE: toMoveCount,

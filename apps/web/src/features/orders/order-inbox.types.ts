@@ -231,6 +231,21 @@ export interface OrderInboxData {
     lastFetchedAtLabel: string | null;
   };
 
+  /**
+   * SPEC-081: una fila por asesor del alcance con lo que tiene pendiente,
+   * para supervisión y administración. Cada cifra usa la misma regla que la
+   * pestaña que abre. `null` para el asesor.
+   */
+  advisorSummary: Array<{
+    id: string;
+    name: string;
+    teamName: string;
+    toDeliver: number;
+    failed: number;
+    overdue: number;
+    awaiting: number;
+  }> | null;
+
   /** SPEC-074: la cifra de cada pestaña, en el período (salvo las que no lo usan). */
   tabCounts: Partial<Record<OrderFilter, number>>;
 
