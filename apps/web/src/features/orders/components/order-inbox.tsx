@@ -279,8 +279,10 @@ function getStatusTone(status: string): BadgeTone {
     case "OPEN":
       return "info";
 
+    // SPEC-077: enviado es el paso normal, no una alerta. El ámbar queda
+    // para cuando Máximo reporta un problema.
     case "SENT":
-      return "warning";
+      return "neutral";
 
     case "CLOSED":
       return "success";
@@ -326,13 +328,12 @@ function StatusBadge({
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
+      {/* Estado y avance de la entrega en una sola etiqueta (SPEC-077). */}
       <span className="ui-order-badge" data-tone={getStatusTone(order.status)}>
-        {order.statusLabel}
+        {order.sentSubstatusLabel
+          ? `${order.statusLabel} · ${order.sentSubstatusLabel}`
+          : order.statusLabel}
       </span>
-
-      {order.sentSubstatusLabel ? (
-        <span className="ui-order-badge">{order.sentSubstatusLabel}</span>
-      ) : null}
 
       {order.noStatusIncident ? (
         <span className="ui-order-badge" data-tone="danger">

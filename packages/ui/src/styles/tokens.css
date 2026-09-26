@@ -72,18 +72,25 @@
     --ui-duration-fast: 140ms;
   }
 
+  /*
+   * SPEC-077 (25/09/2026): noche con jerarquía. El texto baja de 16,3:1 a
+   * 14,5:1 (menos brillo en turnos largos); el secundario se separa del
+   * principal (1,5 → 1,75); fondo, tarjeta y panel elevado se distinguen sin
+   * depender solo del borde; y la fila de hover ya no es igual al panel
+   * elevado. El tenue cumple 4,5:1 incluso sobre los fondos de color.
+   */
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --ui-canvas: #0d1117;
-    --ui-surface: #141a23;
-    --ui-surface-raised: #1a2230;
-    --ui-surface-subtle: #1a2230;
+    --ui-canvas: #0a0e13;
+    --ui-surface: #151b24;
+    --ui-surface-raised: #1d2531;
+    --ui-surface-subtle: #1a212c;
     --ui-surface-strong: #222c3b;
-    --ui-text: #f5f7fb;
-    --ui-text-muted: #c5ccda;
-    --ui-text-soft: #98a2b3;
-    --ui-border: #293445;
-    --ui-border-strong: #3a485e;
+    --ui-text: #e7ebf1;
+    --ui-text-muted: #aab4c3;
+    --ui-text-soft: #939eb0;
+    --ui-border: #2e394a;
+    --ui-border-strong: #42506a;
     --ui-accent: #7aa2ff;
     --ui-accent-soft: #1b2d55;
     --ui-danger: #ff9299;
