@@ -11,6 +11,7 @@ import { Surface } from "@repo/ui/surface";
 
 import { BulkCloseBar } from "./bulk-close-bar";
 import { OrderNextStep } from "./order-next-step";
+import { SaleOriginPicker, saleOriginLabels } from "./sale-origin-picker";
 import { OrderStatusForm } from "./order-status-form";
 import { OrderCancellationRequestPanel } from "./order-cancellation-request-panel";
 import { OrderAssignmentResolution } from "./order-assignment-resolution";
@@ -649,6 +650,10 @@ function OrderDetails({
             value={order.serviceNumber}
           />
         </p>
+
+        <div className="mt-3">
+          <SaleOriginPicker key={order.saleOrigin ?? "sin"} order={order} />
+        </div>
       </div>
 
       {/* SPEC-073: lo que hay que hacer con la venta va antes de su ficha. */}
@@ -1081,6 +1086,7 @@ function DesktopOrderList({
               {[
                 order.orderCode,
                 getOperatorLabel(order),
+                order.saleOrigin ? saleOriginLabels[order.saleOrigin] : null,
                 showAdvisorColumn
                   ? order.agentName || "Sin asesor"
                   : null,

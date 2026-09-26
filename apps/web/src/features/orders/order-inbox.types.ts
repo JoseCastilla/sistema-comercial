@@ -107,6 +107,9 @@ export interface OrderInboxItem {
   noStatusIncident: boolean;
 
   deliveryObservation: string | null;
+  /** SPEC-083: de dónde salió la venta. */
+  saleOrigin: "BASE" | "CAMPAIGN" | "OTHER" | null;
+  canSetSaleOrigin: boolean;
   /**
    * SPEC-075: lo que manda Máximo, tal cual. Sin traducir el estado ni el
    * motivo y sin una acción calculada por nosotros: cada campo que llega con

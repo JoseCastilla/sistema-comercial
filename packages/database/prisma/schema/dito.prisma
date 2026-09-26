@@ -58,6 +58,13 @@ enum DeliveryStatus {
   CANCELLED
 }
 
+/// SPEC-083: de dónde salió la venta. Antes el equipo lo escribía en la nota.
+enum SaleOrigin {
+  BASE
+  CAMPAIGN
+  OTHER
+}
+
 enum DitoOrderLinkAction {
   LINKED
   UNLINKED
@@ -201,6 +208,10 @@ model DitoOrder {
   deliveryFailureReason String? @map("delivery_failure_reason") @db.VarChar(150)
   deliveryObservation   String? @map("delivery_observation") @db.Text
 
+  saleOrigin            SaleOrigin? @map("sale_origin")
+  saleOriginSetAt       DateTime?   @map("sale_origin_set_at") @db.Timestamptz(3)
+  saleOriginSetByUserId String?     @map("sale_origin_set_by_user_id") @db.Uuid
+
   commercialServiceId String? @map("commercial_service_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -215,6 +226,8 @@ model DitoOrder {
   approvalUpdatedBy User? @relation("DitoOrderApprovalUpdatedBy", fields: [approvalUpdatedByUserId], references: [id], onDelete: SetNull)
 
   closedBy User? @relation("DitoOrderClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict)
+
+  saleOriginSetBy User? @relation("DitoOrderSaleOriginSetBy", fields: [saleOriginSetByUserId], references: [id], onDelete: Restrict)
 
   commercialService CommercialService? @relation(fields: [commercialServiceId], references: [id], onDelete: SetNull)
 

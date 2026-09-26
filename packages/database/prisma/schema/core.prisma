@@ -131,6 +131,7 @@ model User {
   ditoOrdersAsAgent         DitoOrder[]            @relation("DitoOrderAgent")
   ditoOrdersApprovalUpdated DitoOrder[]            @relation("DitoOrderApprovalUpdatedBy")
   ditoOrdersClosed          DitoOrder[]            @relation("DitoOrderClosedBy")
+  ditoOrdersSaleOriginSet   DitoOrder[]            @relation("DitoOrderSaleOriginSetBy")
   ditoOrderLinksPerformed   DitoOrderLinkHistory[] @relation("DitoOrderLinkPerformedBy")
 
   ditoOrderStatusChanges           DitoOrderStatusHistory[]       @relation("DitoOrderStatusChangedBy")

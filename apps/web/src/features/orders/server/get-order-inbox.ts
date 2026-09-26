@@ -136,6 +136,7 @@ const orderSelect = {
   parseStatus: true,
   deliveryStatus: true,
   deliveryObservation: true,
+  saleOrigin: true,
   status: true,
   sentSubstatus: true,
   statusUpdatedAt: true,
@@ -1542,6 +1543,10 @@ export async function getOrderInbox(
 
       noStatusIncident,
       deliveryObservation: order.deliveryObservation,
+      saleOrigin: order.saleOrigin,
+      // SPEC-083: el origen se puede anotar en cualquier estado: es un dato de
+      // la venta, no del seguimiento.
+      canSetSaleOrigin: visibility === "FULL",
       agrDelivery: order.agrDeliverySnapshot
         ? {
             opportunity: order.agrDeliverySnapshot.isRecoveryOpportunity,

@@ -26,6 +26,9 @@ vi.mock("@/features/orders/components/order-realtime-status", () => ({
 vi.mock("@/features/orders/components/order-scope-filters", () => ({
   OrderScopeFilters: () => null,
 }));
+vi.mock("@/features/orders/server/set-sale-origin-action", () => ({
+  setSaleOriginAction: vi.fn(),
+}));
 vi.mock("@/features/orders/server/close-orders-action", () => ({
   closeOrdersAction: vi.fn(),
 }));
@@ -88,6 +91,8 @@ function pedido(extra: Partial<OrderInboxItem> = {}): OrderInboxItem {
     statusAgeLabel: "4 h",
     noStatusIncident: false,
     deliveryObservation: null,
+    saleOrigin: "BASE",
+    canSetSaleOrigin: true,
     agrDelivery: {
       opportunity: true,
       stale: false,
@@ -289,9 +294,9 @@ describe("Hoja de pedidos", () => {
       screen.getAllByText("Máximo: CLIENTE AUSENTE")[0],
     ).toBeInTheDocument();
     // Lo cerrado va plegado.
-    expect(screen.queryByText("A3 · Claro")).toBeNull();
+    expect(screen.queryByText("A3 · Claro · Base")).toBeNull();
     fireEvent.click(screen.getAllByRole("button", { name: "Ver" })[0]!);
-    expect(screen.getAllByText("A3 · Claro")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("A3 · Claro · Base")[0]).toBeInTheDocument();
   });
 
   it("supervisión ve una fila por asesor y cada cifra abre su lista", () => {
@@ -386,7 +391,7 @@ describe("Hoja de pedidos", () => {
     render(<OrderInbox data={datos()} />);
 
     expect(
-      screen.getByText("1966211921A · Claro · Asesor Uno"),
+      screen.getByText("1966211921A · Claro · Base · Asesor Uno"),
     ).toBeInTheDocument();
   });
 
