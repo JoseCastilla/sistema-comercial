@@ -1,6 +1,6 @@
 # SPEC-084 — Revisión de la lógica de Pedidos
 
-**Estado:** `ENTREGADA` — José: «analiza la lógica de trabajo, corrige en caso sea necesario» (26/09/2026)
+**Estado:** `VERIFICADA` — José: «analiza la lógica de trabajo, corrige en caso sea necesario» (26/09/2026)
 
 **Versión:** 0.1
 **Fecha:** 2026-09-26
