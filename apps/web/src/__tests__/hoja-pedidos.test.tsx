@@ -1,0 +1,275 @@
+import { render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+import { OrderInbox } from "@/features/orders/components/order-inbox";
+
+import type {
+  OrderInboxData,
+  OrderInboxItem,
+} from "@/features/orders/order-inbox.types";
+
+/**
+ * SPEC-073: la hoja de pedidos. Arriba una línea de cifras y otra de «por
+ * atender»; en el panel, lo que hay que hacer antes de la ficha de la venta.
+ */
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+vi.mock("next/form", () => ({
+  default: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <form className={className}>{children}</form>
+  ),
+}));
+vi.mock("@/features/orders/components/order-realtime-status", () => ({
+  OrderRealtimeStatus: () => null,
+}));
+vi.mock("@/features/orders/components/order-scope-filters", () => ({
+  OrderScopeFilters: () => null,
+}));
+vi.mock("@/features/orders/components/order-status-form", () => ({
+  OrderStatusForm: () => <p>Formulario de estado</p>,
+}));
+vi.mock("@/features/orders/components/order-escalation-panel", () => ({
+  OrderEscalationPanel: () => null,
+}));
+vi.mock("@/features/orders/components/send-order-to-recovery-panel", () => ({
+  SendOrderToRecoveryPanel: () => null,
+}));
+vi.mock("@/features/orders/components/order-correction-form", () => ({
+  OrderCorrectionForm: () => null,
+}));
+vi.mock("@/features/orders/components/order-assignment-resolution", () => ({
+  OrderAssignmentResolution: () => null,
+}));
+vi.mock("@/features/orders/components/order-cancellation-request-panel", () => ({
+  OrderCancellationRequestPanel: () => null,
+}));
+
+function pedido(extra: Partial<OrderInboxItem> = {}): OrderInboxItem {
+  return {
+    id: "o-1",
+    orderCode: "1966211921A",
+    operation: "PORTABILIDAD",
+    commercialOperation: "PORT_POSTPAID",
+    carrier: "CLARO",
+    fixedCharge: "39.90",
+    holderName: "CLIENTE DE PRUEBA",
+    documentNumber: "40000001",
+    serviceNumber: "900000001",
+    salesCode: null,
+    billingCycleDay: null,
+    paymentDueDay: null,
+    deliveryMethod: "EXPRESS",
+    deliveryMethodLabel: "Express",
+    deliveryContactPhone: "900000001",
+    deliveryTimeRange: null,
+    deliveryAddress: null,
+    deliveryReference: null,
+    deliveryLatitude: null,
+    deliveryLongitude: null,
+    department: "LIMA",
+    province: "LIMA",
+    district: "SURCO",
+    locationLabel: "LIMA · LIMA · SURCO",
+    agentName: "Asesor Uno",
+    submitterEmail: null,
+    assignmentStatusLabel: "Asignado",
+    deliveryStatus: "",
+    status: "SENT",
+    statusLabel: "Enviado",
+    sentSubstatus: "NOT_DELIVERED",
+    sentSubstatusLabel: "No entregado",
+    statusAgeLabel: "4 h",
+    noStatusIncident: false,
+    deliveryObservation: null,
+    agrDelivery: {
+      status: "NO ENTREGADO",
+      actionKind: "RESCHEDULE",
+      actionLabel: "Contactar al cliente y reagendar la visita",
+      actionShortLabel: "Reagendar",
+      reason: "CLIENTE AUSENTE",
+      result: null,
+      nextAction: null,
+      commitmentDate: null,
+    },
+    registeredAtLabel: "25/09/2026, 14:27",
+    approvedAtLabel: "",
+    deliveryWindowLabel: "25/9 · 14:27–17:27",
+    slaState: "OVERDUE",
+    slaLabel: "Fuera de plazo",
+    slaDetail: null,
+    canUpdate: true,
+    canClose: false,
+    canCancelDirectly: false,
+    canRequestCancellation: false,
+    canReviewCancellation: false,
+    canEscalate: false,
+    canReviewEscalation: false,
+    incidentEscalation: null,
+    pendingCancellationRequest: null,
+    closedByName: null,
+    closedAtLabel: null,
+    canCorrect: false,
+    canSendToRecovery: false,
+    recoveryCase: null,
+    canResolveAssignment: false,
+    canClaimAssignment: false,
+    parseStatus: "PARSED",
+    updatedAt: "2026-09-25T19:27:00.000Z",
+    ...extra,
+  };
+}
+
+function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
+  return {
+    generatedAt: "25/09/2026, 20:51",
+    role: "SUPERVISOR",
+    period: "MONTH",
+    periodLabel: "Mes actual",
+    from: null,
+    to: null,
+    rangeMaxDate: "2026-09-25",
+    filter: "ALL",
+    search: "",
+    teamFilter: "ALL",
+    teamAllLabel: "Todos",
+    teamOptions: [],
+    advisorFilter: "ALL",
+    advisorOptions: [],
+    actionFilter: null,
+    dueFilter: null,
+    returnTo: null,
+    assignmentTeams: [],
+    showTeamFilter: false,
+    showAdvisorColumn: true,
+    filteredTotal: 1,
+    items: [pedido()],
+    pagination: { page: 1, pageSize: 50, totalPages: 1 },
+    pendingBeforeMonth: 6,
+    logisticsSummary: {
+      total: 175,
+      reschedule: 40,
+      contact: 100,
+      review: 35,
+      lastFetchedAtLabel: null,
+    },
+    totals: {
+      visible: 403,
+      incidents: 0,
+      escalations: 1,
+      logistics: 175,
+      notDelivered: 9,
+      recovery: 130,
+      delivered: 258,
+      overdue: 16,
+    },
+    ...extra,
+  };
+}
+
+describe("Hoja de pedidos", () => {
+  it("arriba, una línea de cifras y otra de lo que hay por atender", () => {
+    render(<OrderInbox data={datos()} />);
+
+    const resumen = screen.getByRole("region", { name: "Resumen de pedidos" });
+    expect(within(resumen).getByText(/Ventas · Mes actual/)).toHaveTextContent(
+      "Ventas · Mes actual 403",
+    );
+    expect(within(resumen).getByText(/Entregados/)).toHaveTextContent(
+      "Entregados 258",
+    );
+
+    expect(
+      within(resumen).getByRole("link", { name: "16 fuera de plazo" }),
+    ).toHaveAttribute("href", expect.stringContaining("plazo=vencido"));
+    expect(
+      within(resumen).getByRole("link", {
+        name: "1 escalada esperando al supervisor",
+      }),
+    ).toHaveAttribute("href", expect.stringContaining("status=ESCALATIONS"));
+    expect(
+      within(resumen).getByRole("link", {
+        name: "175 entregas fallidas por gestionar",
+      }),
+    ).toHaveAttribute("href", expect.stringContaining("status=LOGISTICS"));
+    expect(
+      within(resumen).getByRole("link", {
+        name: "130 pedidos por recuperar este mes",
+      }),
+    ).toHaveAttribute("href", expect.stringContaining("status=RECOVERY"));
+    expect(
+      within(resumen).getByRole("link", {
+        name: "6 pendientes de meses anteriores",
+      }),
+    ).toHaveAttribute("href", expect.stringContaining("period=HISTORY"));
+    // Lo que está en cero no ocupa lugar.
+    expect(within(resumen).queryByText(/sin avance/)).toBeNull();
+  });
+
+  it("sin subtítulo y con el mismo nombre que el menú", () => {
+    render(<OrderInbox data={datos()} />);
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Pedidos" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Revisa incidencias, recupera pedidos/),
+    ).toBeNull();
+  });
+
+  it("en Por recuperar, una frase dice qué son y dónde están los casos", () => {
+    render(
+      <OrderInbox
+        data={datos({ filter: "RECOVERY", filteredTotal: 130 })}
+      />,
+    );
+
+    const resumen = screen.getByRole("region", { name: "Resumen de pedidos" });
+    expect(resumen).toHaveTextContent(
+      "130 pedidos no entregados o cancelados que aún pueden volverse venta.",
+    );
+    expect(
+      within(resumen).getByRole("link", { name: "Recupero de ventas" }),
+    ).toHaveAttribute("href", "/recovery/sales");
+    expect(within(resumen).queryByText(/por recuperar este mes/)).toBeNull();
+  });
+
+  it("en Entregas fallidas, las cifras filtran por acción y marcan la elegida", () => {
+    render(
+      <OrderInbox
+        data={datos({ filter: "LOGISTICS", actionFilter: "coordinar" })}
+      />,
+    );
+
+    const resumen = screen.getByRole("region", { name: "Resumen de pedidos" });
+    expect(
+      within(resumen).getByRole("link", { name: /Visita por coordinar/ }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(resumen).queryByRole("link", { name: /fuera de plazo/ }),
+    ).toBeNull();
+  });
+
+  it("la fila trae, para cuando va en dos líneas, orden, operador y asesor", () => {
+    render(<OrderInbox data={datos()} />);
+
+    expect(
+      screen.getByText("1966211921A · Claro · Asesor Uno"),
+    ).toBeInTheDocument();
+  });
+
+  it("en el panel, lo que hay que hacer va antes de la ficha de la venta", () => {
+    const { container } = render(<OrderInbox data={datos()} />);
+
+    const panel = container.querySelector(".ui-order-detail-card");
+    expect(panel).not.toBeNull();
+    const texto = panel!.textContent ?? "";
+    const accion = texto.indexOf("Contactar al cliente y reagendar la visita");
+    const formulario = texto.indexOf("Formulario de estado");
+    const ficha = texto.indexOf("Tipo de entrega");
+
+    expect(accion).toBeGreaterThan(-1);
+    expect(accion).toBeLessThan(formulario);
+    expect(formulario).toBeLessThan(ficha);
+  });
+});

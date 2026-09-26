@@ -2137,6 +2137,7 @@
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-lg);
     background: var(--ui-surface);
+    container: order-list / inline-size;
   }
 
   .ui-order-grid__scroll {
@@ -2292,6 +2293,107 @@
   .ui-order-grid__row > span,
   .ui-order-grid__row > span > button {
     font-size: inherit;
+  }
+
+  /* Datos que solo se muestran cuando la fila pasa a dos líneas. */
+  .ui-order-grid__meta,
+  .ui-order-grid__inline-action {
+    display: none;
+  }
+
+  /*
+   * SPEC-073: cuando la lista no alcanza el ancho de la hoja (45,2rem, o
+   * 49,8rem con la columna Asesor), cada venta pasa a dos líneas en vez de
+   * cortarse con desplazamiento lateral: arriba quién es y su plazo; abajo en
+   * qué está y qué hay que hacer. Orden, DNI y teléfono siguen a un clic en
+   * el panel de gestión, que los copia.
+   */
+  @container order-list (width < 45.25rem) {
+    .ui-order-grid__header:not([data-show-advisor="true"]) {
+      display: none;
+    }
+
+    .ui-order-grid__row:not([data-show-advisor="true"]) {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "client sla"
+        "status status";
+      row-gap: 0.4rem;
+      min-width: 0;
+      padding-block: 0.6rem;
+    }
+
+    .ui-order-grid__row:not([data-show-advisor="true"]) > * {
+      display: none;
+    }
+
+    .ui-order-grid__row:not([data-show-advisor="true"]) > .ui-order-grid__client {
+      display: grid;
+      grid-area: client;
+    }
+
+    .ui-order-grid__row:not([data-show-advisor="true"]) > .ui-order-grid__status {
+      display: flex;
+      grid-area: status;
+    }
+
+    .ui-order-grid__row:not([data-show-advisor="true"]) > .ui-order-grid__sla {
+      display: block;
+      grid-area: sla;
+      align-self: start;
+    }
+
+    .ui-order-grid__row:not([data-show-advisor="true"]) .ui-order-grid__meta {
+      display: block;
+    }
+
+    .ui-order-grid__row:not([data-show-advisor="true"]) .ui-order-grid__inline-action {
+      display: inline-flex;
+    }
+  }
+
+  @container order-list (width < 49.85rem) {
+    .ui-order-grid__header[data-show-advisor="true"] {
+      display: none;
+    }
+
+    .ui-order-grid__row[data-show-advisor="true"] {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "client sla"
+        "status status";
+      row-gap: 0.4rem;
+      min-width: 0;
+      padding-block: 0.6rem;
+    }
+
+    .ui-order-grid__row[data-show-advisor="true"] > * {
+      display: none;
+    }
+
+    .ui-order-grid__row[data-show-advisor="true"] > .ui-order-grid__client {
+      display: grid;
+      grid-area: client;
+    }
+
+    .ui-order-grid__row[data-show-advisor="true"] > .ui-order-grid__status {
+      display: flex;
+      grid-area: status;
+    }
+
+    .ui-order-grid__row[data-show-advisor="true"] > .ui-order-grid__sla {
+      display: block;
+      grid-area: sla;
+      align-self: start;
+    }
+
+    .ui-order-grid__row[data-show-advisor="true"] .ui-order-grid__meta {
+      display: block;
+    }
+
+    .ui-order-grid__row[data-show-advisor="true"] .ui-order-grid__inline-action {
+      display: inline-flex;
+    }
   }
 
   .ui-order-workspace {

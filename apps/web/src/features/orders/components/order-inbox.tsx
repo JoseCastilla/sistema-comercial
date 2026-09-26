@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 
 import { formatCount } from "@repo/ui/format";
 import { EmptyState } from "@repo/ui/empty-state";
-import { Metric, MetricGroup } from "@repo/ui/metric";
 import { PageHeader } from "@repo/ui/page-header";
 import { Surface } from "@repo/ui/surface";
 
@@ -724,64 +723,10 @@ function OrderDetails({
             value={order.serviceNumber}
           />
         </p>
-
-        <dl className="ui-order-identity">
-          <div>
-            <dt>Operación</dt>
-            <dd>
-              {getOperationSummary(order)}
-              {order.fixedCharge
-                ? ` ${Number(order.fixedCharge).toFixed(2)}`
-                : ""}
-            </dd>
-          </div>
-
-          <div>
-            <dt>En este estado desde hace</dt>
-            <dd>{order.statusAgeLabel}</dd>
-          </div>
-
-          {showAdvisor ? (
-            <>
-              <div>
-                <dt>Agente</dt>
-                <dd>{order.agentName || "Sin asesor asignado"}</dd>
-              </div>
-
-              <div>
-                <dt>Ubicación</dt>
-                <dd>{order.locationLabel}</dd>
-              </div>
-            </>
-          ) : null}
-
-          <div>
-            <dt>Tipo de entrega</dt>
-            <dd>{order.deliveryMethodLabel}</dd>
-          </div>
-
-          <div>
-            <dt>Horario de entrega</dt>
-            <dd>
-              {order.slaState === "PENDING_SHIFT"
-                ? "Aún sin horario"
-                : order.deliveryWindowLabel}
-            </dd>
-          </div>
-
-          {showAdvisor ? (
-            <div>
-              <dt>Asignación</dt>
-              <dd>{order.assignmentStatusLabel}</dd>
-            </div>
-          ) : (
-            <div className="ui-order-identity__item--wide">
-              <dt>Ubicación</dt>
-              <dd>{order.locationLabel}</dd>
-            </div>
-          )}
-        </dl>
       </div>
+
+      {/* SPEC-073: lo que hay que hacer con la venta va antes de su ficha. */}
+      <AgrDeliveryPanel order={order} />
 
       {order.canResolveAssignment || order.canClaimAssignment ? (
         <OrderAssignmentResolution order={order} teams={assignmentTeams} />
@@ -795,8 +740,6 @@ function OrderDetails({
       ) : null}
 
       {order.incidentEscalation ? <OrderEscalationPanel order={order} /> : null}
-
-      <AgrDeliveryPanel order={order} />
 
       {order.canUpdate || showAdvisor ? (
         <section
@@ -837,6 +780,63 @@ function OrderDetails({
           ) : null}
         </section>
       ) : null}
+
+      <dl className="ui-order-identity">
+        <div>
+          <dt>Operación</dt>
+          <dd>
+            {getOperationSummary(order)}
+            {order.fixedCharge
+              ? ` ${Number(order.fixedCharge).toFixed(2)}`
+              : ""}
+          </dd>
+        </div>
+
+        <div>
+          <dt>En este estado desde hace</dt>
+          <dd>{order.statusAgeLabel}</dd>
+        </div>
+
+        {showAdvisor ? (
+          <>
+            <div>
+              <dt>Agente</dt>
+              <dd>{order.agentName || "Sin asesor asignado"}</dd>
+            </div>
+
+            <div>
+              <dt>Ubicación</dt>
+              <dd>{order.locationLabel}</dd>
+            </div>
+          </>
+        ) : null}
+
+        <div>
+          <dt>Tipo de entrega</dt>
+          <dd>{order.deliveryMethodLabel}</dd>
+        </div>
+
+        <div>
+          <dt>Horario de entrega</dt>
+          <dd>
+            {order.slaState === "PENDING_SHIFT"
+              ? "Aún sin horario"
+              : order.deliveryWindowLabel}
+          </dd>
+        </div>
+
+        {showAdvisor ? (
+          <div>
+            <dt>Asignación</dt>
+            <dd>{order.assignmentStatusLabel}</dd>
+          </div>
+        ) : (
+          <div className="ui-order-identity__item--wide">
+            <dt>Ubicación</dt>
+            <dd>{order.locationLabel}</dd>
+          </div>
+        )}
+      </dl>
 
       <details
         className="ui-order-disclosure"
@@ -1129,6 +1129,13 @@ function DesktopOrderList({
   onSelect: (orderId: string) => void;
   showAdvisorColumn: boolean;
 }) {
+  /*
+   * SPEC-073: la hoja es una línea por venta cuando cabe. Cuando la lista es
+   * angosta (laptop con el panel de gestión al lado), cada venta pasa a dos
+   * líneas —cliente y plazo; estado, acción y quién— en lugar de cortarse
+   * con desplazamiento lateral. Lo decide el ancho de la lista, no la
+   * pantalla: ver `@container order-list` en patterns.css.
+   */
   return (
     <div className="ui-order-grid">
       <div className="ui-order-grid__scroll">
@@ -1168,6 +1175,16 @@ function DesktopOrderList({
 
                 <span className="ui-order-grid__client">
                   <strong>{order.holderName}</strong>
+                  {/* Solo en dos líneas: lo que las columnas ocultas decían. */}
+                  <small className="ui-order-grid__meta">
+                    {[
+                      order.orderCode,
+                      getOperatorLabel(order),
+                      showAdvisorColumn ? order.agentName || "Sin asesor" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </small>
                 </span>
 
                 <InlineCopyValue label="DNI" value={order.documentNumber} />
@@ -1190,6 +1207,14 @@ function DesktopOrderList({
                     showAgr={false}
                     showEscalationAction={false}
                   />
+                  {order.agrDelivery ? (
+                    <span
+                      className="ui-order-badge ui-order-grid__inline-action"
+                      data-tone="warning"
+                    >
+                      {order.agrDelivery.actionShortLabel}
+                    </span>
+                  ) : null}
                 </span>
 
                 <span className="ui-order-grid__action">
@@ -1216,6 +1241,244 @@ function DesktopOrderList({
   );
 }
 
+type AttentionTone = "danger" | "warning" | "info";
+
+const attentionToneClass: Record<AttentionTone, string> = {
+  danger: "border-ui-danger-border bg-ui-danger-soft text-ui-danger",
+  warning: "border-ui-warning-border bg-ui-warning-soft text-ui-warning",
+  info: "border-ui-info-border bg-ui-info-soft text-ui-info",
+};
+
+type AttentionItem = {
+  key: string;
+  label: string;
+  href: string;
+  tone: AttentionTone;
+  current: boolean;
+};
+
+function plural(count: number, one: string, many: string): string {
+  return `${formatCount(count)} ${count === 1 ? one : many}`;
+}
+
+/**
+ * SPEC-073 BR-002: lo que pide acción, en una sola línea de enlaces que solo
+ * aparecen cuando hay algo. Antes eran una tarjeta roja y tres avisos
+ * apilados que empujaban la hoja a más de una pantalla de distancia.
+ */
+function attentionItems(data: OrderInboxData): AttentionItem[] {
+  const logistics = data.filter === "LOGISTICS";
+  const items: Array<AttentionItem | null> = [
+    data.totals.escalations > 0
+      ? {
+          key: "escalations",
+          label: plural(
+            data.totals.escalations,
+            "escalada esperando al supervisor",
+            "escaladas esperando al supervisor",
+          ),
+          href: ordersHref(data, { filter: "ESCALATIONS" }),
+          tone: "danger",
+          current: data.filter === "ESCALATIONS",
+        }
+      : null,
+    !logistics && data.totals.overdue > 0
+      ? {
+          key: "overdue",
+          label: plural(data.totals.overdue, "fuera de plazo", "fuera de plazo"),
+          href: ordersHref(data, { filter: "ACTIVE", due: "vencido" }),
+          tone: "danger",
+          current: data.filter === "ACTIVE" && data.dueFilter === "vencido",
+        }
+      : null,
+    !logistics && data.totals.incidents > 0
+      ? {
+          key: "incidents",
+          label: plural(
+            data.totals.incidents,
+            "sin avance hace más de 10 min",
+            "sin avance hace más de 10 min",
+          ),
+          href: ordersHref(data, { filter: "INCIDENTS" }),
+          tone: "danger",
+          current: data.filter === "INCIDENTS",
+        }
+      : null,
+    !logistics && data.totals.logistics > 0
+      ? {
+          key: "logistics",
+          label: plural(
+            data.totals.logistics,
+            "entrega fallida por gestionar",
+            "entregas fallidas por gestionar",
+          ),
+          href: ordersHref(data, { filter: "LOGISTICS", search: "" }),
+          tone: "warning",
+          current: false,
+        }
+      : null,
+    !logistics && data.totals.recovery > 0 && data.filter !== "RECOVERY"
+      ? {
+          key: "recovery",
+          label: plural(
+            data.totals.recovery,
+            "pedido por recuperar este mes",
+            "pedidos por recuperar este mes",
+          ),
+          href: ordersHref(data, {
+            period: "MONTH",
+            filter: "RECOVERY",
+            search: "",
+          }),
+          tone: "info",
+          current: false,
+        }
+      : null,
+    !logistics && data.pendingBeforeMonth > 0 && data.period !== "HISTORY"
+      ? {
+          key: "prior",
+          label: plural(
+            data.pendingBeforeMonth,
+            "pendiente de meses anteriores",
+            "pendientes de meses anteriores",
+          ),
+          href: ordersHref(data, { period: "HISTORY", filter: "ACTIVE" }),
+          tone: "warning",
+          current: false,
+        }
+      : null,
+  ];
+
+  return items.filter((item): item is AttentionItem => item !== null);
+}
+
+function SummaryFigure({
+  label,
+  value,
+  href,
+  current = false,
+}: {
+  label: string;
+  value: number;
+  href?: string;
+  current?: boolean;
+}) {
+  const content = (
+    <>
+      {label}{" "}
+      <strong className="text-base tabular-nums text-ui-text">
+        {formatCount(value)}
+      </strong>
+    </>
+  );
+
+  return href ? (
+    <Link
+      aria-current={current ? "page" : undefined}
+      className="underline-offset-2 hover:underline aria-[current=page]:font-semibold aria-[current=page]:text-ui-text"
+      href={href}
+    >
+      {content}
+    </Link>
+  ) : (
+    <span>{content}</span>
+  );
+}
+
+function OrderSummary({ data }: { data: OrderInboxData }) {
+  const attention = attentionItems(data);
+  const logistics = data.filter === "LOGISTICS";
+  const recoveryQueueCount =
+    data.filter === "RECOVERY" ? data.filteredTotal : data.totals.recovery;
+
+  return (
+    <section
+      aria-label="Resumen de pedidos"
+      className="rounded-lg border border-ui-border bg-ui-surface px-4 py-3 text-sm text-ui-muted"
+    >
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        {logistics ? (
+          <>
+            <SummaryFigure
+              current={!data.actionFilter}
+              href={ordersHref(data, { action: null })}
+              label="Por revisar"
+              value={data.logisticsSummary.total}
+            />
+            <SummaryFigure
+              current={data.actionFilter === "coordinar"}
+              href={ordersHref(data, { action: "coordinar" })}
+              label="Visita por coordinar"
+              value={data.logisticsSummary.reschedule}
+            />
+            <SummaryFigure
+              current={data.actionFilter === "contactar"}
+              href={ordersHref(data, { action: "contactar" })}
+              label="Contactar y validar"
+              value={data.logisticsSummary.contact}
+            />
+            <SummaryFigure
+              current={data.actionFilter === "reingresar"}
+              href={ordersHref(data, { action: "reingresar" })}
+              label="Por volver a ingresar"
+              value={data.logisticsSummary.review}
+            />
+          </>
+        ) : (
+          <>
+            <SummaryFigure
+              label={`Ventas · ${data.periodLabel}`}
+              value={data.totals.visible}
+            />
+            <SummaryFigure label="Entregados" value={data.totals.delivered} />
+            <SummaryFigure
+              label="No entregados"
+              value={data.totals.notDelivered}
+            />
+          </>
+        )}
+      </div>
+
+      {data.filter === "RECOVERY" ? (
+        <p className="mt-2 text-xs">
+          {plural(
+            recoveryQueueCount,
+            "pedido no entregado o cancelado",
+            "pedidos no entregados o cancelados",
+          )}{" "}
+          que aún pueden volverse venta. Los casos con responsable y
+          seguimiento están en{" "}
+          <Link className="text-ui-accent hover:underline" href="/recovery/sales">
+            Recupero de ventas
+          </Link>
+          .
+        </p>
+      ) : null}
+
+      {attention.length > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ui-border pt-3">
+          <span className="text-2xs font-semibold uppercase tracking-wide text-ui-soft">
+            Por atender
+          </span>
+          {attention.map((item) => (
+            <Link
+              aria-current={item.current ? "page" : undefined}
+              className={[
+                "rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-accent aria-[current=page]:ring-2 aria-[current=page]:ring-ui-accent",
+                attentionToneClass[item.tone],
+              ].join(" ")}
+              href={item.href}
+              key={item.key}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export function OrderInbox({ data }: { data: OrderInboxData }) {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(
@@ -1233,17 +1496,10 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
    * la primera de la lista, con el riesgo de actuar sobre la venta equivocada.
    */
   const selectionLeftView = selectedOrderId !== null && selectedOrder === null;
-  const recoveryQueueCount =
-    data.filter === "RECOVERY" ? data.filteredTotal : data.totals.recovery;
 
   return (
     <div className="ui-page-stack">
       <PageHeader
-        description={
-          data.filter === "LOGISTICS"
-            ? "Decide sobre las ventas que el operador logístico no pudo entregar."
-            : "Revisa incidencias, recupera pedidos y actualiza el avance comercial."
-        }
         eyebrow="Operación comercial"
         meta={
           <span className="flex flex-wrap items-center justify-end gap-2">
@@ -1256,193 +1512,12 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
             <span>Actualizado: {data.generatedAt}</span>
           </span>
         }
-        title="Seguimiento de órdenes"
+        title="Pedidos"
       />
 
       <PeriodNavigation data={data} />
 
-      {data.filter === "LOGISTICS" ? (
-        <MetricGroup>
-          <Metric
-            emphasis="hero"
-            href={
-              data.actionFilter ? ordersHref(data, { action: null }) : undefined
-            }
-            label="Casos por revisar"
-            tone={data.logisticsSummary.total > 0 ? "warning" : "neutral"}
-            value={data.logisticsSummary.total}
-          />
-          <Metric
-            href={ordersHref(data, { action: "coordinar" })}
-            label="Visita por coordinar"
-            value={data.logisticsSummary.reschedule}
-          />
-          <Metric
-            href={ordersHref(data, { action: "contactar" })}
-            label="Contactar y validar"
-            value={data.logisticsSummary.contact}
-          />
-          <Metric
-            href={ordersHref(data, { action: "reingresar" })}
-            label="Por volver a ingresar"
-            value={data.logisticsSummary.review}
-          />
-        </MetricGroup>
-      ) : (
-        /*
-         * Una sola fila, no tres: la venta del periodo encabeza y el resto es
-         * contexto. Los contadores que solo importan cuando exigen accion se
-         * ocultan en cero —antes seis de siete tarjetas mostraban 0 con el
-         * mismo peso visual que el dato accionable— y los que ya tienen un
-         * aviso con accion mas abajo no se repiten aca.
-         */
-        <MetricGroup>
-          <Metric
-            emphasis="hero"
-            label={`Ventas · ${data.periodLabel}`}
-            value={data.totals.visible}
-          />
-          <Metric
-            hint="Según nuestro registro"
-            label="Entregados"
-            value={data.totals.delivered}
-          />
-          <Metric
-            hint="Según nuestro registro"
-            label="No entregados"
-            value={data.totals.notDelivered}
-          />
-          <Metric
-            hideWhenZero
-            href={ordersHref(data, { filter: "ACTIVE", due: "vencido" })}
-            label="Fuera de plazo"
-            tone="danger"
-            value={data.totals.overdue}
-          />
-          <Metric
-            hideWhenZero
-            label="Incidencias"
-            tone="danger"
-            value={data.totals.incidents}
-          />
-          {/*
-           * Para ADMIN y SUPERVISOR el aviso de escalaciones de abajo ya lleva
-           * el numero y ademas el enlace a la bandeja; el asesor no ve ese
-           * aviso, asi que para el la tarjeta es su unica senal.
-           */}
-          {data.role === "ADMIN" || data.role === "SUPERVISOR" ? null : (
-            <Metric
-              hideWhenZero
-              label="Escaladas al supervisor"
-              tone="danger"
-              value={data.totals.escalations}
-            />
-          )}
-        </MetricGroup>
-      )}
-
-      {(data.role === "ADMIN" || data.role === "SUPERVISOR") &&
-      data.totals.escalations > 0 ? (
-        <Link
-          className="ui-inbox-alert"
-          data-tone="danger"
-          href={ordersHref(data, { filter: "ESCALATIONS" })}
-          role="status"
-        >
-          <span>
-            <strong>
-              {data.totals.escalations} incidencia(s) requieren atención
-            </strong>
-            <span className="ml-2">
-              Los asesores esperan respuesta del supervisor.
-            </span>
-          </span>
-          <span className="ui-inbox-alert__action">Ver bandeja →</span>
-        </Link>
-      ) : null}
-
-      {data.totals.logistics > 0 && data.filter !== "LOGISTICS" ? (
-        <Link
-          className="ui-inbox-alert"
-          data-tone="warning"
-          href={ordersHref(data, {
-            filter: "LOGISTICS",
-            search: "",
-          })}
-          role="status"
-        >
-          <span>
-            <strong>
-              {data.totals.logistics === 1
-                ? "1 entrega fallida por gestionar"
-                : `${data.totals.logistics} entregas fallidas por gestionar`}
-            </strong>
-            <span className="ml-2">
-              Hay pedidos para contactar, reagendar o revisar su cancelación.
-            </span>
-          </span>
-          <span className="ui-inbox-alert__action">Revisar →</span>
-        </Link>
-      ) : null}
-
-      {data.filter !== "LOGISTICS" &&
-      (recoveryQueueCount > 0 || data.filter === "RECOVERY") ? (
-        <div className="ui-recovery-queue" role="status">
-          <div className="ui-recovery-queue__count" aria-hidden="true">
-            {recoveryQueueCount}
-          </div>
-          <div className="ui-recovery-queue__content">
-            <p className="ui-recovery-queue__title">
-              {data.filter === "RECOVERY"
-                ? `${recoveryQueueCount} ${recoveryQueueCount === 1 ? "pedido" : "pedidos"} por recuperar · ${data.periodLabel}`
-                : data.totals.recovery === 1
-                  ? "Hay 1 pedido por recuperar este mes"
-                  : `Hay ${data.totals.recovery} pedidos por recuperar este mes`}
-            </p>
-            <p className="ui-recovery-queue__description">
-              Reúne pedidos no entregados y cancelados que todavía pueden
-              convertirse en una nueva venta. Son pedidos, no casos: los casos
-              de recupero abiertos, con su responsable y su cadencia, viven en{" "}
-              <Link href="/recovery/sales">Recupero de ventas</Link>.
-            </p>
-          </div>
-          {data.filter === "RECOVERY" ? (
-            <span className="ui-recovery-queue__current">Bandeja abierta</span>
-          ) : (
-            <Link
-              className="ui-recovery-queue__link"
-              href={ordersHref(data, {
-                period: "MONTH",
-                filter: "RECOVERY",
-                search: "",
-              })}
-            >
-              Revisar ahora
-            </Link>
-          )}
-        </div>
-      ) : null}
-
-      {data.filter !== "LOGISTICS" &&
-      data.pendingBeforeMonth > 0 &&
-      data.period !== "HISTORY" ? (
-        <div className="ui-prior-pending">
-          <div>
-            <p className="ui-prior-pending__title">
-              {data.pendingBeforeMonth} pendientes de meses anteriores
-            </p>
-            <p className="ui-prior-pending__description">
-              No se mezclan con las ventas del mes actual.
-            </p>
-          </div>
-          <Link
-            className="ui-prior-pending__link"
-            href={ordersHref(data, { period: "HISTORY", filter: "ACTIVE" })}
-          >
-            Revisar pendientes
-          </Link>
-        </div>
-      ) : null}
+      <OrderSummary data={data} />
 
       <Surface className="ui-filter-bar" raised>
         <Form action="/orders" className="lg:hidden">
@@ -1519,7 +1594,7 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
         />
 
         <p className="text-xs text-ui-muted md:basis-full">
-          {formatCount(data.items.length)} órdenes en esta página
+          {plural(data.items.length, "pedido", "pedidos")} en esta página
           {data.filteredTotal > data.pagination.pageSize
             ? ` de ${data.filteredTotal} encontradas`
             : ""}
