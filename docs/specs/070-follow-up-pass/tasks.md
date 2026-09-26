@@ -7,5 +7,5 @@
       desde» y «Más filtros» (`visibleExtras` en la barra compartida).
 - [x] Grupo 5: acción y formulario de devolver con confirmación
       (`devolver-casos-sin-tocar.test.tsx` 3 de 3). Web 267; validation 414.
-- [ ] Lectura en producción con la sesión de supervisora (sin devolver
-      casos reales: lo decide la supervisora).
+- [x] Lectura en producción con la sesión de supervisora, sin devolver
+      casos reales (25/09/2026).

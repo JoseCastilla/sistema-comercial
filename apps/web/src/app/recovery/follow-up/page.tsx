@@ -48,7 +48,8 @@ import { PageHeader } from "@repo/ui/page-header";
 import type { Prisma } from "@repo/database";
 
 const followUpRoles = new Set(["ADMIN", "BACKOFFICE", "SUPERVISOR"]);
-const pageSize = 100;
+// Con tarjetas, 100 por página eran 13 800 px; 30 caben en pocas pantallas.
+const pageSize = 30;
 
 function pick<T extends string>(
   value: string | undefined,
@@ -361,7 +362,7 @@ export default async function RecoveryFollowUpPage({
       alert: staleCount > 0,
     },
     {
-      label: `Con gestión · ${periodLabel}`,
+      label: `Con gestión ${periodLabel}`,
       value: workedInPeriod,
       href: href({ worked: "hoy" }),
       alert: false,

@@ -37,7 +37,7 @@ export function ReleaseStaleCasesForm({
   if (state.type !== "idle") {
     return (
       <p
-        className={`text-xs ${state.type === "error" ? "text-ui-danger" : "text-ui-success"}`}
+        className={`text-xs sm:col-span-2 ${state.type === "error" ? "text-ui-danger" : "text-ui-success"}`}
         role="status"
       >
         {state.message}
@@ -59,7 +59,11 @@ export function ReleaseStaleCasesForm({
   }
 
   return (
-    <form action={formAction} className="flex flex-wrap items-center gap-2">
+    // En su propia fila: la pregunta no aplasta la línea del asesor.
+    <form
+      action={formAction}
+      className="flex flex-wrap items-center gap-2 rounded-lg bg-ui-subtle p-3 sm:col-span-2"
+    >
       <input name="advisorId" type="hidden" value={advisorId} />
       <span className="text-xs text-ui-text">
         ¿Devolver {cases} de {advisorName} que llevan {recoveryStaleDays} días o
