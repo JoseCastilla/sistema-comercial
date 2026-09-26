@@ -1,6 +1,6 @@
 # SPEC-085 — Toda la información de Pedidos es del período elegido
 
-**Estado:** `ENTREGADA` — José, 26/09/2026: «que Entregas fallidas muestre la información del mes en curso. Al igual que toda la información, debe referirse al periodo actual. Si el asesor / supervisor / administrador quiere ver los datos de otro periodo, por ejemplo agosto, debe tener la opción».
+**Estado:** `VERIFICADA` — José, 26/09/2026: «que Entregas fallidas muestre la información del mes en curso. Al igual que toda la información, debe referirse al periodo actual. Si el asesor / supervisor / administrador quiere ver los datos de otro periodo, por ejemplo agosto, debe tener la opción».
 
 **Versión:** 0.1
 **Fecha:** 2026-09-26
