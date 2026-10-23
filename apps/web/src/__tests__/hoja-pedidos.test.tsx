@@ -93,6 +93,7 @@ function pedido(extra: Partial<OrderInboxItem> = {}): OrderInboxItem {
     deliveryObservation: null,
     saleOrigin: "BASE",
     canSetSaleOrigin: true,
+    missingFromMaximo: null,
     agrDelivery: {
       opportunity: true,
       stale: false,
@@ -151,6 +152,7 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
     advisorOptions: [],
     maximoFilter: null,
     dueFilter: null,
+    missingFilter: false,
     returnTo: null,
     assignmentTeams: [],
     showTeamFilter: false,
@@ -196,6 +198,7 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
       recovery: 130,
       delivered: 258,
       overdue: 16,
+      missingFromMaximo: 0,
     },
     ...extra,
   };
@@ -485,5 +488,48 @@ describe("Hoja de pedidos", () => {
     expect(accion).toBeGreaterThan(-1);
     expect(accion).toBeLessThan(formulario);
     expect(formulario).toBeLessThan(ficha);
+  });
+
+  it("SPEC-086: lo enviado que no está en Máximo se avisa arriba y en la venta", () => {
+    const base = datos();
+    render(
+      <OrderInbox
+        data={datos({
+          totals: { ...base.totals, missingFromMaximo: 2 },
+          items: [
+            pedido({
+              agrDelivery: null,
+              missingFromMaximo: {
+                sentAtLabel: "22/10/2026, 10:00",
+                firstMissingAtLabel: "23/10/2026, 08:00",
+                sourceImportedAtLabel: "23/10/2026, 06:37",
+              },
+            }),
+          ],
+        })}
+      />,
+    );
+
+    const franja = screen.getByText(/2 ventas enviadas no están en Máximo/);
+    expect(franja).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Verlas →" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("sinmaximo=1"),
+    );
+    expect(screen.getAllByText("No está en Máximo").length).toBeGreaterThan(0);
+    const aviso = screen.getByRole("region", { name: "No está en Máximo" });
+    expect(within(aviso).getByText("22/10/2026, 10:00")).toBeInTheDocument();
+    expect(within(aviso).getByText(/Repórtala a logística/)).toBeInTheDocument();
+  });
+
+  it("SPEC-086: sin ausentes no hay franja; con el filtro puesto, se puede quitar", () => {
+    const { unmount } = render(<OrderInbox data={datos()} />);
+    expect(screen.queryByText(/no están en Máximo/)).toBeNull();
+    unmount();
+
+    render(<OrderInbox data={datos({ missingFilter: true })} />);
+    expect(
+      screen.getByRole("link", { name: "Ver todas las ventas" }),
+    ).toHaveAttribute("href", expect.not.stringContaining("sinmaximo"));
   });
 });

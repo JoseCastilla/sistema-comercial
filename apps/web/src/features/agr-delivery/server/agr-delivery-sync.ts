@@ -13,41 +13,26 @@ import { database } from "@/server/database";
 import { resolveAgrScheduleKey } from "../schedule";
 
 import { AGR_SYNC_WINDOWS } from "../agr-delivery.types";
+import {
+  AGR_TERMINAL_STATES,
+  pickAgrConsultations,
+} from "../consultation";
+import { isSentOrderMissingFromMaximo } from "../missing-orders";
+import {
+  parseAgrOrderHistory,
+  readAgrSourceImportedAt,
+} from "../order-history";
+
+import type { AgrDeliveryRecord } from "../order-history";
 
 import type { AgrSyncWindow } from "../agr-delivery.types";
 
 import type { Prisma } from "@repo/database";
 
-const endpoint = "https://proveedores.cgc.alka.net.pe/api/records";
+const endpoint = "https://proveedores.cgc.alka.net.pe/api/order-history";
 const eligibleSince = new Date("2026-08-10T05:00:00.000Z");
-const terminalExternalStatuses = ["ENTREGADO", "CERRADO"];
 
-export interface AgrDeliveryRecord {
-  pedido: string | null;
-  order_id: string;
-  envio: string | null;
-  estado_pedido: string;
-  motivo_rechazo: string | null;
-  submotivo_rechazo: string | null;
-  fecha_entrega_pactada: string | null;
-  fecha_entrega_real: string | null;
-  fecha_toma_pedido: string | null;
-  tipo_delivery: string | null;
-  vendedor: string | null;
-  nombre_vendedor: string | null;
-  gestion_status: string | null;
-  resultado: string | null;
-  proxima_accion: string | null;
-  fecha_compromiso: string | null;
-  gestion_updated_at: string | null;
-  updated_by_name: string | null;
-  [key: string]: unknown;
-}
-
-interface AgrDeliveryResponse {
-  ok: true;
-  records: AgrDeliveryRecord[];
-}
+export type { AgrDeliveryRecord };
 
 export class AgrCredentialError extends Error {}
 
@@ -96,51 +81,16 @@ function decryptAgrSessionCookie(value: string): string {
   ]).toString("utf8");
 }
 
-function readString(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function parseRecord(value: unknown): AgrDeliveryRecord | null {
-  if (!value || typeof value !== "object") return null;
-  const raw = value as Record<string, unknown>;
-  const orderId = readString(raw.order_id);
-  const status = readString(raw.estado_pedido);
-  if (!orderId || !status) return null;
-  return {
-    ...raw,
-    pedido: readString(raw.pedido),
-    order_id: orderId,
-    envio: readString(raw.envio),
-    estado_pedido: status,
-    motivo_rechazo: readString(raw.motivo_rechazo),
-    submotivo_rechazo: readString(raw.submotivo_rechazo),
-    fecha_entrega_pactada: readString(raw.fecha_entrega_pactada),
-    fecha_entrega_real: readString(raw.fecha_entrega_real),
-    fecha_toma_pedido: readString(raw.fecha_toma_pedido),
-    tipo_delivery: readString(raw.tipo_delivery),
-    vendedor: readString(raw.vendedor),
-    nombre_vendedor: readString(raw.nombre_vendedor),
-    gestion_status: readString(raw.gestion_status),
-    resultado: readString(raw.resultado),
-    proxima_accion: readString(raw.proxima_accion),
-    fecha_compromiso: readString(raw.fecha_compromiso),
-    gestion_updated_at: readString(raw.gestion_updated_at),
-    updated_by_name: readString(raw.updated_by_name),
-  };
-}
-
 export async function fetchAgrDeliveryRecord(
   sessionCookie: string,
   orderCode: string,
-): Promise<AgrDeliveryRecord | null> {
+): Promise<{
+  record: AgrDeliveryRecord | null;
+  sourceImportedAt: Date | null;
+}> {
+  const normalized = orderCode.replace(/\D/g, "");
   const url = new URL(endpoint);
-  url.search = new URLSearchParams({
-    channel: "AGR",
-    page: "1",
-    pageSize: "50",
-    entity: "DISTRIBUIDOR ONLINE",
-    q: orderCode.replace(/\D/g, ""),
-  }).toString();
+  url.search = new URLSearchParams({ q: normalized }).toString();
   const response = await fetch(url, {
     headers: {
       accept: "application/json",
@@ -155,28 +105,21 @@ export async function fetchAgrDeliveryRecord(
   if (!response.ok)
     throw new Error(`La fuente logística respondió ${response.status}.`);
   const payload = (await response.json()) as unknown;
-  if (
-    !payload ||
-    typeof payload !== "object" ||
-    (payload as { ok?: unknown }).ok !== true
-  ) {
-    throw new Error("La fuente logística devolvió una respuesta inválida.");
+  const record = parseAgrOrderHistory(payload);
+  const sourceImportedAt = readAgrSourceImportedAt(payload);
+  // La fuente busca por coincidencia; nos quedamos solo con el pedido exacto.
+  if (record && record.order_id.replace(/\D/g, "") !== normalized) {
+    return { record: null, sourceImportedAt };
   }
-  const records = Array.isArray((payload as AgrDeliveryResponse).records)
-    ? (payload as AgrDeliveryResponse).records
-    : [];
-  const normalized = orderCode.replace(/\D/g, "");
-  return (
-    records
-      .map(parseRecord)
-      .find((record) => record?.order_id.replace(/\D/g, "") === normalized) ??
-    null
-  );
+  return { record, sourceImportedAt };
 }
+
+/** Entregada en Máximo: ya no hay nada que recuperar. */
+const deliveredExternalStatuses = ["ENTREGADO", "CERRADO"];
 
 export function isAgrRecoveryOpportunity(record: AgrDeliveryRecord): boolean {
   const status = record.estado_pedido.trim().toUpperCase();
-  if (terminalExternalStatuses.includes(status)) return false;
+  if (deliveredExternalStatuses.includes(status)) return false;
   return Boolean(
     record.motivo_rechazo ||
     record.submotivo_rechazo ||
@@ -242,44 +185,54 @@ export async function runAgrDeliverySync(input: {
           ),
         );
 
-  const candidates = await database.ditoOrder.findMany({
+  /*
+   * SPEC-087: la base descarta lo obvio (cerradas, entregadas y lo que
+   * Máximo ya terminó) y la regla pura decide el resto y el orden.
+   */
+  const pool = await database.ditoOrder.findMany({
     where: {
       organizationId: input.organizationId,
       registeredAt: { gte: registeredSince },
       status: { not: "CLOSED" },
       deliveryStatus: { not: "DELIVERED" },
-      AND: [
+      OR: [
+        { agrDeliverySnapshot: null },
         {
-          OR: [
-            { agrDeliverySnapshot: null },
-            {
-              agrDeliverySnapshot: {
-                is: { estadoPedido: { notIn: terminalExternalStatuses } },
-              },
-            },
-          ],
-        },
-        {
-          OR: [
-            { status: { not: "CANCELLED" } },
-            { agrDeliverySnapshot: null },
-            {
-              agrDeliverySnapshot: {
-                is: { motivoRechazo: null, submotivoRechazo: null },
-              },
-            },
-          ],
+          agrDeliverySnapshot: {
+            is: { estadoPedido: { notIn: [...AGR_TERMINAL_STATES] } },
+          },
         },
       ],
     },
-    orderBy: { registeredAt: "asc" },
-    take: 250,
     select: {
       id: true,
       orderCodeRaw: true,
-      agrDeliverySnapshot: { select: { id: true, sourceFingerprint: true } },
+      status: true,
+      deliveryStatus: true,
+      statusUpdatedAt: true,
+      registeredAt: true,
+      agrDeliverySnapshot: {
+        select: {
+          id: true,
+          sourceFingerprint: true,
+          estadoPedido: true,
+          motivoRechazo: true,
+          submotivoRechazo: true,
+          fetchedAt: true,
+        },
+      },
+      agrDeliveryMissing: { select: { lastCheckedAt: true } },
     },
   });
+  const now = new Date();
+  const candidates = pickAgrConsultations(
+    pool.map((order) => ({
+      ...order,
+      snapshot: order.agrDeliverySnapshot,
+      missing: order.agrDeliveryMissing,
+    })),
+    now,
+  );
 
   const counters = {
     consulted: 0,
@@ -289,6 +242,10 @@ export async function runAgrDeliverySync(input: {
     errors: 0,
   };
   const changedOrderIds: string[] = [];
+  // SPEC-086: lo que Máximo no tiene se escribe al final, cuando ya se sabe
+  // de qué importación son sus datos.
+  const missingOrders: typeof candidates = [];
+  let sourceImportedAt: Date | null = null;
   try {
     const sessionCookie = decryptAgrSessionCookie(
       integration.encryptedSessionCookie,
@@ -299,11 +256,21 @@ export async function runAgrDeliverySync(input: {
         batch.map(async (order) => {
           try {
             counters.consulted += 1;
-            const record = await fetchAgrDeliveryRecord(
+            const result = await fetchAgrDeliveryRecord(
               sessionCookie,
               order.orderCodeRaw,
             );
-            if (!record) return;
+            if (
+              result.sourceImportedAt &&
+              (!sourceImportedAt || result.sourceImportedAt > sourceImportedAt)
+            ) {
+              sourceImportedAt = result.sourceImportedAt;
+            }
+            const record = result.record;
+            if (!record) {
+              missingOrders.push(order);
+              return;
+            }
             counters.found += 1;
             const sourceFingerprint = fingerprint(record);
             const changed =
@@ -337,6 +304,9 @@ export async function runAgrDeliverySync(input: {
                     ...(changed ? { changedAt: fetchedAt } : {}),
                   },
                 });
+              await transaction.agrDeliveryMissingOrder.deleteMany({
+                where: { ditoOrderId: order.id },
+              });
               if (changed) {
                 await transaction.agrDeliveryOrderHistory.create({
                   data: {
@@ -360,6 +330,11 @@ export async function runAgrDeliverySync(input: {
         }),
       );
     }
+    await recordMissingOrders(
+      input.organizationId,
+      missingOrders,
+      sourceImportedAt,
+    );
     const completedAt = new Date();
     if (changedOrderIds.length > 0) {
       await database.ditoOrder.updateMany({
@@ -421,6 +396,58 @@ export async function runAgrDeliverySync(input: {
     ]);
     return { runId: run.id, error: message };
   }
+}
+
+/**
+ * SPEC-086: guarda las ventas que Máximo no tiene. Una enviada pasa a ser
+ * alerta cuando Máximo ya importó datos posteriores al envío; desde ese
+ * momento se conserva la hora de la alerta aunque la regla deje de cumplirse.
+ */
+async function recordMissingOrders(
+  organizationId: string,
+  orders: Array<{
+    id: string;
+    status: string;
+    statusUpdatedAt: Date | null;
+    registeredAt: Date;
+  }>,
+  sourceImportedAt: Date | null,
+): Promise<void> {
+  if (orders.length === 0) return;
+  const checkedAt = new Date();
+  const existing = await database.agrDeliveryMissingOrder.findMany({
+    where: { ditoOrderId: { in: orders.map((order) => order.id) } },
+    select: { ditoOrderId: true, alertedAt: true, sourceImportedAt: true },
+  });
+  const byOrder = new Map(existing.map((row) => [row.ditoOrderId, row]));
+  await database.$transaction(
+    orders.map((order) => {
+      const previous = byOrder.get(order.id);
+      const importedAt = sourceImportedAt ?? previous?.sourceImportedAt ?? null;
+      const alerted = isSentOrderMissingFromMaximo({
+        status: order.status,
+        sentAt: order.statusUpdatedAt ?? order.registeredAt,
+        sourceImportedAt: importedAt,
+      });
+      const alertedAt = previous?.alertedAt ?? (alerted ? checkedAt : null);
+      return database.agrDeliveryMissingOrder.upsert({
+        where: { ditoOrderId: order.id },
+        create: {
+          organizationId,
+          ditoOrderId: order.id,
+          firstMissingAt: checkedAt,
+          lastCheckedAt: checkedAt,
+          sourceImportedAt: importedAt,
+          alertedAt,
+        },
+        update: {
+          lastCheckedAt: checkedAt,
+          sourceImportedAt: importedAt,
+          alertedAt,
+        },
+      });
+    }),
+  );
 }
 
 function snapshotFields(record: AgrDeliveryRecord) {

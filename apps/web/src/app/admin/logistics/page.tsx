@@ -26,7 +26,8 @@ const syncStatusLabels: Record<string, string> = {
 
 export default async function LogisticsAdminPage() {
   const { membership } = await requireAdminAccess();
-  const [integration, opportunityCount, lastRun] = await Promise.all([
+  const [integration, opportunityCount, lastRun, missingOrders] =
+    await Promise.all([
     database.agrDeliveryIntegration.findUnique({
       where: { organizationId: membership.organization.id },
       select: {
@@ -62,6 +63,24 @@ export default async function LogisticsAdminPage() {
         completedAt: true,
       },
     }),
+    // SPEC-086: enviadas que Máximo no tiene, para reportarlas a logística.
+    database.ditoOrder.findMany({
+      where: {
+        organizationId: membership.organization.id,
+        status: "SENT",
+        agrDeliveryMissing: { is: { alertedAt: { not: null } } },
+      },
+      orderBy: [{ statusUpdatedAt: "asc" }, { registeredAt: "asc" }],
+      take: 200,
+      select: {
+        id: true,
+        orderCodeRaw: true,
+        agentNameRaw: true,
+        statusUpdatedAt: true,
+        registeredAt: true,
+        agrDeliveryMissing: { select: { firstMissingAt: true } },
+      },
+    }),
   ]);
   const format = (value: Date | null | undefined) =>
     value ? formatter.format(value) : "Aún no registrado";
@@ -84,7 +103,7 @@ export default async function LogisticsAdminPage() {
         <PageHeader
           eyebrow="Integraciones"
           title="Estado logístico Máximo"
-          description="Consulta únicamente ventas recuperables desde el 10/08. Las entregadas o cerradas ya no se vuelven a consultar."
+          description="Consulta las ventas desde el 10/08 hasta que Máximo las entrega, rechaza o cancela. Las canceladas, solo hasta saber el motivo; las abiertas que Máximo no tiene, solo tres días."
         />
         {/*
          * El estado del acceso y la fecha de la ultima sincronizacion no son
@@ -148,6 +167,13 @@ export default async function LogisticsAdminPage() {
             tone={opportunityCount > 0 ? "warning" : "neutral"}
             value={opportunityCount}
           />
+          <Metric
+            hint="Salieron como enviadas y Máximo no las tiene · abre Pedidos"
+            href="/orders?sinmaximo=1"
+            label="Enviadas que no están en Máximo"
+            tone={missingOrders.length > 0 ? "danger" : "neutral"}
+            value={missingOrders.length}
+          />
         </MetricGroup>
         {integration?.lastError ? (
           <div className="rounded-xl border border-ui-danger-border bg-ui-danger-soft p-4 text-sm text-ui-danger">
@@ -158,6 +184,41 @@ export default async function LogisticsAdminPage() {
               Detalle para soporte: {integration.lastError}
             </p>
           </div>
+        ) : null}
+        {missingOrders.length > 0 ? (
+          <SectionPanel
+            title="Para reportar a logística"
+            description="Ventas enviadas que Máximo no registró aunque ya importó datos posteriores al envío. Envía estos códigos a logística para que las tomen."
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-ui-muted">
+                  <tr>
+                    <th className="py-2 pr-4 font-medium">Código de pedido</th>
+                    <th className="py-2 pr-4 font-medium">Asesor</th>
+                    <th className="py-2 pr-4 font-medium">Enviada</th>
+                    <th className="py-2 font-medium">Sin aparecer desde</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missingOrders.map((order) => (
+                    <tr className="border-t border-ui-border" key={order.id}>
+                      <td className="py-2 pr-4 font-semibold tabular-nums text-ui-text">
+                        {order.orderCodeRaw}
+                      </td>
+                      <td className="py-2 pr-4">{order.agentNameRaw}</td>
+                      <td className="py-2 pr-4 tabular-nums">
+                        {format(order.statusUpdatedAt ?? order.registeredAt)}
+                      </td>
+                      <td className="py-2 tabular-nums">
+                        {format(order.agrDeliveryMissing?.firstMissingAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SectionPanel>
         ) : null}
         <div className="grid gap-5 lg:grid-cols-2">
           <SectionPanel

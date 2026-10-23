@@ -98,6 +98,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
       advisor,
       maximo: firstValue(parameters.maximo),
       due: firstValue(parameters.plazo),
+      missingFromMaximo: firstValue(parameters.sinmaximo) === "1",
     },
   );
 

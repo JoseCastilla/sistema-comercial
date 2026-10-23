@@ -6,6 +6,6 @@
 - [x] Pedidos: franja, filtro, insignia y aviso, con pruebas.
 - [x] Logística: cifra y lista para reportar.
 - [x] Paso 1 a producción: migración sola.
-- [ ] Paso 2 a producción: código.
+- [x] Paso 2 a producción: código.
 - [ ] Verificar en producción tras la primera sincronización con la clave
       nueva.

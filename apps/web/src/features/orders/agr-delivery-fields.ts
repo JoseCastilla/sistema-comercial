@@ -20,6 +20,10 @@ const agrDeliveryFieldLabels: ReadonlyArray<[string, string]> = [
   ["updated_by_name", "Actualizado por"],
   ["gestion_updated_at", "Gestión actualizada"],
   ["telefono_receptor", "Teléfono del receptor"],
+  ["ultimo_intento_fallido", "Último intento fallido"],
+  ["intentos_no_entregado", "Intentos sin entregar"],
+  ["recorrido", "Recorrido"],
+  ["ultima_actualizacion", "Última actualización"],
   ["pedido", "Pedido"],
   ["envio", "Envío"],
 ];
@@ -47,6 +51,14 @@ const agrDeliveryHiddenKeys = new Set([
   "provincia",
   "distrito",
   "tipo_delivery",
+  /*
+   * Del historial de Máximo (23/10/2026): los eventos ya se resumen en
+   * «Recorrido» y «Último intento fallido»; la opción de envío es el tipo de
+   * delivery con su franja y el almacén es un código interno del operador.
+   */
+  "historial",
+  "opcion_envio",
+  "almacen",
 ]);
 
 function humanizeAgrKey(key: string): string {
@@ -86,6 +98,8 @@ export function getAgrDeliveryFields(snapshot: {
     const value = readAgrValue(raw[key]);
     // El receptor solo aporta si no es el mismo teléfono del cliente.
     if (key === "telefono_receptor" && value === clientPhone) continue;
+    // Cero intentos fallidos no dice nada que el estado no diga ya.
+    if (key === "intentos_no_entregado" && value === "0") continue;
     if (value) fields.push({ key, label, value });
   }
   for (const key of Object.keys(raw).sort()) {

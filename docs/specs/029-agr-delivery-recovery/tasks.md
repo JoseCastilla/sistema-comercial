@@ -71,8 +71,9 @@
 
 ## Seguimiento posterior
 
-- [ ] Corregir el orden del recorrido para que las ventas recientes no queden
-      detrás de la cola de antiguas cuando las elegibles superen 250.
+- [x] Corregir el orden del recorrido para que las ventas recientes no queden
+      detrás de la cola de antiguas cuando las elegibles superen 250. Hecho
+      en SPEC-087 (23/10/2026).
 - [ ] Mover `isAgrRecoveryOpportunity` y `getAgrAction` a `@repo/validation` con
       cobertura automatizada.
 - [ ] Incorporar el cargo fijo a los campos esenciales de SPEC-006, para que una
@@ -83,3 +84,20 @@
 - [x] La consulta de pedidos pasa de `agr-delivery.afreddyp.workers.dev` a
       `proveedores.cgc.alka.net.pe`, misma ruta `/api/records`, mismos
       parámetros y misma cookie de sesión.
+
+## Consulta por historial — 23/10/2026
+
+- [x] La consulta de pedidos pasa de `/api/records`, en mantenimiento, a
+      `/api/order-history?q=<dígitos>`, que devuelve el pedido con su
+      historial de eventos.
+- [x] Estudio de 90 pedidos reales para fijar las reglas de lectura (§13 de
+      verificación).
+- [x] Adaptador puro `features/agr-delivery/order-history.ts`: ordena por
+      `seq`, toma estado y motivo del último evento y guarda el intento
+      fallido anterior, los intentos y el recorrido.
+- [x] Prueba `historial-maximo.test.ts` con datos ficticios de la forma real.
+- [ ] Cargar en `/admin/logistics` la clave de sesión vigente.
+- [ ] Confirmar en producción que la siguiente corrida termina en `Completada`
+      con pedidos encontrados.
+- [ ] Volver a `/api/records` o combinar ambas cuando salga de mantenimiento:
+      solo esa trae la gestión interna de Máximo y el vendedor.

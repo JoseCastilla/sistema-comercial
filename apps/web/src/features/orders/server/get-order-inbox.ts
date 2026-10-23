@@ -60,6 +60,8 @@ export interface OrderInboxQuery {
   maximo?: string;
   /** Tramo del plazo de entrega. */
   due?: string;
+  /** SPEC-086: solo las enviadas que no están en Máximo. */
+  missingFromMaximo?: boolean;
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat("es-PE", {
@@ -201,6 +203,9 @@ const orderSelect = {
       rawPayload: true,
       fetchedAt: true,
     },
+  },
+  agrDeliveryMissing: {
+    select: { firstMissingAt: true, sourceImportedAt: true, alertedAt: true },
   },
   recoveryCasesOriginated: {
     orderBy: { createdAt: "desc" as const },
@@ -734,7 +739,6 @@ type AgrActionKind =
   | "CONTACT"
   | "REENTER"
   | "MEETING_POINT"
-  | "VERIFY_TENURE"
   | "WAIT_PORTABILITY";
 
 /*
@@ -803,14 +807,16 @@ export function getAgrAction(input: {
   }
 
   /*
-   * Cliente de planta: la linea nacio en el cedente y su antiguedad no es
-   * consultable, hay que averiguarla con otra agencia.
+   * José, 23/10/2026: el cliente lleva menos de 30 días con su operador
+   * actual y no puede pasar a Movistar hasta cumplirlos. Es la misma espera
+   * que el tiempo mínimo de porta. Antes se leía como línea de planta.
    */
   if (/NO ESTUVO EN SERVICIO/.test(motivo)) {
     return {
-      kind: "VERIFY_TENURE",
-      label: "Verificar la antiguedad de la linea con otra agencia",
-      shortLabel: "Verificar",
+      kind: "WAIT_PORTABILITY",
+      label:
+        "Reingresar cuando el cliente cumpla 30 dias con su operador actual",
+      shortLabel: "Esperar",
     };
   }
 
@@ -1268,6 +1274,16 @@ export async function getOrderInbox(
   const maximoFilterWhere: Prisma.DitoOrderWhereInput = maximoFilter
     ? { agrDeliverySnapshot: { is: { estadoPedido: maximoFilter } } }
     : {};
+  /*
+   * SPEC-086: enviada en DITO y ausente en Máximo. Es una alerta de hoy, no
+   * del período: se cuenta y se lista en cualquier fecha para que ninguna
+   * quede escondida detrás del período elegido.
+   */
+  const missingFromMaximoWhere: Prisma.DitoOrderWhereInput = {
+    status: "SENT",
+    agrDeliveryMissing: { is: { alertedAt: { not: null } } },
+  };
+  const missingFilter = query.missingFromMaximo === true;
 
   const filteredWhere: Prisma.DitoOrderWhereInput = {
     organizationId,
@@ -1275,8 +1291,8 @@ export async function getOrderInbox(
       accessFilter,
       teamFilterWhere,
       advisorFilterWhere,
-      periodFilter,
-      getStatusFilter(query.filter, now, incidentThreshold),
+      missingFilter ? missingFromMaximoWhere : periodFilter,
+      missingFilter ? {} : getStatusFilter(query.filter, now, incidentThreshold),
       dueFilterWhere,
       maximoFilterWhere,
       access.role === "SUPERVISOR"
@@ -1307,6 +1323,7 @@ export async function getOrderInbox(
     awaitingActivationCount,
     doneCount,
     periodTotal,
+    missingFromMaximoCount,
   ] = await database.$transaction([
     database.ditoOrder.count({ where: summaryWhere }),
     database.ditoOrder.count({ where: filteredWhere }),
@@ -1372,6 +1389,17 @@ export async function getOrderInbox(
     database.ditoOrder.count({ where: tabWhere("AWAITING_ACTIVATION") }),
     database.ditoOrder.count({ where: tabWhere("DONE") }),
     database.ditoOrder.count({ where: tabWhere("ALL") }),
+    database.ditoOrder.count({
+      where: {
+        organizationId,
+        AND: [
+          accessFilter,
+          teamFilterWhere,
+          advisorFilterWhere,
+          missingFromMaximoWhere,
+        ],
+      },
+    }),
   ]);
 
   const logisticsByState = new Map<string, number>();
@@ -1596,6 +1624,20 @@ export async function getOrderInbox(
             fetchedAtLabel: formatDateTime(order.agrDeliverySnapshot.fetchedAt),
           }
         : null,
+      missingFromMaximo:
+        order.status === "SENT" && order.agrDeliveryMissing?.alertedAt
+          ? {
+              sentAtLabel: formatDateTime(
+                order.statusUpdatedAt ?? order.registeredAt,
+              ),
+              firstMissingAtLabel: formatDateTime(
+                order.agrDeliveryMissing.firstMissingAt,
+              ),
+              sourceImportedAtLabel: order.agrDeliveryMissing.sourceImportedAt
+                ? formatDateTime(order.agrDeliveryMissing.sourceImportedAt)
+                : null,
+            }
+          : null,
 
       registeredAtLabel: formatDateTime(order.registeredAt),
 
@@ -1786,6 +1828,7 @@ export async function getOrderInbox(
     advisorOptions,
     maximoFilter,
     dueFilter,
+    missingFilter,
     assignmentTeams,
     showTeamFilter:
       access.role !== "AGENT" &&
@@ -1846,6 +1889,7 @@ export async function getOrderInbox(
       recovery: recoveryCount,
       delivered: deliveredCount,
       overdue: overdueCount,
+      missingFromMaximo: missingFromMaximoCount,
     },
   };
 }
