@@ -130,8 +130,12 @@ segunda fuente de verdad del estado comercial.
   insuficiente pero se resuelven distinto. `NO TRANSCURRIO EL TIEMPO MINIMO DE
   PORTA` corresponde a una línea que ya portó antes, cuya fecha se valida en
   `consulta.portabilidad.pe`. `TELEFONO NO ESTUVO EN SERVICIO` corresponde a un
-  cliente de planta, cuya línea nació en el operador cedente y cuya antigüedad
-  no es consultable.
+  cliente con menos de 30 días en su operador actual: no puede pasar a
+  Movistar hasta cumplirlos.
+
+  *Corregido el 23/10/2026 por José.* Antes decía que era un cliente de planta
+  cuya antigüedad no se podía consultar, y la acción era verificar con otra
+  agencia. Ahora es la misma espera que el tiempo mínimo de porta.
 
 - **BR-022:** solo la deuda vencida impide portar. Un rechazo por deuda suele
   originarse en una verificación incompleta del asesor, pero también ocurre

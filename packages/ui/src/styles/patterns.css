@@ -2789,6 +2789,16 @@
     color: var(--ui-text-muted);
   }
 
+  /* SPEC-086: algo que hay que reportar fuera del sistema, no un dato. */
+  .ui-order-notice[data-tone="danger"] {
+    border-color: var(--ui-danger-border);
+    background: var(--ui-danger-soft);
+  }
+
+  .ui-order-notice[data-tone="danger"] .ui-order-notice__source {
+    color: var(--ui-danger);
+  }
+
   /*
    * Ficha de datos de la tarjeta de gestion. Dos columnas fijas, sin consultas
    * de viewport: la tarjeta mide 400px en cualquier pantalla y solo existe en

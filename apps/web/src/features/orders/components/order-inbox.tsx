@@ -96,6 +96,8 @@ function ordersHref(
     range?: { from: string; to: string };
     maximo?: string | null;
     due?: OrderDueFilter | null;
+    /** SPEC-086: solo las enviadas que no están en Máximo. */
+    missing?: boolean;
     page?: number;
   } = {},
 ): string {
@@ -132,6 +134,10 @@ function ordersHref(
         ? data.dueFilter
         : overrides.due
       : null;
+  // SPEC-086: la lista de ausentes en Máximo se queda mientras no se cambie
+  // de vista; al elegir otra pestaña se suelta.
+  const missing =
+    overrides.missing ?? (overrides.filter === undefined && data.missingFilter);
   const page = overrides.page ?? 1;
   const parameters = new URLSearchParams({ period });
   if (overrides.range) {
@@ -148,6 +154,7 @@ function ordersHref(
   if (advisor !== "ALL") parameters.set("advisor", advisor);
   if (maximo) parameters.set("maximo", maximo);
   if (due) parameters.set("plazo", due);
+  if (missing) parameters.set("sinmaximo", "1");
   if (data.returnTo) parameters.set("volver", data.returnTo);
   if (page > 1) parameters.set("page", String(page));
   return `/orders?${parameters.toString()}`;
@@ -338,6 +345,12 @@ function StatusBadge({
         </span>
       ) : null}
 
+      {order.missingFromMaximo ? (
+        <span className="ui-order-badge" data-tone="danger">
+          No está en Máximo
+        </span>
+      ) : null}
+
       {showAgr && order.agrDelivery && !order.agrDelivery.stale ? (
         <span
           className="ui-order-badge"
@@ -424,6 +437,44 @@ function DetailItem({
       <dt>{label}</dt>
       <dd>{value || "No registrado"}</dd>
     </div>
+  );
+}
+
+/**
+ * SPEC-086: la venta salió como enviada y Máximo no la tiene, aunque ya
+ * importó datos posteriores al envío. Por ahora se reporta a logística a mano.
+ */
+function MissingFromMaximoPanel({ order }: { order: OrderInboxItem }) {
+  const missing = order.missingFromMaximo;
+  if (!missing) return null;
+
+  return (
+    <section
+      aria-label="No está en Máximo"
+      className="ui-order-notice"
+      data-tone="danger"
+    >
+      <h4 className="ui-order-notice__headline">
+        <span className="ui-order-notice__source">Máximo</span>
+        {" · "}
+        No tiene esta venta
+      </h4>
+      <p className="mt-1 text-sm">
+        Salió como enviada y logística no la registró. Repórtala a logística
+        con el código de pedido para que la tomen.
+      </p>
+      <dl className="ui-order-notice__details">
+        <DetailItem label="Enviada" value={missing.sentAtLabel} />
+        <DetailItem
+          label="Sin aparecer desde"
+          value={missing.firstMissingAtLabel}
+        />
+        <DetailItem
+          label="Datos de Máximo al"
+          value={missing.sourceImportedAtLabel ?? ""}
+        />
+      </dl>
+    </section>
   );
 }
 
@@ -657,6 +708,7 @@ function OrderDetails({
       </div>
 
       {/* SPEC-073: lo que hay que hacer con la venta va antes de su ficha. */}
+      <MissingFromMaximoPanel order={order} />
       <AgrDeliveryPanel order={order} />
 
       {order.canResolveAssignment || order.canClaimAssignment ? (
@@ -1146,7 +1198,15 @@ function DesktopOrderList({
         <span className="ui-order-grid__action">
           {/* Cerrado o entregado: Máximo ya no se consulta y su último
               dato («AGENDADO») confundiría. */}
-          {order.agrDelivery && !order.agrDelivery.stale ? (
+          {order.missingFromMaximo ? (
+            <span
+              className="ui-order-badge"
+              data-tone="danger"
+              title="Enviada y Máximo no la tiene: repórtala a logística"
+            >
+              No está
+            </span>
+          ) : order.agrDelivery && !order.agrDelivery.stale ? (
             <span
               className="ui-order-badge"
               data-tone={
@@ -1374,6 +1434,12 @@ function emptyStateFor(data: OrderInboxData): {
   title: string;
   description: string;
 } {
+  if (data.missingFilter && !data.search) {
+    return {
+      title: "Todas las enviadas están en Máximo",
+      description: "No hay nada que reportar a logística.",
+    };
+  }
   if (data.search || data.dueFilter || data.maximoFilter) {
     return {
       title: "Sin coincidencias",
@@ -1571,6 +1637,53 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
   );
 }
 
+/**
+ * SPEC-086: lo que salió como enviado y Máximo no tiene, en cualquier fecha.
+ * Se ve en todas las vistas hasta que logística lo registre.
+ */
+function MissingFromMaximoBand({ data }: { data: OrderInboxData }) {
+  const count = data.totals.missingFromMaximo;
+  if (data.missingFilter) {
+    return (
+      <div className="ui-inbox-alert" data-tone="danger" role="status">
+        <span>
+          Solo enviadas que no están en Máximo, de cualquier fecha. Repórtalas
+          a logística con su código de pedido.
+        </span>
+        <Link
+          className="ui-inbox-alert__action hover:underline"
+          href={ordersHref(data, { missing: false })}
+        >
+          Ver todas las ventas
+        </Link>
+      </div>
+    );
+  }
+  if (count === 0) return null;
+
+  return (
+    <div className="ui-inbox-alert" data-tone="danger" role="status">
+      <span>
+        {count === 1
+          ? "1 venta enviada no está en Máximo: logística no la registró."
+          : `${formatCount(count)} ventas enviadas no están en Máximo: logística no las registró.`}{" "}
+        Hay que reportarlas.
+      </span>
+      <Link
+        className="ui-inbox-alert__action hover:underline"
+        href={ordersHref(data, {
+          filter: "ALL",
+          missing: true,
+          search: "",
+          due: null,
+        })}
+      >
+        {count === 1 ? "Verla →" : "Verlas →"}
+      </Link>
+    </div>
+  );
+}
+
 export function OrderInbox({ data }: { data: OrderInboxData }) {
   // SPEC-080: el asesor ve su mes en una sola lista agrupada, sin pestañas.
   const advisorSheet = data.role === "AGENT";
@@ -1690,6 +1803,8 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
       <PeriodNavigation data={data} />
 
       <OrderSummary data={data} />
+
+      <MissingFromMaximoBand data={data} />
 
       {advisorSheet ? null : <AdvisorSummary data={data} />}
 

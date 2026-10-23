@@ -11,7 +11,7 @@ Pedidos y no de un proceso programado independiente.
   └─ after() → maybeRunScheduledAgrDeliverySync(organizationId)
                  └─ runAgrDeliverySync
                       ├─ candidatos elegibles (DitoOrder)
-                      ├─ fetchAgrDeliveryRecord  ── AGR /api/records
+                      ├─ fetchAgrDeliveryRecord  ── AGR /api/order-history (mientras /api/records está en mantenimiento)
                       ├─ AgrDeliveryOrderSnapshot (upsert)
                       ├─ AgrDeliveryOrderHistory  (solo si cambió)
                       └─ AgrDeliverySyncRun       (contadores)

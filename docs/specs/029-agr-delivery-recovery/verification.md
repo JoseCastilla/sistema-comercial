@@ -297,3 +297,125 @@ cookie `__Host-cgagr_delivery_session` y la forma de la respuesta se mantienen.
   un pedido de prueba, y con la siguiente corrida de sincronización terminando
   en `Completada`. Si el nuevo dominio exige otro nombre de cookie, la
   validación fallará con "La sesión logística venció." y habrá que revisarlo.
+
+## 13. Consulta por historial de Máximo — 23/10/2026
+
+`/api/records` está en mantenimiento. José pidió usar mientras tanto
+`/api/order-history?q=<pedido>`, con el código sin la «A» final. Responde
+`{ok, found, order, events, freshness}`; sin pedido, `{ok:true, found:false}`.
+Sin la cookie de sesión responde 401.
+
+**Estudio de 90 pedidos reales**, consultados el 23/10/2026 con la clave de
+José:
+
+| Hallazgo | Pedidos |
+|---|---|
+| Encontrados | 84 |
+| `found: false` | 6 |
+| Resumen atrasado respecto de sus eventos | 23 |
+| Eventos fuera de orden de `seq` | 27 |
+| Huecos en `seq` | 0 |
+| `intentosNoEntregado` distinto del conteo de NO ENTREGADO | 0 |
+
+- **El resumen se atrasa.** `estadoActual`, `motivoFinal` y
+  `ultimaActualizacion` se quedan en un evento anterior: AGENDADO cuando ya
+  hubo ENTREGADO, NO ENTREGADO cuando ya hubo RECHAZADO o CANCELADO. Los 9
+  resúmenes que decían NO ENTREGADO estaban todos atrasados. **Manda el último
+  evento por `seq`.**
+- **Causa del atraso, aislada en los 23 casos.** La fuente elige como
+  resumen el evento de fecha mayor **comparando la fecha como texto**. «oct
+  22, 2026 8:55 a.m.» queda después de «oct 22, 2026 10:21 a.m.» porque "8"
+  es mayor que "1". La regla explica los 84 pedidos, los 61 consistentes y
+  los 23 inconsistentes, y el arreglo de eventos llega con ese mismo orden en
+  los 84. Pasa cuando el último evento tiene una hora de dos dígitos (10, 11
+  o 12) y uno anterior la tiene de un dígito.
+
+  | Resumen dice → último evento | Pedidos |
+  |---|---|
+  | ASIGNADO → AGENDADO | 8 |
+  | AGENDADO → ENTREGADO | 4 |
+  | NO ENTREGADO → CANCELADO | 4 |
+  | NO ENTREGADO → RECHAZADO | 3 |
+  | NO ENTREGADO → AGENDADO | 2 |
+  | ASIGNADO → ENTREGADO | 1 |
+  | ASIGNADO → CANCELADO | 1 |
+
+  Seis cambian además el motivo. Por ejemplo, 1978945485 dice «NO ENTREGADO ·
+  CLIENTE AUSENTE», que se reagendaría, cuando ya es «RECHAZADO · CLIENTE NO
+  DESEA NO RECUPERABLE», que está perdido. El atraso va de 0,9 a 12,6 horas.
+  `seq` nunca retrocede en la hora real y desempata los 83 pasos del mismo
+  minuto. El mismo error aparecerá entre días: «oct 9» queda después de
+  «oct 10». Conviene avisarlo al proveedor, porque su propia pantalla
+  probablemente muestra el resumen equivocado.
+- **Recorridos observados:** entrega directa (36), en ruta sin cierre (13),
+  NO ENTREGADO › PRECANCELADO › CANCELADO (10), reasignado y reagendado tras
+  una falla (8), reasignado y RECHAZADO (7), y entregas tras uno o dos
+  intentos fallidos (4).
+- **Solo las fallas traen motivo:** NO ENTREGADO, PRECANCELADO, CANCELADO y
+  RECHAZADO. CANCELADO repite el motivo del NO ENTREGADO previo; RECHAZADO
+  trae el suyo, por ejemplo «CLIENTE NO DESEA NO RECUPERABLE».
+- Ningún evento trajo comentario. `freshness` dice que la fuente es un CSV
+  importado: los datos son de esa importación, no de la hora de consulta.
+
+**Segunda tanda: 348 pedidos cruzados con su estado en DITO** (23/10/2026).
+José dio el estado de cada pedido: Cerrado es entregado, Cancelado se
+reingresa y Enviado aún puede reagendarse.
+
+| Estado DITO | Encontrados | Último evento en Máximo |
+|---|---|---|
+| Cerrado | 203 de 203 | ENTREGADO en los 203 |
+| Cancelado | 96 de 117 | RECHAZADO 49, CANCELADO 46, AGENDADO 1 |
+| Enviado | 23 de 25 | AGENDADO 21, ASIGNADO 2 |
+| Abierto | 0 de 3 | — |
+
+- **El último evento coincide con DITO en 322 de 322 encontrados**, salvo
+  1977805902: DITO lo da por cancelado y Máximo solo lo tiene agendado
+  para el 23/10, sin falla.
+- La regla del resumen por fecha como texto se repite en los 322, ahora con
+  eventos del 16 al 23/10: 72 resúmenes atrasados.
+- **Motivos de los cancelados:** portabilidad rechazada 28, cliente ausente
+  que excede 3 visitas 27, cliente que no desea 25, cliente no identificado
+  por huella 14, cliente que rechazó por CU 1. Portabilidad e
+  identificación terminan en PRECANCELADO › CANCELADO; cliente ausente y no
+  desea terminan en RECHAZADO tras una reasignación.
+- **Los enviados traen siempre `pedido`**, que es lo que el asesor necesita
+  para reagendar. 8 de 23 ya tuvieron un intento fallido.
+- **No están en el historial:** 21 cancelados, 2 enviados y los 3 abiertos.
+- **La secuencia no termina siempre en 5.** Cada visita fallida suma tres
+  eventos: NO ENTREGADO › ASIGNADO › AGENDADO. Entregado sin fallas termina
+  en 5, con una falla en 8 y con dos en 11.
+
+  | Secuencia final | Pedidos |
+  |---|---|
+  | 1 | 2 |
+  | 2 | 14 |
+  | 5 | 235 |
+  | 6 | 2 |
+  | 8 | 59 |
+  | 9 | 2 |
+  | 11 | 8 |
+
+**Cómo se guarda.** El registro plano de siempre, para que instantáneas,
+reglas de oportunidad, Pedidos, Mi día y Recupero no cambien:
+
+- estado, motivo y submotivo salen del último evento;
+- si el pedido se reagendó tras una falla, el estado actual no tiene motivo
+  y la falla queda en `ultimo_intento_fallido`;
+- se agregan `intentos_no_entregado`, `recorrido`, `ultima_actualizacion` y
+  el historial completo en `historial`;
+- la fecha de entrega real es la del evento ENTREGADO.
+
+Aplicado a los 84 encontrados: 43 ENTREGADO, 21 AGENDADO, 2 ASIGNADO,
+8 RECHAZADO y 10 CANCELADO, todos con su motivo, y 12 con un intento fallido
+anterior.
+
+**Qué se pierde mientras dure.** El historial no trae la gestión interna de
+Máximo, el vendedor, el número de envío ni los datos del cliente. Esas
+columnas quedan en null para las instantáneas nuevas y la ficha deja de
+mostrarlas. La regla de oportunidad por «Sin gestión» no puede dispararse;
+las de estado y motivo siguen igual.
+
+- Verificado: pruebas, lint y tipos en verde por `scripts/entregar.sh`; el
+  adaptador sobre las 90 respuestas reales.
+- No verificado aquí: una corrida completa contra producción, que necesita la
+  clave cargada en `/admin/logistics`.

@@ -127,6 +127,15 @@ export interface OrderInboxItem {
     fields: Array<{ key: string; label: string; value: string }>;
     fetchedAtLabel: string;
   } | null;
+  /**
+   * SPEC-086: enviada en DITO y Máximo no la tiene, aunque ya importó datos
+   * posteriores al envío. Se reporta a logística.
+   */
+  missingFromMaximo: {
+    sentAtLabel: string;
+    firstMissingAtLabel: string;
+    sourceImportedAtLabel: string | null;
+  } | null;
 
   registeredAtLabel: string;
   approvedAtLabel: string;
@@ -210,6 +219,8 @@ export interface OrderInboxData {
   /** Estado de Máximo tal como llega; solo en `LOGISTICS` (SPEC-075). */
   maximoFilter: string | null;
   dueFilter: OrderDueFilter | null;
+  /** SPEC-086: lista solo las enviadas que no están en Máximo. */
+  missingFilter: boolean;
   /** Ruta de Rendimiento desde la que se llegó, para volver con filtros. */
   returnTo?: string | null;
   assignmentTeams: OrderAssignmentTeamOption[];
@@ -270,5 +281,7 @@ export interface OrderInboxData {
     recovery: number;
     delivered: number;
     overdue: number;
+    /** SPEC-086: enviadas que no están en Máximo, en cualquier fecha. */
+    missingFromMaximo: number;
   };
 }
