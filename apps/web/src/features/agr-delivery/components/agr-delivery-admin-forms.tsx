@@ -46,7 +46,7 @@ export function AgrDeliveryCredentialForm() {
         />
       </label>
       <p className="text-xs text-ui-muted">
-        La clave se prueba contra una venta desde el 10/08 y se guarda cifrada.
+        La clave se prueba contra una venta de este mes y se guarda cifrada.
         Nunca se vuelve a mostrar.
       </p>
       <Feedback state={state} />
@@ -84,8 +84,7 @@ export function AgrDeliverySyncForm() {
       </label>
 
       <p className="text-xs text-ui-muted">
-        Acota por fecha de registro de la venta. El corte del 10/08 se respeta
-        siempre.
+        Acota por fecha de registro de la venta. Nunca sale del mes en curso.
       </p>
 
       <Feedback state={state} />

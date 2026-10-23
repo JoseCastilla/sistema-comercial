@@ -460,8 +460,8 @@ function MissingFromMaximoPanel({ order }: { order: OrderInboxItem }) {
         No tiene esta venta
       </h4>
       <p className="mt-1 text-sm">
-        Salió como enviada y logística no la registró. Repórtala a logística
-        con el código de pedido para que la tomen.
+        Salió como enviada y logística no la registró. Repórtala a logística con
+        el código de pedido para que la tomen.
       </p>
       <dl className="ui-order-notice__details">
         <DetailItem label="Enviada" value={missing.sentAtLabel} />
@@ -1147,18 +1147,14 @@ function DesktopOrderList({
                 order.orderCode,
                 getOperatorLabel(order),
                 order.saleOrigin ? saleOriginLabels[order.saleOrigin] : null,
-                showAdvisorColumn
-                  ? order.agentName || "Sin asesor"
-                  : null,
+                showAdvisorColumn ? order.agentName || "Sin asesor" : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
             </small>
             {/* SPEC-080: en la entrega fallida, por qué, según Máximo. */}
             {reason ? (
-              <small className="ui-order-grid__reason">
-                Máximo: {reason}
-              </small>
+              <small className="ui-order-grid__reason">Máximo: {reason}</small>
             ) : null}
           </span>
         </span>
@@ -1172,9 +1168,7 @@ function DesktopOrderList({
         </span>
 
         {showAdvisorColumn ? (
-          <span className="ui-order-grid__agent">
-            {order.agentName}
-          </span>
+          <span className="ui-order-grid__agent">{order.agentName}</span>
         ) : null}
 
         <span className="ui-order-grid__status">
@@ -1186,9 +1180,7 @@ function DesktopOrderList({
           {order.agrDelivery && !order.agrDelivery.stale ? (
             <span
               className="ui-order-badge ui-order-grid__inline-action"
-              data-tone={
-                order.agrDelivery.opportunity ? "warning" : undefined
-              }
+              data-tone={order.agrDelivery.opportunity ? "warning" : undefined}
             >
               Máximo: {order.agrDelivery.estadoPedido}
             </span>
@@ -1209,9 +1201,7 @@ function DesktopOrderList({
           ) : order.agrDelivery && !order.agrDelivery.stale ? (
             <span
               className="ui-order-badge"
-              data-tone={
-                order.agrDelivery.opportunity ? "warning" : undefined
-              }
+              data-tone={order.agrDelivery.opportunity ? "warning" : undefined}
               title={order.agrDelivery.estadoPedido}
             >
               {order.agrDelivery.estadoPedido}
@@ -1422,7 +1412,9 @@ function AdvisorSummary({ data }: { data: OrderInboxData }) {
           onClick={() => setShowAll((value) => !value)}
           type="button"
         >
-          {showAll ? "Ver menos" : `Ver los ${formatCount(rows.length)} asesores`}
+          {showAll
+            ? "Ver menos"
+            : `Ver los ${formatCount(rows.length)} asesores`}
         </button>
       ) : null}
     </section>
@@ -1450,14 +1442,24 @@ function emptyStateFor(data: OrderInboxData): {
     case "TO_MOVE":
       return {
         title: "Nada por entregar",
-        description: "Todo lo del período ya se entregó, se cerró o está en otra vista.",
+        description:
+          "Todo lo del período ya se entregó, se cerró o está en otra vista.",
       };
     case "LOGISTICS":
-      return { title: "Sin entregas fallidas", description: "Máximo no reporta ninguna." };
+      return {
+        title: "Sin entregas fallidas",
+        description: "Máximo no reporta ninguna.",
+      };
     case "AWAITING_ACTIVATION":
-      return { title: "Nada por activar", description: "Lo entregado ya se cerró." };
+      return {
+        title: "Nada por activar",
+        description: "Lo entregado ya se cerró.",
+      };
     case "ESCALATIONS":
-      return { title: "Nada escalado", description: "Supervisión no tiene casos pendientes." };
+      return {
+        title: "Nada escalado",
+        description: "Supervisión no tiene casos pendientes.",
+      };
     case "RECOVERY":
       return {
         title: "Nada por recuperar",
@@ -1467,7 +1469,10 @@ function emptyStateFor(data: OrderInboxData): {
       break;
   }
   if (data.teamFilter === "UNASSIGNED") {
-    return { title: "Todo está asignado", description: "No hay ventas sin asesor en el período." };
+    return {
+      title: "Todo está asignado",
+      description: "No hay ventas sin asesor en el período.",
+    };
   }
   return {
     title: "Sin ventas en el período",
@@ -1545,10 +1550,7 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
           </>
         ) : (
           <>
-            <SummaryFigure
-              label="Ventas"
-              value={data.totals.visible}
-            />
+            <SummaryFigure label="Ventas" value={data.totals.visible} />
             <SummaryFigure label="Entregados" value={data.totals.delivered} />
             <SummaryFigure
               label="No entregados"
@@ -1562,7 +1564,10 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
         <p className="mt-2 text-xs">
           Los no entregados y cancelados que aún pueden volverse venta se
           trabajan en{" "}
-          <Link className="text-ui-accent hover:underline" href="/recovery/sales">
+          <Link
+            className="text-ui-accent hover:underline"
+            href="/recovery/sales"
+          >
             Recupero de ventas
           </Link>
           .
@@ -1576,9 +1581,12 @@ function OrderSummary({ data }: { data: OrderInboxData }) {
             "pedido no entregado o cancelado",
             "pedidos no entregados o cancelados",
           )}{" "}
-          que aún pueden volverse venta. Los casos con responsable y
-          seguimiento están en{" "}
-          <Link className="text-ui-accent hover:underline" href="/recovery/sales">
+          que aún pueden volverse venta. Los casos con responsable y seguimiento
+          están en{" "}
+          <Link
+            className="text-ui-accent hover:underline"
+            href="/recovery/sales"
+          >
             Recupero de ventas
           </Link>
           .
@@ -1647,8 +1655,8 @@ function MissingFromMaximoBand({ data }: { data: OrderInboxData }) {
     return (
       <div className="ui-inbox-alert" data-tone="danger" role="status">
         <span>
-          Solo enviadas que no están en Máximo, de cualquier fecha. Repórtalas
-          a logística con su código de pedido.
+          Solo enviadas del mes que no están en Máximo. Repórtalas a logística
+          con su código de pedido.
         </span>
         <Link
           className="ui-inbox-alert__action hover:underline"
@@ -1665,8 +1673,8 @@ function MissingFromMaximoBand({ data }: { data: OrderInboxData }) {
     <div className="ui-inbox-alert" data-tone="danger" role="status">
       <span>
         {count === 1
-          ? "1 venta enviada no está en Máximo: logística no la registró."
-          : `${formatCount(count)} ventas enviadas no están en Máximo: logística no las registró.`}{" "}
+          ? "1 venta enviada este mes no está en Máximo: logística no la registró."
+          : `${formatCount(count)} ventas enviadas este mes no están en Máximo: logística no las registró.`}{" "}
         Hay que reportarlas.
       </span>
       <Link
@@ -1724,7 +1732,9 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
   // SPEC-079: en «Falta activar», marcar varios y cerrarlos de una vez.
   const closable =
-    data.filter === "AWAITING_ACTIVATION" ? data.items.filter(canBulkClose) : [];
+    data.filter === "AWAITING_ACTIVATION"
+      ? data.items.filter(canBulkClose)
+      : [];
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const visibleChecked = checkedIds.filter((id) =>
     closable.some((order) => order.id === id),
@@ -1810,77 +1820,77 @@ export function OrderInbox({ data }: { data: OrderInboxData }) {
 
       <Surface className="ui-filter-bar" raised>
         {advisorSheet ? null : (
-        <Form action="/orders" className="lg:hidden">
-          <input name="period" type="hidden" value={data.period} />
-          {data.from ? (
-            <input name="from" type="hidden" value={data.from} />
-          ) : null}
-          {data.to ? <input name="to" type="hidden" value={data.to} /> : null}
-          {data.search ? (
-            <input name="q" type="hidden" value={data.search} />
-          ) : null}
-          {data.teamFilter !== "ALL" ? (
-            <input name="team" type="hidden" value={data.teamFilter} />
-          ) : null}
-          {data.advisorFilter !== "ALL" ? (
-            <input name="advisor" type="hidden" value={data.advisorFilter} />
-          ) : null}
-          {data.dueFilter ? (
-            <input name="plazo" type="hidden" value={data.dueFilter} />
-          ) : null}
-          {data.returnTo ? (
-            <input name="volver" type="hidden" value={data.returnTo} />
-          ) : null}
-          <label className="min-w-0 flex-1">
-            <span className="sr-only">Filtrar pedidos</span>
-            <select
-              className="ui-filter-select"
-              defaultValue={data.filter}
-              name="status"
-              onChange={(event) => event.currentTarget.form?.requestSubmit()}
-            >
-              {visibleFilterOptions(data.filter).map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                  {data.tabCounts[option.value] !== undefined
-                    ? ` · ${formatCount(data.tabCounts[option.value] ?? 0)}`
-                    : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        </Form>
+          <Form action="/orders" className="lg:hidden">
+            <input name="period" type="hidden" value={data.period} />
+            {data.from ? (
+              <input name="from" type="hidden" value={data.from} />
+            ) : null}
+            {data.to ? <input name="to" type="hidden" value={data.to} /> : null}
+            {data.search ? (
+              <input name="q" type="hidden" value={data.search} />
+            ) : null}
+            {data.teamFilter !== "ALL" ? (
+              <input name="team" type="hidden" value={data.teamFilter} />
+            ) : null}
+            {data.advisorFilter !== "ALL" ? (
+              <input name="advisor" type="hidden" value={data.advisorFilter} />
+            ) : null}
+            {data.dueFilter ? (
+              <input name="plazo" type="hidden" value={data.dueFilter} />
+            ) : null}
+            {data.returnTo ? (
+              <input name="volver" type="hidden" value={data.returnTo} />
+            ) : null}
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">Filtrar pedidos</span>
+              <select
+                className="ui-filter-select"
+                defaultValue={data.filter}
+                name="status"
+                onChange={(event) => event.currentTarget.form?.requestSubmit()}
+              >
+                {visibleFilterOptions(data.filter).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                    {data.tabCounts[option.value] !== undefined
+                      ? ` · ${formatCount(data.tabCounts[option.value] ?? 0)}`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </Form>
         )}
 
         {advisorSheet ? null : (
-        <nav
-          aria-label="Estado de los pedidos"
-          className="ui-segmented-scroll hidden lg:block"
-        >
-          <div className="ui-segmented">
-            {visibleFilterOptions(data.filter).map((option) => {
-              const active = option.value === data.filter;
-              const count = data.tabCounts[option.value];
+          <nav
+            aria-label="Estado de los pedidos"
+            className="ui-segmented-scroll hidden lg:block"
+          >
+            <div className="ui-segmented">
+              {visibleFilterOptions(data.filter).map((option) => {
+                const active = option.value === data.filter;
+                const count = data.tabCounts[option.value];
 
-              return (
-                <Link
-                  aria-current={active ? "page" : undefined}
-                  className="ui-segmented__item"
-                  href={ordersHref(data, { filter: option.value })}
-                  key={option.value}
-                >
-                  {option.label}
-                  {count !== undefined ? " " : null}
-                  {count !== undefined ? (
-                    <span className="ml-1.5 text-xs text-ui-muted">
-                      {formatCount(count)}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
+                return (
+                  <Link
+                    aria-current={active ? "page" : undefined}
+                    className="ui-segmented__item"
+                    href={ordersHref(data, { filter: option.value })}
+                    key={option.value}
+                  >
+                    {option.label}
+                    {count !== undefined ? " " : null}
+                    {count !== undefined ? (
+                      <span className="ml-1.5 text-xs text-ui-muted">
+                        {formatCount(count)}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
         )}
 
         <OrderScopeFilters

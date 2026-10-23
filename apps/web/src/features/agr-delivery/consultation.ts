@@ -6,6 +6,17 @@
  * puede cambiar no debe ocupar esos lugares.
  */
 
+import { getOrderPeriodRange } from "@repo/validation";
+
+/**
+ * Inicio del mes en curso, en hora de Lima. José, 23/10/2026: la información
+ * de Máximo se centra en el mes en curso, que es además lo que cubre su
+ * historial; antes se consultaba todo desde el 10/08.
+ */
+export function getAgrEligibleSince(now = new Date()): Date {
+  return getOrderPeriodRange("MONTH", now).monthStart;
+}
+
 /** Estados de Máximo después de los cuales no hubo ningún evento (SPEC-029 §13). */
 export const AGR_TERMINAL_STATES = [
   "ENTREGADO",
@@ -76,7 +87,10 @@ export function needsAgrConsultation(
      * días; después, no.
      */
     const cancelledAt = order.statusUpdatedAt ?? order.registeredAt;
-    if (now.getTime() - cancelledAt.getTime() > AGR_CANCELLED_LOOKUP_DAYS * dayMs) {
+    if (
+      now.getTime() - cancelledAt.getTime() >
+      AGR_CANCELLED_LOOKUP_DAYS * dayMs
+    ) {
       return false;
     }
   }
@@ -88,9 +102,7 @@ export function needsAgrConsultation(
  * tiempo sin consultarse. Antes eran las 250 más antiguas por fecha de venta,
  * y lo atascado tapaba a lo nuevo.
  */
-export function lastAgrConsultationAt(
-  order: AgrConsultationCandidate,
-): number {
+export function lastAgrConsultationAt(order: AgrConsultationCandidate): number {
   const times = [order.snapshot?.fetchedAt, order.missing?.lastCheckedAt]
     .filter((value): value is Date => value instanceof Date)
     .map((value) => value.getTime());

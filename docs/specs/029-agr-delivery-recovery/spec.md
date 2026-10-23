@@ -78,6 +78,10 @@ segunda fuente de verdad del estado comercial.
   de rechazo; una vez obtenido, deja de consultarse.
 - **BR-011:** cada corrida consulta como máximo 250 candidatos, en lotes de 10
   solicitudes concurrentes, priorizando las ventas más antiguas.
+- **Corrección del 23/10/2026 (José):** el corte del 10/08 se reemplaza por
+  el inicio del mes en curso, en la consulta y en las cifras de Logística.
+  Ver SPEC-087 BR-006.
+
 - **BR-011b:** una sincronización manual admite acotar por fecha de registro de
   la venta: últimas 24 horas, 3 días, 7 días o todas las elegibles. La ventana
   nunca amplía el alcance; el corte del 10/08/2026 sigue siendo el límite

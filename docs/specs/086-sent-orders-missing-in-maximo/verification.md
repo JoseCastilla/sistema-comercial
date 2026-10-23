@@ -24,6 +24,23 @@
 - **23/10/2026, 12:30, sincronización manual con la segunda corrección:** 74
   consultadas de 74, 1 alerta: 1977220838, enviada el 19/10. Las 10 de
   septiembre ya no aparecen. AC-001 cumplido en producción.
+- **23/10/2026, cobertura del historial validada en producción.** Ventas
+  cerradas de cada día, consultadas una por segundo:
+
+  | Día de la venta | Encontradas |
+  |---|---|
+  | 26/09 | 0 de 4 |
+  | 29/09 | 0 de 4 |
+  | 30/09 | 0 de 6 |
+  | 01/10 | 4 de 4 |
+  | 03/10, 05/10, 07/10 | 12 de 12 |
+  | 08/10 al 17/10 | todas las consultadas |
+
+  El historial cubre el **mes en curso**, no los últimos 7 días. La cobertura
+  pasa a ser el inicio del mes de la importación.
+- **23/10/2026, 12:42 a 12:46:** Máximo respondió «no encontrado» para todo,
+  con la misma importación de las 06:37, y volvió solo. Desde ahora, una
+  corrida que no encuentra ninguna venta no registra ausencias ni alertas.
 - También en producción: la ficha de 1978945485 muestra «RECHAZADO · CLIENTE
   NO DESEA NO RECUPERABLE», con recorrido, intentos y pedido, aunque el
   resumen de la fuente seguía en NO ENTREGADO (SPEC-029 §13).
