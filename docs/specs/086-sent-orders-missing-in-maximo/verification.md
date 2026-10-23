@@ -46,6 +46,9 @@
   enviadas a las 10:13 y 10:43 de ese día que Máximo ya tenía a las 13:03,
   con la importación «HISTORIAL12PM» de las 12:49. La 1977220838 seguía
   sin aparecer. Se agregó BR-003: dos importaciones.
+- **23/10/2026, 13:14, sincronización manual con BR-003:** 65 consultadas,
+  11 oportunidades, 1 alerta: 1977220838. Las cuatro de ese día ya no
+  aparecen. Logística muestra 319 por gestionar, todas del mes.
 - También en producción: la ficha de 1978945485 muestra «RECHAZADO · CLIENTE
   NO DESEA NO RECUPERABLE», con recorrido, intentos y pedido, aunque el
   resumen de la fuente seguía en NO ENTREGADO (SPEC-029 §13).
