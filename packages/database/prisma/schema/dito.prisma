@@ -243,6 +243,7 @@ model DitoOrder {
   corrections                  DitoOrderCorrection[]
   importRows                   DitoImportRow[]
   agrDeliverySnapshot          AgrDeliveryOrderSnapshot?
+  agrDeliveryMissing           AgrDeliveryMissingOrder?
   recoveryCasesRecovered       RecoveryCase[]            @relation("RecoveryCaseRecoveredOrder")
   recoveryCasesOriginated      RecoveryCase[]            @relation("RecoveryCaseSourceOrder")
 

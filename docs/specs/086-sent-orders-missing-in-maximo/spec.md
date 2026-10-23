@@ -1,0 +1,57 @@
+# SPEC-086 — Ventas enviadas que no llegaron a Máximo
+
+**Estado:** `IMPLEMENTADA` — José, 23/10/2026: «las ventas enviadas y que no
+llegaron a Máximo deberían levantar una alerta; por ahora debe ser visual
+para reportar y escalar este caso con logística».
+
+**Versión:** 0.1
+**Fecha:** 2026-10-23
+
+## 1. Origen
+
+Al cruzar 348 pedidos con su estado en DITO (SPEC-029 §13), 2 de 25
+enviadas no aparecían en el historial de Máximo: 1977220838 y 1978410063.
+Una venta enviada que logística no registró no se entrega nunca, y nadie se
+entera porque la sincronización descartaba la respuesta `found: false`.
+
+Máximo no publica al instante. Su historial es un CSV importado cada cierto
+tiempo (`freshness.imported_at`). Una venta recién enviada puede no estar
+todavía sin que haya un problema.
+
+## 2. Reglas
+
+- **BR-001 — Qué es alerta.** Una venta en estado Enviado, consultada en
+  Máximo, que no aparece, cuando Máximo ya importó datos **al menos 2 horas
+  posteriores** al envío. La hora del envío es el último cambio de estado de
+  la venta.
+- **BR-002 — Se guarda lo que no aparece.** Cada consulta sin resultado deja
+  la venta registrada con la primera vez que faltó, la última consulta y la
+  hora de los datos de Máximo. En cuanto Máximo la registra, se borra.
+- **BR-003 — Una vez alerta, sigue siéndolo** mientras la venta esté enviada
+  y Máximo no la tenga, aunque después cambie la hora de importación.
+- **BR-004 — Se ve en la venta:** insignia «No está en Máximo» en la fila y,
+  en el panel, un aviso que dice que hay que reportarla a logística, con la
+  hora del envío, desde cuándo falta y de cuándo son los datos de Máximo.
+- **BR-005 — Se ve en Pedidos:** una franja con cuántas hay y un enlace que
+  lista solo esas (`sinmaximo=1`). La lista se suelta al cambiar de vista.
+- **BR-006 — Es de cualquier fecha.** La franja y su lista no usan el
+  período elegido. *Decisión que se aparta de SPEC-085 BR-001:* una venta
+  enviada ayer que falta en Máximo hay que reportarla hoy, y con «Hoy»
+  quedaría escondida. Si José prefiere el período, basta con agregarlo a la
+  cifra y a la lista.
+- **BR-007 — Lista para reportar en Logística:** código de pedido, asesor,
+  hora del envío y desde cuándo falta, con la cifra en la cabecera.
+- **BR-008 — Solo visual por ahora.** No se escala ni se notifica sola.
+
+## 3. Fuera de alcance
+
+- Escalar o notificar a logística desde el sistema.
+- Abiertas y canceladas que no aparecen: no son alerta.
+
+## 4. Criterios de aceptación
+
+- **AC-001:** una enviada ausente con datos de Máximo 2 horas posteriores al
+  envío muestra la insignia y el aviso; con datos anteriores, no.
+- **AC-002:** la franja cuenta lo mismo que abre su enlace.
+- **AC-003:** cuando Máximo registra la venta, la alerta desaparece en la
+  siguiente consulta.

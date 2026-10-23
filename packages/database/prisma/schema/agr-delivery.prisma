@@ -123,3 +123,28 @@ model AgrDeliveryOrderHistory {
   @@index([agrDeliveryOrderSnapshotId, observedAt], map: "agr_delivery_history_snapshot_observed_idx")
   @@map("agr_delivery_order_history")
 }
+
+/// SPEC-086: venta consultada en Máximo que no aparece en su historial. La fila
+/// vive mientras siga sin aparecer y se borra en cuanto Máximo la registra.
+model AgrDeliveryMissingOrder {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  ditoOrderId    String @unique @map("dito_order_id") @db.Uuid
+
+  /// Primera consulta en que Máximo respondió que no la tiene.
+  firstMissingAt DateTime @map("first_missing_at") @db.Timestamptz(3)
+  /// Última consulta en que seguía sin aparecer.
+  lastCheckedAt  DateTime @map("last_checked_at") @db.Timestamptz(3)
+  /// Hora de la importación más reciente de Máximo vista en esa consulta.
+  /// La venta solo es alerta si Máximo importó datos después de enviarse.
+  sourceImportedAt DateTime? @map("source_imported_at") @db.Timestamptz(3)
+  /// Desde cuándo es alerta: enviada en DITO y Máximo ya importó datos
+  /// posteriores al envío sin registrarla. Null mientras pueda estar en camino.
+  alertedAt        DateTime? @map("alerted_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ditoOrder    DitoOrder    @relation(fields: [ditoOrderId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, lastCheckedAt], map: "agr_delivery_missing_orders_org_checked_idx")
+  @@map("agr_delivery_missing_orders")
+}
