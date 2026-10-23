@@ -21,8 +21,12 @@
   (SPEC-087). Alertas: 0, y se apagó también la real. Causa: la cobertura
   salía de la toma más antigua devuelta, y sin lo terminado solo vuelve lo
   reciente. Se agregó el mínimo de 6 días desde la importación.
-- **Pendiente en producción, tras la segunda corrección:** que quede solo
-  1977220838 mientras siga enviada y fuera de Máximo.
+- **23/10/2026, 12:30, sincronización manual con la segunda corrección:** 74
+  consultadas de 74, 1 alerta: 1977220838, enviada el 19/10. Las 10 de
+  septiembre ya no aparecen. AC-001 cumplido en producción.
+- También en producción: la ficha de 1978945485 muestra «RECHAZADO · CLIENTE
+  NO DESEA NO RECUPERABLE», con recorrido, intentos y pedido, aunque el
+  resumen de la fuente seguía en NO ENTREGADO (SPEC-029 §13).
 - **Pendiente en producción (original):** que, tras la primera sincronización, las
   enviadas ausentes aparezcan con la insignia y en la lista de Logística, y
   que 1977220838 y 1978410063 figuren si siguen enviadas y fuera de Máximo.

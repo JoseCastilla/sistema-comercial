@@ -1,6 +1,6 @@
 # SPEC-086 — Ventas enviadas que no llegaron a Máximo
 
-**Estado:** `IMPLEMENTADA` — José, 23/10/2026: «las ventas enviadas y que no
+**Estado:** `VERIFICADA` — José, 23/10/2026: «las ventas enviadas y que no
 llegaron a Máximo deberían levantar una alerta; por ahora debe ser visual
 para reportar y escalar este caso con logística».
 
