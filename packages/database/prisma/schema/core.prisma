@@ -87,6 +87,7 @@ model Organization {
   agrDeliverySyncRuns          AgrDeliverySyncRun[]
   agrDeliveryOrderSnapshots    AgrDeliveryOrderSnapshot[]
   agrDeliveryOrderHistory      AgrDeliveryOrderHistory[]
+  agrDeliveryMissingOrders     AgrDeliveryMissingOrder[]
 
   recoveryEligibilityConfigs RecoveryEligibilityConfig[]
   recoveryBaseBatches        RecoveryBaseBatch[]
