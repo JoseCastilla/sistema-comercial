@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { isSentOrderMissingFromMaximo } from "@/features/agr-delivery/missing-orders";
-import { readAgrSourceImportedAt } from "@/features/agr-delivery/order-history";
+import {
+  parseAgrDateTime,
+  readAgrSourceImportedAt,
+} from "@/features/agr-delivery/order-history";
 
 /**
  * SPEC-086: una venta enviada que Máximo no tiene es alerta solo si Máximo ya
@@ -17,6 +20,7 @@ describe("Enviadas que no están en Máximo", () => {
         status: "SENT",
         sentAt: enviada,
         sourceImportedAt: horas(2),
+        coverageFrom: horas(-72),
       }),
     ).toBe(true);
   });
@@ -28,6 +32,7 @@ describe("Enviadas que no están en Máximo", () => {
           status: "SENT",
           sentAt: enviada,
           sourceImportedAt,
+          coverageFrom: horas(-72),
         }),
       ).toBe(false);
     }
@@ -40,6 +45,7 @@ describe("Enviadas que no están en Máximo", () => {
           status,
           sentAt: enviada,
           sourceImportedAt: horas(48),
+          coverageFrom: horas(-72),
         }),
       ).toBe(false);
     }
@@ -53,7 +59,51 @@ describe("Enviadas que no están en Máximo", () => {
         freshness: { imported_at: "2026-10-23T11:37:20.678Z" },
       })?.toISOString(),
     ).toBe("2026-10-23T11:37:20.678Z");
-    expect(readAgrSourceImportedAt({ ok: true, found: false, events: [] })).toBeNull();
-    expect(readAgrSourceImportedAt({ freshness: { imported_at: "ayer" } })).toBeNull();
+    expect(
+      readAgrSourceImportedAt({ ok: true, found: false, events: [] }),
+    ).toBeNull();
+    expect(
+      readAgrSourceImportedAt({ freshness: { imported_at: "ayer" } }),
+    ).toBeNull();
+  });
+
+  it("lo enviado antes de lo que cubre el historial de Máximo no es alerta", () => {
+    // Producción, 23/10/2026: el historial cubría tomas desde el 16/10 y
+    // salían como alerta ventas enviadas en septiembre.
+    const base = { status: "SENT", sourceImportedAt: horas(48) };
+    expect(
+      isSentOrderMissingFromMaximo({
+        ...base,
+        sentAt: enviada,
+        coverageFrom: horas(1),
+      }),
+    ).toBe(false);
+    expect(
+      isSentOrderMissingFromMaximo({
+        ...base,
+        sentAt: enviada,
+        coverageFrom: null,
+      }),
+    ).toBe(false);
+    expect(
+      isSentOrderMissingFromMaximo({
+        ...base,
+        sentAt: enviada,
+        coverageFrom: enviada,
+      }),
+    ).toBe(true);
+  });
+
+  it("las fechas de Máximo se leen en hora de Lima", () => {
+    expect(parseAgrDateTime("oct 22, 2026 2:47 p.m.")?.toISOString()).toBe(
+      "2026-10-22T19:47:00.000Z",
+    );
+    expect(parseAgrDateTime("oct 22, 2026 12:06 a.m.")?.toISOString()).toBe(
+      "2026-10-22T05:06:00.000Z",
+    );
+    expect(parseAgrDateTime("oct 23, 2026")?.toISOString()).toBe(
+      "2026-10-23T05:00:00.000Z",
+    );
+    expect(parseAgrDateTime("mañana")).toBeNull();
   });
 });

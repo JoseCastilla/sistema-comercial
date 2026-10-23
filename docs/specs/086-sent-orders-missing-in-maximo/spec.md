@@ -21,14 +21,22 @@ todavía sin que haya un problema.
 ## 2. Reglas
 
 - **BR-001 — Qué es alerta.** Una venta en estado Enviado, consultada en
-  Máximo, que no aparece, cuando Máximo ya importó datos **al menos 2 horas
-  posteriores** al envío. La hora del envío es el último cambio de estado de
-  la venta.
+  Máximo, que no aparece, cuando:
+  - Máximo ya importó datos **al menos 2 horas posteriores** al envío; y
+  - se envió **dentro de lo que cubre el historial de Máximo**, que empieza en
+    la toma más antigua entre los pedidos que Máximo devolvió en esa consulta.
+
+  La hora del envío es el último cambio de estado de la venta.
 - **BR-002 — Se guarda lo que no aparece.** Cada consulta sin resultado deja
   la venta registrada con la primera vez que faltó, la última consulta y la
   hora de los datos de Máximo. En cuanto Máximo la registra, se borra.
-- **BR-003 — Una vez alerta, sigue siéndolo** mientras la venta esté enviada
-  y Máximo no la tenga, aunque después cambie la hora de importación.
+- **BR-003 — La alerta se recalcula en cada consulta.** Si deja de cumplirse,
+  se apaga; si sigue, conserva la hora en que empezó.
+
+*Corregido el 23/10/2026 tras la primera corrida en producción.* La primera
+versión no miraba la cobertura y conservaba la alerta para siempre: salieron
+11, y 10 eran ventas enviadas entre el 29/08 y el 29/09, anteriores al
+historial.
 - **BR-004 — Se ve en la venta:** insignia «No está en Máximo» en la fila y,
   en el panel, un aviso que dice que hay que reportarla a logística, con la
   hora del envío, desde cuándo falta y de cuándo son los datos de Máximo.

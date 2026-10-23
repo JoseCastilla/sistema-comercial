@@ -68,7 +68,10 @@ function readNumber(value: unknown): number | null {
   return null;
 }
 
-function parseEvent(value: unknown, index: number): AgrOrderHistoryEvent | null {
+function parseEvent(
+  value: unknown,
+  index: number,
+): AgrOrderHistoryEvent | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
   const estado = readString(raw.estado);
@@ -182,4 +185,45 @@ export function readAgrSourceImportedAt(payload: unknown): Date | null {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+const agrMonths: Record<string, number> = {
+  ene: 0,
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  abr: 3,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  ago: 7,
+  aug: 7,
+  sep: 8,
+  set: 8,
+  oct: 9,
+  nov: 10,
+  dic: 11,
+  dec: 11,
+};
+
+/**
+ * Fecha de Máximo, «oct 22, 2026 2:47 p.m.», en hora de Lima (UTC−5, sin
+ * horario de verano). Sin hora, es el inicio del día.
+ */
+export function parseAgrDateTime(value: unknown): Date | null {
+  const text = readString(value);
+  if (!text) return null;
+  const match = text.match(
+    /^(\w{3})\w* (\d{1,2}), (\d{4})(?: (\d{1,2}):(\d{2}) ?(a|p)\.? ?m\.?)?$/i,
+  );
+  if (!match) return null;
+  const month = agrMonths[(match[1] ?? "").toLowerCase()];
+  if (month === undefined) return null;
+  let hour = match[4] ? Number(match[4]) % 12 : 0;
+  if (match[6]?.toLowerCase() === "p") hour += 12;
+  const minute = match[5] ? Number(match[5]) : 0;
+  return new Date(
+    Date.UTC(Number(match[3]), month, Number(match[2]), hour + 5, minute),
+  );
 }
