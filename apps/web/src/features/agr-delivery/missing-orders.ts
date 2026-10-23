@@ -53,3 +53,43 @@ export function isSentOrderMissingFromMaximo(input: {
     AGR_MISSING_GRACE_HOURS * 60 * 60 * 1000
   );
 }
+
+/**
+ * Cuándo una venta pasa a ser alerta. Faltar en una importación no basta:
+ * Máximo recarga su historial por partes y, mientras tanto, responde «no
+ * encontrado» para ventas que sí tiene (23/10/2026: cuatro ventas de las
+ * 10:13 faltaban a las 12:55 y aparecían a las 13:03). Tiene que faltar en dos
+ * importaciones distintas, las dos posteriores al envío. Una vez alerta, lo
+ * sigue siendo mientras falte en la importación actual.
+ */
+export function resolveAgrMissingAlert(input: {
+  status: string;
+  sentAt: Date;
+  coverageFrom: Date | null;
+  /** Importación vista en esta consulta. */
+  sourceImportedAt: Date | null;
+  /** Importación con la que faltaba la consulta anterior, si faltaba. */
+  previousImportedAt: Date | null;
+  previousAlertedAt: Date | null;
+  checkedAt: Date;
+}): Date | null {
+  const missingNow = isSentOrderMissingFromMaximo({
+    status: input.status,
+    sentAt: input.sentAt,
+    sourceImportedAt: input.sourceImportedAt,
+    coverageFrom: input.coverageFrom,
+  });
+  if (!missingNow) return null;
+  if (input.previousAlertedAt) return input.previousAlertedAt;
+  const missingBefore =
+    input.previousImportedAt !== null &&
+    input.sourceImportedAt !== null &&
+    input.previousImportedAt < input.sourceImportedAt &&
+    isSentOrderMissingFromMaximo({
+      status: input.status,
+      sentAt: input.sentAt,
+      sourceImportedAt: input.previousImportedAt,
+      coverageFrom: input.coverageFrom,
+    });
+  return missingBefore ? input.checkedAt : null;
+}

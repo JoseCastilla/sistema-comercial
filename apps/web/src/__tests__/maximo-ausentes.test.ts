@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isSentOrderMissingFromMaximo,
   resolveAgrCoverageFrom,
+  resolveAgrMissingAlert,
 } from "@/features/agr-delivery/missing-orders";
 import {
   parseAgrDateTime,
@@ -130,5 +131,55 @@ describe("Enviadas que no están en Máximo", () => {
     expect(
       resolveAgrCoverageFrom({ oldestTakenAt: null, sourceImportedAt: null }),
     ).toBeNull();
+  });
+
+  it("hace falta faltar en dos importaciones posteriores al envío", () => {
+    // Producción, 23/10/2026: enviadas a las 10:13 faltaban a las 12:55 y
+    // aparecían a las 13:03; 1977220838 faltó a las 06:37 y a las 12:49.
+    const base = {
+      status: "SENT",
+      sentAt: enviada,
+      coverageFrom: horas(-72),
+      previousAlertedAt: null,
+      checkedAt: horas(30),
+    };
+    expect(
+      resolveAgrMissingAlert({
+        ...base,
+        sourceImportedAt: horas(3),
+        previousImportedAt: null,
+      }),
+    ).toBeNull();
+    expect(
+      resolveAgrMissingAlert({
+        ...base,
+        sourceImportedAt: horas(3),
+        previousImportedAt: horas(3),
+      }),
+    ).toBeNull();
+    // La anterior era de antes del envío: todavía no cuenta.
+    expect(
+      resolveAgrMissingAlert({
+        ...base,
+        sourceImportedAt: horas(8),
+        previousImportedAt: horas(-1),
+      }),
+    ).toBeNull();
+    expect(
+      resolveAgrMissingAlert({
+        ...base,
+        sourceImportedAt: horas(8),
+        previousImportedAt: horas(3),
+      })?.toISOString(),
+    ).toBe(horas(30).toISOString());
+    // Ya era alerta y sigue faltando: conserva su hora.
+    expect(
+      resolveAgrMissingAlert({
+        ...base,
+        previousAlertedAt: horas(9),
+        sourceImportedAt: horas(8),
+        previousImportedAt: horas(8),
+      })?.toISOString(),
+    ).toBe(horas(9).toISOString());
   });
 });
