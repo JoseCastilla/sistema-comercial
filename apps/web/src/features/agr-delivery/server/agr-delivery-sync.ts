@@ -19,6 +19,7 @@ import {
 } from "../consultation";
 import { isSentOrderMissingFromMaximo } from "../missing-orders";
 import {
+  parseAgrDateTime,
   parseAgrOrderHistory,
   readAgrSourceImportedAt,
 } from "../order-history";
@@ -246,6 +247,7 @@ export async function runAgrDeliverySync(input: {
   // de qué importación son sus datos.
   const missingOrders: typeof candidates = [];
   let sourceImportedAt: Date | null = null;
+  let coverageFrom: Date | null = null;
   try {
     const sessionCookie = decryptAgrSessionCookie(
       integration.encryptedSessionCookie,
@@ -270,6 +272,10 @@ export async function runAgrDeliverySync(input: {
             if (!record) {
               missingOrders.push(order);
               return;
+            }
+            const takenAt = parseAgrDateTime(record.fecha_toma_pedido);
+            if (takenAt && (!coverageFrom || takenAt < coverageFrom)) {
+              coverageFrom = takenAt;
             }
             counters.found += 1;
             const sourceFingerprint = fingerprint(record);
@@ -334,6 +340,7 @@ export async function runAgrDeliverySync(input: {
       input.organizationId,
       missingOrders,
       sourceImportedAt,
+      coverageFrom,
     );
     const completedAt = new Date();
     if (changedOrderIds.length > 0) {
@@ -399,9 +406,9 @@ export async function runAgrDeliverySync(input: {
 }
 
 /**
- * SPEC-086: guarda las ventas que Máximo no tiene. Una enviada pasa a ser
- * alerta cuando Máximo ya importó datos posteriores al envío; desde ese
- * momento se conserva la hora de la alerta aunque la regla deje de cumplirse.
+ * SPEC-086: guarda las ventas que Máximo no tiene. La alerta se recalcula en
+ * cada consulta: si deja de cumplirse (por ejemplo, la venta quedó fuera de la
+ * cobertura del historial), se apaga; si sigue, conserva su hora.
  */
 async function recordMissingOrders(
   organizationId: string,
@@ -412,6 +419,7 @@ async function recordMissingOrders(
     registeredAt: Date;
   }>,
   sourceImportedAt: Date | null,
+  coverageFrom: Date | null,
 ): Promise<void> {
   if (orders.length === 0) return;
   const checkedAt = new Date();
@@ -428,8 +436,9 @@ async function recordMissingOrders(
         status: order.status,
         sentAt: order.statusUpdatedAt ?? order.registeredAt,
         sourceImportedAt: importedAt,
+        coverageFrom,
       });
-      const alertedAt = previous?.alertedAt ?? (alerted ? checkedAt : null);
+      const alertedAt = alerted ? (previous?.alertedAt ?? checkedAt) : null;
       return database.agrDeliveryMissingOrder.upsert({
         where: { ditoOrderId: order.id },
         create: {
