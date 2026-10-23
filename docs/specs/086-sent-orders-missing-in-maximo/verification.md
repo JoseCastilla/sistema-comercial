@@ -41,6 +41,11 @@
 - **23/10/2026, 12:42 a 12:46:** Máximo respondió «no encontrado» para todo,
   con la misma importación de las 06:37, y volvió solo. Desde ahora, una
   corrida que no encuentra ninguna venta no registra ausencias ni alertas.
+- **23/10/2026, 13:02, tras el cambio al mes en curso:** Logística mostró
+  308 por gestionar, la cifra del mes, y 5 alertas. Cuatro eran ventas
+  enviadas a las 10:13 y 10:43 de ese día que Máximo ya tenía a las 13:03,
+  con la importación «HISTORIAL12PM» de las 12:49. La 1977220838 seguía
+  sin aparecer. Se agregó BR-003: dos importaciones.
 - También en producción: la ficha de 1978945485 muestra «RECHAZADO · CLIENTE
   NO DESEA NO RECUPERABLE», con recorrido, intentos y pedido, aunque el
   resumen de la fuente seguía en NO ENTREGADO (SPEC-029 §13).

@@ -31,8 +31,11 @@ todavía sin que haya un problema.
 - **BR-002 — Se guarda lo que no aparece.** Cada consulta sin resultado deja
   la venta registrada con la primera vez que faltó, la última consulta y la
   hora de los datos de Máximo. En cuanto Máximo la registra, se borra.
-- **BR-003 — La alerta se recalcula en cada consulta.** Si deja de cumplirse,
-  se apaga; si sigue, conserva la hora en que empezó.
+- **BR-003 — Dos importaciones.** Tiene que faltar en dos importaciones
+  distintas de Máximo, las dos posteriores al envío por al menos 2 horas.
+  Máximo recarga su historial por partes y, mientras tanto, responde «no
+  encontrado» para ventas que sí tiene. La alerta se recalcula en cada
+  consulta: si deja de cumplirse, se apaga; si sigue, conserva su hora.
 
 *Corregido el 23/10/2026 tras la primera corrida en producción.* La primera
 versión no miraba la cobertura y conservaba la alerta para siempre: salieron

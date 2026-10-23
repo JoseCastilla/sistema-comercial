@@ -19,8 +19,8 @@ import {
   pickAgrConsultations,
 } from "../consultation";
 import {
-  isSentOrderMissingFromMaximo,
   resolveAgrCoverageFrom,
+  resolveAgrMissingAlert,
 } from "../missing-orders";
 import {
   parseAgrDateTime,
@@ -417,8 +417,8 @@ export async function runAgrDeliverySync(input: {
 
 /**
  * SPEC-086: guarda las ventas que Máximo no tiene. La alerta se recalcula en
- * cada consulta: si deja de cumplirse (por ejemplo, la venta quedó fuera de la
- * cobertura del historial), se apaga; si sigue, conserva su hora.
+ * cada consulta con `resolveAgrMissingAlert`: hace falta que la venta falte
+ * en dos importaciones distintas y se apaga si deja de cumplirse.
  */
 async function recordMissingOrders(
   organizationId: string,
@@ -442,16 +442,18 @@ async function recordMissingOrders(
     orders.map((order) => {
       const previous = byOrder.get(order.id);
       const importedAt = sourceImportedAt ?? previous?.sourceImportedAt ?? null;
-      const alerted = isSentOrderMissingFromMaximo({
+      const alertedAt = resolveAgrMissingAlert({
         status: order.status,
         sentAt: order.statusUpdatedAt ?? order.registeredAt,
-        sourceImportedAt: importedAt,
         coverageFrom: resolveAgrCoverageFrom({
           oldestTakenAt: coverageFrom,
           sourceImportedAt: importedAt,
         }),
+        sourceImportedAt: importedAt,
+        previousImportedAt: previous?.sourceImportedAt ?? null,
+        previousAlertedAt: previous?.alertedAt ?? null,
+        checkedAt,
       });
-      const alertedAt = alerted ? (previous?.alertedAt ?? checkedAt) : null;
       return database.agrDeliveryMissingOrder.upsert({
         where: { ditoOrderId: order.id },
         create: {
