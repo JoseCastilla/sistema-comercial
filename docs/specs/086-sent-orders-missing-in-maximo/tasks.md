@@ -7,5 +7,4 @@
 - [x] Logística: cifra y lista para reportar.
 - [x] Paso 1 a producción: migración sola.
 - [x] Paso 2 a producción: código.
-- [ ] Verificar en producción tras la primera sincronización con la clave
-      nueva.
+- [x] Verificar en producción (23/10/2026, con la clave guardada el 15/10).

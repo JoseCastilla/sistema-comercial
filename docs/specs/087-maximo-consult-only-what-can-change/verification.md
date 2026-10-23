@@ -10,3 +10,6 @@
   serie, 0,24 s por venta en lotes de 10, respuesta de 1,5 KB. Una corrida
   de 250 tarda cerca de un minuto.
 - No se levantó en local, por decisión de José.
+- **23/10/2026, producción:** la corrida de las 12:00, que aún consultaba
+  lo terminado según la regla anterior, tuvo 129 candidatas; las manuales
+  de las 12:17 y 12:30, con la regla nueva, 71 y 74.
