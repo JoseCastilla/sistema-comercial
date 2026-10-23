@@ -16,8 +16,13 @@
     trae tomas desde el 16/10. Se corrigió BR-001 y BR-003.
   - **La real es 1977220838**, enviada el 19/10, la misma que faltaba en el
     Excel de José.
-- **Pendiente en producción, tras la corrección:** que la corrida siguiente
-  deje solo las enviadas dentro de la cobertura.
+- **23/10/2026, 12:17, sincronización manual con la primera corrección:** 71
+  consultadas, en lugar de 129, porque ya no se pregunta por lo terminado
+  (SPEC-087). Alertas: 0, y se apagó también la real. Causa: la cobertura
+  salía de la toma más antigua devuelta, y sin lo terminado solo vuelve lo
+  reciente. Se agregó el mínimo de 6 días desde la importación.
+- **Pendiente en producción, tras la segunda corrección:** que quede solo
+  1977220838 mientras siga enviada y fuera de Máximo.
 - **Pendiente en producción (original):** que, tras la primera sincronización, las
   enviadas ausentes aparezcan con la insignia y en la lista de Logística, y
   que 1977220838 y 1978410063 figuren si siguen enviadas y fuera de Máximo.

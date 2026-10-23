@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { isSentOrderMissingFromMaximo } from "@/features/agr-delivery/missing-orders";
+import {
+  isSentOrderMissingFromMaximo,
+  resolveAgrCoverageFrom,
+} from "@/features/agr-delivery/missing-orders";
 import {
   parseAgrDateTime,
   readAgrSourceImportedAt,
@@ -105,5 +108,26 @@ describe("Enviadas que no están en Máximo", () => {
       "2026-10-23T05:00:00.000Z",
     );
     expect(parseAgrDateTime("mañana")).toBeNull();
+  });
+
+  it("la cobertura no se achica porque la corrida solo devuelva lo reciente", () => {
+    // Producción, 23/10/2026 12:17: sin consultar lo terminado, la toma más
+    // antigua devuelta era reciente y se apagó la alerta real del 19/10.
+    const importada = new Date("2026-10-23T11:37:00.000Z");
+    expect(
+      resolveAgrCoverageFrom({
+        oldestTakenAt: new Date("2026-10-21T15:00:00.000Z"),
+        sourceImportedAt: importada,
+      })?.toISOString(),
+    ).toBe("2026-10-17T11:37:00.000Z");
+    expect(
+      resolveAgrCoverageFrom({
+        oldestTakenAt: new Date("2026-10-16T15:00:00.000Z"),
+        sourceImportedAt: importada,
+      })?.toISOString(),
+    ).toBe("2026-10-16T15:00:00.000Z");
+    expect(
+      resolveAgrCoverageFrom({ oldestTakenAt: null, sourceImportedAt: null }),
+    ).toBeNull();
   });
 });

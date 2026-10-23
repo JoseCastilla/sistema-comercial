@@ -11,6 +11,34 @@
 /** Margen para que Máximo tome la venta después de enviada. */
 export const AGR_MISSING_GRACE_HOURS = 2;
 
+/**
+ * Días hacia atrás que el historial cubre como mínimo desde cada importación.
+ * El importado el 23/10/2026 a las 06:37 traía tomas desde el 16/10: siete
+ * días. Se usan seis para no alertar por el borde.
+ */
+export const AGR_MIN_COVERAGE_DAYS = 6;
+
+/**
+ * Desde cuándo cubre el historial: lo más atrás entre lo que prueban las
+ * tomas devueltas en la consulta y el mínimo de días desde la importación.
+ * Con solo las tomas no basta: la corrida ya no pregunta por lo terminado y
+ * lo que devuelve es lo reciente.
+ */
+export function resolveAgrCoverageFrom(input: {
+  oldestTakenAt: Date | null;
+  sourceImportedAt: Date | null;
+}): Date | null {
+  const byImport = input.sourceImportedAt
+    ? new Date(
+        input.sourceImportedAt.getTime() -
+          AGR_MIN_COVERAGE_DAYS * 24 * 60 * 60 * 1000,
+      )
+    : null;
+  if (!byImport) return input.oldestTakenAt;
+  if (!input.oldestTakenAt) return byImport;
+  return input.oldestTakenAt < byImport ? input.oldestTakenAt : byImport;
+}
+
 export function isSentOrderMissingFromMaximo(input: {
   status: string;
   /** Cuándo la venta pasó a enviada (`statusUpdatedAt`). */

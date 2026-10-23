@@ -13,11 +13,11 @@ import { database } from "@/server/database";
 import { resolveAgrScheduleKey } from "../schedule";
 
 import { AGR_SYNC_WINDOWS } from "../agr-delivery.types";
+import { AGR_TERMINAL_STATES, pickAgrConsultations } from "../consultation";
 import {
-  AGR_TERMINAL_STATES,
-  pickAgrConsultations,
-} from "../consultation";
-import { isSentOrderMissingFromMaximo } from "../missing-orders";
+  isSentOrderMissingFromMaximo,
+  resolveAgrCoverageFrom,
+} from "../missing-orders";
 import {
   parseAgrDateTime,
   parseAgrOrderHistory,
@@ -436,7 +436,10 @@ async function recordMissingOrders(
         status: order.status,
         sentAt: order.statusUpdatedAt ?? order.registeredAt,
         sourceImportedAt: importedAt,
-        coverageFrom,
+        coverageFrom: resolveAgrCoverageFrom({
+          oldestTakenAt: coverageFrom,
+          sourceImportedAt: importedAt,
+        }),
       });
       const alertedAt = alerted ? (previous?.alertedAt ?? checkedAt) : null;
       return database.agrDeliveryMissingOrder.upsert({

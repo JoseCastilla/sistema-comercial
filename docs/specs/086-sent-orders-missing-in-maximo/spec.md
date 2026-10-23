@@ -23,8 +23,10 @@ todavía sin que haya un problema.
 - **BR-001 — Qué es alerta.** Una venta en estado Enviado, consultada en
   Máximo, que no aparece, cuando:
   - Máximo ya importó datos **al menos 2 horas posteriores** al envío; y
-  - se envió **dentro de lo que cubre el historial de Máximo**, que empieza en
-    la toma más antigua entre los pedidos que Máximo devolvió en esa consulta.
+  - se envió **dentro de lo que cubre el historial de Máximo**: desde 6 días
+    antes de su importación, o desde antes si alguna toma devuelta en la
+    consulta lo prueba. El historial importado el 23/10 a las 06:37 traía
+    siete días.
 
   La hora del envío es el último cambio de estado de la venta.
 - **BR-002 — Se guarda lo que no aparece.** Cada consulta sin resultado deja
