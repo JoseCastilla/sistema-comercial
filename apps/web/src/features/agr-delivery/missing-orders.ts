@@ -3,36 +3,31 @@
  * la sincronización y se prueba sin red ni base de datos.
  *
  * Máximo publica su historial por importaciones de un CSV, no al instante, y
- * ese CSV solo cubre los últimos días (el 23/10/2026, tomas desde el 16/10).
+ * ese CSV solo cubre el mes en curso.
  * Solo es alerta lo enviado dentro de esa cobertura, cuando Máximo ya importó
  * datos posteriores al envío y aun así no la tiene.
  */
+
+import { getOrderPeriodRange } from "@repo/validation";
 
 /** Margen para que Máximo tome la venta después de enviada. */
 export const AGR_MISSING_GRACE_HOURS = 2;
 
 /**
- * Días hacia atrás que el historial cubre como mínimo desde cada importación.
- * El importado el 23/10/2026 a las 06:37 traía tomas desde el 16/10: siete
- * días. Se usan seis para no alertar por el borde.
- */
-export const AGR_MIN_COVERAGE_DAYS = 6;
-
-/**
- * Desde cuándo cubre el historial: lo más atrás entre lo que prueban las
- * tomas devueltas en la consulta y el mínimo de días desde la importación.
- * Con solo las tomas no basta: la corrida ya no pregunta por lo terminado y
- * lo que devuelve es lo reciente.
+ * Desde cuándo cubre el historial: el inicio del mes de la importación, en
+ * hora de Lima, o antes si alguna toma devuelta en la consulta lo prueba.
+ *
+ * Validado el 23/10/2026 con ventas cerradas de producción: el historial
+ * importado ese día traía ventas del 1 al 23 de octubre y ninguna del 26, 29
+ * o 30 de septiembre. Con solo las tomas devueltas no basta: la corrida ya no
+ * pregunta por lo terminado y lo que vuelve es lo reciente.
  */
 export function resolveAgrCoverageFrom(input: {
   oldestTakenAt: Date | null;
   sourceImportedAt: Date | null;
 }): Date | null {
   const byImport = input.sourceImportedAt
-    ? new Date(
-        input.sourceImportedAt.getTime() -
-          AGR_MIN_COVERAGE_DAYS * 24 * 60 * 60 * 1000,
-      )
+    ? getOrderPeriodRange("MONTH", input.sourceImportedAt).monthStart
     : null;
   if (!byImport) return input.oldestTakenAt;
   if (!input.oldestTakenAt) return byImport;

@@ -16,9 +16,13 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock("next/form", () => ({
-  default: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <form className={className}>{children}</form>
-  ),
+  default: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => <form className={className}>{children}</form>,
 }));
 vi.mock("@/features/orders/components/order-realtime-status", () => ({
   OrderRealtimeStatus: () => null,
@@ -50,9 +54,12 @@ vi.mock("@/features/orders/components/order-correction-form", () => ({
 vi.mock("@/features/orders/components/order-assignment-resolution", () => ({
   OrderAssignmentResolution: () => null,
 }));
-vi.mock("@/features/orders/components/order-cancellation-request-panel", () => ({
-  OrderCancellationRequestPanel: () => null,
-}));
+vi.mock(
+  "@/features/orders/components/order-cancellation-request-panel",
+  () => ({
+    OrderCancellationRequestPanel: () => null,
+  }),
+);
 
 function pedido(extra: Partial<OrderInboxItem> = {}): OrderInboxItem {
   return {
@@ -99,9 +106,21 @@ function pedido(extra: Partial<OrderInboxItem> = {}): OrderInboxItem {
       stale: false,
       estadoPedido: "NO ENTREGADO",
       fields: [
-        { key: "estado_pedido", label: "Estado del pedido", value: "NO ENTREGADO" },
-        { key: "motivo_rechazo", label: "Motivo de rechazo", value: "CLIENTE AUSENTE" },
-        { key: "fecha_entrega_pactada", label: "Fecha de entrega pactada", value: "2026-09-26" },
+        {
+          key: "estado_pedido",
+          label: "Estado del pedido",
+          value: "NO ENTREGADO",
+        },
+        {
+          key: "motivo_rechazo",
+          label: "Motivo de rechazo",
+          value: "CLIENTE AUSENTE",
+        },
+        {
+          key: "fecha_entrega_pactada",
+          label: "Fecha de entrega pactada",
+          value: "2026-09-26",
+        },
         { key: "canal", label: "Canal", value: "DELIVERY" },
       ],
       fetchedAtLabel: "25/09/2026, 18:00",
@@ -169,8 +188,24 @@ function datos(extra: Partial<OrderInboxData> = {}): OrderInboxData {
       to: "2026-08-31",
     },
     advisorSummary: [
-      { id: "u-1", name: "Silvia S.", teamName: "HUANCAYO", toDeliver: 4, failed: 3, overdue: 2, awaiting: 1 },
-      { id: "u-2", name: "Steven L.", teamName: "HUANCAYO", toDeliver: 1, failed: 0, overdue: 0, awaiting: 0 },
+      {
+        id: "u-1",
+        name: "Silvia S.",
+        teamName: "HUANCAYO",
+        toDeliver: 4,
+        failed: 3,
+        overdue: 2,
+        awaiting: 1,
+      },
+      {
+        id: "u-2",
+        name: "Steven L.",
+        teamName: "HUANCAYO",
+        toDeliver: 1,
+        failed: 0,
+        overdue: 0,
+        awaiting: 0,
+      },
     ],
     tabCounts: {
       TO_MOVE: 35,
@@ -210,15 +245,31 @@ describe("Hoja de pedidos", () => {
 
     const resumen = screen.getByRole("region", { name: "Resumen de pedidos" });
     // SPEC-078: el período ya lo dice su botón; aquí solo «Ventas».
-    expect(within(resumen).getByText(/^Ventas/)).toHaveTextContent("Ventas 403");
+    expect(within(resumen).getByText(/^Ventas/)).toHaveTextContent(
+      "Ventas 403",
+    );
     // SPEC-084: cada cifra de meses anteriores abre exactamente lo que cuenta.
-    const anterior = within(resumen).getByRole("link", { name: "6 por entregar →" });
-    expect(anterior).toHaveAttribute("href", expect.stringContaining("period=RANGE"));
-    expect(anterior).toHaveAttribute("href", expect.stringContaining("to=2026-08-31"));
-    expect(anterior).toHaveAttribute("href", expect.stringContaining("status=TO_MOVE"));
+    const anterior = within(resumen).getByRole("link", {
+      name: "6 por entregar →",
+    });
+    expect(anterior).toHaveAttribute(
+      "href",
+      expect.stringContaining("period=RANGE"),
+    );
+    expect(anterior).toHaveAttribute(
+      "href",
+      expect.stringContaining("to=2026-08-31"),
+    );
+    expect(anterior).toHaveAttribute(
+      "href",
+      expect.stringContaining("status=TO_MOVE"),
+    );
     expect(
       within(resumen).getByRole("link", { name: "2 por activar →" }),
-    ).toHaveAttribute("href", expect.stringContaining("status=AWAITING_ACTIVATION"));
+    ).toHaveAttribute(
+      "href",
+      expect.stringContaining("status=AWAITING_ACTIVATION"),
+    );
     // SPEC-085: las vistas usan el período; lo fallido y lo escalado de antes
     // sigue a un toque.
     expect(
@@ -240,9 +291,13 @@ describe("Hoja de pedidos", () => {
     expect(
       within(vistas).getByRole("link", { name: "Falta activar 11" }),
     ).toBeInTheDocument();
-    expect(within(vistas).queryByRole("link", { name: /Incidencias/ })).toBeNull();
+    expect(
+      within(vistas).queryByRole("link", { name: /Incidencias/ }),
+    ).toBeNull();
     // SPEC-074 D2: los pedidos por recuperar se trabajan en Recupero de ventas.
-    expect(within(vistas).queryByRole("link", { name: /Por recuperar/ })).toBeNull();
+    expect(
+      within(vistas).queryByRole("link", { name: /Por recuperar/ }),
+    ).toBeNull();
   });
 
   it("en «Falta activar», quien puede cerrar marca varios y ve la barra para cerrarlos", () => {
@@ -324,22 +379,30 @@ describe("Hoja de pedidos", () => {
     render(<OrderInbox data={datos()} />);
 
     const tabla = screen.getByRole("region", { name: "Por asesor" });
-    const fila = within(tabla).getByRole("link", { name: "Silvia S." }).closest("tr")!;
+    const fila = within(tabla)
+      .getByRole("link", { name: "Silvia S." })
+      .closest("tr")!;
     expect(within(fila).getByRole("link", { name: "3" })).toHaveAttribute(
       "href",
-      expect.stringMatching(/status=LOGISTICS.*advisor=u-1|advisor=u-1.*status=LOGISTICS/),
+      expect.stringMatching(
+        /status=LOGISTICS.*advisor=u-1|advisor=u-1.*status=LOGISTICS/,
+      ),
     );
     expect(within(fila).getByRole("link", { name: "2" })).toHaveAttribute(
       "href",
       expect.stringContaining("plazo=vencido"),
     );
     // Lo que está en cero no es enlace.
-    const otra = within(tabla).getByRole("link", { name: "Steven L." }).closest("tr")!;
+    const otra = within(tabla)
+      .getByRole("link", { name: "Steven L." })
+      .closest("tr")!;
     expect(within(otra).getAllByText("—").length).toBeGreaterThan(0);
   });
 
   it("el asesor no ve la tabla por asesor", () => {
-    render(<OrderInbox data={datos({ role: "AGENT", advisorSummary: null })} />);
+    render(
+      <OrderInbox data={datos({ role: "AGENT", advisorSummary: null })} />,
+    );
     expect(screen.queryByRole("region", { name: "Por asesor" })).toBeNull();
   });
 
@@ -375,10 +438,16 @@ describe("Hoja de pedidos", () => {
   });
 
   it("el plazo no viaja a las vistas donde no aplica", () => {
-    render(<OrderInbox data={datos({ filter: "TO_MOVE", dueFilter: "vencido" })} />);
-    const vistas = screen.getByRole("navigation", { name: "Estado de los pedidos" });
+    render(
+      <OrderInbox data={datos({ filter: "TO_MOVE", dueFilter: "vencido" })} />,
+    );
+    const vistas = screen.getByRole("navigation", {
+      name: "Estado de los pedidos",
+    });
     expect(
-      within(vistas).getByRole("link", { name: /Falta activar/ }).getAttribute("href"),
+      within(vistas)
+        .getByRole("link", { name: /Falta activar/ })
+        .getAttribute("href"),
     ).not.toContain("plazo=");
     expect(
       within(vistas).getByRole("link", { name: /Todos/ }).getAttribute("href"),
@@ -386,7 +455,9 @@ describe("Hoja de pedidos", () => {
   });
 
   it("el asesor sale de «antes de este mes» a su lista completa, no a una vista", () => {
-    render(<OrderInbox data={datos({ role: "AGENT", advisorSummary: null })} />);
+    render(
+      <OrderInbox data={datos({ role: "AGENT", advisorSummary: null })} />,
+    );
     const enlace = screen.getByRole("link", { name: "6 por entregar →" });
     expect(enlace.getAttribute("href")).not.toContain("status=TO_MOVE");
   });
@@ -403,10 +474,9 @@ describe("Hoja de pedidos", () => {
     const vistas = screen.getByRole("navigation", {
       name: "Estado de los pedidos",
     });
-    expect(within(vistas).getByRole("link", { name: "Activos" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(
+      within(vistas).getByRole("link", { name: "Activos" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("sin subtítulo y con el mismo nombre que el menú", () => {
@@ -422,9 +492,7 @@ describe("Hoja de pedidos", () => {
 
   it("en Por recuperar, una frase dice qué son y dónde están los casos", () => {
     render(
-      <OrderInbox
-        data={datos({ filter: "RECOVERY", filteredTotal: 130 })}
-      />,
+      <OrderInbox data={datos({ filter: "RECOVERY", filteredTotal: 130 })} />,
     );
 
     const resumen = screen.getByRole("region", { name: "Resumen de pedidos" });
@@ -471,7 +539,9 @@ describe("Hoja de pedidos", () => {
     expect(within(maximo).getByText("CLIENTE AUSENTE")).toBeInTheDocument();
     expect(within(maximo).getByText("2026-09-26")).toBeInTheDocument();
     expect(within(maximo).getByText("Canal")).toBeInTheDocument();
-    expect(within(maximo).getByText("Consultado 25/09/2026, 18:00")).toBeInTheDocument();
+    expect(
+      within(maximo).getByText("Consultado 25/09/2026, 18:00"),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/reagendar la visita/)).toBeNull();
   });
 
@@ -510,7 +580,9 @@ describe("Hoja de pedidos", () => {
       />,
     );
 
-    const franja = screen.getByText(/2 ventas enviadas no están en Máximo/);
+    const franja = screen.getByText(
+      /2 ventas enviadas este mes no están en Máximo/,
+    );
     expect(franja).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Verlas →" })).toHaveAttribute(
       "href",
@@ -519,7 +591,9 @@ describe("Hoja de pedidos", () => {
     expect(screen.getAllByText("No está en Máximo").length).toBeGreaterThan(0);
     const aviso = screen.getByRole("region", { name: "No está en Máximo" });
     expect(within(aviso).getByText("22/10/2026, 10:00")).toBeInTheDocument();
-    expect(within(aviso).getByText(/Repórtala a logística/)).toBeInTheDocument();
+    expect(
+      within(aviso).getByText(/Repórtala a logística/),
+    ).toBeInTheDocument();
   });
 
   it("SPEC-086: sin ausentes no hay franja; con el filtro puesto, se puede quitar", () => {

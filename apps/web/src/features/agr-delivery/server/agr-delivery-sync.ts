@@ -13,7 +13,11 @@ import { database } from "@/server/database";
 import { resolveAgrScheduleKey } from "../schedule";
 
 import { AGR_SYNC_WINDOWS } from "../agr-delivery.types";
-import { AGR_TERMINAL_STATES, pickAgrConsultations } from "../consultation";
+import {
+  AGR_TERMINAL_STATES,
+  getAgrEligibleSince,
+  pickAgrConsultations,
+} from "../consultation";
 import {
   isSentOrderMissingFromMaximo,
   resolveAgrCoverageFrom,
@@ -31,7 +35,6 @@ import type { AgrSyncWindow } from "../agr-delivery.types";
 import type { Prisma } from "@repo/database";
 
 const endpoint = "https://proveedores.cgc.alka.net.pe/api/order-history";
-const eligibleSince = new Date("2026-08-10T05:00:00.000Z");
 
 export type { AgrDeliveryRecord };
 
@@ -171,10 +174,11 @@ export async function runAgrDeliverySync(input: {
   if (!run) return null;
 
   /*
-   * La ventana nunca amplia el alcance: el corte del 10/08 sigue siendo el
-   * limite inferior absoluto.
+   * José, 23/10/2026: la información de Máximo se centra en el mes en curso
+   * (antes, todo desde el 10/08). La ventana manual nunca amplía ese alcance.
    */
   const windowHours = AGR_SYNC_WINDOWS[input.window ?? "ALL"].hours;
+  const eligibleSince = getAgrEligibleSince();
 
   const registeredSince =
     windowHours === null
@@ -336,12 +340,18 @@ export async function runAgrDeliverySync(input: {
         }),
       );
     }
-    await recordMissingOrders(
-      input.organizationId,
-      missingOrders,
-      sourceImportedAt,
-      coverageFrom,
-    );
+    /*
+     * Si Máximo no devolvió ninguna venta, la fuente está caída o vacía (pasó
+     * el 23/10/2026 a las 12:43): no se registran ausencias ni alertas.
+     */
+    if (counters.found > 0) {
+      await recordMissingOrders(
+        input.organizationId,
+        missingOrders,
+        sourceImportedAt,
+        coverageFrom,
+      );
+    }
     const completedAt = new Date();
     if (changedOrderIds.length > 0) {
       await database.ditoOrder.updateMany({

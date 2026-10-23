@@ -11,6 +11,7 @@ import {
   fetchAgrDeliveryRecord,
   runAgrDeliverySync,
 } from "./agr-delivery-sync";
+import { getAgrEligibleSince } from "../consultation";
 
 export interface AgrDeliveryActionState {
   type: "idle" | "success" | "error";
@@ -38,7 +39,7 @@ export async function saveAgrDeliveryCredentialAction(
   const testOrder = await database.ditoOrder.findFirst({
     where: {
       organizationId: membership.organization.id,
-      registeredAt: { gte: new Date("2026-08-10T05:00:00.000Z") },
+      registeredAt: { gte: getAgrEligibleSince() },
       status: { not: "CLOSED" },
       deliveryStatus: { not: "DELIVERED" },
     },
@@ -48,8 +49,7 @@ export async function saveAgrDeliveryCredentialAction(
   if (!testOrder) {
     return {
       type: "error",
-      message:
-        "Primero carga una venta desde el 10/08 para probar la conexión.",
+      message: "Primero carga una venta de este mes para probar la conexión.",
     };
   }
 

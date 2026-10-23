@@ -53,6 +53,10 @@ respuesta vacía.
 - **BR-005 — Orden:** primero lo nunca consultado, después lo que lleva más
   tiempo sin consultarse. Lo atascado ya no tapa a lo nuevo.
 
+- **BR-006 — Solo ventas del mes en curso** (José, 23/10/2026). Antes, todo
+  desde el 10/08. Coincide con lo que cubre el historial de Máximo, que no
+  trae ventas de meses anteriores.
+
 ## 3. Criterios de aceptación
 
 - **AC-001:** una venta entregada, rechazada o cancelada no aparece en la

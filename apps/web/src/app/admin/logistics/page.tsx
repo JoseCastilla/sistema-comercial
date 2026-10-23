@@ -3,6 +3,7 @@ import {
   AgrDeliverySyncForm,
 } from "@/features/agr-delivery/components/agr-delivery-admin-forms";
 import { describeAgrSchedule } from "@/features/agr-delivery/schedule";
+import { getAgrEligibleSince } from "@/features/agr-delivery/consultation";
 import { requireAdminAccess } from "@/server/auth/access";
 import { database } from "@/server/database";
 
@@ -26,62 +27,66 @@ const syncStatusLabels: Record<string, string> = {
 
 export default async function LogisticsAdminPage() {
   const { membership } = await requireAdminAccess();
+  // José, 23/10/2026: todo lo de Máximo es del mes en curso.
+  const monthStart = getAgrEligibleSince();
   const [integration, opportunityCount, lastRun, missingOrders] =
     await Promise.all([
-    database.agrDeliveryIntegration.findUnique({
-      where: { organizationId: membership.organization.id },
-      select: {
-        credentialHint: true,
-        credentialStatus: true,
-        credentialUpdatedAt: true,
-        lastValidatedAt: true,
-        lastSuccessAt: true,
-        lastError: true,
-        credentialUpdatedBy: { select: { name: true } },
-      },
-    }),
-    database.agrDeliveryOrderSnapshot.count({
-      where: {
-        organizationId: membership.organization.id,
-        isRecoveryOpportunity: true,
-        ditoOrder: {
-          status: { not: "CLOSED" },
-          deliveryStatus: { not: "DELIVERED" },
+      database.agrDeliveryIntegration.findUnique({
+        where: { organizationId: membership.organization.id },
+        select: {
+          credentialHint: true,
+          credentialStatus: true,
+          credentialUpdatedAt: true,
+          lastValidatedAt: true,
+          lastSuccessAt: true,
+          lastError: true,
+          credentialUpdatedBy: { select: { name: true } },
         },
-      },
-    }),
-    database.agrDeliverySyncRun.findFirst({
-      where: { organizationId: membership.organization.id },
-      orderBy: { startedAt: "desc" },
-      select: {
-        status: true,
-        candidateOrders: true,
-        consultedOrders: true,
-        foundOrders: true,
-        opportunityOrders: true,
-        startedAt: true,
-        completedAt: true,
-      },
-    }),
-    // SPEC-086: enviadas que Máximo no tiene, para reportarlas a logística.
-    database.ditoOrder.findMany({
-      where: {
-        organizationId: membership.organization.id,
-        status: "SENT",
-        agrDeliveryMissing: { is: { alertedAt: { not: null } } },
-      },
-      orderBy: [{ statusUpdatedAt: "asc" }, { registeredAt: "asc" }],
-      take: 200,
-      select: {
-        id: true,
-        orderCodeRaw: true,
-        agentNameRaw: true,
-        statusUpdatedAt: true,
-        registeredAt: true,
-        agrDeliveryMissing: { select: { firstMissingAt: true } },
-      },
-    }),
-  ]);
+      }),
+      database.agrDeliveryOrderSnapshot.count({
+        where: {
+          organizationId: membership.organization.id,
+          isRecoveryOpportunity: true,
+          ditoOrder: {
+            registeredAt: { gte: monthStart },
+            status: { not: "CLOSED" },
+            deliveryStatus: { not: "DELIVERED" },
+          },
+        },
+      }),
+      database.agrDeliverySyncRun.findFirst({
+        where: { organizationId: membership.organization.id },
+        orderBy: { startedAt: "desc" },
+        select: {
+          status: true,
+          candidateOrders: true,
+          consultedOrders: true,
+          foundOrders: true,
+          opportunityOrders: true,
+          startedAt: true,
+          completedAt: true,
+        },
+      }),
+      // SPEC-086: enviadas que Máximo no tiene, para reportarlas a logística.
+      database.ditoOrder.findMany({
+        where: {
+          organizationId: membership.organization.id,
+          registeredAt: { gte: monthStart },
+          status: "SENT",
+          agrDeliveryMissing: { is: { alertedAt: { not: null } } },
+        },
+        orderBy: [{ statusUpdatedAt: "asc" }, { registeredAt: "asc" }],
+        take: 200,
+        select: {
+          id: true,
+          orderCodeRaw: true,
+          agentNameRaw: true,
+          statusUpdatedAt: true,
+          registeredAt: true,
+          agrDeliveryMissing: { select: { firstMissingAt: true } },
+        },
+      }),
+    ]);
   const format = (value: Date | null | undefined) =>
     value ? formatter.format(value) : "Aún no registrado";
   // PL-07: la hora de la fuente no es la hora de la pantalla.
@@ -103,7 +108,7 @@ export default async function LogisticsAdminPage() {
         <PageHeader
           eyebrow="Integraciones"
           title="Estado logístico Máximo"
-          description="Consulta las ventas desde el 10/08 hasta que Máximo las entrega, rechaza o cancela. Las canceladas, solo hasta saber el motivo; las abiertas que Máximo no tiene, solo tres días."
+          description="Consulta las ventas del mes en curso hasta que Máximo las entrega, rechaza o cancela. Las canceladas, solo hasta saber el motivo; las abiertas que Máximo no tiene, solo tres días."
         />
         {/*
          * El estado del acceso y la fecha de la ultima sincronizacion no son
@@ -154,21 +159,21 @@ export default async function LogisticsAdminPage() {
         <MetricGroup>
           {/*
            * SPEC-045 PL-06: la cifra es el acumulado de pedidos con
-           * oportunidad logística abierta desde el 10/08 —no el resultado de
+           * oportunidad logística abierta del mes en curso —no el resultado de
            * la última ejecución— y abre exactamente esa lista en Pedidos
            * («Entregas fallidas por gestionar» ignora el período, SPEC-029
            * BR-025). Navegar no dispara ninguna sincronización.
            */}
           <Metric
             emphasis="hero"
-            hint="Acumulado desde el 10/08 con oportunidad abierta, no solo la última ejecución · abre Pedidos"
+            hint="Ventas del mes con entrega fallida por gestionar, no solo la última ejecución · abre Pedidos"
             href="/orders?status=LOGISTICS"
             label="Pedidos que requieren acción"
             tone={opportunityCount > 0 ? "warning" : "neutral"}
             value={opportunityCount}
           />
           <Metric
-            hint="Salieron como enviadas y Máximo no las tiene · abre Pedidos"
+            hint="Ventas del mes que salieron como enviadas y Máximo no tiene · abre Pedidos"
             href="/orders?sinmaximo=1"
             label="Enviadas que no están en Máximo"
             tone={missingOrders.length > 0 ? "danger" : "neutral"}

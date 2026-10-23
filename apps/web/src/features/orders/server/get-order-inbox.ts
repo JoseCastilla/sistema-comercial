@@ -735,11 +735,7 @@ function maskIdentifier(value: string): string {
  * bandeja (`getPriority`) mientras José decide si también sale de ahí.
  */
 type AgrActionKind =
-  | "RESCHEDULE"
-  | "CONTACT"
-  | "REENTER"
-  | "MEETING_POINT"
-  | "WAIT_PORTABILITY";
+  "RESCHEDULE" | "CONTACT" | "REENTER" | "MEETING_POINT" | "WAIT_PORTABILITY";
 
 /*
  * Maximo describe lo que le paso al courier, no lo que la venta todavia
@@ -757,7 +753,11 @@ export function describeAgrDeliveryRaw(snapshot: {
   motivoRechazo: string | null;
   submotivoRechazo: string | null;
 }): string {
-  return [snapshot.estadoPedido, snapshot.motivoRechazo, snapshot.submotivoRechazo]
+  return [
+    snapshot.estadoPedido,
+    snapshot.motivoRechazo,
+    snapshot.submotivoRechazo,
+  ]
     .map((value) => value?.trim())
     .filter(Boolean)
     .join(" · ");
@@ -1275,11 +1275,11 @@ export async function getOrderInbox(
     ? { agrDeliverySnapshot: { is: { estadoPedido: maximoFilter } } }
     : {};
   /*
-   * SPEC-086: enviada en DITO y ausente en Máximo. Es una alerta de hoy, no
-   * del período: se cuenta y se lista en cualquier fecha para que ninguna
-   * quede escondida detrás del período elegido.
+   * SPEC-086: enviada en DITO y ausente en Máximo, siempre del mes en curso
+   * (José, 23/10/2026), aunque arriba se haya elegido otro período.
    */
   const missingFromMaximoWhere: Prisma.DitoOrderWhereInput = {
+    registeredAt: { gte: range.monthStart },
     status: "SENT",
     agrDeliveryMissing: { is: { alertedAt: { not: null } } },
   };
@@ -1292,7 +1292,9 @@ export async function getOrderInbox(
       teamFilterWhere,
       advisorFilterWhere,
       missingFilter ? missingFromMaximoWhere : periodFilter,
-      missingFilter ? {} : getStatusFilter(query.filter, now, incidentThreshold),
+      missingFilter
+        ? {}
+        : getStatusFilter(query.filter, now, incidentThreshold),
       dueFilterWhere,
       maximoFilterWhere,
       access.role === "SUPERVISOR"
@@ -1405,7 +1407,8 @@ export async function getOrderInbox(
   const logisticsByState = new Map<string, number>();
   for (const record of logisticsRecords) {
     const state = record.agrDeliverySnapshot?.estadoPedido.trim();
-    if (state) logisticsByState.set(state, (logisticsByState.get(state) ?? 0) + 1);
+    if (state)
+      logisticsByState.set(state, (logisticsByState.get(state) ?? 0) + 1);
   }
   const logisticsLastFetchedAt = logisticsRecords.reduce<Date | null>(
     (latest, record) => {

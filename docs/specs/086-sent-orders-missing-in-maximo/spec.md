@@ -23,10 +23,9 @@ todavía sin que haya un problema.
 - **BR-001 — Qué es alerta.** Una venta en estado Enviado, consultada en
   Máximo, que no aparece, cuando:
   - Máximo ya importó datos **al menos 2 horas posteriores** al envío; y
-  - se envió **dentro de lo que cubre el historial de Máximo**: desde 6 días
-    antes de su importación, o desde antes si alguna toma devuelta en la
-    consulta lo prueba. El historial importado el 23/10 a las 06:37 traía
-    siete días.
+  - se envió **dentro de lo que cubre el historial de Máximo**, que es el mes
+    en curso: desde el inicio del mes de su importación, o desde antes si
+    alguna toma devuelta en la consulta lo prueba.
 
   La hora del envío es el último cambio de estado de la venta.
 - **BR-002 — Se guarda lo que no aparece.** Cada consulta sin resultado deja
@@ -44,11 +43,9 @@ historial.
   hora del envío, desde cuándo falta y de cuándo son los datos de Máximo.
 - **BR-005 — Se ve en Pedidos:** una franja con cuántas hay y un enlace que
   lista solo esas (`sinmaximo=1`). La lista se suelta al cambiar de vista.
-- **BR-006 — Es de cualquier fecha.** La franja y su lista no usan el
-  período elegido. *Decisión que se aparta de SPEC-085 BR-001:* una venta
-  enviada ayer que falta en Máximo hay que reportarla hoy, y con «Hoy»
-  quedaría escondida. Si José prefiere el período, basta con agregarlo a la
-  cifra y a la lista.
+- **BR-006 — Siempre del mes en curso** (José, 23/10/2026), en Pedidos y en
+  Logística, aunque arriba se elija otro período. La primera versión era de
+  cualquier fecha.
 - **BR-007 — Lista para reportar en Logística:** código de pedido, asesor,
   hora del envío y desde cuándo falta, con la cifra en la cabecera.
 - **BR-008 — Solo visual por ahora.** No se escala ni se notifica sola.
