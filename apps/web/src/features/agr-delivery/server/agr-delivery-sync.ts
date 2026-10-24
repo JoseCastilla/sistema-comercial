@@ -34,7 +34,7 @@ import type { AgrSyncWindow } from "../agr-delivery.types";
 
 import type { Prisma } from "@repo/database";
 
-const endpoint = "https://proveedores.cgc.alka.net.pe/api/order-history";
+const endpoint = "https://cgc.alka.net.pe/delivery-next/api/v2/provider/orders";
 
 export type { AgrDeliveryRecord };
 
