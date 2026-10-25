@@ -227,3 +227,16 @@ export function parseAgrDateTime(value: unknown): Date | null {
     Date.UTC(Number(match[3]), month, Number(match[2]), hour + 5, minute),
   );
 }
+
+/**
+ * Máximo avisa la sesión vencida con un 200: `{ ok: false, error: "Sesión
+ * vencida", login: true }` (25/10/2026). Sin esto se leía como respuesta rota
+ * y nadie se enteraba de que había que renovar la clave.
+ */
+export function isAgrSessionExpired(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return false;
+  }
+  const body = payload as Record<string, unknown>;
+  return body.ok === false && body.login === true;
+}

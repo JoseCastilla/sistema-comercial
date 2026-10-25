@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { parseAgrOrderHistory } from "@/features/agr-delivery/order-history";
+import {
+  isAgrSessionExpired,
+  parseAgrOrderHistory,
+} from "@/features/agr-delivery/order-history";
 import { getAgrDeliveryFields } from "@/features/orders/agr-delivery-fields";
 
 /**
@@ -177,5 +180,37 @@ describe("Historial de Máximo", () => {
       "Última actualización: oct 23, 2026 2:06 a.m.",
       "Pedido: 200000001",
     ]);
+  });
+
+  it("la respuesta de delivery-next trae scope y entity y se lee igual", () => {
+    const registro = parseAgrOrderHistory({
+      ...respuesta({ estadoActual: "NO ENTREGADO" }, [
+        evento(1, "ASIGNADO", "oct 23, 2026 12:20 p.m."),
+        evento(
+          2,
+          "CANCELADO",
+          "oct 23, 2026 8:00 p.m.",
+          "CLIENTE NO IDENTIFICADO",
+          "HUELLA NO CORRESPONDE",
+        ),
+      ]),
+      scope: "ENTITY",
+      entity: "DISTRIBUIDOR ONLINE",
+      scopeSource: "PRUEBA",
+    });
+    expect(registro).toMatchObject({
+      estado_pedido: "CANCELADO",
+      motivo_rechazo: "CLIENTE NO IDENTIFICADO",
+    });
+  });
+
+  it("la sesión vencida llega como 200 y se reconoce", () => {
+    expect(
+      isAgrSessionExpired({ ok: false, error: "Sesión vencida", login: true }),
+    ).toBe(true);
+    expect(isAgrSessionExpired({ ok: true, found: false, events: [] })).toBe(
+      false,
+    );
+    expect(isAgrSessionExpired({ ok: false })).toBe(false);
   });
 });

@@ -419,3 +419,29 @@ las de estado y motivo siguen igual.
   adaptador sobre las 90 respuestas reales.
 - No verificado aquí: una corrida completa contra producción, que necesita la
   clave cargada en `/admin/logistics`.
+
+## 14. Endpoint `delivery-next` — 25/10/2026
+
+José pidió pasar a
+`https://cgc.alka.net.pe/delivery-next/api/v2/provider/orders?q=<pedido>`,
+con la cookie `__Host-cgc_session`. El anterior,
+`proveedores.cgc.alka.net.pe/api/order-history`, ya responde `{ ok: false,
+error: "Sesión vencida", login: true }`.
+
+Probado el 25/10/2026 con la clave de José:
+
+- Acepta el código con o sin la «A» final. Sin pedido responde
+  `{ ok: true, found: false, events: [] }`. Sin cookie, 401.
+- Misma forma que `/api/order-history`, más `scope`, `entity` y
+  `scopeSource`. El adaptador la lee sin cambios.
+- **Cubre el mes en curso**, igual que antes: 0 de 4 ventas del 29 y 30/09,
+  todas las consultadas del 1 al 22/10. Fuente
+  `HISTORIAL6PMTIENDAVIRTUAL.csv`, importada el 24/10 a las 18:41.
+- **El resumen sigue atrasado:** 1977805902 dice NO ENTREGADO y su último
+  evento es CANCELADO; 1969666565 dice AGENDADO y ya es ENTREGADO.
+- La sesión vencida llega como 200 con `login: true`; ahora se trata como
+  credencial vencida y Logística pide renovarla.
+- Unos 2,6 s por consulta en serie, como antes.
+
+La clave guardada en producción es del endpoint anterior. Tras desplegar hay
+que pegar la nueva en `/admin/logistics`.
