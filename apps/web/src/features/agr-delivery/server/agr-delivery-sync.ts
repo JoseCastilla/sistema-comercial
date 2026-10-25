@@ -23,6 +23,7 @@ import {
   resolveAgrMissingAlert,
 } from "../missing-orders";
 import {
+  isAgrSessionExpired,
   parseAgrDateTime,
   parseAgrOrderHistory,
   readAgrSourceImportedAt,
@@ -34,7 +35,12 @@ import type { AgrSyncWindow } from "../agr-delivery.types";
 
 import type { Prisma } from "@repo/database";
 
-const endpoint = "https://proveedores.cgc.alka.net.pe/api/order-history";
+/*
+ * José, 25/10/2026: Máximo pasa a `delivery-next`, con su propia cookie de
+ * sesión. Misma respuesta que `/api/order-history`, más `scope` y `entity`.
+ */
+const endpoint = "https://cgc.alka.net.pe/delivery-next/api/v2/provider/orders";
+const sessionCookieName = "__Host-cgc_session";
 
 export type { AgrDeliveryRecord };
 
@@ -98,7 +104,7 @@ export async function fetchAgrDeliveryRecord(
   const response = await fetch(url, {
     headers: {
       accept: "application/json",
-      cookie: `__Host-cgagr_delivery_session=${sessionCookie}`,
+      cookie: `${sessionCookieName}=${sessionCookie}`,
     },
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
@@ -109,6 +115,10 @@ export async function fetchAgrDeliveryRecord(
   if (!response.ok)
     throw new Error(`La fuente logística respondió ${response.status}.`);
   const payload = (await response.json()) as unknown;
+  // La sesión vencida también llega como 200: `{ ok: false, login: true }`.
+  if (isAgrSessionExpired(payload)) {
+    throw new AgrCredentialError("La sesión logística venció.");
+  }
   const record = parseAgrOrderHistory(payload);
   const sourceImportedAt = readAgrSourceImportedAt(payload);
   // La fuente busca por coincidencia; nos quedamos solo con el pedido exacto.

@@ -101,3 +101,10 @@
       con pedidos encontrados.
 - [ ] Volver a `/api/records` o combinar ambas cuando salga de mantenimiento:
       solo esa trae la gestión interna de Máximo y el vendedor.
+
+## Endpoint delivery-next — 25/10/2026
+
+- [x] URL y cookie nuevas; sesión vencida en respuesta 200 reconocida.
+- [x] Cobertura y resumen atrasado validados con la clave de José.
+- [ ] José pega la clave nueva en `/admin/logistics` y se verifica la
+      siguiente corrida.
