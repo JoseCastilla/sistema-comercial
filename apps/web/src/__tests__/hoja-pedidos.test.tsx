@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { readAgrDeliveryReading } from "@/features/agr-delivery/delivery-reading";
 import { OrderInbox } from "@/features/orders/components/order-inbox";
 
 import type {
@@ -123,6 +124,12 @@ function pedido(extra: Partial<OrderInboxItem> = {}): OrderInboxItem {
         },
         { key: "canal", label: "Canal", value: "DELIVERY" },
       ],
+      reading: readAgrDeliveryReading({
+        estadoPedido: "NO ENTREGADO",
+        motivoRechazo: "CLIENTE AUSENTE",
+        submotivoRechazo: null,
+        rawPayload: null,
+      }),
       fetchedAtLabel: "25/09/2026, 18:00",
     },
     registeredAtLabel: "25/09/2026, 14:27",
@@ -535,7 +542,8 @@ describe("Hoja de pedidos", () => {
   it("el panel muestra todo lo que manda Máximo, sin traducir, incluso campos nuevos", () => {
     render(<OrderInbox data={datos()} />);
 
-    const maximo = screen.getByRole("region", { name: "Lo que dice Máximo" });
+    // SPEC-089: el bloque se llama «Entrega según Máximo».
+    const maximo = screen.getByRole("region", { name: "Entrega según Máximo" });
     expect(within(maximo).getByText("CLIENTE AUSENTE")).toBeInTheDocument();
     expect(within(maximo).getByText("2026-09-26")).toBeInTheDocument();
     expect(within(maximo).getByText("Canal")).toBeInTheDocument();

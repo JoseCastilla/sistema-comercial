@@ -4,6 +4,7 @@ import {
   isAgrSessionExpired,
   parseAgrOrderHistory,
 } from "@/features/agr-delivery/order-history";
+import { readAgrDeliveryReading } from "@/features/agr-delivery/delivery-reading";
 import { getAgrDeliveryFields } from "@/features/orders/agr-delivery-fields";
 
 /**
@@ -152,7 +153,12 @@ describe("Historial de Máximo", () => {
     expect(() => parseAgrOrderHistory("texto")).toThrow();
   });
 
-  it("la ficha muestra estado, falla anterior y recorrido, sin códigos internos", () => {
+  /*
+   * SPEC-089: estos pares siguen alimentando la fila de la lista; la ficha
+   * arma con el mismo registro «Entrega según Máximo» (estado, recorrido y
+   * falla anterior pasan a ser visitas y movimientos).
+   */
+  it("los campos traen estado, falla anterior y recorrido, sin códigos internos; la ficha los lee por visitas", () => {
     const registro = parseAgrOrderHistory(
       respuesta({}, [
         evento(1, "ASIGNADO", "oct 22, 2026 4:13 p.m."),
@@ -180,6 +186,25 @@ describe("Historial de Máximo", () => {
       "Última actualización: oct 23, 2026 2:06 a.m.",
       "Pedido: 200000001",
     ]);
+    const lectura = readAgrDeliveryReading({
+      estadoPedido: "AGENDADO",
+      motivoRechazo: null,
+      submotivoRechazo: null,
+      rawPayload: registro,
+    });
+    expect(lectura).toMatchObject({
+      stateLabel: "Agendado",
+      lastMovementLabel: "23/10/2026, 02:06",
+      reason: null,
+      visitsSummary: "1 visita fallida",
+      closure: null,
+    });
+    expect(lectura.visits[0]).toMatchObject({
+      dateLabel: "22/10/2026, 16:27",
+      reason: "CLIENTE AUSENTE · CLIENTE NO CONTESTA LLAMADAS",
+      // `tiempoHrs` de la fuente se guarda como `tiempo_hrs` y llega igual.
+      meta: "Registró USUARIO-PRUEBA · distancia 0 · tiempo 00:00",
+    });
   });
 
   it("la respuesta de delivery-next trae scope y entity y se lee igual", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { readAgrDeliveryReading } from "@/features/agr-delivery/delivery-reading";
 import {
   getAdvisorOrderGroup,
   getAgrReasonText,
@@ -22,6 +23,12 @@ const maximo = (opportunity: boolean, stale = false) => ({
     { key: "motivo_rechazo", label: "Motivo", value: "CLIENTE AUSENTE" },
     { key: "submotivo_rechazo", label: "Submotivo", value: "NO CONTESTA" },
   ],
+  reading: readAgrDeliveryReading({
+    estadoPedido: opportunity ? "NO ENTREGADO" : "AGENDADO",
+    motivoRechazo: "CLIENTE AUSENTE",
+    submotivoRechazo: "NO CONTESTA",
+    rawPayload: null,
+  }),
   fetchedAtLabel: "26/09/2026, 08:00",
 });
 

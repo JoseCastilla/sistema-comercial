@@ -9,6 +9,8 @@ import { EmptyState } from "@repo/ui/empty-state";
 import { PageHeader } from "@repo/ui/page-header";
 import { Surface } from "@repo/ui/surface";
 
+import { AgrDeliveryReadingBlock } from "@/features/agr-delivery/components/agr-delivery-reading";
+
 import { BulkCloseBar } from "./bulk-close-bar";
 import { OrderNextStep } from "./order-next-step";
 import { SaleOriginPicker, saleOriginLabels } from "./sale-origin-picker";
@@ -482,43 +484,26 @@ function MissingFromMaximoPanel({ order }: { order: OrderInboxItem }) {
  * SPEC-075: lo que manda Máximo, tal cual. Antes se traducía el estado y el
  * motivo a frases propias y se proponía una acción; el equipo pidió ver el
  * dato original porque la traducción dejaba información fuera.
+ * SPEC-089: ordenado por visitas, con lo que se anotó en cada una.
  */
 function AgrDeliveryPanel({ order }: { order: OrderInboxItem }) {
   const agr = order.agrDelivery;
   if (!agr) return null;
 
   return (
-    <section
-      aria-label="Lo que dice Máximo"
-      className="ui-order-notice"
-      data-tone={agr.opportunity && !agr.stale ? "warning" : "neutral"}
-    >
-      <h4 className="ui-order-notice__headline">
-        <span className="ui-order-notice__source">
-          {agr.stale ? "Último dato de Máximo" : "Máximo"}
-        </span>
-        {" · "}
-        {agr.estadoPedido}
-      </h4>
-      <dl className="ui-order-notice__details">
-        {agr.fields
-          .filter((field) => field.key !== "estado_pedido")
-          .map((field) => (
-            <DetailItem
-              key={field.key}
-              label={field.label}
-              value={field.value}
-            />
-          ))}
-      </dl>
-      <p className="mt-2 text-xs text-ui-muted">
-        {agr.stale
+    <AgrDeliveryReadingBlock
+      extraFields={agr.fields}
+      footer={
+        agr.stale
           ? `Del ${agr.fetchedAtLabel}. Ya no se consulta: el pedido está ${
               order.status === "CLOSED" ? "cerrado" : "entregado"
             }.`
-          : `Consultado ${agr.fetchedAtLabel}`}
-      </p>
-    </section>
+          : `Consultado ${agr.fetchedAtLabel}`
+      }
+      reading={agr.reading}
+      source={agr.stale ? "Último dato de Máximo" : "Máximo"}
+      tone={agr.opportunity && !agr.stale ? "warning" : "neutral"}
+    />
   );
 }
 

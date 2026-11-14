@@ -1,5 +1,7 @@
 import "server-only";
 
+import { readAgrDeliveryReading } from "@/features/agr-delivery/delivery-reading";
+
 import { getAgrDeliveryFields } from "../agr-delivery-fields";
 
 import {
@@ -1624,6 +1626,7 @@ export async function getOrderInbox(
               order.status === "CLOSED" || order.deliveryStatus === "DELIVERED",
             estadoPedido: order.agrDeliverySnapshot.estadoPedido.trim(),
             fields: getAgrDeliveryFields(order.agrDeliverySnapshot),
+            reading: readAgrDeliveryReading(order.agrDeliverySnapshot),
             fetchedAtLabel: formatDateTime(order.agrDeliverySnapshot.fetchedAt),
           }
         : null,

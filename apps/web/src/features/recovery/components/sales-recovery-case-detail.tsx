@@ -4,6 +4,8 @@ import { formatCount } from "@repo/ui/format";
 import { PageHeader } from "@repo/ui/page-header";
 import { SectionPanel } from "@repo/ui/section-panel";
 
+import { AgrDeliveryReadingBlock } from "@/features/agr-delivery/components/agr-delivery-reading";
+
 import { attemptResultLabels } from "../attempt-result-labels";
 import { buildOrderHref } from "../order-link";
 
@@ -83,6 +85,18 @@ export function SalesRecoveryCaseDetail({
           serviceNumbers={[]}
         />
       )}
+
+      {/*
+       * SPEC-089: qué se dijo en cada visita, para quien va a llamar al
+       * cliente. La misma pieza que la ficha del pedido.
+       */}
+      {data.agrDelivery ? (
+        <AgrDeliveryReadingBlock
+          footer={`Consultado ${data.agrDelivery.fetchedAtLabel}`}
+          reading={data.agrDelivery.reading}
+          tone={data.agrDelivery.opportunity ? "warning" : "neutral"}
+        />
+      ) : null}
 
       {/* BR-011: la regla del plazo, plegada y en palabras simples. */}
       {data.isResolved ? null : (

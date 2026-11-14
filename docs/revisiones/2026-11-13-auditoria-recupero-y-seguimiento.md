@@ -310,6 +310,69 @@ repartir 68 más.
 **V6. El aviso «27 ventas calientes vencidas» la sigue por todas las
 pantallas**, igual que al administrador.
 
+## 4 quater. Cómo llegan las respuestas de Máximo
+
+Leído en producción con sesión de administrador (19:56 a 20:10): la respuesta
+guardada de las 227 entregas fallidas de noviembre, pedido por pedido, desde
+la ficha de Pedidos. El código lo leyó un agente y se contrastó aquí.
+
+**Qué se pide y qué llega.** Una petición por venta a
+`cgc.alka.net.pe/delivery-next/api/v2/provider/orders?q=<dígitos del pedido>`
+con la cookie de sesión, en lotes de 10, sin reintentos
+(`agr-delivery-sync.ts:42,99-128`). Máximo devuelve el pedido y su lista de
+eventos; cada evento trae estado, fecha, motivo, submotivo, **usuario,
+tiempo, distancia y comentario** (`order-history.ts:72-91`). El sistema toma
+estado y motivo del último evento y guarda todos los eventos, pero la ficha
+los oculta (`agr-delivery-fields.ts:59`): solo muestra el recorrido y el
+número de intentos.
+
+**M1. «Excede 3 visitas» se pone con 2.** De 80 pedidos con ese motivo, 72
+tienen 2 eventos «no entregado» y 8 tienen 3. El recorrido típico (77 casos):
+asignado › agendado › no entregado › asignado › agendado › no entregado ›
+asignado › rechazado. No hay tercera cita agendada.
+
+**M2. «No recuperable» se decide tras un intento.** De 54 pedidos «cliente no
+desea · no recuperable», 49 tienen un solo «no entregado» antes del rechazo.
+
+**M3. Toda venta fallida pasó primero por «no entregado».** Las 227. El
+motivo de esa visita (no contesta, punto de encuentro, pide reagendar) es el
+dato de primera mano; el motivo final lo reemplaza en la foto y es el único
+que ven Pedidos y Recupero.
+
+**M4. Hay dos caminos al final.** Los 136 rechazados salen de
+«no entregado › asignado › rechazado» (ausencia o negativa). Las canceladas
+pasan por «precancelado» (68 de 69): son huella y portabilidad rechazada.
+«Precancelado» es una segunda ventana que el sistema consulta pero no
+distingue.
+
+**M5. El rechazo se registra de noche y el sistema mira de día.** De 205
+terminales, 186 tienen su último movimiento entre las 19:00 y las 02:59. Las
+consultas son a las 08, 12, 15 y 18. Un rechazo se conoce a las 08:00 del día
+siguiente, y una visita fallida después de las 18:00 puede no verse nunca
+como «no entregado». 85 de 205 llegan a terminal en menos de 12 horas desde
+el registro de la venta.
+
+**M6. Una corrida fallida se muestra como buena.** Si Máximo devuelve una
+página de ingreso, un 429 o un 5xx, cada consulta suma un error y la corrida
+cierra «Completada», con la clave «activa» y «Datos de Máximo al: ahora»
+(`agr-delivery-sync.ts:346-349,372-395`). La pantalla no muestra errores ni
+encontradas. Además «Datos de Máximo al» es la hora de nuestra consulta, no
+la de la importación de Máximo, que llega en la respuesta y no se guarda.
+
+**M7. Lo terminal no se vuelve a mirar**, ni lo que el asesor canceló a mano
+una vez conocido el motivo: 4 «no entregado» del mes están congelados desde
+el 10/11 o antes. Si Máximo reabre un pedido, nadie se entera.
+
+**M8. Los motivos se guardan tal cual llegan** y las reglas comparan textos
+sin tilde (`get-order-inbox.ts:788,801`). En las 227 de noviembre no hubo
+tildes ni espacios dobles, así que hoy no falla; fallaría sin aviso el día
+que Máximo cambie una grafía.
+
+**Lo que esto cambia.** Para saber si un rechazo es real no hace falta creerle
+al motorizado: Máximo ya entrega cuántas visitas hubo, qué se dijo en cada
+una, quién la registró y a qué distancia. `docs/operacion/consultas/respuestas-maximo.sql`
+abre esos datos (seis consultas, sin correr).
+
 ## 5. Funciones que no se usan
 
 | Función | Evidencia | Recomendación |
