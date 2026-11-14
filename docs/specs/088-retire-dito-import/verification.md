@@ -57,5 +57,10 @@ Referencias encontradas antes de borrar:
 
 ## Producción
 
-- [ ] **AC-001 / AC-002:** tras desplegar, `/admin/dito-imports` responde
-      404 y el menú del administrador (lateral y móvil) no muestra «Ventas».
+- [x] **AC-001 / AC-002:** leído en producción el 13/11/2026 a las 20:55,
+      con sesión de administrador, tras entregar `main` en `8bb670e`:
+      `/admin/dito-imports` responde 404 («No encontramos esta página»), el
+      menú lateral del administrador tiene 8 entradas sin «Ventas», y
+      `POST /api/v1/internal/dito-import/preview` responde 404. La API
+      reinició a las 20:54 y `/health/ready` responde `ok` con la base arriba.
+      No se miró el menú en el celular.

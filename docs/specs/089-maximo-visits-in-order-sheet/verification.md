@@ -50,3 +50,38 @@ En `/orders` (panel derecho, ~258 px) y en `/recovery/sales/<caso>`:
       pie «Del … Ya no se consulta».
 - [ ] Logística: con una corrida con errores, «Con error» en rojo y el
       mensaje en recuadro rojo; sin errores, nada destacado.
+
+## Lectura de producción — 13/11/2026, 20:55 a 21:05
+
+Con sesión de administrador, tras entregar `main` en `8bb670e`. Solo
+lectura. Modo día, escritorio (1 197 × 846).
+
+- [x] `/orders?period=MONTH&status=LOGISTICS`: el bloque «Entrega según
+      Máximo» sale en los 50 pedidos fallidos de la primera página; los 50
+      traen al menos una visita y 17 muestran «Máximo dice 3 visitas;
+      registra 2».
+- [~] **AC-008 (alto):** entre 304 y 474 px, mediana 397, a 258 px de
+      ancho. El bloque anterior midió ~418 px en un pedido. La mediana
+      baja; el máximo sube.
+- [x] `/recovery/sales/<caso>`: el mismo bloque, a 846 px de ancho.
+- [x] **AC-009:** Logística muestra la última corrida completa (87
+      consultadas, 54 encontradas, 46 con cambios, 15 oportunidades, 0 con
+      error). No se vio una corrida con errores.
+- Primeros valores reales: `usuario` es un código de flota por ciudad
+  (p. ej. `FLEETPIUC`) en las visitas y `D-<número>` en el cierre;
+  `distancia` es un número sin unidad (33 a 457 en la muestra, 0 en los
+  cierres); `tiempo_hrs` llega como «01:22» o «50:35:00»; `comentario` vino
+  vacío en los 50.
+- Costo: la página de 50 fallidos pesa ~420 KB frente a ~335 KB antes,
+  porque la lectura viaja para toda la lista y no solo para el pedido
+  abierto.
+- Sin mirar: celular, modo noche dentro de la aplicación, fichas de asesor
+  y supervisor, pedido sin historial, copiar el pedido.
+
+## Ajuste del 13/11/2026: la distancia va en metros
+
+José confirmó que `distancia` son metros. `formatAgrDistance` la muestra
+redondeada («46.49» → «46 m»; sobre 1 000, en km), omite el «0» de los
+cierres hechos desde la mesa y deja tal cual lo que no sea un número.
+`pnpm --filter web test`: 53 archivos, 340 pruebas en verde;
+`check-types` y `lint` en verde. Sin desplegar al escribir esta nota.
