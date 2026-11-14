@@ -15,7 +15,6 @@ export type ActiveSection =
   | "dni"
   | "sales-recovery"
   | "recovery"
-  | "imports"
   | "logistics"
   | "people"
   | "teams"
@@ -31,7 +30,6 @@ export type ActiveSection =
 const SECTION_BY_PATH_PREFIX: readonly (readonly [string, ActiveSection])[] = [
   ["/my-day", "my-day"],
   ["/recovery/sales", "sales-recovery"],
-  ["/admin/dito-imports", "imports"],
   ["/admin/logistics", "logistics"],
   ["/admin/recovery-base", "recovery"],
   ["/admin/users", "people"],
@@ -58,7 +56,6 @@ type IconName =
   | "identity"
   | "recovery"
   | "campaigns"
-  | "sales"
   | "logistics"
   | "people"
   | "teams";
@@ -95,11 +92,6 @@ function NavigationIcon({ name }: { name: IconName }) {
         <rect height="13" rx="1.5" width="16" x="2" y="3.5" />
         <circle cx="7" cy="9" r="2" />
         <path d="M4.5 14c.4-1.8 1.2-2.7 2.5-2.7s2.1.9 2.5 2.7M12 8h3M12 11h3" />
-      </>
-    ),
-    sales: (
-      <>
-        <path d="M4 16V9m6 7V4m6 12v-6" />
       </>
     ),
     logistics: (
@@ -376,13 +368,8 @@ export function CommercialAppShell({
           ) : null}
           {isAdmin ? (
             <>
-              <NavigationItem
-                active={currentSection === "imports"}
-                description="Carga y revisión DITO"
-                href="/admin/dito-imports"
-                icon="sales"
-                label="Ventas"
-              />
+              {/* SPEC-088: «Ventas» (carga del reporte DITO) se retiró; las
+                  ventas entran solo por la extensión. */}
               <NavigationItem
                 active={currentSection === "logistics"}
                 description="Estado de entregas en Máximo"
@@ -443,6 +430,7 @@ export function CommercialAppShell({
           {children}
         </main>
       </div>
+      {/* ADMIN: cinco comunes + Logística, Personas y Equipos = 8 (SPEC-088). */}
       <nav
         aria-label="Navegación móvil"
         className="app-shell__mobile-nav"
@@ -501,12 +489,6 @@ export function CommercialAppShell({
         />
         {isAdmin ? (
           <>
-            <MobileNavigationItem
-              active={currentSection === "imports"}
-              href="/admin/dito-imports"
-              icon="sales"
-              label="Ventas"
-            />
             <MobileNavigationItem
               active={currentSection === "logistics"}
               href="/admin/logistics"

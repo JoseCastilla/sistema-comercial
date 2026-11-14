@@ -2,6 +2,8 @@
 
 **Estado:** `ENTREGADA` — sus reglas fueron modificadas por SPEC-020, 021 y 023 sin versionar esta spec (06/09/2026)
 
+> **Retirado por SPEC-088 (13/11/2026):** el importador de reportes XLSX de DITO se quitó del producto; las ventas entran solo por la extensión. Esta spec se conserva como historia; las tablas siguen en la base (fase 2 de SPEC-088).
+
 > Antes: `APPROVED`
 
 **Versión:** 1.3
