@@ -8,7 +8,6 @@ export * from "./dito-order-escalation-schema.js";
 export * from "./dito-order-correction-schema.js";
 export * from "./dito-order-assignment-retry-schema.js";
 export * from "./dito-order-orphan-claim-schema.js";
-export * from "./dito-import-admin-schema.js";
 export * from "./order-inbox-filters.js";
 export * from "./person-lifecycle.js";
 export * from "./order-period.js";

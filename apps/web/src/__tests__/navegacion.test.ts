@@ -33,8 +33,8 @@ describe("sectionForPath", () => {
     expect(sectionForPath("/recovery/agenda")).toBe("recovery");
   });
 
-  it("separa las cuatro superficies de administración", () => {
-    expect(sectionForPath("/admin/dito-imports")).toBe("imports");
+  it("separa las tres superficies de administración", () => {
+    // SPEC-088: «Ventas» (importador de reportes DITO) se retiró.
     expect(sectionForPath("/admin/logistics")).toBe("logistics");
     expect(sectionForPath("/admin/users")).toBe("people");
     expect(sectionForPath("/admin/teams")).toBe("teams");

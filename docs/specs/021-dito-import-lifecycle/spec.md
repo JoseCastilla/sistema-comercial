@@ -2,6 +2,8 @@
 
 **Estado:** `ENTREGADA` — sin estado hasta hoy; SPEC-045 PL-10 añadió el historial paginado (06/09/2026)
 
+> **Retirado por SPEC-088 (13/11/2026):** el importador de reportes XLSX de DITO se quitó del producto; las ventas entran solo por la extensión. Esta spec se conserva como historia; las tablas siguen en la base (fase 2 de SPEC-088).
+
 ## Objetivo
 
 Permitir que un administrador retire vistas previas obsoletas sin perder la trazabilidad de ventas ya incorporadas.

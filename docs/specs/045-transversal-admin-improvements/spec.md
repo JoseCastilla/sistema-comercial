@@ -139,7 +139,8 @@ tratar en una spec propia de operación; no bloquean esta.
   saldo se presenta como «el que reportó el proveedor en la última consulta
   nueva, el <fecha>; no es un saldo en tiempo real». Sin cambios de datos:
   `DniLookupEvent.source` ya distinguía `API` de `CACHE`.
-- **Cargas DITO (PL-10)**: las ocho recientes siguen como estaban (con
+- **Cargas DITO (PL-10)** (retirado por SPEC-088 el 13/11/2026: el
+  importador y su historial ya no existen): las ocho recientes siguen como estaban (con
   «retirar» solo para vistas previas); un enlace «Ver el historial completo
   (N cargas)» abre una tabla paginada de 20 en solo lectura (`historial=1&
   pagina=N`), con quién cargó, cuándo se confirmó y las filas; el historial

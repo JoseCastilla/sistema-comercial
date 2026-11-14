@@ -2,6 +2,8 @@
 
 **Estado:** `ENTREGADA` — sin estado hasta hoy; 1 tarea abierta (06/09/2026)
 
+> **Retirado por SPEC-088 (13/11/2026):** el importador de reportes XLSX de DITO se quitó del producto; las ventas entran solo por la extensión. Esta spec se conserva como historia; las tablas siguen en la base (fase 2 de SPEC-088).
+
 ## Objetivo
 
 Permitir que un administrador importe archivos DITO sin falsos conflictos por pérdida de ceros iniciales y resuelva diferencias reales antes de confirmar el lote.
