@@ -203,7 +203,7 @@ describe("Historial de Máximo", () => {
       dateLabel: "22/10/2026, 16:27",
       reason: "CLIENTE AUSENTE · CLIENTE NO CONTESTA LLAMADAS",
       // `tiempoHrs` de la fuente se guarda como `tiempo_hrs` y llega igual.
-      meta: "Registró USUARIO-PRUEBA · distancia 0 · tiempo 00:00",
+      meta: "Registró USUARIO-PRUEBA · tiempo 00:00",
     });
   });
 

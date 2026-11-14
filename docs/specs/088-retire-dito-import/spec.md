@@ -1,6 +1,6 @@
 # SPEC-088 — Retiro del importador de reportes DITO
 
-**Estado:** `ENTREGADA` — en `main` el 13/11/2026; falta registrar la lectura de producción. La fase 2 (base de datos) la decide José
+**Estado:** `VERIFICADA` — en `main` y leída en producción el 13/11/2026 (menú móvil sin mirar). Abierto: la fase 2 (base de datos), que decide José, y quitar `DITO_IMPORT_INTERNAL_SECRET` en EasyPanel
 
 **Versión:** 1.0
 **Fecha:** 2026-11-13

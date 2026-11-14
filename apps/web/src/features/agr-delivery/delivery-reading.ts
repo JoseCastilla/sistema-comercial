@@ -147,6 +147,21 @@ export function formatAgrDate(value: unknown): string | null {
     : dateFormatter.format(date);
 }
 
+/**
+ * La distancia llega como número en metros (José, 13/11/2026): «46.49» →
+ * «46 m». Un «0» es de quien cierra desde la mesa, no una medida: se omite.
+ * Lo que no sea un número va tal cual, sin suponerle unidad.
+ */
+export function formatAgrDistance(value: unknown): string | null {
+  const text = clipAgrText(value, shortTextLimit);
+  if (!text) return null;
+  if (!/^\d+(?:[.,]\d+)?$/.test(text)) return text;
+  const meters = Number(text.replace(",", "."));
+  if (meters === 0) return null;
+  if (meters < 1000) return `${Math.max(1, Math.round(meters))} m`;
+  return `${(Math.round(meters / 100) / 10).toString()} km`;
+}
+
 function readHistory(raw: Record<string, unknown> | null): HistoryEvent[] | null {
   const value = raw?.historial;
   if (!Array.isArray(value)) return null;
@@ -191,7 +206,7 @@ function joinReason(
 
 function describeMeta(event: HistoryEvent): string | null {
   const usuario = clipAgrText(event.usuario, shortTextLimit);
-  const distancia = clipAgrText(event.distancia, shortTextLimit);
+  const distancia = formatAgrDistance(event.distancia);
   const tiempo = clipAgrText(event.tiempo_hrs, shortTextLimit);
   return (
     [
@@ -285,7 +300,7 @@ function readClosure(events: HistoryEvent[]): AgrDeliveryClosure | null {
         .filter((user): user is string => Boolean(user)),
     ),
   ];
-  const distancia = clipAgrText(last.distancia, shortTextLimit);
+  const distancia = formatAgrDistance(last.distancia);
   const tiempo = clipAgrText(last.tiempo_hrs, shortTextLimit);
   return {
     stateLabel: steps

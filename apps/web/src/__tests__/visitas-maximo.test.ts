@@ -5,6 +5,7 @@ import {
   compareAgrVisits,
   describeAgrVisits,
   formatAgrDate,
+  formatAgrDistance,
   readAgrDeliveryReading,
 } from "@/features/agr-delivery/delivery-reading";
 import { parseAgrOrderHistory } from "@/features/agr-delivery/order-history";
@@ -105,7 +106,7 @@ describe("Visitas de Máximo", () => {
         dateLabel: "10/11/2026, 15:58",
         reason: "CLIENTE AUSENTE · CLIENTE NO CONTESTA LLAMADAS",
         comment: "toqué la puerta, nadie abrió",
-        meta: "Registró MOTORIZADO-PRUEBA · distancia 1.2 · tiempo 00:15",
+        meta: "Registró MOTORIZADO-PRUEBA · distancia 1 m · tiempo 00:15",
       },
       {
         seq: 6,
@@ -297,8 +298,8 @@ describe("Visitas de Máximo", () => {
     expect(recortado.endsWith("…")).toBe(true);
     expect(recortado.length).toBeLessThanOrEqual(201);
     expect(recortado).not.toMatch(/\s…$/);
-    // La distancia va como llega: «0» también es un dato.
-    expect(lectura.visits[1]?.meta).toBe("distancia 0");
+    // Un «0» es de quien cierra desde la mesa, no una medida: no se muestra.
+    expect(lectura.visits[1]?.meta).toBeNull();
     // En «todos los movimientos» cabe más del comentario.
     expect(
       (lectura.movements[1]?.comment ?? "").length,
@@ -313,5 +314,24 @@ describe("Visitas de Máximo", () => {
     expect(formatAgrDate("nov 11, 2026 12:21 a.m.")).toBe("11/11/2026, 00:21");
     expect(formatAgrDate("")).toBeNull();
     expect(clipAgrText("  a   b  ", 10)).toBe("a b");
+  });
+});
+
+
+describe("Distancia de Máximo", () => {
+  it("va en metros, redondeada; sobre 1 000, en kilómetros", () => {
+    expect(formatAgrDistance("46.49")).toBe("46 m");
+    expect(formatAgrDistance("457.49")).toBe("457 m");
+    expect(formatAgrDistance("0.4")).toBe("1 m");
+    expect(formatAgrDistance("1250")).toBe("1.3 km");
+    expect(formatAgrDistance("34,56")).toBe("35 m");
+  });
+
+  it("omite el cero y lo vacío, y no toca lo que no es un número", () => {
+    expect(formatAgrDistance("0")).toBeNull();
+    expect(formatAgrDistance("0.00")).toBeNull();
+    expect(formatAgrDistance("")).toBeNull();
+    expect(formatAgrDistance(null)).toBeNull();
+    expect(formatAgrDistance("cerca del paradero")).toBe("cerca del paradero");
   });
 });
