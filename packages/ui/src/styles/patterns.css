@@ -2877,6 +2877,147 @@
     overflow-wrap: anywhere;
   }
 
+  /*
+   * SPEC-089: «Entrega según Máximo». Lo primero que se lee es el estado, las
+   * visitas y lo que se dijo en cada una; los textos de Máximo van tal cual,
+   * sin negrita, para no competir con la cabecera. Sin tablas: la ficha mide
+   * ~258 px y también se usa en celular.
+   */
+  .ui-agr-reading {
+    padding: 0.75rem 0.85rem;
+    overflow-wrap: anywhere;
+  }
+
+  .ui-agr-reading__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.15rem 0.5rem;
+    margin-top: 0.15rem;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-xs);
+  }
+
+  .ui-agr-reading__reason {
+    margin-top: 0.35rem;
+    color: var(--ui-text);
+    font-size: var(--ui-text-sm);
+    line-height: 1.35;
+  }
+
+  .ui-agr-reading__summary {
+    margin-top: 0.35rem;
+    color: var(--ui-text);
+    font-size: var(--ui-text-sm);
+    font-weight: 600;
+  }
+
+  /* La frase ya dice las dos cifras; el color solo ayuda a encontrarla. */
+  .ui-agr-reading__summary[data-mismatch="true"] {
+    color: var(--ui-warning);
+  }
+
+  .ui-agr-reading__steps {
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 0.5rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ui-agr-reading__step {
+    padding-left: 0.6rem;
+    border-left: 2px solid var(--ui-border-strong);
+    font-size: var(--ui-text-xs);
+    line-height: 1.4;
+  }
+
+  .ui-agr-reading__step-title {
+    color: var(--ui-text);
+    font-size: var(--ui-text-sm);
+  }
+
+  .ui-agr-reading__step-title strong {
+    font-weight: 600;
+  }
+
+  .ui-agr-reading__step-reason {
+    color: var(--ui-text);
+  }
+
+  .ui-agr-reading__comment {
+    color: var(--ui-text);
+    font-style: italic;
+  }
+
+  .ui-agr-reading__step-meta {
+    color: var(--ui-text-muted);
+  }
+
+  .ui-agr-reading__extra {
+    display: grid;
+    gap: 0.15rem;
+    margin-top: 0.5rem;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-xs);
+  }
+
+  .ui-agr-reading__extra dt {
+    display: inline;
+  }
+
+  .ui-agr-reading__extra dt::after {
+    content: ":";
+  }
+
+  .ui-agr-reading__extra dd {
+    display: inline;
+    margin-left: 0.25rem;
+    color: var(--ui-text);
+  }
+
+  .ui-agr-reading__all {
+    margin-top: 0.5rem;
+    font-size: var(--ui-text-xs);
+  }
+
+  .ui-agr-reading__all > summary {
+    width: fit-content;
+    color: var(--ui-text-muted);
+    font-weight: 600;
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .ui-agr-reading__all > summary:hover {
+    color: var(--ui-text);
+  }
+
+  .ui-agr-reading__all > summary:focus-visible {
+    border-radius: var(--ui-radius-sm);
+    outline: 2px solid color-mix(in srgb, var(--ui-accent) 45%, transparent);
+    outline-offset: 2px;
+  }
+
+  .ui-agr-reading__all ol {
+    display: grid;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ui-agr-reading__all li {
+    line-height: 1.4;
+  }
+
+  .ui-agr-reading__footer {
+    margin-top: 0.5rem;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-2xs);
+  }
+
   .ui-status-badge {
     display: inline-flex;
     align-items: center;

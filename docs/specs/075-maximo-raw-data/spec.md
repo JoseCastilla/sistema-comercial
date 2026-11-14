@@ -64,6 +64,12 @@ Hasta ahora (SPEC-029, SPEC-041):
   - Los campos nuevos siguen apareciendo solos.
   - La lista vive en `features/orders/agr-delivery-fields.ts` y se prueba
     en `campos-maximo.test.ts`.
+  - > **Nota (13/11/2026):** el 23/10/2026 se añadió `historial` a esta
+    > lista porque «los eventos ya se resumen en Recorrido» (ver tasks,
+    > «Ajuste por el historial de Máximo»). SPEC-089 lo revierte en parte
+    > por decisión de José del 13/11/2026: la ficha muestra cada visita con
+    > su motivo, comentario, usuario y distancia en el bloque «Entrega según
+    > Máximo». El resto de esta regla sigue vigente.
 - **BR-008 — El dato viejo no se presenta como actual.** Máximo deja de
   consultarse cuando el pedido se cierra o se entrega (SPEC-029). En
   producción, 267 pedidos cerrados seguían diciendo «AGENDADO». Ahora la

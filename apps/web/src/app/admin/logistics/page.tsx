@@ -62,7 +62,10 @@ export default async function LogisticsAdminPage() {
           candidateOrders: true,
           consultedOrders: true,
           foundOrders: true,
+          changedOrders: true,
           opportunityOrders: true,
+          errorOrders: true,
+          errorMessage: true,
           startedAt: true,
           completedAt: true,
         },
@@ -242,28 +245,69 @@ export default async function LogisticsAdminPage() {
           >
             <div className="space-y-4">
               {lastRun ? (
-                <dl className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <dt className="text-ui-muted">Estado</dt>
-                    <dd className="font-semibold text-ui-text">
-                      {syncStatusLabels[lastRun.status] ?? lastRun.status}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-ui-muted">Inicio</dt>
-                    <dd>{format(lastRun.startedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-ui-muted">Consultadas</dt>
-                    <dd>
-                      {lastRun.consultedOrders} de {lastRun.candidateOrders}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-ui-muted">Oportunidades</dt>
-                    <dd>{lastRun.opportunityOrders}</dd>
-                  </div>
-                </dl>
+                <>
+                  {/*
+                   * SPEC-089 §3: la corrida completa. Encontradas, con cambios
+                   * y con error ya se guardaban y no se veían; el error se
+                   * destaca con texto y borde, no solo con color.
+                   */}
+                  <dl className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <dt className="text-ui-muted">Estado</dt>
+                      <dd className="font-semibold text-ui-text">
+                        {syncStatusLabels[lastRun.status] ?? lastRun.status}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-ui-muted">Inicio</dt>
+                      <dd>{format(lastRun.startedAt)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-ui-muted">Consultadas</dt>
+                      <dd>
+                        {lastRun.consultedOrders} de {lastRun.candidateOrders}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-ui-muted">Encontradas</dt>
+                      <dd>{lastRun.foundOrders}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-ui-muted">Con cambios</dt>
+                      <dd>{lastRun.changedOrders}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-ui-muted">Oportunidades</dt>
+                      <dd>{lastRun.opportunityOrders}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-ui-muted">Con error</dt>
+                      <dd
+                        className={
+                          lastRun.errorOrders > 0
+                            ? "font-semibold text-ui-danger"
+                            : undefined
+                        }
+                      >
+                        {lastRun.errorOrders}
+                      </dd>
+                    </div>
+                  </dl>
+                  {lastRun.errorMessage ? (
+                    <div
+                      className={
+                        lastRun.errorOrders > 0
+                          ? "rounded-lg border border-ui-danger-border bg-ui-danger-soft px-3 py-2 text-sm text-ui-danger"
+                          : "rounded-lg border border-ui-border bg-ui-subtle px-3 py-2 text-sm text-ui-muted"
+                      }
+                    >
+                      <p className="font-semibold">Error de la corrida</p>
+                      <p className="mt-1 whitespace-pre-wrap break-words text-xs">
+                        {lastRun.errorMessage}
+                      </p>
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <p className="text-sm text-ui-muted">
                   Todavía no hay sincronizaciones.

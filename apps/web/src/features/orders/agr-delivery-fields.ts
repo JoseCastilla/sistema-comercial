@@ -55,6 +55,8 @@ const agrDeliveryHiddenKeys = new Set([
    * Del historial de Máximo (23/10/2026): los eventos ya se resumen en
    * «Recorrido» y «Último intento fallido»; la opción de envío es el tipo de
    * delivery con su franja y el almacén es un código interno del operador.
+   * SPEC-089 (José, 13/11/2026): el historial sí se muestra, visita por
+   * visita, pero lo arma `delivery-reading.ts`, no esta lista de pares.
    */
   "historial",
   "opcion_envio",

@@ -1,3 +1,4 @@
+import type { AgrDeliveryReading } from "@/features/agr-delivery/delivery-reading";
 import type { OrderDueFilter, OrderPeriod } from "@repo/validation";
 
 export type OrderSlaState =
@@ -125,6 +126,11 @@ export interface OrderInboxItem {
     stale: boolean;
     estadoPedido: string;
     fields: Array<{ key: string; label: string; value: string }>;
+    /**
+     * SPEC-089: la misma foto leída por visitas para «Entrega según Máximo».
+     * `fields` sigue igual para la fila de la lista.
+     */
+    reading: AgrDeliveryReading;
     fetchedAtLabel: string;
   } | null;
   /**

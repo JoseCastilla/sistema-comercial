@@ -11,8 +11,12 @@ import {
   getLimaIsoDate,
 } from "@repo/validation";
 
+import { readAgrDeliveryReading } from "@/features/agr-delivery/delivery-reading";
 import { database } from "@/server/database";
-import { formatLimaDateTime } from "@repo/ui/format";
+import {
+  formatLimaDateTime,
+  formatLimaDateTimeWithYear,
+} from "@repo/ui/format";
 
 import { lossReasonLabels } from "../loss-reason-labels";
 import {
@@ -20,6 +24,7 @@ import {
   salesRecoveryFallOrderSelect,
 } from "./sales-recovery-fall";
 
+import type { AgrDeliveryReading } from "@/features/agr-delivery/delivery-reading";
 import type { SalesRecoveryAccess } from "./get-sales-recovery-inbox";
 import type {
   InternalRecoveryStage,
@@ -80,6 +85,15 @@ export interface SalesRecoveryCaseDetail {
   } | null;
   /** Por qué se cayó, como en «Mi día»: la acción de logística o el motivo. */
   fallReason: string | null;
+  /**
+   * SPEC-089: lo que dice Máximo del pedido, por visitas, para quien va a
+   * llamar al cliente. Nulo si la venta no tiene foto de Máximo.
+   */
+  agrDelivery: {
+    reading: AgrDeliveryReading;
+    opportunity: boolean;
+    fetchedAtLabel: string;
+  } | null;
   /** «24/09»: el día de la venta. */
   saleDayLabel: string | null;
   /** Teléfonos para el editor: contacto, el del pedido y la línea. */
@@ -151,6 +165,14 @@ export async function getSalesRecoveryCase(
           registeredAt: true,
           serviceNumber: true,
           ...salesRecoveryFallOrderSelect,
+          // SPEC-089: la foto completa solo en la ficha, no en las listas.
+          agrDeliverySnapshot: {
+            select: {
+              ...salesRecoveryFallOrderSelect.agrDeliverySnapshot.select,
+              rawPayload: true,
+              fetchedAt: true,
+            },
+          },
         },
       },
       phones: {
@@ -234,6 +256,7 @@ export async function getSalesRecoveryCase(
         now,
       );
   const lastAttempt = recoveryCase.attempts[0] ?? null;
+  const agrSnapshot = recoveryCase.sourceDitoOrder?.agrDeliverySnapshot ?? null;
   const phoneOptions = [
     ...new Set(
       [
@@ -327,6 +350,13 @@ export async function getSalesRecoveryCase(
               : null,
           },
     fallReason: describeSalesRecoveryFall(recoveryCase, 200),
+    agrDelivery: agrSnapshot
+      ? {
+          reading: readAgrDeliveryReading(agrSnapshot),
+          opportunity: agrSnapshot.isRecoveryOpportunity,
+          fetchedAtLabel: formatLimaDateTimeWithYear(agrSnapshot.fetchedAt),
+        }
+      : null,
     saleDayLabel: formatMyDaySaleDay(saleAt),
     phoneOptions,
     lastResult: lastAttempt ? effectiveAttemptResult(lastAttempt) : null,
